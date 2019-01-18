@@ -1,0 +1,275 @@
+/*
+ * This file is part of the IDA research data storage service
+ *
+ * Copyright (C) 2018 Ministry of Education and Culture, Finland
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @author    CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @license   GNU Affero General Public License, version 3
+ * @link      https://research.csc.fi/
+ */
+
+#body-login table {
+	margin: auto;
+    margin-top: 15px;
+}
+
+#body-login td {
+	vertical-align: top;
+	padding: 10px;
+    white-space: normal;
+}
+
+#body-login #header {
+    padding: 0;
+}
+
+#body-login #haka-login-button {
+	margin-top: 10px;
+	margin-bottom: 20px;
+	width: 320px;
+	border-color: #0000004d;
+	box-shadow: 0 6px 12px lightgrey;
+}
+
+#body-login .local-login-form {
+    align-content: center;
+	width: 318px;
+	border: 1px;
+    border-style: solid;
+	border-color: #0000004d;
+	box-shadow: 0 6px 12px lightgrey;
+}
+
+#body-login #ida-local-login-form-header {
+	padding-top: 20px;
+	text-align: center;
+	font-size: 14px;
+	font-weight: bold;
+}
+
+#body-login #ida-local-login-form-footer {
+	padding-bottom: 20px;
+	text-align: center;
+	font-size: 12px;
+}
+
+#body-login .ida-login-heading {
+    padding-top: 20px;
+	padding-left: 50px;
+	width: 400px;
+	font-size: 16px;
+	font-weight: bold;
+}
+
+#body-login .ida-login-text {
+	padding-left: 50px;
+	font-size: 14px;
+}
+
+#body-login a {
+	color: #007FAD;
+}
+
+#body-login input {
+	border: 1px;
+	border-style: solid;
+	font-size: 14px;
+    margin-bottom: 10px;
+	color: #007FAD;
+	border-color: #dfe1e3;
+	background-color: #f7f7f8;
+}
+
+#body-login #submit {
+	font-size: 15px;
+	color: #fff;
+	background: #002f5f;
+	border-color: #002f5f;
+    margin-bottom: 0;
+}
+
+#header .logo {
+	background-image: url('../img/ida-logo-login.png');
+	margin: 0;
+	background-position: left;
+	max-width: 400px;
+	width: 400px;
+	background-size: 400px;
+	margin-top: 0px;
+	margin-left: 40px;
+	padding-bottom: 0px;">
+}
+
+#header .logo-icon {
+	background-image: url('../img/ida-logo-header.png');
+    background-position: 0% 50%;
+    background-size: 175px;
+	width: 275px;
+	max-width: 275px;
+	margin-top: 0px;
+	margin-left: 10px;
+}
+
+#header .header-right {
+	min-width: 150px;
+}
+
+#appmenu {
+	margin: auto;
+}
+
+nav {
+	width: 250px;
+	color: white;
+	font-weight: bold;
+}
+
+.ida-app-title {
+	color: white;
+	font-weight: bold;
+	padding-left: 30px;
+	padding-right: 30px;
+	line-height: 20px;
+	text-align: center;
+}
+
+#appmenu li a {
+	opacity: 1;
+}
+
+#fileList a.action,
+#fileList a.action.no-permission:hover,
+#fileList a.action.no-permission:focus,
+#fileList a.action.disabled:hover,
+#fileList a.action.disabled:focus,
+#fileList a.action.disabled img {
+	opacity: 0.7;
+}
+
+/* header color */
+/* this is the main brand color */
+#body-user #header,
+#body-settings #header,
+#body-public #header {
+	background-color: #007FAD;
+}
+
+/* log in screen background color */
+/* gradient of the header color and a brighter shade */
+/* can also be a flat color or an image */
+#body-login {
+	background-image: none;
+    background: white;
+}
+
+/* primary action button, use sparingly */
+/* header color as border, brighter shade again, here as background */
+.primary,
+input[type="submit"].primary,
+input[type="button"].primary,
+button.primary,
+.button.primary,
+.primary:active,
+input[type="submit"].primary:active,
+input[type="button"].primary:active,
+button.primary:active,
+.button.primary:active {
+	border-color: #052d80;
+	background-color: #7f8fb0;
+}
+.primary:hover,
+input[type="submit"].primary:hover,
+input[type="button"].primary:hover,
+button.primary:hover,
+.button.primary:hover,
+.primary:focus,
+input[type="submit"].primary:focus,
+input[type="button"].primary:focus,
+button.primary:focus,
+.button.primary:focus {
+	background-color: #007FAD;
+}
+.primary:active, input[type="submit"].primary:active, input[type="button"].primary:active, button.primary:active, .button.primary:active,
+.primary:disabled, input[type="submit"].primary:disabled, input[type="button"].primary:disabled, button.primary:disabled, .button.primary:disabled,
+.primary:disabled:hover, input[type="submit"].primary:disabled:hover, input[type="button"].primary:disabled:hover, button.primary:disabled:hover, .button.primary:disabled:hover,
+.primary:disabled:focus, input[type="submit"].primary:disabled:focus, input[type="button"].primary:disabled:focus, button.primary:disabled:focus, .button.primary:disabled:focus {
+	background-color: #052d80;
+}
+
+form input[type="checkbox"] + label {
+	color: #000000;
+}
+
+p.info {
+	color: #000000;
+}
+
+input[type='checkbox'].checkbox--white + label:before {
+	border-color: #ddd;
+}
+input[type='checkbox'].checkbox--white:not(:disabled):not(:checked) + label:hover:before,
+input[type='checkbox'].checkbox--white:focus + label:before {
+	border-color: #000000;
+}
+input[type='checkbox'].checkbox--white:checked + label:before {
+	background-color: #eee;
+	border-color: #eee;
+}
+input[type='checkbox'].checkbox--white:disabled + label:before {
+	background-color: #666 !important;
+	border-color: #999 !important;
+}
+input[type='checkbox'].checkbox--white:checked:disabled + label:before {
+	border-color: #666;
+	background-color: #222;
+}
+input[type='checkbox'].checkbox--white:checked + label:before {
+	background-color: #007FAD !important;
+	border-color: #007FAD !important;
+	background-image: url('../img/checkbox-mark.svg');
+}
+
+#body-login footer {
+	background-color: #dfe1e3;
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+	padding: 0;
+	padding-top: 20px;
+	margin: 0;
+	vertical-align: middle;
+}
+
+#body-login .footer-table {
+    vertical-align: middle;
+	margin: auto;
+	padding: 0;
+	width: 100%;
+}
+
+#body-login .footer-cell {
+	margin: auto;
+	padding: 0;
+    align-content: center;
+	-webkit-align-content: center;
+	vertical-align: middle;
+}
+
+#body-login .footer-cell p {
+    align-self: center;
+	text-align: left;
+}
+

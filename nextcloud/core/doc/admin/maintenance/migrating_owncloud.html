@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Migrating from ownCloud &mdash; Nextcloud 12 Server Administration Manual 12 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/main.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/styles.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '12',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="../_static/js/jquery-fix.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-3.1.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Nextcloud 12 Server Administration Manual 12 documentation" href="../contents.html" />
+    <link rel="up" title="Maintenance" href="index.html" />
+    <link rel="next" title="Operations" href="../operations/index.html" />
+    <link rel="prev" title="Migrating to a Different Server" href="migrating.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1d2d44">
+
+  </head>
+  <body role="document">
+
+
+<div class="wrap container not-front">
+  <div class="content row">
+  <main class="main">
+    <div class="row page-content-header">
+      <div class="col-md-5 col-md-offset-7">
+      
+        <form class="headersearch" style="margin-bottom:-3px;" action="../search.html" method="get">
+        <input type="text" value="" name="q" id="q" class="form-control" /> 
+        <button  class="btn btn-default" type="submit" id="searchsubmit">Search</button>
+        </form>
+      
+      </div>
+    </div>
+    
+			<div class="row">
+				<div class="col-md-3">
+					<div class="sidebar">
+							<div class="menu-support-container">
+								<ul id="menu-support" class="menu">
+									<ul>
+										
+<li><a href="../contents.html">Table of Contents</a></li>
+									</ul>
+                  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_server/index.html">Server Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_user/index.html">User Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_files/index.html">File Sharing and Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../file_workflows/index.html">File Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_database/index.html">Database Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_mimetypes/index.html">Mimetypes Management</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Maintenance</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="backup.html">Backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html">Restoring Backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html">How to Upgrade</a></li>
+<li class="toctree-l2"><a class="reference internal" href="update.html">Upgrade via build-in Updater</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manual_upgrade.html">Upgrade Manually</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_upgrade.html">Upgrade via Packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="migrating.html">Migrating to a Different Server</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">Migrating from ownCloud</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/index.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../issues/index.html">Issues and Troubleshooting</a></li>
+</ul>
+
+								</ul>
+							</div>
+					</div>
+				</div>
+        
+
+				<div class="col-md-9">
+					<div class="page-content">
+            
+<ul class="prevnext-title list-unstyled list-inline">
+  <li class="prev">
+    <a href="migrating.html" title="Previous Chapter: Migrating to a Different Server"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Migrating to ...</span>
+    </a>
+  </li>
+  <li class="next">
+    <a href="../operations/index.html" title="Next Chapter: Operations"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">Operations &raquo;</span>
+    </a>
+  </li>
+</ul>
+						
+  <div class="section" id="migrating-from-owncloud">
+<h1>Migrating from ownCloud<a class="headerlink" href="#migrating-from-owncloud" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Especially when migrating from ownCloud to Nextcloud you should
+create a backup of the config, database and the data directory,
+in case something goes wrong.</p>
+</div>
+<p>Currently migrating from ownCloud is like performing a manual update.
+So it is quite easy, to migrate from one ownCloud version to at least one Nextcloud version.
+However this does only work with versions that are close enough database and code-wise.
+See the table below for a version map, where migrating is easily possible:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">ownCloud</th>
+<th class="head">Nextcloud</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>10.0.1 or later</td>
+<td>12.0.1 or later</td>
+</tr>
+<tr class="row-odd"><td>10.0.0</td>
+<td>12.0.0</td>
+</tr>
+<tr class="row-even"><td>9.1.x</td>
+<td>10.0.x</td>
+</tr>
+<tr class="row-odd"><td>9.0.x</td>
+<td>10.0.x</td>
+</tr>
+<tr class="row-even"><td>9.0.x</td>
+<td>9.0.x</td>
+</tr>
+</tbody>
+</table>
+<p>After downloading the correct version of Nextcloud from our
+<a class="reference external" href="https://nextcloud.com/changelog/">older releases page</a>,
+proceed like described in the <a class="reference internal" href="manual_upgrade.html"><em>Upgrade Manually</em></a> manual.</p>
+<p>Afterwards you can use the Nextcloud updater to update your instance to the newest version.</p>
+</div>
+
+
+            
+<ul class="prevnext-title list-unstyled list-inline">
+  <li class="prev">
+    <a href="migrating.html" title="Previous Chapter: Migrating to a Different Server"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Migrating to ...</span>
+    </a>
+  </li>
+  <li class="next">
+    <a href="../operations/index.html" title="Next Chapter: Operations"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">Operations &raquo;</span>
+    </a>
+  </li>
+</ul>
+					</div>
+				</div>
+			</div>
+  </main>  
+  </div>
+</div>
+  </body>
+</html>

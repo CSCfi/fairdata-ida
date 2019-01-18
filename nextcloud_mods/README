@@ -1,0 +1,714 @@
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+
+This directory containts instructions, templates, scripts, and other resources for making the Nextcloud installation
+or upgrade process as clear and efficient as possible -- ideally, eventually making it fully automated.
+
+The implementation of the IDA service aims to modify the Nextcloud core as little as possible, but certain
+modifications are unavoidable, due to the fact that we are coercing Nextcloud to function as a group-centric tool
+rather than its intended use as a personal tool.
+
+The specific modifications and key configuration details are specified below. The goal will be to have scripts
+and other tools for automating everything detailed below when upgrading to a new version of Nextcloud, but some
+steps may remain unavoidably manual.
+
+General aspects of server configuration are not covered here. Only those aspects which require addition to or
+modification of the /nextcloud directory tree after updating Nextcloud.
+
+It it assumed that the IDA GitHub repository is cloned locally as /var/ida
+
+All modifications to the core Nexcloud code are preceeded with the comment "// IDA MODIFICATION".
+Original code is commented out and bounded by "// BEGIN ORIGINAL" and "// END ORIGINAL".
+Replacement code is bounded by "// BEGIN MODIFICATION" and "// END MODIFICATION".
+Inserted code, with no modification of existing code, is bounded by "// BEGIN" and "// END".
+
+
+-- INSTALLING NEXTCLOUD
+
+>> Remove any existing /var/ida/nextcloud directory (or move to another location)
+>> Go to https://nextcloud.com/install/#instructions-server and download the latest version (zip file)
+>> Unzip the downloaded package as /var/ida/nextcloud
+
+
+-- SYMBOLIC LINKS TO CUSTOM COMPONENTS
+
+The Nextcloud IDA app is located in /nextcloud_apps/ida and the IDA theme is located in /nextcloud_themes/ida.
+
+For these to be visible to Nextcloud, symbolic links should be created within the Nextcloud codebase as follows:
+
+>> Create a symbolic link from /nextcloud/apps/ida to ../../nextcloud_apps/ida
+>> Create a symbolic link from /nextcloud/themes/ida to ../../nextcloud_themes/ida
+
+
+-- NEXTCLOUD CONFIGURATION AND MODIFICATION
+
+The Nextcloud configuration file /var/ida/nextcloud/config/config.php is not maintained as part of the GitHub
+repository both because it is server instance specific and thus a single version will not suit all server
+instances, but mostly due to security reasons, as it contains account credentials which should not be disclosed
+publically.
+
+However, a safe template of the config.php file is located in the /var/ida/templates directory, and can be copied
+to the /var/ida/nextcloud/config directory and edited accordingly.
+
+Configuration of the new version of Nextcloud will include initial creation/copying of the configuration file, then
+some automated configuration by Nextcloud, followed by some final tweaking of the configuration file.
+
+>> Copy /var/ida/templates/config.php to /var/ida/nextcloud/config/config.php and edit accordingly
+>> In /nextcloud/config/config.php
+   - Remove any specified 'instanceid', 'passwordsalt', 'secret', 'version', and 'installed' values
+   - Define 'datadirectory' as '/mnt/storage_vol01/ida'
+   - Define 'overwrite.cli.url' as 'http://localhost'
+>> Ensure that /mnt/storage_vol01/ida exists and is empty
+   - Optionally run the script /var/ida/utils/purge_PSO_content
+>> Create the subdirectory /ida/nextcloud/custom_apps
+>> Fix permissions by running the script /var/ida/utils/fix_permissions
+>> Ensure that /mnt/storage_vol01/ida exists and is empty
+   - Optionally run the script /var/ida/utils/purge_PSO_content
+>> Start apache with the command "systemctl start httpd"
+>> In the directory /var/ida/nextcloud, run the following command:
+   sudo -u apache php occ maintenance:install --database "sqlite" --database-name "nextcloud" --database-host "localhost" --database-user "root" --database-pass "root" --admin-user "admin" --admin-pass "test" --data-dir "/mnt/storage_vol01/ida"
+>> Stop apache with the command "systemctl stop httpd"
+>> Verify that /var/ida/nextcloud/data does not exist, or at least is empty. If it is not empty, start over...
+>> In /nextcloud/config/config.php
+   - Add 'localhost' to the array of trusted domains, in addition to ip address already defined
+   - Ensure 'datadirectory' is defined as '/mnt/storage_vol01/ida' (if not, start over with configuration)
+   - Ensure 'overwrite.cli.url' is defined as 'http://localhost'
+>> In the /var/ida/nextcloud directory, run the command "sudo -u apache php occ maintenance:update:htaccess"
+>> Update /var/ida/nextcloud/.htaccess to include "Options +FollowSymlinks" below the line "#### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####"
+>> APPLY ALL OF THE CORE CODE CHANGES DETAILED BELOW
+>> Start apache with the command "systemctl start httpd"
+>> In the /var/ida/tests directory, run the script run_all_tests to ensure all is well
+>> In the /var/ida/utils directory, run the command "sudo -u apache ./initialize_test_accounts" (optional)
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+CODE CHANGES:
+
+The core Nextcloud code must be modified as detailed below, in order to achieve the required UX for the IDA service.
+
+Note: Copies of the most significantly modified core files are also maintained in /ida/nextcloud_mods/modified, though
+the explicit changes are still documented fully below, in case a particular file is substantially refactored in future
+versions of Nexcloud and simply cannot be replaced. These are also, of course, available as a reference, in case core
+files must be re-modified, to help clarify the modification instructions detailed below.
+
+
+-- ADD "NOT_FOR_PUBLICATION" NOTICE TO SHARE LINKS
+
+>> In /ida/nextcloud/lib/private/Share20/Manager.php, in the function createShare()
+   Replace both (2) occurrences of the code
+       $share->setToken(
+           $this->secureRandom->generate(
+               \OC\Share\Constants::TOKEN_LENGTH,
+               \OCP\Security\ISecureRandom::CHAR_LOWER.
+               \OCP\Security\ISecureRandom::CHAR_UPPER.
+               \OCP\Security\ISecureRandom::CHAR_DIGITS
+           )
+       );
+   with
+       $share->setToken(
+           'NOT_FOR_PUBLICATION_' .    // This line is simply inserted here...
+           $this->secureRandom->generate(
+               \OC\Share\Constants::TOKEN_LENGTH,
+               \OCP\Security\ISecureRandom::CHAR_LOWER.
+               \OCP\Security\ISecureRandom::CHAR_UPPER.
+               \OCP\Security\ISecureRandom::CHAR_DIGITS
+           )
+       );
+
+>> In /ida/nextcloud/lib/private/Share/Constants.php:
+   Replace
+       const TOKEN_LENGTH = 15; // old (oc7) length is 32, keep token length in db at least that for compatibility
+   with
+       const TOKEN_LENGTH = 12; // token field length in db is 32, and length of 'NOT_FOR_PUBLICATION_' + 12 = 32
+
+
+-- BLOCK DISALLOWED OPERATIONS ON PROJECT SHARED FOLDERS
+
+>> In /nextcloud/apps/files/js/filelist.js:
+   In the definition of the setDirectoryPermissions function:
+   Replace
+       var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+   with
+       var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+       // IDA users are not allowed to create anything in their root folder
+       if (this.getCurrentDirectory() === '/') {
+           isCreatable = false;
+       }
+   In the definition of the showActions function:
+   Replace
+       var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+   with
+       var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+       // IDA users are not allowed to create anything in their root folder
+       if (this.getCurrentDirectory() === '/') {
+           isCreatable = false;
+       }
+
+>> In /nextcloud/apps/files/js/fileactions.js, in the definition of the registerDefaultActions function, in the
+   registered actions for "Rename", "Move", and "Delete":
+   Insert the following at the top of the actionHandler function:
+       if (context.$file.attr('data-mounttype') === 'shared-root') {
+           OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+           return;
+       }
+       var dir = context.dir || context.fileList.getCurrentDirectory();
+       var pathname = dir + '/' + filename;
+       var project = OCA.IDA.Util.extractProjectName(pathname);
+       var scope = OCA.IDA.Util.stripRootFolder(pathname);
+       try {
+           if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+               OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+               return;
+           }
+       } catch (error) {
+           OC.Notification.show(error, {type: 'error'});
+           return;
+       }
+    (NOTE: in the action for Delete, the function parameter 'fileName' will need to be normalized to 'filename')
+
+>> In /nextcloud/apps/files/js/fileactions.js, in the definition of the registerDefaultActions function, in the
+   registered actions for "Move", at the bottom of the actionHandler function, just above
+       context.fileList.move(filename, targetPath);
+   Insert the following
+       if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+            OC.Notification.show(t('ida', 'Files can be uploaded only in the Staging area (root folder ending in +)'), {type: 'error'});
+            return;
+        }
+        var project = OCA.IDA.Util.extractProjectName(targetPath);
+        var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+        try {
+            if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+                OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                return;
+            }
+        } catch (error) {
+            OC.Notification.show(error, {type: 'error'});
+            return;
+        }
+
+>> In /nextcloud/apps/files/js/filelist.js, in the definition of the rename function, in the form.submit subfunction
+   definition, immediately following the lines
+       if (newName !== oldName) {
+           checkInput();
+   Insert the following:
+           var dir = self.getCurrentDirectory();
+           var pathname = dir + '/' + newName;
+           var project = OCA.IDA.Util.extractProjectName(pathname);
+           var scope = OCA.IDA.Util.stripRootFolder(pathname);
+           try {
+               if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+                   OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                   updateInList(oldFileInfo);
+                   return false;
+               }
+           } catch (error) {
+               OC.Notification.show(error, {type: 'error'});
+               updateInList(oldFileInfo);
+               return false;
+           }
+
+>> In /nextcloud/apps/files/js/filelist.js, in the definition of both the createDirectory and createFile functions,
+   immediately following the lines
+			name = this.getUniqueName(name);
+			var targetPath = this.getCurrentDirectory() + '/' + name;
+   Insert the following:
+            var project = OCA.IDA.Util.extractProjectName(targetPath);
+            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+            try {
+                if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+                    OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                    deferred.reject(409);
+                    return promise;
+                }
+            } catch (error) {
+                OC.Notification.show(error, {type: 'error'});
+                deferred.reject(500);
+                return promise;
+            }
+
+>> In /nextcloud/apps/files/js/filelist.js, in the definition of the do_delete function,
+   immediately following the line
+			dir = dir || this.getCurrentDirectory();
+   Insert the following:
+            // This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+   			// compromise to having overly complex mods to the existing logic...
+            var project = OCA.IDA.Util.extractProjectName(dir);
+            var scope = OCA.IDA.Util.stripRootFolder(dir);
+            try {
+                if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+                    OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                    return;
+                }
+            } catch (error) {
+                OC.Notification.show(error, {type: 'error'});
+                return;
+            }
+
+>> In /nextcloud/apps/files/js/filelist.js, in the definition of the setupUploadEvents function, at the very end of
+   both the uploader.on('drop' ...) and uploader.on('add', ...) subfunctions, insert the following:
+            // This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+            // compromise to having overly complex mods to the existing logic...
+            var project = OCA.IDA.Util.extractProjectName(data.targetDir);
+            var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
+            OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+            throw new Error(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'));
+
+>> In /nextcloud/apps/files_sharing/lib/Controller/ShareAPIController.php, in the definition of the deleteShare function:
+   Replace
+       if ($share->getShareType() === \OCP\Share::SHARE_TYPE_GROUP &&
+           $share->getShareOwner() !== $this->currentUser &&
+           $share->getSharedBy() !== $this->currentUser) {
+           $this->shareManager->deleteFromSelf($share, $this->currentUser);
+       } else {
+           $this->shareManager->deleteShare($share);
+       }
+   with
+       if ($share->getShareType() === \OCP\Share::SHARE_TYPE_GROUP &&
+           $share->getShareOwner() !== $this->currentUser &&
+           $share->getSharedBy() !== $this->currentUser) {
+           // If node is a shared project folder, do nothing and throw exception
+           throw new OCSForbiddenException($this->l->t('Root project folders may not be modified.'));
+       } else {
+           $this->shareManager->deleteShare($share);
+       }
+
+
+-- HIDE IN UI: UNWANTED FILE LINK AND SHARING OPTIONS
+
+>> In /nextcloud/apps/files/js/mainfileinfodetailview.js, in the HTML template at the top, comment out the following lines
+   '<a class="permalink" href="{{permalink}}" title="{{permalinkTitle}}">' +
+   	  '<span class="icon icon-clippy"></span>' +
+      '<span class="hidden-visually">{{permalinkTitle}}</span>' +
+   '</a>' +
+
+>> In /nextcloud/core/js/sharedialoglinkshareview.js
+   - Replace
+       linkShareLabel: t('core', 'Share link'),
+   with
+       linkShareLabel: t('ida', 'Temporary share link'),
+   - Replace
+        publicUpload: publicUpload && isLinkShare,
+        publicEditing: publicEditable,
+    with
+        publicUpload: false,
+        publicEditing: false,
+
+>> In /nextcloud/core/css/share.scss, add the following to the end of the file:
+   .resharerInfoView {
+	   display: none;
+   }
+
+>> In /nextcloud/apps/files_sharing/css/sharetabview.scss, add the following to the end of the file:
+   .shareeListView {
+	   display: none;
+   }
+   .resharerInfoView {
+	   display: none;
+   }
+   .shareWithField {
+	   display: none;
+   }
+
+>> In /nextcloud/apps/files/css/files.scss, add the following to the end of the file:
+   .nav-sharingin {
+	   display: none;
+   }
+   .nav-sharingout {
+	   display: none;
+   }
+
+
+-- HIDE IN UI: SYNC CLIENTS AND SECURITY SETTINGS
+
+>> In /nextcloud/settings/personal.php, comment out the following lines:
+   if (\OC::$server->getAppManager()->isEnabledForUser('firstrunwizard')) {
+	   $formsAndMore[]= ['anchor' => 'clientsbox', 'section-name' => $l->t('Sync clients')];
+   }
+
+
+-- HIDE IN UI: SEARCH CONTACTS OPTION IN TOP BAR
+
+>> In /nextcloud/core/templates/layout.user.php, comment out the following lines:
+   <div id="contactsmenu">
+   ...
+   </div>
+
+
+-- HIDE IN UI: PERSONAL QUOTA SUMMARY AND SETTINGS OPTIONS IN BOTTOM LEFT-HAND FILE NAVIGATION PANE
+
+>> In /nextcloud/apps/files/templates/appnavigation.php
+
+   - Comment out the following lines:
+
+   <li id="quota" class="section <?php
+   ...
+   </li>
+
+   - Comment out the following lines:
+
+   <label for="webdavurl"><?php p($l->t('WebDAV'));?></label>
+   <input id="webdavurl" type="text" readonly="readonly" value="<?php p(\OCP\Util::linkToRemote('webdav')); ?>" />
+   <em><?php print_unescaped($l->t('Use this address to <a href="%s" target="_blank" rel="noreferrer">access your Files via WebDAV</a>', array(link_to_docs('user-webdav'))));?></em>
+
+
+-- HIDE IN UI: PERSONAL QUOTA SUMMARY, AVATAR, PASSWORD OPTIONS, UNSUPPORTED LANGUAGES, HELP TRANSLATE IN USER PROFILE VIEW
+
+>> Copy /nextcloud_mods/personal.php to /nextcloud/settings/templates/personal.php, replacing the original file.
+
+
+-- HIDE IN UI: FILE CONTENTS PREVIEW
+
+>> In /ida/nextcloud/apps/files/js/sidebarpreviewtext.js, in the definition of the handlePreview function:
+   Replace
+   			var previewWidth = $thumbnailContainer.parent().width() + 50;  // 50px for negative margins
+   			var previewHeight = previewWidth / (16 / 9);
+
+   			this.getFileContent(model.getFullPath()).then(function (content) {
+   				$thumbnailDiv.removeClass('icon-loading icon-32');
+   				$thumbnailContainer.addClass('large');
+   				$thumbnailContainer.addClass('text');
+   				var $textPreview = $('<pre/>').text(content);
+   				$thumbnailDiv.children('.stretcher').remove();
+   				$thumbnailDiv.append($textPreview);
+   				$thumbnailContainer.css("max-height", previewHeight);
+   			}, function () {
+   				fallback();
+   			});
+   with
+               fallback();
+
+>> In /nextcloud/apps/files_sharing/templates/public.php:
+   Replace
+   		<?php if ($_['previewEnabled'] && substr($_['mimetype'], 0, strpos($_['mimetype'], '/')) == 'video'): ?>
+   			<div id="imgframe">
+   				<video tabindex="0" controls="" preload="none" style="max-width: <?php p($_['previewMaxX']); ?>px; max-height: <?php p($_['previewMaxY']); ?>px">
+   					<source src="<?php p($_['downloadURL']); ?>" type="<!--?php p($_['mimetype']); ?>" />
+   				</video>
+   			</div>
+   		<?php else: ?>
+   			<!-- Preview frame is filled via JS to support SVG images for modern browsers -->
+   			<div id="imgframe"></div>
+   		<?php endif; ?>
+   with
+        <p style="padding: 30px"></p>
+
+
+-- ADD INVITATION TO QUICK START AND USER GUIDE, AND WARNING, TO FILES VIEW
+
+>> In /nextcloud/apps/files/templates/appnavigation.php:
+   Immediately above the line
+       <div id="app-settings">
+   add the following:
+       <?php if($l->getLanguageCode() == 'fi') { ?>
+       <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
+           <p>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/idan-pikaopas" target="_blank">IDAn&nbsp;pikaopas</a><br>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas" target="_blank">IDAn&nbsp;käyttöopas</a>
+           </p>
+       </div>
+       <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
+           <p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
+               <b>Huomaa:</b>&nbsp;Tiedostot&nbsp;ovat<br>
+               varsinaisessa&nbsp;säilytyksessä<br>
+               IDAssa&nbsp;vasta&nbsp;kun&nbsp;ne&nbsp;ovat<br>
+               Jäädytetyllä&nbsp;alueella.<br>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas#projektin-datan-sailytysalueet" target="_blank">Lisätietoja&nbsp;...</a>
+           </p>
+       </div>
+       <?php } elseif($l->getLanguageCode() == 'sv') { ?>
+       <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
+           <p>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
+           </p>
+           </div>
+           <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
+               <p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
+               <b>Notera:</b>&nbsp;Filerna&nbsp;är&nbsp;i&nbsp;egentlig<br>
+               lagring&nbsp;först&nbsp;då&nbsp;de&nbsp;är&nbsp;frysta.<br>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" target="_blank">Läs mer&nbsp;...</a>
+           </p>
+       </div>
+       <?php } else { ?>
+       <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
+           <p>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
+           </p>
+           </div>
+           <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
+               <p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
+               <b>Note:</b>&nbsp;Files&nbsp;are&nbsp;safely&nbsp;stored<br>
+               in&nbsp;the&nbsp;IDA&nbsp;service&nbsp;when&nbsp;they<br>
+               are&nbsp;in&nbsp;the&nbsp;Frozen&nbsp;area.<br>
+               <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" target="_blank">More information&nbsp;...</a>
+           </p>
+       </div>
+       <?php } ?>
+
+
+-- CHANGES TO LAYOUT AND LOOK AND FEEL
+
+>> In /nextcloud/core/css/apps.scss, in the style definition for the #app-sidebar element:
+   Replace
+      	min-width: 300px;
+   with
+      	min-width: 550px;
+
+>> In /nextcloud/apps/files/css/files.scss:
+   Replace
+      table tr.mouseOver td {
+      	transition: background-color 0.3s ease;
+      	background-color: #f8f8f8;
+      }
+   with
+      table tr.mouseOver td {
+      	transition: background-color 0.2s ease;
+      	background-color: #e5f2f7;
+      }
+
+>> In /nextcloud/core/templates/layout.user.php:
+   Replace
+  		<a href="<?php print_unescaped($entry['href']); ?>"
+  			tabindex="3"
+  			<?php if ($entry['active']): ?> class="active"<?php endif; ?>>
+  				<img src="<?php print_unescaped($entry['icon'] . '?v=' . $_['versionHash']); ?>"
+  				class="app-icon"/>
+  				<div class="icon-loading-small-dark"
+  				style="display:none;"></div>
+  		</a>
+  		<span>
+  			<?php p($entry['name']); ?>
+  		</span>
+   with
+       <a href="<?php print_unescaped($entry['href']); ?>" tabindex="3"
+           <?php if ($entry['active']): ?> class="active"<?php endif; ?>>
+           <p class="ida-app-title">
+               <?php p(strtoupper(!empty($entry['name'])?$entry['name']: $l->t('Apps'))); ?>
+           </p>
+           <div class="icon-loading-small-dark" style="display:none;"></div>
+   	    </a>
+
+
+-- CHANGES TO LABELS, NOTICES, AND TEXTS
+
+>> In /nextcloud/apps/files/templates/list.php:
+   Replace
+      <div class="notCreatable notPublic hidden">
+         <?php p($l->t('You don’t have permission to upload or create files here'))?>
+      </div>
+   with
+      <div class="notCreatable notPublic hidden">
+         <?php p($l->t('Files can be uploaded only in the Staging area (root folder ending in +)'))?>
+      </div>
+
+>> In /nextcloud/apps/files/js/filelist.js:
+   Replace
+      _showPermissionDeniedNotification: function() {
+         var message = t('files', 'You don’t have permission to upload or create files here');
+         OC.Notification.show(message, {type: 'error'});
+      },
+   with
+      _showPermissionDeniedNotification: function() {
+         var message = t('ida', 'Files can be uploaded only in the Staging area (root folder ending in +)');
+         OC.Notification.show(message, {type: 'error'});
+      },
+
+>> In /nextcloud/apps/files/l10n/fi.json, insert at top of translations:
+   "Files can be uploaded only in the Staging area (root folder ending in +)": "Tiedostoja voidaan lisätä ainoastaan Valmistelualueelle (juurikansio jonka päätteenä on +)",
+
+>> In /nextcloud/apps/files/l10n/sv.json, insert at top of translations:
+   "Files can be uploaded only in the Staging area (root folder ending in +)": "Filer kan laddas upp endast till mappar med plustecken (+, område för preparering)",
+
+>> In /nextcloud/apps/files_sharing/templates/authenticate.php, delete the lines:
+		<?php if (!isset($_['wrongpw'])): ?>
+			<div class="warning-info"><?php p($l->t('This share is password-protected')); ?></div>
+		<?php endif; ?>
+
+>> In /nextcloud/core/js/sharedialoglinkshareview.js:
+   Replace
+   '    <input id="linkPassText-{{cid}}" class="linkPassText" type="password" placeholder="{{passwordPlaceholder}}" />' +
+   '    {{else}}' +
+   '    <input id="linkPassText-{{cid}}" class="linkPassText" type="password" placeholder="{{passwordPlaceholderInitial}}" />' +
+   with
+   '    <input id="linkPassText-{{cid}}" class="linkPassText" type="text" style="width:100%" placeholder="{{passwordPlaceholder}}" />' +
+   '    {{else}}' +
+   '    <input id="linkPassText-{{cid}}" class="linkPassText" type="text" style="width:100%" placeholder="{{passwordPlaceholderInitial}}" />' +
+
+
+
+-- ADD CONFIRMATION WHEN DELETING FILES / FOLDERS
+
+>> In /nextcloud/apps/files/js/filelist.js, in the _onClickDeleteSelected() function:
+   Replace
+      this.do_delete(files);
+   with
+      var response = confirm(t('ida', 'Are you sure you want to delete the selected item(s)? THIS ACTION CANNOT BE UNDONE!'));
+      if (response) {
+          this.do_delete(files);
+      }
+
+>> In /nextcloud/apps/files/js/fileactions.js, in the definition of the registerDefaultActions function, in the
+   Replace
+      context.fileList.do_delete(fileName, context.dir);
+   with
+      var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
+      if (response) {
+          context.fileList.do_delete(fileName, context.dir);
+      }
+
+
+-- FIXES TO TRANSLATIONS
+
+>> In both /nextcloud/apps/files/l10n/fi.js and /nextcloud/apps/files/l10n/fi.json:
+   Replace
+      "Upload file" : "Lähetä tiedosto",
+   with
+      "Upload file" : "Lisää tiedosto",
+
+>> In /nextcloud/core/js/sharedialogexpirationview.js:
+   Replace
+      'The public link will expire no later than {days} days after it is created',
+   with
+      'The public link will expire no later than {days} days after it is created, unless a shorter period is specified.',
+
+>> In /nextcloud/apps/files/templates/list.php:
+   Replace
+   	   <p class="uploadmessage hidden"><?php p($l->t('Upload some content or sync with your devices!')); ?></p>
+   with
+   	   <p class="uploadmessage hidden"><?php p($l->t('Upload some content!')); ?></p>
+
+>> In both /nextcloud/apps/files/l10n/fi.js and nextcloud/apps/files/l10n/fi.json:
+   Replace
+       "Upload some content or sync with your devices!" : "Lähetä tiedostoja tai synkronoi sisältö laitteidesi kanssa!",
+   with
+       "Upload some content!" : "Lähetä tiedostoja!",
+   And insert
+       "Web, desktop, mobile clients and app specific passwords that currently have access to your account." : "Selain-, työpöytä- ja mobiiliasiakasohjemat sekä sovelluskohtaiset salasanat joilla on tällä hetkellä pääsy tilillesi.",
+
+>> In both /nextcloud/apps/files/l10n/sv.js and nextcloud/apps/files/l10n/sv.json:
+   Replace
+       "Upload some content or sync with your devices!" : "Ladda upp innehåll eller synkronisera med dina enheter!",
+   with
+       "Upload some content!" : "Ladda upp innehåll!",
+
+>> In both /nextcloud/core/l10n/fi.js and /nextcloud/core/l10n/fi.json:
+   Replace
+       "The public link will expire no later than {days} days after it is created" : "Julkinen linkki vanhenee {days} päivän jälkeen sen luomisesta",
+   with
+       "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Julkinen linkki vanhenee viimeistään {days} päivän jälkeen sen luomisesta, ellei käyttäjä määritä voimassaoloaikaa lyhyemmäksi.",
+   and add
+       "Login with CSC account:": "Kirjaudu CSC-tunnuksella:",
+       "Personal CSC accounts are created and managed in": "CSC-tiliä hallinnoidaan",
+       "SUI CSC Customer Portal": "CSC:n asiakasportaalissa (SUI)",
+       "CSC Username:" : "CSC Käyttäjätunnus:",
+       "CSC Password:" : "CSC Salasana:",
+       "Enter temporary share password:": "Syötä väliaikaisen jakolinkin salasana:",
+
+>> In both /nextcloud/core/l10n/sv.js and /nextcloud/core/l10n/sv.json:
+   Replace
+       "The public link will expire no later than {days} days after it is created" : "Den offentliga länken kommer sluta gälla inte senare än {days} dagar efter att den skapades",
+   with
+       "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Den öppna länken föråldras senast {days} dagar efter att den skapats, om inte tiden definieras kortare.",
+   and add
+       "Login with CSC account:": "Logga in med CSC-id:",
+       "Personal CSC accounts are created and managed in": "Hantering av CSC-profilen sker i",
+       "SUI CSC Customer Portal": "CSC:s kundportal (SUI)",
+       "CSC Username:" : "CSC Användarnamn:",
+       "CSC Password:" : "CSC Lösenord:",
+       "Enter temporary share password:": "Ange lösenord för tillfällig länk:",
+
+
+-- CUSTOM LOGIN PAGE
+
+Note: Style/layout for the custom login page are defined in the theme CSS /nextcloud_themes/ida/core/css/server.css
+
+Note: The SAML/Haka login button link generation in the layout.ida.login.php requires that user_saml app is enabled
+
+>> Copy /nextcloud_mods/login.php to /nextcloud/core/templates/login.php, replacing the original file
+
+>> Copy /nextcloud_mods/layout.ida.login.php to /nextcloud/core/templates/layout.ida.login.php
+
+>> In /nextcloud/lib/private/TemplateLayout.php:
+   Replace
+   		} else if ($renderAs == 'error') {
+   			parent::__construct('core', 'layout.guest', '', false);
+   			$this->assign('bodyid', 'body-login');
+   		} else if ($renderAs == 'guest') {
+   			parent::__construct('core', 'layout.guest');
+   			$this->assign('bodyid', 'body-login');
+   with
+        } else if ($renderAs == 'error') {
+            parent::__construct('core', 'layout.ida.login', '', false);
+            $this->assign('bodyid', 'body-login');
+        } else if ($renderAs == 'guest') {
+            parent::__construct('core', 'layout.ida.login');
+            $this->assign('bodyid', 'body-login');
+
+>> In /nextcloud/core/css/styles.scss, add to the end:
+   #ida-body-login {
+	   ul.error-wide {
+		   width: 100% !important;
+		   margin: 0px !important;
+		   margin-top: 35px !important;
+	   }
+   }
+
+
+-- CUSTOM FIRST RUN WIZARD
+
+>> Copy /nextcloud_mods/wizard.php to /nextcloud/apps/firstrunwizard/templates/wizard.php, replacing the original file
+
+>> Copy /nextcloud_mods/firstrunwizard.js to /nextcloud/apps/firstrunwizard/js/firstrunwizard.js, replacing the original file
+
+>> Copy /nextcloud_mods/firstrunwizard.css to /nextcloud/apps/firstrunwizard/css/firstrunwizard.css, replacing the original file
+
+
+-- MEMORY AND TIME LIMIT ADJUSTMENTS
+
+>> In /nextcloud/lib/base.php:
+   Replace
+   		//try to set the maximum execution time to 60min
+   		if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
+   			@set_time_limit(3600);
+   		}
+   		@ini_set('max_execution_time', 3600);
+   		@ini_set('max_input_time', 3600);
+
+   		//try to set the maximum filesize to 10G
+   		@ini_set('upload_max_filesize', '10G');
+   		@ini_set('post_max_size', '10G');
+   		@ini_set('file_uploads', '50');
+   with
+        //try to set execution time limits to 30 days
+        if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
+            @set_time_limit(2592000);
+        }
+        @ini_set('max_execution_time',2592000);
+        @ini_set('max_input_time', 2592000);
+
+        //try to set the maximum filesize to 10TB and upload of up to 1 million files
+        @ini_set('upload_max_filesize', '10000G');
+        @ini_set('post_max_size', '10000G');
+        @ini_set('file_uploads', '1000000');
+

@@ -1,0 +1,87 @@
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+
+This subdirectory contains behavioral, integration, and end-to-end tests, and
+their related utilities and resources, used to validate proper behavior and
+functionality of the IDA service in a manner agnostic to its underlying 
+implementation.
+
+The organization of the test subdirectories mirror the organization of the code
+in general, such that each significant component within the /ida subtree should
+have a like named subdirectory with one or more tests.
+
+    E.g. the service component     /ida/admin
+    will have behavioral tests in  /ida/tests/admin
+
+Automated tests should not leave any residue in the service. If special test
+accounts, events, content, etc. are created as part of the test, they should be
+removed/cleaned-up by the test script so they are not visible in the UI of the
+test server (presuming that the test server being used is not instantiated and
+discarded on-the-fly as part of the testing process).
+
+Notes:
+
+Unit tests relevant to the underlying implementation will reside within the
+code subdirectory of the relevant service component.
+
+    E.g. /ida/agents/tests 
+
+Behavioral tests will not be created for anything residing in /ida/utils, nor
+is anything in /ida/utils considered part of the production service, but are
+nevertheless included in the code repository and likely will be found useful.
+
+---
+
+RUNNING TESTS
+
+The root /ida/tests folder contains a script 'run-tests' which will locate
+and run all tests, or a subset of tests, depending on the arguments provided.
+
+Further details and examples are provided in the comments of the script.
+
+---
+
+RECOMMENDATIONS FOR WRITING TESTS
+
+Each logical suite of tests should be executable by providing the package path
+as a single parameter to the 'run-tests' script.
+
+During execution of the tests, each set of logically related tests should be
+indicated by outputting a status line containing a heading matching the pattern
+"--- Heading" (typically output as part of the setup.
+
+Prior to each specific test assertion, operation, action, a status line should be
+output containing a brief summary, describing the behavioral action being executed
+(e.g. "Freeze a single file", "Retrieve the file details associated with an action",
+etc. If the action should not be allowed or possible, the summary should start with
+the "Attempt to", e.g "Attempt to lock service as normal user", "Attempt to unfreeze
+folder while project is locked", etc.
+
+When setting up for tests, output a status message "(initializing)". When cleaning
+up after tests, output a status message "(cleaning)".
+
+See the existing test execution for examples.
+
+The summary of all test set headings and summaries should serve as documentation of
+the functional test coverage provided by the implemented tests.
+

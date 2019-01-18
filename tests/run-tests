@@ -1,0 +1,112 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# See the file README for general information regarding tests.
+#
+# This is a helper script for executing tests, ensuring the python environment
+# is initialized and active, and default parameters are used.
+#
+# If no arguments are provided, then all behavioral tests are executed, in
+# logical order by component; else, the arguments provided are passed to python
+# unittests as-is. This allows the script to also be used to run either unit or
+# behavioral tests for a specific component conveniently.
+# 
+# Examples:
+#
+# run-tests                           (run all behavioral tests)
+# run-tests tests.admin               (run admin behavioral tests)
+# run-tests tests.nextcloud_apps.ida  (run IDA app behavioral tests)
+# run-tests tests.agents.metadata     (run metadata agent behavioral tests)
+# run-tests agents                    (run agent unit tests)
+
+#--------------------------------------------------------------------------------
+# Load service constants and configuration settings
+
+PARENT_FOLDER=`dirname "$(realpath $0)"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONSTANTS_FILE="$PARENT_FOLDER/lib/constants.sh"
+
+if [ -e $CONSTANTS_FILE ]
+then
+    . $CONSTANTS_FILE
+else
+    echo "The service constants file $CONSTANTS_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+if [ "$ROOT" = "" ]; then
+    echo "The configuration variable $ROOT has not been defined Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify that we are in a test environment
+
+if [ "$IDA_ENVIRONMENT" != "TEST" ]; then
+    errorExit "This script can only be run in a test environment. Aborting."
+fi
+
+#--------------------------------------------------------------------------------
+# Ensure test python environment is properly configured and active
+
+cd $ROOT/tests
+
+source /srv/venv-agents/bin/activate
+pip -q install -r common/requirements.txt
+
+#--------------------------------------------------------------------------------
+# Execute tests per the provided command line arguments
+
+cd $ROOT
+
+if [ $# -ge 1 ]; then
+    echo "Arguments: $*" >> $LOG
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q $*
+else
+    # TODO: exit if any particular call to unittest below exits with failure, do not proceed
+    echo "UNIT TESTS:"
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q agents
+    echo "BEHAVIORAL TESTS:"
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.admin
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.agents
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.cli
+fi
+

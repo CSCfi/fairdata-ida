@@ -1,0 +1,396 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+. `dirname $0`/../lib/init_script.sh
+
+USAGE="Usage: $SCRIPT [ ADD proj_name quota | MODIFY proj_name quota | DISABLE proj_name | SHARE proj_name | UNSHARE proj_name ]"
+
+# checks
+
+TEST_NAME=`echo "$2" | tr [:lower:] [:upper:]`
+for DISALLOWED in $DISALLOWED_NAMES
+do
+    if [ "$TEST_NAME" == "$DISALLOWED" ]; then
+        errorExit "Name \"$2\" not allowed"
+    fi
+done
+
+for NEEDS_PROG in curl php
+do
+    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
+    if [ ! -e "$PROG_LOCATION" ]
+        then
+        errorExit "Can't find $NEEDS_PROG in your \$PATH"
+    fi
+done
+
+if [ "$1" == "ADD" -o "$1" == "MODIFY" ]; then
+    if [ $# -ne 3 ]; then
+        errorExit "$USAGE"
+    fi
+    if [ -z "$2" -o -z "$3" ]; then
+        errorExit "$USAGE"
+    fi
+elif [ "$1" == "DISABLE" -o "$1" == "SHARE" -o "$1" == "UNSHARE" ]; then
+    if [ $# -ne 2 ]; then
+        errorExit "$USAGE"
+    fi
+    if [ -z "$2" ]; then
+        errorExit "$USAGE"
+    fi
+else
+    errorExit "$USAGE"
+fi
+
+if [ "$STAGING_FOLDER_SUFFIX" == "" ]; then
+    errorExit "The STAGING_FOLDER_SUFFIX variable must be defined"
+fi
+
+PROJECT_STAGING_FOLDER="$2${STAGING_FOLDER_SUFFIX}"
+PROJECT_FROZEN_FOLDER="$2"
+PROJECT_STAGING_FOLDER_ENCODED=$(echo $PROJECT_STAGING_FOLDER | sed -f $ROOT/lib/urlencode.sed)
+PROJECT_FROZEN_FOLDER_ENCODED=$(echo $PROJECT_FROZEN_FOLDER | sed -f $ROOT/lib/urlencode.sed)
+PROJECT_GROUP="$2"
+PROJECT_USER="${PROJECT_USER_PREFIX}$2"
+PROJECT_USER_FULL_NAME="$2"
+PROJECT_QUOTA="$3"
+
+export OC_PASS="$PROJECT_USER_PASS"
+
+# execute
+
+if [ "$1" == "ADD" ]; then
+
+    echoAndLog "Checking for existing share owner folder..."
+
+    # If project folder exists, ensure link in data root is correct
+
+    for STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}
+    do
+        if [ -d "$STORAGE_VOLUME/$PROJECT_USER" -a ! -L "$STORAGE_VOLUME/$PROJECT_USER" ]; then
+
+            echoAndLog "Project share owner folder already exists: $STORAGE_VOLUME/$PROJECT_USER"
+
+            if [ "$STORAGE_VOLUME" != "$STORAGE_OC_DATA_ROOT" ]; then
+
+                echoAndLog "Creating new data root link to project share owner folder: $STORAGE_OC_DATA_ROOT/$PROJECT_USER -> $STORAGE_VOLUME/$PROJECT_USER"
+
+                if [ -L "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
+                    rm -f "$STORAGE_OC_DATA_ROOT/$PROJECT_USER"
+                fi
+
+                ln -s "$STORAGE_VOLUME/$PROJECT_USER" "$STORAGE_OC_DATA_ROOT"
+
+                if [ ! -d "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
+                    errorExit "Failed to create new data root link to project share owner folder: $STORAGE_OC_DATA_ROOT/$PROJECT_USER"
+                fi
+            fi
+
+            break
+        fi
+    done
+
+    # If project folder does not exist, create it
+
+    if [ ! -e "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
+
+        if [ -L "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
+            rm -f "$STORAGE_OC_DATA_ROOT/$PROJECT_USER"
+        fi
+
+        SC_SIZE=${#STORAGE_CANDIDATES[@]}
+        SC_INDEX=$(($RANDOM % $SC_SIZE))
+        STORAGE_VOLUME="${STORAGE_CANDIDATES[$SC_INDEX]}"
+
+        echoAndLog "Creating new project share owner folder: $STORAGE_VOLUME/$PROJECT_USER"
+
+        mkdir -p -m g+rw,o-rwx "$STORAGE_VOLUME/$PROJECT_USER"
+
+        if [ ! -d "$STORAGE_VOLUME/$PROJECT_USER" ]; then
+            errorExit "Failed to create project share owner folder: $STORAGE_VOLUME/$PROJECT_USER"
+        fi
+
+        if [ "$STORAGE_VOLUME" != "$STORAGE_OC_DATA_ROOT" ]; then
+
+            echoAndLog "Creating data root link to project share owner folder: $STORAGE_OC_DATA_ROOT/$PROJECT_USER -> $STORAGE_VOLUME/$PROJECT_USER"
+
+            ln -s "$STORAGE_VOLUME/$PROJECT_USER" "$STORAGE_OC_DATA_ROOT"
+
+            if [ ! -d "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
+                errorExit "Failed to create data root link to project share owner folder: $STORAGE_OC_DATA_ROOT/$PROJECT_USER"
+            fi
+        fi
+    fi
+
+    echoAndLog "Creating project share owner user account ${PROJECT_USER} with quota ${PROJECT_QUOTA}GB"
+
+    OUT=`php "$OCC" user:add "$PROJECT_USER" -g "$PROJECT_GROUP" --display-name "$PROJECT_USER_FULL_NAME" --password-from-env 2>&1`
+    addToLog $OUT
+    HITS=`echo $OUT | grep 'created successfully' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+
+    # check that quota input is only digits
+    NUMS=`echo "$PROJECT_QUOTA" | tr -cd '[:digit:]'`
+    if [ "$PROJECT_QUOTA" != "$NUMS" ]; then
+        errorExit "Quota \"$PROJECT_QUOTA\" is not a number"
+    fi
+
+    # set quota, value is in GB
+    OUT=`php "$OCC" user:setting "$PROJECT_USER" files quota "$PROJECT_QUOTA GB" 2>&1`
+    if [ -n "$OUT" ]; then
+        errorExit "$OUT"
+    fi
+
+    echoAndLog "Creating project shared staging folder..."
+
+    # create the project read-write staging directory to share under project users home
+    OUT=`$CURL_MKCOL "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_STAGING_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Create staging directory, curl error $CURL_ERROR $OUT"
+    fi
+    # log but continue on "already exists" error message, error on other output
+    if [ -n "$OUT" ]; then
+        addToLog "$OUT"
+        HITS=`echo $OUT | grep 'The resource you tried to create already exists' | wc -l`
+        if [ "$HITS" -ne 1 ]; then
+            errorExit "$OUT"
+        fi
+    fi
+
+    NOW_TS=`date '+%s'`
+    # share the project staging directory to the group with read-write privileges, unless migration period is active
+    if [ "$NOW_TS" -gt "$SHARE_PROJECT_AFTER_TS" -o "$MIGRATION_ACTIVE" != "true" ]; then
+        echoAndLog "Sharing project shared staging folder..."
+        OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+        CURL_ERROR="$?"
+        if [ "$CURL_ERROR" -ne "0" ]; then
+            errorExit "Share staging directory, curl error $CURL_ERROR $OUT"
+        fi
+        HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+        if [ "$HITS" -ne 1 ]; then
+            errorExit "$OUT"
+        fi
+    fi
+
+    echoAndLog "Creating project shared frozen folder..."
+
+    # create the project frozen directory to share under project users home
+    OUT=`$CURL_MKCOL "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_FROZEN_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Create frozen directory, curl error $CURL_ERROR $OUT"
+    fi
+    # log but continue on "already exists" error message, error on other output
+    if [ -n "$OUT" ]; then
+        addToLog "$OUT"
+        HITS=`echo $OUT | grep 'The resource you tried to create already exists' | wc -l`
+        if [ "$HITS" -ne 1 ]; then
+            errorExit "$OUT"
+        fi
+    fi
+
+    # share the project frozen directory to the group with read-write privileges, unless migration period is active
+    if [ "$NOW_TS" -gt "$SHARE_PROJECT_AFTER_TS" -o "$MIGRATION_ACTIVE" != "true" ]; then
+        echoAndLog "Sharing project shared frozen folder..."
+        OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+        CURL_ERROR="$?"
+        if [ "$CURL_ERROR" -ne "0" ]; then
+            errorExit "Share frozen directory, curl error $CURL_ERROR $OUT"
+        fi
+        HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+        if [ "$HITS" -ne 1 ]; then
+            errorExit "$OUT"
+        fi
+    fi
+
+fi
+
+if [ "$1" == "SHARE" ]; then
+
+    # share the staging directory to the group with read-write privileges
+    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Share staging directory failed, curl error $CURL_ERROR $OUT"
+    fi
+    HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+
+    # share the project frozen directory to the group with read-only privileges
+    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Share frozen directory failed, curl error $CURL_ERROR $OUT"
+    fi
+    HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+
+fi
+
+if [ "$1" == "UNSHARE" ]; then
+
+    # get the share id of the project staging directory
+    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        echoAndLog "Warning: Failed to get staging directory share ID, curl error $CURL_ERROR $OUT"
+    else
+        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+            echoAndLog "Warning: Project \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+        else
+            # unshare project staging directory (delete sharing relationship)
+            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            CURL_ERROR="$?"
+            if [ "$CURL_ERROR" -ne "0" ]; then
+                echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
+            fi
+            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+            if [ "$HITS" -ne 1 ]; then
+                errorExit "$OUT"
+            fi
+        fi
+    fi
+
+    # get the share id of the project frozen directory
+    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        echoAndLog "Warning: Failed to get frozen directory share ID, curl error $CURL_ERROR $OUT"
+    else
+        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+            echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+        else
+            # unshare project frozen directory (delete sharing relationship)
+            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            CURL_ERROR="$?"
+            if [ "$CURL_ERROR" -ne "0" ]; then
+                echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
+            fi
+            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+            if [ "$HITS" -ne 1 ]; then
+                errorExit "$OUT"
+            fi
+        fi
+    fi
+
+fi
+
+if [ "$1" == "MODIFY" ]; then
+    # check that quota input is only digits
+    NUMS=`echo "$PROJECT_QUOTA" | tr -cd '[:digit:]'`
+    if [ "$PROJECT_QUOTA" != "$NUMS" ]; then
+        errorExit "Quota \"$PROJECT_QUOTA\" is not a number"
+    fi
+
+    # set quota, value is in GB
+    OUT=`php "$OCC" user:setting "$PROJECT_USER" files quota "$PROJECT_QUOTA GB" 2>&1`
+    if [ -n "$OUT" ]; then
+        errorExit "$OUT"
+    fi
+fi
+
+if [ "$1" == "DISABLE" ]; then
+    OUT=`php "$OCC" user:resetpassword --password-from-env "$PROJECT_USER" 2>&1`
+    HITS=`echo $OUT | grep 'Successfully reset password' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+
+    # get the share id of the project staging directory
+    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        echoAndLog "Warning: Failed to get staging directory share ID, curl error $CURL_ERROR $OUT"
+    else
+        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+            echoAndLog "Warning: Project \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+        else
+            # unshare project staging directory (delete sharing relationship)
+            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            CURL_ERROR="$?"
+            if [ "$CURL_ERROR" -ne "0" ]; then
+                echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
+            fi
+            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+            if [ "$HITS" -ne 1 ]; then
+                errorExit "$OUT"
+            fi
+        fi
+    fi
+
+    # get the share id of the project frozen directory
+    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        echoAndLog "Warning: Failed to get frozen directory share ID, curl error $CURL_ERROR $OUT"
+    else
+        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+            echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+        else
+            # unshare project frozen directory (delete sharing relationship)
+            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            CURL_ERROR="$?"
+            if [ "$CURL_ERROR" -ne "0" ]; then
+                echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
+            fi
+            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+            if [ "$HITS" -ne 1 ]; then
+                errorExit "$OUT"
+            fi
+        fi
+    fi
+
+    # disable project share owner
+    OUT=`php "$OCC" user:disable "$PROJECT_USER" 2>&1`
+    HITS=`echo $OUT | grep 'The specified user is disabled' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+
+    # delete group
+    OUT=`$CURL_DELETE "${NC_ADMIN_USER}:${NC_ADMIN_PASS}" "${URL_BASE_GROUP}/${PROJECT_GROUP}" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Delete group, curl error $CURL_ERROR $OUT"
+    fi
+    HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+
+    # Data is not deleted
+    echoAndLog "NOTE: Project \"$PROJECT_USER\" data is kept on purpose"
+fi
+
+

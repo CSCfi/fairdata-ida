@@ -1,0 +1,130 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+. `dirname $0`/../lib/init_script.sh
+
+USAGE="Usage: $SCRIPT [ ADD user_name proj_name | REMOVE user_name proj_name | JOIN user_name proj_name | DISABLE user_name | ENABLE user_name | DELETE user_name ]"
+
+# checks
+
+if [ "$1" == "ADD" -o "$1" == "REMOVE" -o "$1" == "JOIN" ]; then
+    if [ $# -ne 3 ]; then
+        errorExit "$USAGE"
+    fi
+    if [ -z "$2" -o -z "$3" ]; then
+        errorExit "$USAGE"
+    fi
+elif [ "$1" == "DELETE" -o "$1" == "DISABLE" -o "$1" == "ENABLE" ]; then
+    if [ $# -ne 2 ]; then
+        errorExit "$USAGE"
+    fi
+    if [ -z "$2" ]; then
+        errorExit "$USAGE"
+    fi
+else
+    errorExit "$USAGE"
+fi
+
+PROJECT_GROUP="$3"
+USER="$2"
+
+# if not otherwise already defined in the environment, a new user account gets a random password
+if [ "$OC_PASS" == "" ]; then
+    export OC_PASS=`tr -cd '[:alnum:]' < /dev/urandom | head -c16`
+else
+    export OC_PASS="$OC_PASS"
+fi
+
+# execute
+
+if [ "$1" == "ADD" ]; then
+    # create non existing user
+    if [ `php "$OCC" user:info "$USER" | wc -l` -lt "2" ]; then
+        OUT=`php "$OCC" user:add "$USER" -g "$PROJECT_GROUP" --password-from-env 2>&1`
+        echo "---"
+        echo "$OUT" | tr '\n' ' '
+        echo "---"
+        addToLog "$OUT"
+        HITS=`echo $OUT | grep 'created successfully' | wc -l`
+        if [ "$HITS" -ne 1 ]; then
+            errorExit "$OUT"
+        fi
+    else
+        OUT="User \"$USER\" already exists"
+        errorExit "$OUT"
+    fi
+
+    # set user quota
+    OUT=`php "$OCC" user:setting "$USER" files quota "$USER_QUOTA" 2>&1`
+    if [ -n "$OUT" ]; then
+        errorExit "$OUT"
+    fi
+
+fi
+
+if [ "$1" == "REMOVE" ]; then
+    OUT=`php "$OCC" group:removeuser "$PROJECT_GROUP" "$USER" 2>&1`
+    if [ -n "$OUT" ]; then
+        errorExit "$OUT"
+    fi
+fi
+
+if [ "$1" == "JOIN" ]; then
+    OUT=`php "$OCC" group:adduser "$PROJECT_GROUP" "$USER" 2>&1`
+    if [ -n "$OUT" ]; then
+        errorExit "$OUT"
+    fi
+fi
+
+if [ "$1" == "DELETE" ]; then
+    PROJECT_USER=`echo $USER | egrep -e "^$PROJECT_USER_PREFIX"`
+    if [ "$IDA_ENVIRONMENT" != "TEST" -a "$PROJECT_USER" != "" ]; then
+        errorExit "Project share owner users can only be deleted in a test environment."
+    fi
+    OUT=`php "$OCC" user:delete "$USER" 2>&1`
+    HITS=`echo $OUT | grep 'The specified user was deleted' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+    #if [ "$IDA_ENVIRONMENT" == "TEST" -a "$PROJECT_USER" != "" ]; then
+        # TODO?: delete actual PSO user folder and symbolic link from filesystem
+    #fi
+fi
+
+if [ "$1" == "DISABLE" ]; then
+    OUT=`php "$OCC" user:disable "$USER" 2>&1`
+    HITS=`echo $OUT | grep 'The specified user is disabled' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+fi
+
+if [ "$1" == "ENABLE" ]; then
+    OUT=`php "$OCC" user:enable "$USER" 2>&1`
+    HITS=`echo $OUT | grep 'The specified user is enabled' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
+    fi
+fi
+
+

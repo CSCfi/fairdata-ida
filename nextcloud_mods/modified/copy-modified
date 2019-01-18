@@ -1,0 +1,14 @@
+DIR=`pwd`
+ROOT=$(cd "$DIR/../.."; pwd)
+
+while read FILE; do
+    echo $FILE
+    SOURCE="$ROOT/$FILE"
+    TARGET="$DIR/$FILE"
+    DIRPATH=`dirname $TARGET`
+    if [ ! -d $DIRPATH ]; then
+        mkdir -p $DIRPATH
+    fi
+    cp $SOURCE $TARGET
+done < $DIR/modified-files
+

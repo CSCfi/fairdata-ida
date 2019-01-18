@@ -1,0 +1,87 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script deletes any empty folders in the frozen space of one or more projects
+#
+# WARNING!!! This script should only be run when users have no access to the
+# project, such as during a service break or after unsharing the shared folders
+# temporarily, etc.
+#
+# RUNNING THIS SCRIPT WHILE USERS HAVE ACCESS CAN RESULT IN DATA LOSS!!!
+#
+#--------------------------------------------------------------------------------
+. `dirname $0`/../lib/init_script.sh
+
+PROJECTS="$*"
+
+#--------------------------------------------------------------------------------
+
+if [ "$PROJECTS" = "" ]; then
+    exit
+fi
+
+for PROJECT in "$PROJECTS"; do
+
+    echo "Purging empty frozen folders in $PROJECT..."
+
+    PROJECT_FROZEN_FOLDER="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}"
+    EMPTY_FOLDERS="/tmp/${SCRIPT}.$$.${PROJECT}"
+
+    if [ ! -d $PROJECT_FROZEN_FOLDER ]; then
+        echo "Error: Unable to scan project frozen folder: $PROJECT_FROZEN_FOLDER" >&2
+        continue
+    fi
+
+    find "$PROJECT_FROZEN_FOLDER" -type d -empty 2>/dev/null > "$EMPTY_FOLDERS"
+
+    if [ -s "$EMPTY_FOLDERS" ]; then
+
+        while read FOLDER; do
+
+            if [ "$FOLDER" != "$PROJECT_FROZEN_FOLDER" ]; then
+
+                PARENT=`dirname "$FOLDER"`
+                rmdir -v "$FOLDER"
+    
+                # Iteratively remove any newly empty ancestor folders up to but NOT including the frozen folder
+                while [ "$PARENT" != "$PROJECT_FROZEN_FOLDER" ]; do
+                    FOLDER="$PARENT"
+                    if [ -n "$(find "$FOLDER" -maxdepth 0 -type d -empty 2>/dev/null)" ]; then
+                        PARENT=`dirname "$FOLDER"`
+                        rmdir -v "$FOLDER"
+                    else
+                        PARENT="$PROJECT_FROZEN_FOLDER"
+                    fi
+                done
+            fi
+
+        done < "$EMPTY_FOLDERS"
+
+    fi
+
+    rm "$EMPTY_FOLDERS" 2>/dev/null
+
+done
+
+

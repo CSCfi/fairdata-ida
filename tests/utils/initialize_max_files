@@ -1,0 +1,135 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script initializes a folder named "MaxFiles" in the root folder of the
+# staging area of the project specified as the first argument to the script.
+#
+# This script is safe to execute in any environment, including production.
+
+# The project must ALREADY exist and the folder "MaxFiles" folder must NOT exist;
+# or else the script will exit with an error. This ensures against accidental
+# corruption of existing data or creation of new projects in production.
+#
+# The test data is organized so that the IDA freeze/unfreeze/delete operations
+# can be tested on scopes with varying large numbers of files.
+#
+# The generated hierarchy is as follows:
+#
+# /MaxFiles/test_file.dat
+# /MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat
+# /MaxFiles/500_files/100_files_01/10_files_01/...
+# /MaxFiles/500_files/100_files_01/10_files_01/test_file_10.dat
+# /MaxFiles/500_files/100_files_01/10_files_02/test_file_01.dat
+# /MaxFiles/500_files/100_files_01/...
+# /MaxFiles/500_files/100_files_01/10_files_10/test_file_10.dat
+# /MaxFiles/500_files/...
+# /MaxFiles/500_files/100_files_02/10_files_01/test_file_01.dat
+# /MaxFiles/500_files/...
+# /MaxFiles/500_files/100_files_05/10_files_10/test_file_10.dat
+#
+# The contents of each test file will correspond to its own filename.
+#
+# The total number of files in the scope of the "MaxFiles" folder is actually
+# one file more than the maximum allowed number of files, and therefore should
+# be rejected. The total number of files in the scope of each subfolder below
+# the "MaxFiles" folder reflects the total number of files in that folder.
+#
+#--------------------------------------------------------------------------------
+. `dirname $0`/../../lib/init_script.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT="$1"
+
+if [ "$1" = "" ]; then
+    errorExit "Error: The project name must be specified as the first argument to the script"
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ "$ROOT" = "" ]; then
+    errorExit "Error: The ROOT configuration variable must be defined"
+fi
+
+if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
+    errorExit "Error: The STAGING_FOLDER_SUFFIX configuration variable must be defined"
+fi
+
+if [ "$PROJECT_USER_PREFIX" = "" ]; then
+    errorExit "Error: The PROJECT_USER_PREFIX configuration variable must be defined"
+fi
+
+if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
+    errorExit "Error: The STORAGE_OC_DATA_ROOT configuration variable must be defined"
+fi
+
+#--------------------------------------------------------------------------------
+
+PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PSO_USER}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
+MAX_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/MaxFiles"
+
+echo "Generating MaxFiles test data for project ${PROJECT}..."
+echo "   Target folder: $MAX_FILES_FOLDER"
+
+#--------------------------------------------------------------------------------
+
+echo "   Ensuring project exists and MaxFiles folder does not exist..."
+
+if [ ! -d "$PROJECT_STAGING_FOLDER" ]; then
+    errorExit "Error: The project ${PROJECT} does not exist"
+fi
+
+if [ -d "$MAX_FILES_FOLDER" ]; then
+    errorExit "Error: The target folder already exists in the root of the staging area of project ${PROJECT}"
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "   Generating test data..."
+
+mkdir -p "${MAX_FILES_FOLDER}"
+echo "test_file.dat" > "${MAX_FILES_FOLDER}/test_file.dat"
+
+for i in "01" "02" "03" "04" "05"; do
+    mkdir -p "${MAX_FILES_FOLDER}/500_files/100_files_${i}"
+    for j in "01" "02" "03" "04" "05" "06" "07" "08" "09" "10"; do
+        mkdir -p "${MAX_FILES_FOLDER}/500_files/100_files_${i}/10_files_${j}"
+        for k in "01" "02" "03" "04" "05" "06" "07" "08" "09" "10"; do
+            echo "test_file_${k}.dat" > "${MAX_FILES_FOLDER}/500_files/100_files_${i}/10_files_${j}/test_file_${k}.dat"
+        done
+    done
+done
+
+#--------------------------------------------------------------------------------
+
+echo "   Updating Nextcloud file cache..."
+
+$OCC files:scan -q $PSO_USER
+

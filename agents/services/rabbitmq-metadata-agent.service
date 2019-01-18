@@ -1,0 +1,12 @@
+[Unit]
+Description=RabbitMQ MetadataAgent daemon
+After=network.target
+
+[Service]
+User=apache
+Group=apache
+WorkingDirectory=/var/ida
+ExecStart=/srv/venv-agents/bin/python -m agents.metadata.metadata_agent
+
+[Install]
+WantedBy=multi-user.target

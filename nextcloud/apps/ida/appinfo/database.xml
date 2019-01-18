@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+
+<!--
+This file is part of the IDA research data storage service
+
+Copyright (C) 2018 Ministry of Education and Culture, Finland
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+@author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+@license  GNU Affero General Public License, version 3
+@link     https://research.csc.fi/
+-->
+
+<database>
+    <name>*dbname*</name>
+    <create>true</create>
+    <overwrite>false</overwrite>
+    <charset>utf8</charset>
+    <table>
+        <!--
+            Stores details about IDA actions.
+        -->
+        <name>*dbprefix*ida_action</name>
+        <declaration>
+            <field>
+                <!--
+                    The local Nextcloud identifier for the action database entity.
+                -->
+                <name>id</name>
+                <type>integer</type>
+                <notnull>true</notnull>
+                <default>0</default>
+                <autoincrement>true</autoincrement>
+            </field>
+            <field>
+                <!--
+                    The unique persistent identifier for the action.
+                -->
+                <name>pid</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    One of 'freeze', 'unfreeze', or 'delete'.
+                -->
+                <name>action</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>10</length>
+            </field>
+            <field>
+                <!--
+                    The name of the project.
+                -->
+                <name>project</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The username of the user initiating the action.
+                -->
+                <name>user</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The Nextcloud node ID for the root node of the action.
+                -->
+                <name>node</name>
+                <type>integer</type>
+                <notnull>true</notnull>
+                <default>0</default>
+            </field>
+            <field>
+                <!--
+                    The relative pathname of the root node of the action, rooted within either the staging or frozen project folder.
+                -->
+                <name>pathname</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>1000</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the action was initiated by the user.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>initiated</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the Nextcloud storage of the node was successfully updated (either moved or deleted).
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>storage</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when all PIDs were successfully generated and stored to DB for all nodes in scope.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined for freeze actions.
+                -->
+                <name>pids</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when all checksums were successfully generated and stored to DB for all files in scope.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined for freeze actions.
+                -->
+                <name>checksums</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when all metadata was successfully published to or deleted from METAX for all files in scope.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>metadata</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when all replicated copies were successfully created or deleted for all files in scope.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>replication</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the action was fully and successfully completed.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>completed</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the action failed.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>failed</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the action was cleared.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>cleared</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Comprehensive error details, indicating exactly what went wrong, to assist admins in resolving the issue.
+                    Only defined for failed actions.
+                -->
+                <name>error</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>1000</length>
+            </field>
+            <field>
+                <!--
+                    PID of the action used to retry a failed action.
+                    Only defined for failed actions which are retried.
+                -->
+                <name>retry</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    PID of the failed action which the current action is retrying.
+                    Only defined for actions which are retrying a failed action.
+                -->
+                <name>retrying</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>100</length>
+            </field>
+
+        </declaration>
+    </table>
+    <table>
+        <!--
+            Stores details about IDA frozen files.
+        -->
+        <name>*dbprefix*ida_frozen_file</name>
+        <declaration>
+            <field>
+                <!--
+                    The local Nextcloud identifier for the frozen file database entity.
+                -->
+                <name>id</name>
+                <type>integer</type>
+                <notnull>true</notnull>
+                <default>0</default>
+                <autoincrement>true</autoincrement>
+            </field>
+            <field>
+                <!--
+                    The Nextcloud node ID for the node.
+                -->
+                <name>node</name>
+                <type>integer</type>
+                <notnull>true</notnull>
+                <default>0</default>
+            </field>
+            <field>
+                <!--
+                    The relative pathname of the file, rooted within the frozen project folder.
+                -->
+                <name>pathname</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>1000</length>
+            </field>
+            <field>
+                <!--
+                    The unique identifier for an action, equal to an action.id value.
+                -->
+                <name>action</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The name of the project.
+                -->
+                <name>project</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The unique PID of the file.
+                -->
+                <name>pid</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The size of the file in bytes.
+                -->
+                <name>size</name>
+                <type>integer</type>
+                <notnull>false</notnull>
+                <length>8</length>
+            </field>
+            <field>
+                <!--
+                    The checksum of the file.
+                -->
+                <name>checksum</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file was uploaded to IDA.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    DEPRECATED
+                -->
+                <name>uploaded</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file was last modified.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Derived from the action.initiated value of the file.action instance.
+                -->
+                <name>modified</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file was frozen.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined for freeze actions.
+                    Derived from the action.initiated value of the file.action instance.
+                -->
+                <name>frozen</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file's metadata was successfully published to METAX.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined for freeze actions.
+                -->
+                <name>metadata</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file was successfully replicated.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined for freeze actions.
+                -->
+                <name>replicated</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file was removed from the frozen space (unfrozen or deleted).
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined for unfreeze or delete actions.
+                    Derived from the action.initiated value of the file.action instance.
+                -->
+                <name>removed</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    Timestamp indicating when the file was cleared, when its associated action was cleared.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                    Only defined when retrying or clearing actions.
+                -->
+                <name>cleared</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>30</length>
+            </field>
+        </declaration>
+    </table>
+</database>

@@ -1,0 +1,12 @@
+[Unit]
+Description=RabbitMQ ReplicationAgent daemon
+After=network.target
+
+[Service]
+User=apache
+Group=apache
+WorkingDirectory=/var/ida
+ExecStart=/srv/venv-agents/bin/python -m agents.replication.replication_agent
+
+[Install]
+WantedBy=multi-user.target
