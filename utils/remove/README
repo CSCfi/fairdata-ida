@@ -1,0 +1,129 @@
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+
+The scripts in this directory are to be used by service admins to safely remove
+projects from the service. The removal process consists of three steps, which
+aim to minimize the impact by human errors of removing a project by mistake.
+
+
+STEP 1: Suspend the project in the service
+
+The "suspend-project" script takes a single project identifier argument and will:
+
+a. Lock the specified project, preventing any further freeze/unfreeze/delete actions.
+
+b. Create a special "suspend" action with scope '/', preventing any further changes
+   to data in the project's staging area.
+
+This step will leave the user accounts and project data unchanged, and allows for
+any changes in project membership coming from the CSC IdM, but puts the project in
+a read-only state, such that project data may only be viewed and downloaded.
+ 
+If a project is suspended in error, the "unsuspend-project" script can be used to
+remove the lock and clear the special "suspend" action, which will fully reinstate
+the project without any loss of data or change in project membership.
+
+In short, this first step makes such an error essentially "painless" and easily
+recoverable.
+
+The script "list-suspended-projects" will provide a summary of all projects which
+are currently suspended, and when they were suspended.
+ 
+
+STEP 2: Remove the project from the service
+
+The "remove-suspended-project" script takes a single project identifier argument
+and will:
+
+a. Check whether the project exists, is locked, has the special "suspend" action as
+   its most recent action, and that "suspend" action is older than a configured
+   "quarantine" period of time. If any of these tests fail, the script will exit
+   with an error.
+
+b. Create a dated project subdirectory in a special "trash" directory, and move the
+   frozen and staging project directories to the project trash subdirectory.
+
+c. Take a backup dump of all action records associated with the project, in JSON
+   format, saving them to a file "actions.json" in the project trash subdirectory,
+   and take a backup dump of all file records associated with the project, in JSON
+   format, saving them to a file "files.json" in the project trash subdirectory.
+
+d. Delete the PSO user and the project group, and if relevant, deleting any symbolic
+   link for the PSO user directory.
+
+e. Flush all project records from the IDA database.
+
+f. Mark all project frozen files as deleted in METAX.
+
+g. Delete all project frozen files from the DMF cache.
+ 
+If an error is caught after this second step, or the project owners wish the project
+to be reinstated, or wish some of the data to be recovered, it is still doable. All
+database records and project files will still exist in the "trash".
+
+At present, there is no script to "unremove" a project, though if ever needed, it is
+expected that one will be created.
+
+Note: The tape replication cache defined at the pathname $DATA_REPLICATION_ROOT must
+grant group write permissions to the defined $HTTPD_USER.
+
+
+STEP 3: Permanently delete all project data
+
+From time to time, we can manually delete trash subfolders, to free up disk space,
+though it is best to wait at least the defined quarantine period before deleting
+project trash subfolders, in case anything needs to be restored.
+
+Once this third step is executed for a project, it is gone, gone, gone (except what
+remains on tape in the DMF service).
+ 
+There exists the stub of a script empty-trash which later may be fully implemented
+if/when we choose to automate this final third step.
+ 
+
+CONFIGURATION:
+
+Configuration for these scripts is controlled by the following variables which must
+be defined in, and are taken from, the $ROOT/config/config.sh file and the
+$ROOT/lib/constants.sh file of the service:
+
+NC_ADMIN_USER
+NC_ADMIN_PASS
+METAX_API_USER
+METAX_API_PASS
+METAX_API_ROOT_URL
+IDA_API_ROOT_URL
+HTTPD_USER
+PROJECT_USER_PASS
+PROJECT_USER_PREFIX
+STAGING_FOLDER_SUFFIX
+ROOT
+STORAGE_OC_DATA_ROOT
+DATA_REPLICATION_ROOT
+OCC
+LOG
+EMAIL_SENDER
+EMAIL_RECIPIENTS
+TRASH_DATA_ROOT          (will be created if does not exist)
+QUARANTINE_PERIOD        (defined in seconds, e.g. 30 days = 2592000 seconds)
+

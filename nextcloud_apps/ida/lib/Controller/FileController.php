@@ -100,6 +100,14 @@ class FileController extends Controller
                 return API::badRequestErrorResponse($e->getMessage());
             }
     
+            // Special case to retrieve all file details for all actions for one or more projects, used for admin operations only
+    
+            if (($this->userId === 'admin') && ($pid === "all") && ($projects !== null)) {
+                $pid = null;
+            }
+            
+            // Initialize set of projects to any specified in request
+            
             if ($projects !== null) {
                 $queryProjects = Access::cleanProjectList($projects);
             }

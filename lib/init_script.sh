@@ -68,7 +68,7 @@ CURL_GET='curl -k --raw -s -S -u'
 CURL_DELETE='curl -k --raw -s -S -X DELETE -u'
 CURL_MKCOL='curl -k --raw -s -S -X MKCOL -u'
 
-DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
+TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 if [ "$SCRIPT" == "" ]; then
     SCRIPT=`basename $0`
@@ -127,7 +127,7 @@ if [ ! -e $LOG ]; then
     fi
 fi
 
-OUT=`echo "$DATE $SCRIPT START $@" 2>/dev/null >>"$LOG"`
+OUT=`echo "$TIMESTAMP $SCRIPT START $@" 2>/dev/null >>"$LOG"`
 if [ "$?" -ne 0 ]; then
     echo "Can't write to log file \"$LOG\"" >&2
     exit 1
@@ -138,19 +138,36 @@ fi
 
 function addToLog {
     MSG=`echo "$@" | tr '\n' ' '`
-    echo "$DATE $SCRIPT $MSG" 2>/dev/null >>"$LOG"
+    echo "$TIMESTAMP $SCRIPT $MSG" 2>/dev/null >>"$LOG"
 }
 
 function echoAndLog {
     MSG=`echo "$@" | tr '\n' ' '`
     echo "$MSG"
-    echo "$DATE $SCRIPT $MSG" 2>/dev/null >>"$LOG"
+    echo "$TIMESTAMP $SCRIPT $MSG" 2>/dev/null >>"$LOG"
 }
 
 function errorExit {
     MSG=`echo "$@" | tr '\n' ' '`
     echo "$MSG" >&2
-    echo "$DATE $SCRIPT ERROR $MSG" >>"$LOG"
+    echo "$TIMESTAMP $SCRIPT ERROR $MSG" >>"$LOG"
     exit 1
+}
+
+# TODO Include all project users as recipients
+
+function sendEmail {
+    SUBJECT=`echo "$1" | tr '\n' ' '`
+    MESSAGE="$2"
+    if [ "$EMAIL_SENDER" != "" ]; then
+        if [ "$EMAIL_RECIPIENTS" = "" ]; then
+            EMAIL_RECIPIENTS="$EMAIL_SENDER"
+        fi
+        mail -s "$SUBJECT" -r $EMAIL_SENDER $EMAIL_RECIPIENTS <<EOF
+
+$MESSAGE
+
+EOF
+    fi
 }
 

@@ -1,0 +1,190 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+echo "Verifying project ${PROJECT} exists..."
+
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "Error: The specified project ${PROJECT} does not exist!"
+fi
+
+#--------------------------------------------------------------------------------
+echo "Verifying project ${PROJECT} is suspended..."
+
+SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2>$ERR | \
+      tr "\n" " " | tr "{" "\n" | grep '"action":"suspend"' | grep "\"project\":\"$PROJECT\"" | \
+      sed -e 's/^.*"initiated":"//' | sed -e 's/".*$//' | sort -u | tail -1`
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to retrieve pending actions for project!"
+fi
+
+if [ "$SUSPENDED" = "" ]; then
+    errorExit "Error: The specified project ${PROJECT} is not suspended."
+fi
+
+NOW=`date -u +"%s"`
+SECONDS=`date -u -d "$SUSPENDED" +"%s"`
+ELAPSED=`expr $NOW - $SECONDS`
+
+if [ "$DEBUG" = "true" ]; then
+    echo ""
+    echo "Project suspended: $SUSPENDED"
+    echo "Project suspended: $SECONDS seconds"
+    echo "Current time:      $NOW seconds"
+    echo "Elapsed time:      $ELAPSED seconds"
+    echo "Quarantine period: $QUARANTINE_PERIOD seconds"
+    echo ""
+fi
+
+if [ $ELAPSED -lt $QUARANTINE_PERIOD ]; then
+    errorExit "Error: The specified project ${PROJECT} is still within the quarantine period and cannot be removed."
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "Creating project trash subfolder..."
+
+mkdir -p $PROJECT_TRASH_DATA_ROOT 2>&1 >/dev/null
+
+if [ ! -d $PROJECT_TRASH_DATA_ROOT ]; then
+    errorExit "Error: Failed to create project trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "Moving project files to project trash subfolder..."
+
+FROZEN_FOLDER="${PROJECT_STORAGE_OC_DATA_ROOT}/${PROJECT}"
+STAGING_FOLDER="${PROJECT_STORAGE_OC_DATA_ROOT}/${PROJECT}${STAGING_FOLDER_SUFFIX}"
+
+mv "${FROZEN_FOLDER}" "${PROJECT_TRASH_DATA_ROOT}/" 2>$ERR >/dev/null
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to move frozen area folder to trash!"
+fi
+
+mv "${STAGING_FOLDER}" "${PROJECT_TRASH_DATA_ROOT}/" 2>$ERR >/dev/null
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to move staging area folder to trash!"
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "Updating Nextcloud filesystem records..."
+
+$OCC files:scan -q $PROJECT_USER 2>$ERR >/dev/null
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to update Nextcloud filesystem records!"
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "Exporting project action and file records from database..."
+
+$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?projects=${PROJECT}" 2>$ERR | \
+    python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to export action records!"
+fi
+
+$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/files/action/all?projects=${PROJECT}" 2>$ERR | \
+    python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/files.json"
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to export file records!"
+fi
+
+echo "Flushing project action and file records from the database..."
+
+$CURL_POST $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/flush?project=${PROJECT}" 2>$ERR >/dev/null
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to flush project action and file records from database!"
+fi
+
+echo "Marking all project files as deleted in METAX..."
+
+if [ "$METAX_AVAILABLE" != "0" ]; then
+
+    $CURL_POST $METAX_CREDENTIALS "$METAX_API_ROOT_URL/files/flush_project?project=$PROJECT" 2>$ERR >/dev/null
+
+    if [ -s $ERR ]; then
+        cat $ERR | tee -a $LOG
+        errorExit "Error: Failed to update file metadata in METAX!"
+    fi
+fi
+
+echo "Deleting project share owner account from Nextcloud..."
+
+$ROOT/admin/ida_user DELETE $PROJECT_USER 2>$ERR >/dev/null
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to delete project share owner!"
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "Deleting project files from tape replication cache..."
+
+if [ -d "$PROJECT_REPLICATION_ROOT" ]; then
+
+    rm -fr "$PROJECT_REPLICATION_ROOT" 2>$ERR
+
+    if [ -s $ERR ]; then
+        cat $ERR | tee -a $LOG
+        errorExit "Error: Failed to delete project files from tape replication cache!"
+    fi
+fi
+
+#--------------------------------------------------------------------------------
+
+sendEmail \
+    "Project ${PROJECT} removed." \
+    "The project ${PROJECT} has been REMOVED from the IDA service and is no longer accessible. ALL PROJECT DATA HAS BEEN DELETED."
+
+echoAndLog "Project ${PROJECT} removed. Project data moved to trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
+

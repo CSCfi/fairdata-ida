@@ -1,0 +1,94 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+echo "Verifying project ${PROJECT} exists..."
+
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "Error: The specified project ${PROJECT} does not exist!"
+fi
+
+#--------------------------------------------------------------------------------
+echo "Verifying project ${PROJECT} is not already suspended..."
+
+PIDS=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2>$ERR | \
+      tr "\n" " " | tr "{" "\n" | grep '"action":"suspend"' | grep "\"project\":\"$PROJECT\"" | \
+      sed -e 's/^.*"pid":"//' | sed -e 's/".*$//'`
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to retrieve pending actions for project!"
+fi
+
+if [ "$PIDS" != "" ]; then
+    errorExit "Error: The specified project ${PROJECT} is already suspended."
+fi
+
+#--------------------------------------------------------------------------------
+echo "Locking project ${PROJECT}..."
+
+if [ "$DEBUG" = "true" ]; then
+    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"${IDA_API_ROOT_URL}/lock/${PROJECT}\""
+fi
+
+OUT=`$CURL_POST "$PROJECT_USER_CREDENTIALS" "${IDA_API_ROOT_URL}/lock/${PROJECT}" 2>&1`
+
+if [ ! -e $PROJECT_LOCK ]; then
+    errorExit "Error: Failed to lock project ${PROJECT}!"
+fi
+
+#--------------------------------------------------------------------------------
+echo "Creating suspend action for project ${PROJECT}..."
+
+if [ "$DEBUG" = "true" ]; then
+     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/\""
+fi
+
+OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/"`
+
+SUCCESS=`echo "$OUT" | grep '"pid":'`
+
+if [ "$SUCCESS" = "" ]; then
+    errorExit "Error: Failed to create suspend action for project ${PROJECT}!"
+fi
+
+#--------------------------------------------------------------------------------
+
+sendEmail \
+    "Project ${PROJECT} suspended." \
+    "The project ${PROJECT} has been SUSPENDED in the IDA service. Access to project data is now READ-ONLY."
+
+echoAndLog "Project ${PROJECT} suspended."
+
