@@ -128,16 +128,6 @@ if [ "$LOG" = "" ]; then
     exit 1
 fi
 
-if [ "$EMAIL_SENDER" = "" ]; then
-    echo "Error: The variable EMAIL_SENDER must be defined." >&2
-    exit 1
-fi
-
-if [ "$EMAIL_RECIPIENTS" = "" ]; then
-    echo "Error: The variable EMAIL_RECIPIENTS must be defined." >&2
-    exit 1
-fi
-
 if [ "$TRASH_DATA_ROOT" = "" ]; then
     echo "Error: The variable TRASH_DATA_ROOT must be defined." >&2
     exit 1

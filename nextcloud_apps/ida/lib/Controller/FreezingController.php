@@ -1311,19 +1311,15 @@ class FreezingController extends Controller
      * @param FileInfo[] $nextcloudNodes one or more FileInfo instances within the scope of the action
      * @param string     $pid            the PID of the action with which the files should be associated
      * @param string     $timestamp      the timestamp of when the action was initiated
-     *
-     * @return Entity[]
      */
-    protected function repairFiles($project, $nextcloudNodes, $pid, $timestamp) {
+    protected function repairFrozenFiles($project, $nextcloudNodes, $pid, $timestamp) {
         
-        Util::writeLog('ida', 'repairFiles:'
+        Util::writeLog('ida', 'repairFrozenFiles:'
             . ' project=' . $project
             . ' nextcloudNodes=' . count($nextcloudNodes)
             . ' pid=' . $pid
             . ' timestamp=' . $timestamp
             , \OCP\Util::DEBUG);
-        
-        $fileEntities = array();
         
         foreach ($nextcloudNodes as $fileInfo) {
             
@@ -1331,49 +1327,45 @@ class FreezingController extends Controller
             
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
                 
-                // Retrieve latest active frozen file record, if any, for the given file
+                // Retrieve last created frozen file record, if any, for the given file
                 
-                $fileEntity = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId());
+                $fileEntity = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId(), $project, true);
                 
-                // If record exists, reinstate it
+                // If record exists, clone it
+                
                 if ($fileEntity != null) {
     
                     // Clone existing file record
     
                     $newFileEntity = $this->cloneFile($fileEntity, $pid);
     
-                    // Mark existing file record as cleared
+                    // Ensure existing file record marked as cleared (even though it ought to already be)
     
                     $fileEntity->setCleared($timestamp);
                     $this->fileMapper->update($fileEntity);
     
-                    // Ensure file is treated as actively frozen
+                    // Ensure cloned file record is treated as actively frozen
                     
                     $newFileEntity->setRemoved(null);
                     $newFileEntity->setCleared(null);
                     
-                    // If file has no frozen timestamp, set to current time
+                    // If cloned file record has no frozen timestamp, set to current time
                     
                     if ($newFileEntity->getFrozen() == null) {
                         $newFileEntity->setFrozen(Generate::newTimestamp());
                     }
                     
-                    // TODO if size doesn't match and/or no checksum defined, we need to record the current file size,
-                    // modification timestamp, etc., and ensure a checksum is generated for the current file on disk...
-                    
                     $this->fileMapper->update($newFileEntity);
-                    
-                    $fileEntities[] = $newFileEntity;
                 }
+
+                // Else, create new record
+                
                 else {
-                    // Else, create new record
                     $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
-                    $fileEntities[] = $this->registerFile($fileInfo, 'freeze', $project, $pathname, $pid, $timestamp);
+                    $this->registerFile($fileInfo, 'freeze', $project, $pathname, $pid, $timestamp);
                 }
             }
         }
-        
-        return $fileEntities;
     }
     
     /**
@@ -1821,6 +1813,8 @@ class FreezingController extends Controller
      *
      * @param File   $fileEntity an existing frozen file record
      * @param string $pid        the PID of the action with which the files should be associated
+     *
+     * @return File
      */
     protected function cloneFile($fileEntity, $pid = null) {
         
@@ -1851,7 +1845,7 @@ class FreezingController extends Controller
         $newFileEntity->setRemoved($fileEntity->getRemoved());
         $newFileEntity->setCleared($fileEntity->getCleared());
         
-        $this->fileMapper->insert($newFileEntity);
+        return ($this->fileMapper->insert($newFileEntity));
     }
     
     /**
@@ -2506,18 +2500,22 @@ class FreezingController extends Controller
     }
     
     /**
-     * Create action and frozen file database entities for all files within frozen areas of
-     * the project of the authenticated PSO user. Any pending or failed actions will be cleared,
-     * and all frozen file records will be marked as removed, associated with a new 'repair' action.
-     * For all files physically in the frozen space of the project, if a frozen file pathname matches
-     * an existing removed file record, the last matched record matching the pathname will
-     * be reinstated as active (no longer removed), else a new frozen file record will be created and
-     * associated with the 'repair' action.
+     * Create action and frozen file database entities for all files within frozen area of
+     * the project of the authenticated PSO user. Any pending or failed actions will be cleared.
+     * All active frozen file records will be marked as cleared.
      *
-     * Restricted to PSO user. Project name is derived from PSO username
+     * For all files physically in the frozen area of the project, if a frozen file pathname matches
+     * an existing frozen file record, that record will be cloned, preserving the original file details,
+     * and the cloned file record marked as active, else a new frozen file record will be created. All
+     * active frozen file records will be associated with a special 'repair' action.
      *
-     * NOTE: This method does NOT publish anything to rabbitmq for postprocessing! It is assumed that
-     * the response from this method is used to reconcile both METAX and file replication separately!
+     * Restricted to PSO user. Project name is derived from PSO username.
+     *
+     * The project is suspended while the repair is ongoing, forcing the project into read-only mode.
+     *
+     * This method will publish the special "repair" action to rabbitmq for postprocessing. The
+     * postprocessing agents will recognize the special type of "repair" action and adjust their
+     * behavior accordingly.
      *
      * @return DataResponse
      *
@@ -2538,76 +2536,101 @@ class FreezingController extends Controller
                 return API::unauthorizedErrorResponse();
             }
             
-            //------------------------------------------------------------------------------------------------------------
-            // NOTE: For now, we won't impose any file count limits on these initial actions. If that becomes a problem
-            // in testing the migration on the largest projects, we can then add support for partitioning the files
-            // into multiple actions by creating a recurisve variant of this function which includes the functionality
-            // of the getNextcloudNodes() function, creating a new action each time the limit is reached...
-            //------------------------------------------------------------------------------------------------------------
-            
             // Extract project name from PSO user name...
             
             $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
-            
-            if (!Access::lockProject($project)) {
-                return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
+    
+            // Open a connection to RabbitMQ
+    
+            try {
+                $rabbitMQconnection = $this->openRabbitMQConnection();
             }
+            catch (Exception $e) {
+                Util::writeLog('ida', 'repairProject: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
+                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+    
+            // Ensure project is locked
             
+            Access::lockProject($project);
+    
+            // Get current time
+            
+            $timestamp = Generate::newTimestamp();
+            
+            // Clear any incomplete actions (except 'suspend' action)
+            
+            $incompleteActions = $this->actionMapper->findActions('incomplete', $project);
+    
+            if (count($incompleteActions) > 0) {
+                foreach ($incompleteActions as $actionEntity) {
+                    if ($actionEntity->getAction() != 'suspend') {
+                        $actionEntity->setCleared($timestamp);
+                        $this->actionMapper->update($actionEntity);
+                    }
+                }
+            }
+    
+            // Create repair action, which will suspend project and keep project into read-only mode until the action
+            // is recorded as completed, due to the root scope.
+    
+            $repairActionEntity = $this->registerAction(0, 'repair', $project, 'system', '/');
+    
             // Retrieve all active frozen file records
             
             $frozenFileEntities = $this->fileMapper->findFrozenFiles($project);
             
-            // Mark all existing frozen files as cleared, associating them with a new 'repair-c' action.
-            // Files which are physically present in the frozen area will have those same records restored below.
-            
+            // Mark any existing frozen files as cleared. Files which are physically present in the frozen area will
+            // have those same records cloned below.
+    
             if (count($frozenFileEntities) > 0) {
-                $actionEntity = $this->registerAction(0, 'repair-c', $project, 'system', '/');
-                $actionPid = $actionEntity->getPid();
-                $timestamp = $actionEntity->getInitiated();
                 foreach ($frozenFileEntities as $fileEntity) {
-                    $fileEntity->setAction($actionPid);
                     $fileEntity->setCleared($timestamp);
                     $this->fileMapper->update($fileEntity);
                 }
-                $timestamp = Generate::newTimestamp();
-                $actionEntity->setCompleted($timestamp);
-                $this->actionMapper->update($actionEntity);
             }
-            
+    
             // Retrieve and reinstate all files in the frozen area.
             // Disable file count limit by specifying limit as zero.
             
-            $actionEntity = null;
-            
             $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, '/', 0);
             
-            // Register all files in frozen area, associating them with a new 'repair' action...
+            // Register all files in frozen area, associating them with the new 'repair' action...
             // (this is the only time the special action 'repair' is used)
-            
+    
             if (count($nextcloudNodes) > 0) {
-                $actionEntity = $this->registerAction(0, 'repair-f', $project, 'system', '/');
-                $frozenFileEntities = $this->repairFiles($project, $nextcloudNodes, $actionEntity->getPid(), $actionEntity->getInitiated());
-                $timestamp = Generate::newTimestamp();
-                $actionEntity->setStorage($timestamp);
-                $actionEntity->setPids($timestamp);
-                $actionEntity->setChecksums($timestamp);
-                $actionEntity->setMetadata($timestamp);
-                $actionEntity->setReplication($timestamp);
-                $actionEntity->setCompleted($timestamp);
-                $this->actionMapper->update($actionEntity);
+                $this->repairFrozenFiles($project, $nextcloudNodes, $repairActionEntity->getPid(), $repairActionEntity->getInitiated());
             }
-            
-            // Unlock project and return new repair-f action details (if any)
+    
+            $timestamp = Generate::newTimestamp();
+            $repairActionEntity->setPids($timestamp);
+            $repairActionEntity->setStorage($timestamp);
+            $this->actionMapper->update($repairActionEntity);
+    
+            // Publish new action message to RabbitMQ
+    
+            $this->publishActionMessage($rabbitMQconnection, $repairActionEntity);
+            $rabbitMQconnection->close();
+    
+            // Unlock project
             
             Access::unlockProject($project);
+    
+            // Return new repair action details
             
-            return new DataResponse($actionEntity);
+            return new DataResponse($repairActionEntity);
         }
         catch (Exception $e) {
             
             // Cleanup and report error
-            
+    
+            if ($repairActionEntity != null) {
+                $this->actionMapper->deleteAction($repairActionEntity->getPid());
+            }
+    
+            $rabbitMQconnection->close();
             Access::unlockProject($project);
+            
             return API::serverErrorResponse($e->getMessage());
         }
     }
@@ -2651,7 +2674,7 @@ class FreezingController extends Controller
                 
                 if ($this->config['SIMULATE_AGENTS']) {
                     $timestamp = Generate::newTimestamp();
-                    if ($actionEntity->getAction() === 'freeze') {
+                    if ($actionEntity->getAction() === 'freeze' || $actionEntity->getAction() === 'repair') {
                         $actionEntity->setChecksums($timestamp);
                         $actionEntity->setReplication($timestamp);
                     }

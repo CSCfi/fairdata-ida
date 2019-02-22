@@ -23,7 +23,7 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -53,7 +53,8 @@ if [ -s $ERR ]; then
 fi
 
 if [ "$PIDS" != "" ]; then
-    errorExit "Error: The specified project ${PROJECT} is already suspended."
+    echo "The specified project ${PROJECT} is already suspended."
+    exit 0
 fi
 
 #--------------------------------------------------------------------------------
@@ -85,6 +86,8 @@ if [ "$SUCCESS" = "" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+
+rm $ERR 2>/dev/null
 
 sendEmail \
     "Project ${PROJECT} suspended." \

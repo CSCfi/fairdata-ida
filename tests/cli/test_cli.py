@@ -859,10 +859,7 @@ class TestIdaCli(unittest.TestCase):
         response = requests.get("%s/lock/all" % (self.api), auth=self.admin_user, verify=False)
         self.assertEqual(response.status_code, 404)
 
-        # frozen area rests on 2017-08/Experiment_1/baseline which is in original state
-        # staging area tests on 2017-10/Experiment_5 which is in original source state
-
         # TODO: Add tests for .netrc usage
 
-#       self.success = True
+        self.success = True
 

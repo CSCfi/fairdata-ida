@@ -21,9 +21,13 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 
-The scripts in this directory are to be used by service admins to safely remove
-projects from the service. The removal process consists of three steps, which
-aim to minimize the impact by human errors of removing a project by mistake.
+The scripts in this directory are to be used by service admins to perform various
+important operations on projects, such as repair a project which has ended up in an
+unstable state, suspend/unsuspend a project, and safely delete projects and their
+data from the service.
+
+The safe deletion process consists of three steps, which aim to minimize the impact
+by human errors of removing a project by mistake.
 
 
 STEP 1: Suspend the project in the service
@@ -50,9 +54,9 @@ The script "list-suspended-projects" will provide a summary of all projects whic
 are currently suspended, and when they were suspended.
  
 
-STEP 2: Remove the project from the service
+STEP 2: Delete the project from the service
 
-The "remove-suspended-project" script takes a single project identifier argument
+The "delete-project" script takes a single project identifier argument
 and will:
 
 a. Check whether the project exists, is locked, has the special "suspend" action as
@@ -97,9 +101,8 @@ project trash subfolders, in case anything needs to be restored.
 Once this third step is executed for a project, it is gone, gone, gone (except what
 remains on tape in the DMF service).
  
-There exists the stub of a script empty-trash which later may be fully implemented
-if/when we choose to automate this final third step.
  
+---
 
 CONFIGURATION:
 
@@ -122,8 +125,8 @@ STORAGE_OC_DATA_ROOT
 DATA_REPLICATION_ROOT
 OCC
 LOG
-EMAIL_SENDER
-EMAIL_RECIPIENTS
+EMAIL_SENDER             (optional, but used if defined)
+EMAIL_RECIPIENTS         (optional, but used if defined)
 TRASH_DATA_ROOT          (will be created if does not exist)
 QUARANTINE_PERIOD        (defined in seconds, e.g. 30 days = 2592000 seconds)
 

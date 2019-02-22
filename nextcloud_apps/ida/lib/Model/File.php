@@ -91,7 +91,7 @@ class File extends Entity implements JsonSerializable
             $values["removed"] = $this->removed;
         }
         if ($this->cleared != null) {
-            $values["cleared"] = $this->removed;
+            $values["cleared"] = $this->cleared;
         }
         
         return $values;

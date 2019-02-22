@@ -1,0 +1,117 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#
+#--------------------------------------------------------------------------------
+#
+# This script will repair the frozen file details for a project, to reflect the
+# current file storage organization in the project's frozen space, updating both
+# the Nextcloud IDA app database as well as METAX accordingly.
+#
+# This script is only needed in the rare case that the initialization of an
+# action is interrupted while it is registering the action and associated files
+# or while moving the files physically.
+#
+# WARNING! THIS SCRIPT IS A LAST-RESORT OPERATION CAUSING A PROJECT SERVICE BREAK!
+#
+# While the script is running, users will not be able to access any project
+# files, as it unshares the staging and frozen folders to ensure that there is
+# no chance of any user actions further confusing the project state while it is
+# being repaird. For very large projects, executing this script can take days,
+# or when millions of files are concerned, for the largest projects, weeks!
+#
+# DO NOTE EXECUTE THIS SCRIPT WITHOUT FIRST COORDINATING WITH THE IDA PO!!!!
+#
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+echo "Suspending project..."
+
+$ROOT/utils/admin/suspend-project "$PROJECT" 2>$ERR
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to suspend project!"
+fi
+
+#--------------------------------------------------------------------------------
+echo "Rescanning project files in Nextcloud..."
+
+$OCC files:scan "$PROJECT_USER" 2>$ERR
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to rescan project files in Nextcloud!"
+fi
+
+#--------------------------------------------------------------------------------
+echo "Repairing project data in IDA..."
+
+ACTION_PID=`$CURL_POST $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: application/json" "$URL_BASE_IDA/api/repair" 2>$ERR | \
+            grep '"pid":' | sed -e 's/^.*"pid":"//' | sed -e 's/".*$//'`
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to repair project data in IDA!"
+fi
+
+echo "Action PID: ${ACTION_PID}"
+
+# Test: Reinitialize test project. Freeze top level folder. Retrieve file details for freeze action, normalized
+# with "python -m json.tool" and store in /tmp/baseline.json. Extract all "pid" lines to /tmp/baseline.pids.
+# Extract all "pathname" lines to /tmp/baseline.pathnames. Run repair-project on test project. The resultant
+# /tmp/$ACTION_PID.$$.pids and /tmp/$ACTION_PID.$$.pathnames files should be identical to the baseline versions.
+
+if [ "$DEBUG" = "true" ]; then
+    $CURL_GET $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: application/json" "$URL_BASE_IDA/api/files/action/$ACTION_PID" | \
+        python -m json.tool >/tmp/$ACTION_PID.$$.json
+    grep '"pid"' < /tmp/$ACTION_PID.$$.json > /tmp/$ACTION_PID.$$.pids
+    grep '"pathname"' < /tmp/$ACTION_PID.$$.json > /tmp/$ACTION_PID.$$.pathnames
+fi
+
+#--------------------------------------------------------------------------------
+echo "Unsuspending project..."
+
+$ROOT/utils/admin/unsuspend-project "$PROJECT" 2>$ERR
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to unsuspend project!"
+fi
+
+#--------------------------------------------------------------------------------
+
+rm $ERR 2>/dev/null
+
+echoAndLog "Project $PROJECT repair initiated successfully. Postprocessing ongoing..."
+

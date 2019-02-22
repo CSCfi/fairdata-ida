@@ -23,7 +23,7 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -181,6 +181,8 @@ if [ -d "$PROJECT_REPLICATION_ROOT" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+
+rm $ERR 2>/dev/null
 
 sendEmail \
     "Project ${PROJECT} removed." \

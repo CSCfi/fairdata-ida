@@ -26,7 +26,8 @@
 SCRIPT=`basename $0`
 USAGE="Usage: $SCRIPT"
 PROJECT="null"
-INIT_FILE=`dirname $0`/init_script.sh
+
+INIT_FILE=`dirname $0`/lib/init_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -37,16 +38,15 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-errorExit "TBD..."
 
-# Get current time in seconds since epoch.
-# Retrieve list of project subfolders in trash.
-# For each project subfolder
-#    Convert timestamp to seconds since epoch.
-#    Subtract subfolder time from current time.
-#    If difference is greater than quaranteen period
-#        Remove project subfolder
-#        Log removal of project subfolder
+OUT=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2>$ERR | \
+    tr "\n" " " | tr "{" "\n" | grep '"action":"suspend"' | \
+    sed -e 's/^.*"project":"//' | sed -e 's/".*$//' | sort -u`
 
-#--------------------------------------------------------------------------------
-echoAndLog "END Trash emptied."
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to retrieve pending actions for project!"
+fi
+
+echo "$OUT"
+
