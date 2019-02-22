@@ -159,7 +159,7 @@ fi
 
 echo "Deleting project share owner account from Nextcloud..."
 
-$ROOT/admin/ida_user DELETE $PROJECT_USER 2>$ERR >/dev/null
+$OCC user:delete $PROJECT_USER 2>$ERR
 
 if [ -s $ERR ]; then
     cat $ERR | tee -a $LOG
