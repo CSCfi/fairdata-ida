@@ -74,6 +74,10 @@ METAX_API_USER="ida"
 METAX_API_PASS="test-ida"
 METAX_AVAILABLE=1 # If 0, the metadata publication agent will not try to store metadata to METAX
 
+# 2592000 seconds = 30 days
+QUARANTINE_PERIOD="2592000"
+TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
+
 EMAIL_SENDER="root@localhost"
 EMAIL_RECIPIENTS="root@localhost"
 
