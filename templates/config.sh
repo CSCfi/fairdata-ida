@@ -74,6 +74,11 @@ METAX_API_USER="ida"
 METAX_API_PASS="test-ida"
 METAX_AVAILABLE=1 # If 0, the metadata publication agent will not try to store metadata to METAX
 
+LDAP_HOST_URL="ldaps://ldaphost.domain.com"
+LDAP_BIND_USER="uid=username,ou=group,dc=domain,dc=com;"
+LDAP_PASSWORD="password"
+LDAP_SEARCH_BASE="ou=scope,dc=domain,dc=com"
+
 # 2592000 seconds = 30 days
 QUARANTINE_PERIOD="2592000"
 TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"

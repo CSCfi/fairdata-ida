@@ -182,11 +182,11 @@ fi
 
 #--------------------------------------------------------------------------------
 
-rm $ERR 2>/dev/null
-
-sendEmail \
+$ROOT/utils/admin/email-project-users $PROJECT \
     "Project ${PROJECT} removed." \
     "The project ${PROJECT} has been REMOVED from the IDA service and is no longer accessible. ALL PROJECT DATA HAS BEEN DELETED."
+
+rm $ERR 2>/dev/null
 
 echoAndLog "Project ${PROJECT} removed. Project data moved to trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
 

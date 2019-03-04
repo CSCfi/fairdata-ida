@@ -94,11 +94,11 @@ fi
 
 #--------------------------------------------------------------------------------
 
-rm $ERR 2>/dev/null
-
-sendEmail \
+$ROOT/utils/admin/email-project-users $PROJECT \
     "Project ${PROJECT} unsuspended." \
     "The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored."
+
+rm $ERR 2>/dev/null
 
 echoAndLog "Project ${PROJECT} unsuspended."
 

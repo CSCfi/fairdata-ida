@@ -87,11 +87,11 @@ fi
 
 #--------------------------------------------------------------------------------
 
-rm $ERR 2>/dev/null
-
-sendEmail \
+$ROOT/utils/admin/email-project-users $PROJECT \
     "Project ${PROJECT} suspended." \
     "The project ${PROJECT} has been SUSPENDED in the IDA service. Access to project data is now READ-ONLY."
+
+rm $ERR 2>/dev/null
 
 echoAndLog "Project ${PROJECT} suspended."
 

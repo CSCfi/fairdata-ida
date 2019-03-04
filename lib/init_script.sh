@@ -154,16 +154,53 @@ function errorExit {
     exit 1
 }
 
-# TODO Include all project users as recipients
-
 function sendEmail {
+
+    # We report any argument count error here, but do not halt execution, leaving it
+    # up to the calling script to detect the error and deal with it accordingly.
+
+    if [ "$#" -lt 2 ]; then
+        echo "Error: Insufficient number of arguments provided to sendEmail function!" >&2
+        return
+    fi
+
     SUBJECT=`echo "$1" | tr '\n' ' '`
+    SUBJECT="[IDA Service] ${SUBJECT}"
     MESSAGE="$2"
+    RECIPIENTS="$3"
+
+    # If there is no email sender configured in the environment, we do nothing, 
+    # essentially ignoring the function request.
+
     if [ "$EMAIL_SENDER" != "" ]; then
-        if [ "$EMAIL_RECIPIENTS" = "" ]; then
-            EMAIL_RECIPIENTS="$EMAIL_SENDER"
+
+        # If no explicit recipients are specified, then the message will only be sent
+        # to the default recipients. I.e. it is simply an internal admin email; else
+        # the default recipients will be treated as BCC recipients.
+
+        if [ "$RECIPIENTS" = "" ]; then
+
+            # If no default recipients are defined, report an error and do nothing.
+
+            if [ "$EMAIL_RECIPIENTS" = "" ]; then
+                echo "Error: No recipients specified either in function arguments or configuration!" >&2
+                return
+            fi
+
+            RECIPIENTS="$EMAIL_RECIPIENTS"
+
+        else
+
+            # If default recipients defined in configuration and explicit recipients
+            # specified, add default recipients as BCC
+
+            if [ "$EMAIL_RECIPIENTS" != "" ]; then
+                RECIPIENTS="-b $EMAIL_RECIPIENTS $RECIPIENTS"
+            fi
+
         fi
-        mail -s "$SUBJECT" -r $EMAIL_SENDER $EMAIL_RECIPIENTS <<EOF
+
+        mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS <<EOF
 
 $MESSAGE
 
