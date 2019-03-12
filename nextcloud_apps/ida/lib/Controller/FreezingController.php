@@ -324,16 +324,20 @@ class FreezingController extends Controller
     /**
      * Freeze staged files within the scope of a particular node
      *
+     * If the user is the PSO user, and a specified token parameter matches the batch action token
+     * defined in the service configuration, no file limit will be imposed.
+     *
      * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
      * @param string $project         project to which the files belong
      * @param string $pathname        relative pathname of the root node of the scope to be frozen, within the root staging folder
+     * @param string $token           batch action token (optional)
      *
      * @return DataResponse
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function freezeFiles($nextcloudNodeId, $project, $pathname) {
+    public function freezeFiles($nextcloudNodeId, $project, $pathname, $token = null) {
         
         $actionEntity = null;
         
@@ -344,11 +348,14 @@ class FreezingController extends Controller
                 . ' project=' . $project
                 . ' pathname=' . $pathname
                 . ' user=' . $this->userId
+                . ' token=' . $token
                 , \OCP\Util::INFO);
             
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
+                API::validateIntegerParameter('nextcloudNodeId', $nextcloudNodeId);
+                API::validateStringParameter('token', $token);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
@@ -361,6 +368,15 @@ class FreezingController extends Controller
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
+            }
+            
+            // Verify Nextcloud node ID per specified pathname
+            
+            try {
+                $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'freeze', $project, $pathname);
+            }
+            catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
             }
             
             // Lock the project so no other user can initiate an action
@@ -417,7 +433,21 @@ class FreezingController extends Controller
             // Collect all nodes in scope of root action pathname, signalling error if maximum file count is exceeded
             
             try {
-                $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, $pathname);
+                
+                // If PSO user and batch action token valid, impose no file limit, else use default limit
+                
+                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                    ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+                    ($token == $this->config['BATCH_ACTION_TOKEN'])) {
+                    Util::writeLog('ida', 'freezeFiles: Batch Action Execution:'
+                        . ' project=' . $project
+                        . ' pathname=' . $pathname
+                        , \OCP\Util::INFO);
+                    $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, $pathname, 0);
+                }
+                else {
+                    $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, $pathname);
+                }
             }
             catch (Exception $e) {
                 
@@ -497,16 +527,20 @@ class FreezingController extends Controller
     /**
      * Unfreeze frozen files within the scope of a particular node
      *
+     * If the user is the PSO user, and a specified token parameter matches the batch action token
+     * defined in the service configuration, no file limit will be imposed.
+     *
      * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
      * @param string $project         project to which the files belong
      * @param string $pathname        relative pathname of the root node of the scope to be frozen, within the root frozen folder
+     * @param string $token           batch action token (optional)
      *
      * @return DataResponse
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function unfreezeFiles($nextcloudNodeId, $project, $pathname) {
+    public function unfreezeFiles($nextcloudNodeId, $project, $pathname, $token = null) {
         
         $actionEntity = null;
         
@@ -517,11 +551,14 @@ class FreezingController extends Controller
                 . ' project=' . $project
                 . ' pathname=' . $pathname
                 . ' user=' . $this->userId
+                . ' token=' . $token
                 , \OCP\Util::INFO);
             
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
+                API::validateIntegerParameter('nextcloudNodeId', $nextcloudNodeId);
+                API::validateStringParameter('token', $token);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
@@ -535,7 +572,16 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-            
+    
+            // Verify Nextcloud node ID per specified pathname
+    
+            try {
+                $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'unfreeze', $project, $pathname);
+            }
+            catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
+            }
+    
             // Lock the project so no other user can initiate an action
             
             if (!Access::lockProject($project)) {
@@ -589,7 +635,21 @@ class FreezingController extends Controller
             // Collect all nodes in scope of root action pathname, signalling error if maximum file count is exceeded
             
             try {
-                $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $pathname);
+                
+                // If PSO user and batch action token valid, impose no file limit, else use default limit
+                
+                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                    ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+                    ($token == $this->config['BATCH_ACTION_TOKEN'])) {
+                    Util::writeLog('ida', 'unfreezeFiles: Batch Action Execution:'
+                        . ' project=' . $project
+                        . ' pathname=' . $pathname
+                        , \OCP\Util::INFO);
+                    $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $pathname, 0);
+                }
+                else {
+                    $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $pathname);
+                }
             }
             catch (Exception $e) {
                 
@@ -664,16 +724,20 @@ class FreezingController extends Controller
     /**
      * Delete frozen files within the scope of a particular node
      *
+     * If the user is the PSO user, and a specified token parameter matches the batch action token
+     * defined in the service configuration, no file limit will be imposed.
+     *
      * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
      * @param string $project         project to which the files belong
      * @param string $pathname        relative pathname of the root node of the scope to be frozen, within the root frozen folder
+     * @param string $token           batch action token (optional)
      *
      * @return DataResponse
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function deleteFiles($nextcloudNodeId, $project, $pathname) {
+    public function deleteFiles($nextcloudNodeId, $project, $pathname, $token = null) {
         
         $actionEntity = null;
         
@@ -684,11 +748,14 @@ class FreezingController extends Controller
                 . ' project=' . $project
                 . ' pathname=' . $pathname
                 . ' user=' . $this->userId
+                . ' token=' . $token
                 , \OCP\Util::INFO);
             
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
+                API::validateIntegerParameter('nextcloudNodeId', $nextcloudNodeId);
+                API::validateStringParameter('token', $token);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
@@ -702,7 +769,16 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-            
+    
+            // Verify Nextcloud node ID per specified pathname
+    
+            try {
+                $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'delete', $project, $pathname);
+            }
+            catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
+            }
+    
             // Lock the project so no other user can initiate an action
             
             if (!Access::lockProject($project)) {
@@ -746,7 +822,21 @@ class FreezingController extends Controller
             // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
             
             try {
-                $nextcloudNodes = $this->getNextcloudNodes('delete', $project, $pathname);
+                
+                // If PSO user and batch action token valid, impose no file limit, else use default limit
+                
+                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                    ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+                    ($token == $this->config['BATCH_ACTION_TOKEN'])) {
+                    Util::writeLog('ida', 'deleteFiles: Batch Action Execution:'
+                        . ' project=' . $project
+                        . ' pathname=' . $pathname
+                        , \OCP\Util::INFO);
+                    $nextcloudNodes = $this->getNextcloudNodes('delete', $project, $pathname, 0);
+                }
+                else {
+                    $nextcloudNodes = $this->getNextcloudNodes('delete', $project, $pathname);
+                }
             }
             catch (Exception $e) {
                 
@@ -1129,27 +1219,28 @@ class FreezingController extends Controller
     protected function registerAction($nextcloudNodeId, $action, $project, $user, $pathname) {
         
         Util::writeLog('ida', 'registerAction:'
+            . ' nextcloudNodeId=' . $nextcloudNodeId
             . ' action=' . $action
             . ' project=' . $project
             . ' user=' . $user
-            . ' nextcloudNodeId=' . $nextcloudNodeId
             . ' pathname=' . $pathname
             , \OCP\Util::DEBUG);
-        
-        // If Nextcloud node id of action scope is null or zero, retrieve it based on the pathname
-        
+    
+        // Verify Nextcloud node ID per specified pathname
+    
         try {
-            if ($nextcloudNodeId == null || $nextcloudNodeId == 0 || $nextcloudNodeId == '' || $nextcloudNodeId == '0') {
-                $fullPathname = $this->buildFullPathname($action, $project, $pathname);
-                Util::writeLog('ida', 'registerAction: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
-                $fileInfo = $this->fsView->getFileInfo($fullPathname);
-                $nextcloudNodeId = $fileInfo->getId();
-            }
+            $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, $action, $project, $pathname);
         }
         catch (Exception $e) {
-            $nextcloudNodeId = '';
+            return API::badRequestErrorResponse($e->getMessage());
         }
-        
+    
+        // If the user is the PSO user, record the user as 'service'
+    
+        if ($user == Constants::PROJECT_USER_PREFIX . $project) {
+            $user = 'service';
+        }
+
         $actionEntity = new Action();
         $actionEntity->setPid(Generate::newPid('a' . $nextcloudNodeId));
         $actionEntity->setAction($action);
@@ -1303,6 +1394,50 @@ class FreezingController extends Controller
     }
     
     /**
+     * Return a valid Nextcloud node ID (defaulting to zero) according to the specified pathname.
+     *
+     * If the specified node ID is null or zero, attempt to retrieve the node ID based on the action,
+     * project, and pathname.
+     *
+     * @param int    $nextcloudNodeId the Nextcloud node ID
+     * @param string $action          the action being performed, one of 'freeze', 'unfreeze', or 'delete'
+     * @param string $project         the project to which the node belongs
+     * @param string $pathname        the relative pathname of the node within the shared project staging or frozen folder
+     *
+     * @return int
+     */
+    protected function resolveNextcloudNodeId($nextcloudNodeId, $action, $project, $pathname) {
+        
+        Util::writeLog('ida', 'resolveNextcloudNodeId:'
+            . ' nextcloudNodeId=' . $nextcloudNodeId
+            . ' action=' . $action
+            . ' project=' . $project
+            . ' pathname=' . $pathname
+            , \OCP\Util::DEBUG);
+        
+        try {
+            
+            if ($nextcloudNodeId == null || $nextcloudNodeId == 0 || $nextcloudNodeId == '' || $nextcloudNodeId == '0') {
+    
+                $nextcloudNodeId = 0;
+                
+                $fullPathname = $this->buildFullPathname($action, $project, $pathname);
+                $fileInfo = $this->fsView->getFileInfo($fullPathname);
+                
+                if ($fileInfo) {
+                    $nextcloudNodeId = $fileInfo->getId();
+                    Util::writeLog('ida', 'resolveNextcloudNodeId: nextcloudNodeId=' . $nextcloudNodeId, \OCP\Util::INFO);
+                }
+            }
+        }
+        catch (Exception $e) {;
+            return 0;
+        }
+        
+        return $nextcloudNodeId;
+    }
+    
+    /**
      * Register one or more frozen files, within the scope of a specified node, associating them with the specified repair action PID.
      *
      * The most recently modified file record, if it exists, will be reinstated, else an entirely new file record will be created.
@@ -1334,16 +1469,16 @@ class FreezingController extends Controller
                 // If record exists, clone it
                 
                 if ($fileEntity != null) {
-    
+                    
                     // Clone existing file record
-    
+                    
                     $newFileEntity = $this->cloneFile($fileEntity, $pid);
-    
+                    
                     // Ensure existing file record marked as cleared (even though it ought to already be)
-    
+                    
                     $fileEntity->setCleared($timestamp);
                     $this->fileMapper->update($fileEntity);
-    
+                    
                     // Ensure cloned file record is treated as actively frozen
                     
                     $newFileEntity->setRemoved(null);
@@ -1357,7 +1492,7 @@ class FreezingController extends Controller
                     
                     $this->fileMapper->update($newFileEntity);
                 }
-
+                
                 // Else, create new record
                 
                 else {
@@ -2445,7 +2580,7 @@ class FreezingController extends Controller
             
             $fileEntities = [];
             
-            $actionEntity = $this->registerAction(0, $action, $project, 'system', '/');
+            $actionEntity = $this->registerAction(0, $action, $project, 'service', '/');
             $timestamp = Generate::newTimestamp();
             $actionEntity->setStorage($timestamp);
             if ($action === 'migrate-f') {
@@ -2539,21 +2674,22 @@ class FreezingController extends Controller
             // Extract project name from PSO user name...
             
             $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
-    
+            
             // Open a connection to RabbitMQ
-    
+            
             try {
                 $rabbitMQconnection = $this->openRabbitMQConnection();
             }
             catch (Exception $e) {
                 Util::writeLog('ida', 'repairProject: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
+                
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-    
+            
             // Ensure project is locked
             
             Access::lockProject($project);
-    
+            
             // Get current time
             
             $timestamp = Generate::newTimestamp();
@@ -2561,7 +2697,7 @@ class FreezingController extends Controller
             // Clear any incomplete actions (except 'suspend' action)
             
             $incompleteActions = $this->actionMapper->findActions('incomplete', $project);
-    
+            
             if (count($incompleteActions) > 0) {
                 foreach ($incompleteActions as $actionEntity) {
                     if ($actionEntity->getAction() != 'suspend') {
@@ -2570,26 +2706,26 @@ class FreezingController extends Controller
                     }
                 }
             }
-    
+            
             // Create repair action, which will suspend project and keep project into read-only mode until the action
             // is recorded as completed, due to the root scope.
-    
-            $repairActionEntity = $this->registerAction(0, 'repair', $project, 'system', '/');
-    
+            
+            $repairActionEntity = $this->registerAction(0, 'repair', $project, 'service', '/');
+            
             // Retrieve all active frozen file records
             
             $frozenFileEntities = $this->fileMapper->findFrozenFiles($project);
             
             // Mark any existing frozen files as cleared. Files which are physically present in the frozen area will
             // have those same records cloned below.
-    
+            
             if (count($frozenFileEntities) > 0) {
                 foreach ($frozenFileEntities as $fileEntity) {
                     $fileEntity->setCleared($timestamp);
                     $this->fileMapper->update($fileEntity);
                 }
             }
-    
+            
             // Retrieve and reinstate all files in the frozen area.
             // Disable file count limit by specifying limit as zero.
             
@@ -2597,25 +2733,25 @@ class FreezingController extends Controller
             
             // Register all files in frozen area, associating them with the new 'repair' action...
             // (this is the only time the special action 'repair' is used)
-    
+            
             if (count($nextcloudNodes) > 0) {
                 $this->repairFrozenFiles($project, $nextcloudNodes, $repairActionEntity->getPid(), $repairActionEntity->getInitiated());
             }
-    
+            
             $timestamp = Generate::newTimestamp();
             $repairActionEntity->setPids($timestamp);
             $repairActionEntity->setStorage($timestamp);
             $this->actionMapper->update($repairActionEntity);
-    
+            
             // Publish new action message to RabbitMQ
-    
+            
             $this->publishActionMessage($rabbitMQconnection, $repairActionEntity);
             $rabbitMQconnection->close();
-    
+            
             // Unlock project
             
             Access::unlockProject($project);
-    
+            
             // Return new repair action details
             
             return new DataResponse($repairActionEntity);
@@ -2623,11 +2759,11 @@ class FreezingController extends Controller
         catch (Exception $e) {
             
             // Cleanup and report error
-    
+            
             if ($repairActionEntity != null) {
                 $this->actionMapper->deleteAction($repairActionEntity->getPid());
             }
-    
+            
             $rabbitMQconnection->close();
             Access::unlockProject($project);
             

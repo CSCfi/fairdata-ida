@@ -1,0 +1,115 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license GNU Affero General Public License, version 3
+# @link https://research.csc.fi/
+#--------------------------------------------------------------------------------
+
+SCRIPT=`basename $0`
+
+USAGE="
+Usage: $SCRIPT project action pathname
+       $SCRIPT -h
+
+       project  = the project name
+       action   = one of 'freeze', 'unfreeze', or 'delete'
+       pathname = a relative pathmame within the staging or frozen area
+
+       Pathnames may correspond to either files or folders. If a folder is specified, then the action is
+       performed for all files within that folder and all subfolders. Actions can be performed on only one
+       file or folder at a time.
+"
+
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Output script usage if requested
+
+if [ "$1" = "" -o "$1" = "-h" ]; then
+    echo "$USAGE"
+    exit 0
+fi
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$#" -ne 3 ]; then
+    echo "Error: Invalid number of arguments." >&2
+    echo "$USAGE"
+    exit 1;
+fi
+
+ACTION="$2"
+PATHNAME="$3"
+
+case $ACTION in
+    "freeze")
+        ;;
+    "unfreeze")
+        ;;
+    "delete")
+        ;;
+    *)
+        echo "Error: Invalid action: ${ACTION}" >&2
+        exit 1;
+        ;;
+esac
+
+#--------------------------------------------------------------------------------
+
+ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
+
+REQUEST_URL="${IDA_API_ROOT_URL}/${ACTION}?project=${PROJECT}&pathname=${ENCODED_PATHNAME}&token=${BATCH_ACTION_TOKEN}"
+
+echo "Executing ${ACTION} action for pathname ${PATHNAME} in project ${PROJECT}..."
+
+if [ "$DEBUG" = "true" ]; then
+    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\""
+fi
+
+OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Action $ACTION failed for pathname $PATHNAME in project $PROJECT"
+fi
+
+PID=`echo $OUT | grep '"pid":'`
+
+if [ "$PID" = "" ]; then
+    echoAndLog "$OUT"
+    errorExit "Error: $ACTION action failed for pathname $PATHNAME in project $PROJECT"
+fi
+
+rm $ERR 2>/dev/null
+
+echoAndLog "Executed $ACTION action successfully for pathname $PATHNAME in project $PROJECT"
+

@@ -32,8 +32,6 @@ else
     exit 1
 fi
 
-DEBUG="false"
-
 #--------------------------------------------------------------------------------
 # Process input and get project name, per default script behavior
 
@@ -163,6 +161,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "HTTPD_USER                   $HTTPD_USER"
     echo "PROJECT_USER_PASS            $PROJECT_USER_PASS"
     echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX"
+    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
     echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
     echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
     echo "ROOT                         $ROOT"

@@ -111,9 +111,11 @@ return [
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
-            //     node = the Nextcloud node ID for the root node of the scope to be frozen
             //     project = the name of the project to which the files belongs
             //     pathname = pathname of the root node of the scope, within the staging
+            // Optional parameters:
+            //     node = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
+            //     token = batch action token (only relevant if PSO user)
         ],
         [
             // Unfreeze all frozen files within a specific scope
@@ -122,9 +124,11 @@ return [
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
-            //     node = the Nextcloud node ID for the root node of the scope to be frozen
             //     project = the name of the project to which the files belongs
             //     pathname = pathname of the root node of the scope, within frozen shared project folder
+            // Optional parameters:
+            //     node = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
+            //     token = batch action token (only relevant if PSO user)
         ],
         [
             // Delete all frozen files within a specific scope
@@ -133,9 +137,11 @@ return [
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
-            //     node = the Nextcloud node ID for the root node of the scope to be frozen
             //     project = the name of the project to which the files belongs
             //     pathname = pathname of the root node of the scope, within frozen shared project folder
+            // Optional parameters:
+            //     node = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
+            //     token = batch action token (only relevant if PSO user)
         ],
         
         // Retry Operations

@@ -21,7 +21,19 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
-# load service constants and configuration settings
+# Verify needed utilities are available
+
+for NEEDS_PROG in curl php python realpath ascii2uni
+do
+    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
+    if [ ! -e "$PROG_LOCATION" ]; then
+        echo "Can't find $NEEDS_PROG in your \$PATH"
+        exit 1
+    fi
+done
+
+#--------------------------------------------------------------------------------
+# Load service constants and configuration settings
 
 PARENT_FOLDER=`dirname "$(realpath $0)"`
 PARENT_BASENAME=`basename "$PARENT_FOLDER"`
@@ -77,18 +89,6 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-# Verify needed utilities are available
-
-for NEEDS_PROG in curl php python ascii2uni
-do
-    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
-    if [ ! -e "$PROG_LOCATION" ]; then
-        echo "Can't find $NEEDS_PROG in your \$PATH"
-        exit 1
-    fi
-done
-
-#--------------------------------------------------------------------------------
 # Initialize log and tmp folders, if necessary...
 
 LOGS=`dirname "$LOG"`
@@ -135,6 +135,38 @@ fi
 
 #--------------------------------------------------------------------------------
 # Common functions for all scripts
+
+function urlEncode () {
+    # Escape all special characters, for use in curl URLs
+    local RESULT=`echo "${1}" | \
+                      sed -e  's:\%:%25:g' \
+                          -e  's: :%20:g' \
+                          -e  's:\\+:%2b:g' \
+                          -e  's:<:%3c:g' \
+                          -e  's:>:%3e:g' \
+                          -e  's:\#:%23:g' \
+                          -e  's:{:%7b:g' \
+                          -e  's:}:%7d:g' \
+                          -e  's:|:%7c:g' \
+                          -e  's:\\\\:%5c:g' \
+                          -e  's:\\^:%5e:g' \
+                          -e  's:~:%7e:g' \
+                          -e  's:\\[:%5b:g' \
+                          -e  's:\\]:%5d:g' \
+                          -e $'s:\':%27:g' \
+                          -e  's:\`:%60:g' \
+                          -e  's:;:%3b:g' \
+                          -e  's:\\?:%3f:g' \
+                          -e  's/:/%3a/g' \
+                          -e  's:@:%40:g' \
+                          -e  's:=:%3d:g' \
+                          -e  's:\\&:%26:g' \
+                          -e  's:\\$:%24:g' \
+                          -e  's:\\!:%21:g' \
+                          -e  's:\\*:%2a:g'`
+
+    echo "${RESULT}"
+}
 
 function addToLog {
     MSG=`echo "$@" | tr '\n' ' '`

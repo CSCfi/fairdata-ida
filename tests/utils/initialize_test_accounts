@@ -30,11 +30,12 @@
 #
 # The following project and user configuration will be created:
 #
-#               test_project_a   test_project_b   test_project_c
+#               test_project_a  test_project_b  test_project_c  test_project_d
 # test_user_a         X
-# test_user_ab        X                X
-# test_user_b                          X
-# test_user_c                                           X
+# test_user_b                         X
+# test_user_c                                         X
+# test_user_d                                                         X
+# test_user_x         X               X               X               X
 #
 # All projects will be initialized with the same data in their staging area,
 # as defined in /ida/tests/testdata
@@ -63,10 +64,10 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PROJECTS="test_project_a test_project_b test_project_c"
-USERS="test_user_a test_user_ab test_user_b test_user_c"
-BASIC_RELATIONS="test_user_a:test_project_a test_user_ab:test_project_a test_user_b:test_project_b test_user_c:test_project_c"
-EXTRA_RELATIONS="test_user_ab:test_project_b"
+PROJECTS="test_project_a test_project_b test_project_c test_project_d"
+USERS="test_user_a test_user_b test_user_c test_user_d test_user_x"
+BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_x:test_project_a"
+EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d"
 
 #--------------------------------------------------------------------------------
 

@@ -87,8 +87,10 @@ def load_configuration():
         'RABBIT_WORKER_PASS':     server_configuration.RABBIT_WORKER_PASS,
         'RABBIT_WORKER_LOG_FILE': server_configuration.RABBIT_WORKER_LOG_FILE,
         'OC_PASS':                server_configuration.OC_PASS,
+        'BATCH_ACTION_TOKEN':     server_configuration.BATCH_ACTION_TOKEN,
         'PROJECT_USER_PASS':      server_configuration.PROJECT_USER_PASS,
-        'PROJECT_USER_PREFIX':    service_constants.PROJECT_USER_PREFIX
+        'PROJECT_USER_PREFIX':    service_constants.PROJECT_USER_PREFIX,
+        'STAGING_FOLDER_SUFFIX':  service_constants.STAGING_FOLDER_SUFFIX
     }
     return config
 
