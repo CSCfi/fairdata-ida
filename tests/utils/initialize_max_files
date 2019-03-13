@@ -23,7 +23,8 @@
 #--------------------------------------------------------------------------------
 #
 # This script initializes a folder named "MaxFiles" in the root folder of the
-# staging area of the project specified as the first argument to the script.
+# staging area of the project specified as the first argument to the script,
+# containing empty files.
 #
 # This script is safe to execute in any environment, including production.
 
@@ -34,7 +35,17 @@
 # The test data is organized so that the IDA freeze/unfreeze/delete operations
 # can be tested on scopes with varying large numbers of files.
 #
-# The generated hierarchy is as follows:
+# The script uses the defined MAX_FILE_COUNT limit defined for the service,
+# but optionally will take a second argument for another limit, which should
+# be a multiple of 500 (e.g. 500, 1000, 1500, 2000, etc.)
+#
+# The total number of files in the scope of the "MaxFiles" folder will be
+# one file more than the maximum allowed number of files, and therefore should
+# be rejected if an attempt is made to freeze the entire root folder. The total
+# number of files in the scope of each subfolder below the "MaxFiles" folder
+# reflects the total number of files in that folder.
+#
+# E.g. if the limit is 500 files, then the generated hierarchy is as follows:
 #
 # /MaxFiles/test_file.dat
 # /MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat
@@ -47,13 +58,6 @@
 # /MaxFiles/500_files/100_files_02/10_files_01/test_file_01.dat
 # /MaxFiles/500_files/...
 # /MaxFiles/500_files/100_files_05/10_files_10/test_file_10.dat
-#
-# The contents of each test file will correspond to its own filename.
-#
-# The total number of files in the scope of the "MaxFiles" folder is actually
-# one file more than the maximum allowed number of files, and therefore should
-# be rejected. The total number of files in the scope of each subfolder below
-# the "MaxFiles" folder reflects the total number of files in that folder.
 #
 #--------------------------------------------------------------------------------
 . `dirname $0`/../../lib/init_script.sh
@@ -96,11 +100,11 @@ PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PSO_USER}/files/${PROJECT}${ST
 MAX_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/MaxFiles"
 
 echo "Generating MaxFiles test data for project ${PROJECT}..."
-echo "   Target folder: $MAX_FILES_FOLDER"
+echo "Target folder: $MAX_FILES_FOLDER"
 
 #--------------------------------------------------------------------------------
 
-echo "   Ensuring project exists and MaxFiles folder does not exist..."
+echo "Ensuring project exists and MaxFiles folder does not exist..."
 
 if [ ! -d "$PROJECT_STAGING_FOLDER" ]; then
     errorExit "Error: The project ${PROJECT} does not exist"
@@ -112,24 +116,50 @@ fi
 
 #--------------------------------------------------------------------------------
 
-echo "   Generating test data..."
+MAX_SET_COUNT=`echo "$MAX_FILE_COUNT / 500" | bc`
 
-mkdir -p "${MAX_FILES_FOLDER}"
-echo "test_file.dat" > "${MAX_FILES_FOLDER}/test_file.dat"
+if [ "$2" != "" ]; then
+    MAX_FILE_COUNT="$2"
+    MAX_SET_COUNT=`echo "$MAX_FILE_COUNT / 500" | bc`
+    if [ "$MAX_SET_COUNT" = 0 ]; then
+        errorExit "Error: Invalid max file count specified: $2"
+    fi
+fi
 
-for i in "01" "02" "03" "04" "05"; do
-    mkdir -p "${MAX_FILES_FOLDER}/500_files/100_files_${i}"
-    for j in "01" "02" "03" "04" "05" "06" "07" "08" "09" "10"; do
-        mkdir -p "${MAX_FILES_FOLDER}/500_files/100_files_${i}/10_files_${j}"
-        for k in "01" "02" "03" "04" "05" "06" "07" "08" "09" "10"; do
-            echo "test_file_${k}.dat" > "${MAX_FILES_FOLDER}/500_files/100_files_${i}/10_files_${j}/test_file_${k}.dat"
-        done
-    done
-done
+if [ "$MAX_SET_COUNT" = 1 ]; then
+    echo "Generating single multiple of 500 files"
+else
+    echo "Generating $MAX_SET_COUNT multiples of 500 files"
+fi
 
 #--------------------------------------------------------------------------------
 
-echo "   Updating Nextcloud file cache..."
+mkdir -p "${MAX_FILES_FOLDER}"
+touch "${MAX_FILES_FOLDER}/test_file.dat"
+
+mkdir -p "${MAX_FILES_FOLDER}/${MAX_FILE_COUNT}_files"
+
+while [ $MAX_SET_COUNT -gt 0 ]; do
+    echo -n "."
+    SET_DIR="${MAX_FILES_FOLDER}/${MAX_FILE_COUNT}_files/500_files_${MAX_SET_COUNT}"
+    mkdir -p "${SET_DIR}"
+    for i in "1" "2" "3" "4" "5"; do
+        mkdir -p "${SET_DIR}/100_files_${i}"
+        for j in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
+            mkdir -p "${SET_DIR}/100_files_${i}/10_files_${j}"
+            for k in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
+                touch "${SET_DIR}/100_files_${i}/10_files_${j}/test_file_${k}.dat"
+            done
+        done
+    done
+    MAX_SET_COUNT=`echo "$MAX_SET_COUNT - 1" | bc`
+done
+
+echo ""
+
+#--------------------------------------------------------------------------------
+
+echo "Updating Nextcloud file cache..."
 
 $OCC files:scan -q $PSO_USER
 
