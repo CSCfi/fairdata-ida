@@ -52,13 +52,15 @@ fi
 
 #--------------------------------------------------------------------------------
 
-RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT`
+if [ "$EMAIL_SENDER" != "" ]; then
 
-if [ "$RECIPIENTS" = "" ]; then
-    errorExit "The project ${PROJECT} has no users!"
-fi
+    RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT`
 
-MESSAGE="${MESSAGE}
+    if [ "$RECIPIENTS" = "" ]; then
+        errorExit "The project ${PROJECT} has no users!"
+    fi
+
+    MESSAGE="${MESSAGE}
 
 
 
@@ -72,12 +74,13 @@ echo "Project: ${PROJECT}"
 echo "Subject: ${SUBJECT}"
 echo "Message: ${MESSAGE}"
 
-sendEmail "${SUBJECT}" "${MESSAGE}" "${RECIPIENTS}" 2>$ERR
+    sendEmail "${SUBJECT}" "${MESSAGE}" "${RECIPIENTS}" 2>$ERR
 
-if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to send email to project users!"
+    if [ -s $ERR ]; then
+        cat $ERR | tee -a $LOG
+        errorExit "Error: Failed to send email to project users!"
+    fi
+
+    echo "Email sent to all project ${PROJECT} users."
+
 fi
-
-echo "Email sent to all project ${PROJECT} users."
-
