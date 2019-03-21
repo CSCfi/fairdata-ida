@@ -80,7 +80,8 @@ fi
 # Verify that we are in a test environment
 
 if [ "$IDA_ENVIRONMENT" != "TEST" ]; then
-    errorExit "This script can only be run in a test environment. Aborting."
+    echo "This script can only be run in a test environment. Aborting." >&2
+    exit 1
 fi
 
 #--------------------------------------------------------------------------------
@@ -97,16 +98,43 @@ pip -q install -r common/requirements.txt
 cd $ROOT
 
 if [ $# -ge 1 ]; then
-    echo "Arguments: $*" >> $LOG
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q $*
+
 else
-    # TODO: exit if any particular call to unittest below exits with failure, do not proceed
+
     echo "UNIT TESTS:"
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q agents
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     echo "BEHAVIORAL TESTS:"
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.admin
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.agents
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.cli
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 fi
 
