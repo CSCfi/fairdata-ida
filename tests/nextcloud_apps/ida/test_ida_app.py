@@ -1264,9 +1264,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_data), 0)
 
         print("Verify data was physically moved from staging to frozen area")
-        self.assertFalse(os.path.exists("%s/MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat" % (staging_area_root)))
+        self.assertFalse(os.path.exists("%s/MaxFiles/500_files/500_files_1/100_files_1/10_files_1/test_file_1.dat" % (staging_area_root)))
         self.assertFalse(os.path.exists("%s/MaxFiles" % (staging_area_root)))
-        self.assertTrue(os.path.exists("%s/MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/MaxFiles/500_files/500_files_1/100_files_1/10_files_1/test_file_1.dat" % (frozen_area_root)))
 
         print("Batch unfreeze a folder with more than max allowed files")
         cmd = "%s test_project_b unfreeze /MaxFiles >/dev/null" % (cmd_base)
@@ -1289,9 +1289,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_data), 0)
 
         print("Verify data was physically moved from frozen to staging area")
-        self.assertFalse(os.path.exists("%s/MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat" % (frozen_area_root)))
+        self.assertFalse(os.path.exists("%s/MaxFiles/500_files/500_files_1/100_files_1/10_files_1/test_file_1.dat" % (frozen_area_root)))
         self.assertFalse(os.path.exists("%s/MaxFiles" % (frozen_area_root)))
-        self.assertTrue(os.path.exists("%s/MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat" % (staging_area_root)))
+        self.assertTrue(os.path.exists("%s/MaxFiles/500_files/500_files_1/100_files_1/10_files_1/test_file_1.dat" % (staging_area_root)))
 
         print("Batch freeze a folder with more than max allowed files")
         cmd = "%s test_project_b freeze /MaxFiles >/dev/null" % (cmd_base)
