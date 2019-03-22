@@ -57,7 +57,7 @@ if [ "$EMAIL_SENDER" != "" ]; then
     RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT`
 
     if [ "$RECIPIENTS" = "" ]; then
-        errorExit "The project ${PROJECT} has no users!"
+        echo "Warning: The project ${PROJECT} has no users!"
     fi
 
     MESSAGE="${MESSAGE}
@@ -81,6 +81,6 @@ echo "Message: ${MESSAGE}"
         errorExit "Error: Failed to send email to project users!"
     fi
 
-    echo "Email sent to all project ${PROJECT} users."
+    echo "Email sent to all project ${PROJECT} users and default internal recipients."
 
 fi
