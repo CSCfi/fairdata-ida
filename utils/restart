@@ -20,4 +20,9 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
-systemctl stop httpd; systemctl start httpd;
+if [ -d /etc/apache2 ]; then
+    systemctl stop apache2; systemctl start apache2;
+else
+    systemctl stop httpd; systemctl start httpd;
+fi
+
