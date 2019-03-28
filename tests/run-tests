@@ -90,7 +90,7 @@ fi
 cd $ROOT/tests
 
 source /srv/venv-agents/bin/activate
-pip -q install -r common/requirements.txt
+pip -q install -r $ROOT/agents/requirements.txt
 
 #--------------------------------------------------------------------------------
 # Execute tests per the provided command line arguments
