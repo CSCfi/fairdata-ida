@@ -21,18 +21,15 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-MIGRATION_ACTIVE="false"
-
-SHARE_PROJECT_AFTER_TS=1529322748
-
 IDA_ENVIRONMENT="TEST"
 
 HTTPD_USER="apache"
 
 NC_ADMIN_USER="admin"
 NC_ADMIN_PASS="test"
-
 PROJECT_USER_PASS="test"
+TEST_USER_PASS="test"
+BATCH_ACTION_TOKEN="test"
 
 ROOT="/var/ida"
 OCC="$ROOT/nextcloud/occ"
@@ -40,7 +37,7 @@ OCC="$ROOT/nextcloud/occ"
 STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
 STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida")
 
-DATA_REPLICATION_ROOT="/var/ida-data-replication"
+DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
 
 URL_BASE_SHARE="http://localhost/ocs/v1.php/apps/files_sharing/api/v1/shares"
 URL_BASE_FILE="http://localhost/remote.php/webdav"
@@ -65,14 +62,12 @@ RABBIT_MONITOR_PASS="test"
 RABBIT_HEARTBEAT=0 # seconds. 0 == disabled
 RABBIT_MONITORING_DIR="/mnt/rabbitmq_monitoring"
 
-METAX_API_ROOT_URL="https://metax.csc.fi/rest/v1"
-METAX_AVAILABLE=1
-METAX_FILE_STORAGE_ID=1
-
-METAX_API_ROOT_URL="https://metax.csc.local/rest/v1"
-METAX_API_USER="ida"
-METAX_API_PASS="test-ida"
 METAX_AVAILABLE=1 # If 0, the metadata publication agent will not try to store metadata to METAX
+METAX_FILE_STORAGE_ID="urn:nbn:fi:att:file-storage-ida"
+METAX_API_ROOT_URL="https://localhost/rest"
+METAX_API_RPC_URL="https://localhost/rpc"
+METAX_API_USER="ida"
+METAX_API_PASS="test"
 
 LDAP_HOST_URL="ldaps://ldaphost.domain.com"
 LDAP_BIND_USER="uid=username,ou=group,dc=domain,dc=com;"
@@ -85,4 +80,3 @@ TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
 
 EMAIL_SENDER="root@localhost"
 EMAIL_RECIPIENTS="root@localhost"
-

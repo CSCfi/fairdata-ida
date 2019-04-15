@@ -27,14 +27,14 @@ USAGE="Usage: $SCRIPT [ ADD user_name proj_name | REMOVE user_name proj_name | J
 
 # checks
 
-if [ "$1" == "ADD" -o "$1" == "REMOVE" -o "$1" == "JOIN" ]; then
+if [ "$1" = "ADD" -o "$1" = "REMOVE" -o "$1" = "JOIN" ]; then
     if [ $# -ne 3 ]; then
         errorExit "$USAGE"
     fi
     if [ -z "$2" -o -z "$3" ]; then
         errorExit "$USAGE"
     fi
-elif [ "$1" == "DELETE" -o "$1" == "DISABLE" -o "$1" == "ENABLE" ]; then
+elif [ "$1" = "DELETE" -o "$1" = "DISABLE" -o "$1" = "ENABLE" ]; then
     if [ $# -ne 2 ]; then
         errorExit "$USAGE"
     fi
@@ -48,16 +48,24 @@ fi
 PROJECT_GROUP="$3"
 USER="$2"
 
-# if not otherwise already defined in the environment, a new user account gets a random password
-if [ "$OC_PASS" == "" ]; then
-    export OC_PASS=`tr -cd '[:alnum:]' < /dev/urandom | head -c16`
+# if not otherwise already defined in the environment, a new user account gets the static
+# password "test" if in the test environment, else gets a random password
+if [ "$OC_PASS" = "" ]; then
+    if [ "$IDA_ENVIRONMENT" = "TEST" ]; then
+        export OC_PASS="$TEST_USER_PASS"
+    else
+        export OC_PASS=`tr -cd '[:alnum:]' < /dev/urandom | head -c16`
+    fi
+    if [ "$OC_PASS" = "" ]; then
+        errorExit "Failed to initialize OC_PASS variable"
+    fi
 else
     export OC_PASS="$OC_PASS"
 fi
 
 # execute
 
-if [ "$1" == "ADD" ]; then
+if [ "$1" = "ADD" ]; then
     # create non existing user
     if [ `php "$OCC" user:info "$USER" | wc -l` -lt "2" ]; then
         OUT=`php "$OCC" user:add "$USER" -g "$PROJECT_GROUP" --password-from-env 2>&1`
@@ -82,21 +90,21 @@ if [ "$1" == "ADD" ]; then
 
 fi
 
-if [ "$1" == "REMOVE" ]; then
+if [ "$1" = "REMOVE" ]; then
     OUT=`php "$OCC" group:removeuser "$PROJECT_GROUP" "$USER" 2>&1`
     if [ -n "$OUT" ]; then
         errorExit "$OUT"
     fi
 fi
 
-if [ "$1" == "JOIN" ]; then
+if [ "$1" = "JOIN" ]; then
     OUT=`php "$OCC" group:adduser "$PROJECT_GROUP" "$USER" 2>&1`
     if [ -n "$OUT" ]; then
         errorExit "$OUT"
     fi
 fi
 
-if [ "$1" == "DELETE" ]; then
+if [ "$1" = "DELETE" ]; then
     PROJECT_USER=`echo $USER | egrep -e "^$PROJECT_USER_PREFIX"`
     if [ "$IDA_ENVIRONMENT" != "TEST" -a "$PROJECT_USER" != "" ]; then
         errorExit "Project share owner users can only be deleted in a test environment."
@@ -106,12 +114,12 @@ if [ "$1" == "DELETE" ]; then
     if [ "$HITS" -ne 1 ]; then
         errorExit "$OUT"
     fi
-    #if [ "$IDA_ENVIRONMENT" == "TEST" -a "$PROJECT_USER" != "" ]; then
+    #if [ "$IDA_ENVIRONMENT" = "TEST" -a "$PROJECT_USER" != "" ]; then
         # TODO?: delete actual PSO user folder and symbolic link from filesystem
     #fi
 fi
 
-if [ "$1" == "DISABLE" ]; then
+if [ "$1" = "DISABLE" ]; then
     OUT=`php "$OCC" user:disable "$USER" 2>&1`
     HITS=`echo $OUT | grep 'The specified user is disabled' | wc -l`
     if [ "$HITS" -ne 1 ]; then
@@ -119,12 +127,10 @@ if [ "$1" == "DISABLE" ]; then
     fi
 fi
 
-if [ "$1" == "ENABLE" ]; then
+if [ "$1" = "ENABLE" ]; then
     OUT=`php "$OCC" user:enable "$USER" 2>&1`
     HITS=`echo $OUT | grep 'The specified user is enabled' | wc -l`
     if [ "$HITS" -ne 1 ]; then
         errorExit "$OUT"
     fi
 fi
-
-

@@ -20,9 +20,13 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
+#
 
-DIR=`dirname $0`
+systemctl stop rabbitmq-replication-agent
+systemctl stop rabbitmq-metadata-agent
+systemctl stop rabbitmq-server
 
-$DIR/restart-www
-$DIR/restart-agents
+systemctl start rabbitmq-server
+systemctl start rabbitmq-metadata-agent
+systemctl start rabbitmq-replication-agent
 

@@ -51,7 +51,7 @@ class File extends Entity implements JsonSerializable
     protected $replicated;
     protected $removed;
     protected $cleared;
-    
+
     /**
      * Get JSON representation
      *
@@ -59,42 +59,42 @@ class File extends Entity implements JsonSerializable
      */
     public function jsonSerialize() {
         $values = array();
-    
+
         $values["id"] = $this->id;
         $values["pid"] = $this->pid;
         $values["node"] = (int)$this->node;
         $values["action"] = $this->action;
         $values["project"] = $this->project;
         $values["pathname"] = $this->pathname;
-        if ($this->size != null) {
+        // It is possible, albeit rare, that some legacy records have no size recorded if/when the file size was zero.
+        // So handle such rare cases here by defaulting to a file size of zero...
+        $values["size"] = 0;
+        if ($this->size !== null) {
             $values["size"] = (int)$this->size;
         }
-        else {
-            $values["size"] = (int)0;
-        }
-        if ($this->checksum != null) {
+        if ($this->checksum !== null) {
             $values["checksum"] = $this->checksum;
         }
-        if ($this->modified != null) {
+        if ($this->modified !== null) {
             $values["modified"] = $this->modified;
         }
-        if ($this->frozen != null) {
+        if ($this->frozen !== null) {
             $values["frozen"] = $this->frozen;
         }
-        if ($this->metadata != null) {
+        if ($this->metadata !== null) {
             $values["metadata"] = $this->metadata;
         }
-        if ($this->replicated != null) {
+        if ($this->replicated !== null) {
             $values["replicated"] = $this->replicated;
         }
-        if ($this->removed != null) {
+        if ($this->removed !== null) {
             $values["removed"] = $this->removed;
         }
-        if ($this->cleared != null) {
+        if ($this->cleared !== null) {
             $values["cleared"] = $this->cleared;
         }
-        
+
         return $values;
     }
-    
+
 }

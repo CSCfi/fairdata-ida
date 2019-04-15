@@ -56,6 +56,7 @@ class TestIdaUser(unittest.TestCase):
         # create project if it doesn't already exist
         cmd = "%s ADD %s 1 2>&1" % (self.ida_project, self.project_name)
         subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+
         # set quota to 1G, success tells us the project exists as required
         cmd = "%s MODIFY %s 1 2>&1" % (self.ida_project, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)

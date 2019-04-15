@@ -44,8 +44,8 @@ class GenericAgent():
 
     def __init__(self):
         self._channel = None
-        self._settings = get_settings()
         self._uida_conf_vars = load_variables_from_uida_conf_files()
+        self._settings = get_settings(self._uida_conf_vars)
         self._ida_api_url = self._uida_conf_vars['IDA_API_ROOT_URL']
 
         self._hostname = socket.gethostname()
@@ -69,7 +69,7 @@ class GenericAgent():
         self.last_failed_action = {}
         self.last_updated_action = {}
 
-        self._logger = get_logger(self.name)
+        self._logger = get_logger(self.name, self._uida_conf_vars)
         self.connect()
         self._cleanup_old_sentinel_monitoring_files()
 
@@ -275,8 +275,8 @@ class GenericAgent():
 
         if queue_state.method.message_count > 0:
             self._logger.debug('%d messages in queue %s.' % (queue_state.method.message_count, queue))
-        else:
-            self._logger.debug('Queue %s is empty.' % queue)
+        #else:
+            #self._logger.debug('Queue %s is empty.' % queue)
 
         return queue_state.method.message_count
 
@@ -335,19 +335,30 @@ class GenericAgent():
             raise Exception('Action %s has no nodes associated with it' % action['pid'])
         return nodes if isinstance(nodes, list) else [nodes]
 
-    def _save_nodes_to_db(self, nodes, fields=[]):
+    def _save_nodes_to_db(self, nodes, fields=[], updated_only=False):
         assert len(fields), 'need to specify fields to update for node.'
 
         self._logger.debug('Saving node fields %s to ida db...' % str(fields))
 
         for node in nodes:
-            data = {}
-            for field in fields:
-                data[field] = node[field]
-            response = self._ida_api_request('post', '/files/%s' % node['pid'], data=data)
-            if response.status_code not in (200, 201, 204):
-                error_msg = 'IDA API returned an error when trying to update node pid %s. Error message from API: %s'
-                raise Exception(error_msg % (node['pid'], str(response.content)))
+
+            update_node = True
+
+            if updated_only:
+                # Only update nodes which are flagged as having been updated
+                try:
+                    update_node = node['_updated']
+                except:
+                    update_node = False
+
+            if update_node:
+                data = {}
+                for field in fields:
+                    data[field] = node[field]
+                response = self._ida_api_request('post', '/files/%s' % node['pid'], data=data)
+                if response.status_code not in (200, 201, 204):
+                    error_msg = 'IDA API returned an error when trying to update node pid %s. Error message from API: %s'
+                    raise Exception(error_msg % (node['pid'], str(response.content)))
 
     def _sub_action_processed(self, action, sub_action_name):
         """

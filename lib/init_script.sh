@@ -75,10 +75,10 @@ fi
 #--------------------------------------------------------------------------------
 # Common initialization for all scripts
 
-CURL_POST='curl -k --raw -s -S -X POST -u'
-CURL_GET='curl -k --raw -s -S -u'
-CURL_DELETE='curl -k --raw -s -S -X DELETE -u'
-CURL_MKCOL='curl -k --raw -s -S -X MKCOL -u'
+CURL_POST='curl --fail -k --raw -s -S -X POST -u'
+CURL_GET='curl --fail -k --raw -s -S -u'
+CURL_DELETE='curl --fail -k --raw -s -S -X DELETE -u'
+CURL_MKCOL='curl --fail -k --raw -s -S -X MKCOL -u'
 
 TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 
@@ -201,7 +201,7 @@ function sendEmail {
     MESSAGE="$2"
     RECIPIENTS="$3"
 
-    # If there is no email sender configured in the environment, we do nothing, 
+    # If there is no email sender configured in the environment, we do nothing,
     # essentially ignoring the function request.
 
     if [ "$EMAIL_SENDER" != "" ]; then
@@ -239,4 +239,3 @@ $MESSAGE
 EOF
     fi
 }
-

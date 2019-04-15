@@ -113,6 +113,6 @@ class ReplicationAgentProcessQueueTests(ReplicationAgentTestsCommon):
         self.assertEqual(self.agent.messages_in_queue(), 0)
 
         # check action has replication marked completed.
-        self.assertEqual('replication' in self.agent.last_completed_sub_action, True)
+        self.assertEqual('completed' in self.agent.last_completed_sub_action, True)
         self.assertEqual(self.agent.last_completed_sub_action['action_pid'], published_message['pid'])
         self.assert_messages_ended_in_failed_queue(0)

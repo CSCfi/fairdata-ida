@@ -31,7 +31,7 @@
 # logical order by component; else, the arguments provided are passed to python
 # unittests as-is. This allows the script to also be used to run either unit or
 # behavioral tests for a specific component conveniently.
-# 
+#
 # Examples:
 #
 # run-tests                           (run all behavioral tests)
@@ -85,6 +85,16 @@ if [ "$IDA_ENVIRONMENT" != "TEST" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+# Flush replicated files, if so configured
+
+if [ "$FLUSH_REPLICATED_FILES_BEFORE_TESTS" = "true" ]; then
+    echo "Flushing all replicated files from ${DATA_REPLICATION_ROOT}/projects/..."
+    if [ -d "${DATA_REPLICATION_ROOT}/projects" ]; then
+        rm -fr "${DATA_REPLICATION_ROOT}/projects"
+    fi
+fi
+
+#--------------------------------------------------------------------------------
 # Ensure test python environment is properly configured and active
 
 cd $ROOT/tests
@@ -100,6 +110,16 @@ cd $ROOT
 if [ $# -ge 1 ]; then
 
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q $*
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    echo ""
+    echo "======================================"
+    echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="
+    echo "======================================"
+    echo ""
 
 else
 
@@ -125,16 +145,23 @@ else
         exit 1
     fi
 
+    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.cli
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.agents
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.cli
 
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
+    echo ""
+    echo "======================================"
+    echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="
+    echo "======================================"
+    echo ""
+
 fi
-

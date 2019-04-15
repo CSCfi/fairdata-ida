@@ -92,7 +92,7 @@ class FreezingController extends Controller
     protected $userId;
     protected $fsView;
     protected $config;
-    
+
     /**
      * Creates the AppFramwork Controller
      *
@@ -119,7 +119,7 @@ class FreezingController extends Controller
         $this->fsView = Filesystem::getView();
         $this->config = $config->getSystemValue('ida');
     }
-    
+
     /**
      * Check if a project is locked
      *
@@ -131,23 +131,23 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function projectIsLocked($project) {
-        
+
         try {
-            
+
             Util::writeLog('ida', 'projectIsLocked:'
                 . ' project=' . $project
                 . ' user=' . $this->userId
                 , \OCP\Util::DEBUG);
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             if ($this->userId !== 'admin' && $project !== 'all') {
                 try {
                     Access::verifyIsAllowedProject($project);
@@ -156,29 +156,29 @@ class FreezingController extends Controller
                     return API::unauthorizedErrorResponse($e->getMessage());
                 }
             }
-            
+
             // Check if project is locked
-            
+
             if (Access::projectIsLocked($project)) {
                 if ($project === 'all') {
                     return API::successResponse('The service is locked.');
                 }
-                
+
                 return API::successResponse('The specified project is locked.');
             }
-            
+
             if ($project === 'all') {
                 return API::notFoundErrorResponse('No lock exists for the service.');
             }
-            
+
             return API::notFoundErrorResponse('No lock exists for the specified project.');
-            
+
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Lock a project
      *
@@ -192,30 +192,30 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function lockProject($project) {
-        
+
         try {
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Verify that current user is either admin or PSO user
-            
+
             if ($this->userId !== 'admin' && $this->userId !== (Constants::PROJECT_USER_PREFIX . $project)) {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Admin is limited only to setting service lock
-            
+
             if ($this->userId === 'admin' && $project !== 'all') {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             if ($this->userId !== 'admin') {
                 try {
                     Access::verifyIsAllowedProject($project);
@@ -224,32 +224,32 @@ class FreezingController extends Controller
                     return API::unauthorizedErrorResponse($e->getMessage());
                 }
             }
-            
+
             // Lock the project
-            
+
             if (Access::lockProject($project)) {
-                
+
                 Util::writeLog('ida', 'lockProject: project=' . $project . ' user=' . $this->userId, \OCP\Util::INFO);
-                
+
                 if ($project === 'all') {
                     return API::successResponse('The service is locked.');
                 }
-                
+
                 return API::successResponse('The specified project is locked.');
             }
-            
+
             if ($project === 'all') {
                 return API::conflictErrorResponse('Unable to lock the service.');
             }
-            
+
             return API::conflictErrorResponse('Unable to lock the specified project.');
-            
+
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Unlock a project
      *
@@ -263,30 +263,30 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function unlockProject($project) {
-        
+
         try {
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Verify that current user is either admin or PSO user
-            
+
             if ($this->userId !== 'admin' && $this->userId !== (Constants::PROJECT_USER_PREFIX . $project)) {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Admin is limited only to clearing service lock
-            
+
             if ($this->userId === 'admin' && $project !== 'all') {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             if ($this->userId !== 'admin') {
                 try {
                     Access::verifyIsAllowedProject($project);
@@ -295,32 +295,32 @@ class FreezingController extends Controller
                     return API::unauthorizedErrorResponse($e->getMessage());
                 }
             }
-            
+
             // Unlock the project
-            
+
             if (Access::unlockProject($project)) {
-                
+
                 Util::writeLog('ida', 'unlockProject: project=' . $project . ' user=' . $this->userId, \OCP\Util::INFO);
-                
+
                 if ($project === 'all') {
                     return API::successResponse('The service is unlocked.');
                 }
-                
+
                 return API::successResponse('The specified project is unlocked.');
             }
-            
+
             if ($project === 'all') {
                 return API::conflictErrorResponse('Unable to unlock the service.');
             }
-            
+
             return API::conflictErrorResponse('Unable to unlock the specified project.');
-            
+
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Freeze staged files within the scope of a particular node
      *
@@ -338,11 +338,11 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function freezeFiles($nextcloudNodeId, $project, $pathname, $token = null) {
-        
+
         $actionEntity = null;
-        
+
         try {
-            
+
             Util::writeLog('ida', 'freezeFiles:'
                 . ' nextcloudNodeId=' . $nextcloudNodeId
                 . ' project=' . $project
@@ -350,7 +350,7 @@ class FreezingController extends Controller
                 . ' user=' . $this->userId
                 . ' token=' . $token
                 , \OCP\Util::INFO);
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
@@ -360,82 +360,82 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             try {
                 Access::verifyIsAllowedProject($project);
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-            
+
             // Verify Nextcloud node ID per specified pathname
-            
+
             try {
                 $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'freeze', $project, $pathname);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Lock the project so no other user can initiate an action
-            
+
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Store freeze action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked.
-            
+
             $actionEntity = $this->registerAction($nextcloudNodeId, 'freeze', $project, $this->userId, $pathname);
-            
+
             // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
             // before moving any content (an exception will be thrown if the connection cannot be opened)
-            
+
             try {
                 $rabbitMQconnection = $this->openRabbitMQConnection();
             }
             catch (Exception $e) {
                 Util::writeLog('ida', 'freezeFiles: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-            
+
             $fullPathname = $this->buildFullPathname('freeze', $project, $pathname);
-            
+
             // Ensure specified pathname identifies a node in the staging area
-            
+
             $fileInfo = $this->fsView->getFileInfo($fullPathname);
-            
+
             if ($fileInfo === false) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::notFoundErrorResponse('The specified scope could not be found in the staging area of the project: ' . $fullPathname);
             }
-            
+
             // If node is folder, ensure folder is not empty (has at least one descendant file)
-            
+
             if ($this->isEmptyFolder('freeze', $project, $pathname)) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::badRequestErrorResponse('The specified folder contains no files which can be frozen.');
             }
-            
+
             // Collect all nodes in scope of root action pathname, signalling error if maximum file count is exceeded
-            
+
             try {
-                
+
                 // If PSO user and batch action token valid, impose no file limit, else use default limit
-                
+
                 if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
                     ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
                     ($token == $this->config['BATCH_ACTION_TOKEN'])) {
@@ -450,58 +450,58 @@ class FreezingController extends Controller
                 }
             }
             catch (Exception $e) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Ensure that the requested action pathname does not conflict with any ongoing action(s)
-            
+
             if ($this->checkIntersectionWithIncompleteActions($project, $pathname, $nextcloudNodes, $actionEntity->getPid())) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('The requested action conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Ensure no files in the scope of the action intersect with any existing file(s) in the target space
-            
+
             if ($this->checkIntersectionWithExistingFiles('freeze', $project, $nextcloudNodes)) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('The requested action conflicts with an existing file in the frozen area.');
             }
-            
+
             // Record details of files within scope of action
-            
+
             $this->registerFiles('freeze', $project, $nextcloudNodes, $actionEntity->getPid(), $actionEntity->getInitiated());
-            
+
             // Record completion of PID generation (and registration) for all files within scope of action
-            
+
             $actionEntity->setPids(Generate::newTimestamp());
             $this->actionMapper->update($actionEntity);
-            
+
             // Move all files in scope from staging to frozen space
-            
+
             $this->moveNextcloudNode('freeze', $project, $pathname);
-            
+
             $actionEntity->setStorage(Generate::newTimestamp());
             $this->actionMapper->update($actionEntity);
-            
+
             // Publish new action message to RabbitMQ
-            
+
             $this->publishActionMessage($rabbitMQconnection, $actionEntity);
             $rabbitMQconnection->close();
-            
+
             // Unlock project and return new action details
-            
+
             Access::unlockProject($project);
-            
+
             return new DataResponse($actionEntity);
         }
         catch (Exception $e) {
@@ -514,16 +514,16 @@ class FreezingController extends Controller
             }
             catch (Exception $e) {
             }
-            
+
             // Cleanup and report error
-            
+
             $rabbitMQconnection->close();
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Unfreeze frozen files within the scope of a particular node
      *
@@ -541,11 +541,11 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function unfreezeFiles($nextcloudNodeId, $project, $pathname, $token = null) {
-        
+
         $actionEntity = null;
-        
+
         try {
-            
+
             Util::writeLog('ida', 'unfreezeFiles:'
                 . ' nextcloudNodeId=' . $nextcloudNodeId
                 . ' project=' . $project
@@ -553,7 +553,7 @@ class FreezingController extends Controller
                 . ' user=' . $this->userId
                 . ' token=' . $token
                 , \OCP\Util::INFO);
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
@@ -563,81 +563,81 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             try {
                 Access::verifyIsAllowedProject($project);
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-    
+
             // Verify Nextcloud node ID per specified pathname
-    
+
             try {
                 $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'unfreeze', $project, $pathname);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-    
+
             // Lock the project so no other user can initiate an action
-            
+
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Store unfreeze action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked.
-            
+
             $actionEntity = $this->registerAction($nextcloudNodeId, 'unfreeze', $project, $this->userId, $pathname);
-            
+
             // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
             // before moving any content (an exception will be thrown if the connection cannot be opened)
-            
+
             try {
                 $rabbitMQconnection = $this->openRabbitMQConnection();
             }
             catch (Exception $e) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-            
+
             // Ensure specified pathname identifies a node in the frozen area
-            
+
             $fullPathname = $this->buildFullPathname('unfreeze', $project, $pathname);
-            
+
             $fileInfo = $this->fsView->getFileInfo($fullPathname);
-            
+
             if ($fileInfo === false) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::notFoundErrorResponse('The specified scope could not be found in the frozen area of the project: ' . $fullPathname);
             }
-            
+
             // If node is folder, ensure folder is not empty (has at least one descendant file)
-            
+
             if ($this->isEmptyFolder('unfreeze', $project, $pathname)) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::badRequestErrorResponse('The specified folder contains no files which can be unfrozen.');
             }
-            
+
             // Collect all nodes in scope of root action pathname, signalling error if maximum file count is exceeded
-            
+
             try {
-                
+
                 // If PSO user and batch action token valid, impose no file limit, else use default limit
-                
+
                 if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
                     ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
                     ($token == $this->config['BATCH_ACTION_TOKEN'])) {
@@ -652,53 +652,53 @@ class FreezingController extends Controller
                 }
             }
             catch (Exception $e) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Ensure that the requested action pathname does not conflict with any incomplete action(s)
-            
+
             if ($this->checkIntersectionWithIncompleteActions($project, $pathname, $nextcloudNodes, $actionEntity->getPid())) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('The requested action conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Ensure no files in the scope of the action intersect with any existing file(s) in the target space
-            
+
             if ($this->checkIntersectionWithExistingFiles('unfreeze', $project, $nextcloudNodes)) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('The requested action conflicts with an existing file in the staging area.');
             }
-            
+
             // Record file details within scope of action
-            
+
             $this->registerFiles('unfreeze', $project, $nextcloudNodes, $actionEntity->getPid(), $actionEntity->getInitiated());
-            
+
             // Move all files in scope from frozen to staging space
-            
+
             $this->moveNextcloudNode('unfreeze', $project, $pathname);
-            
+
             $actionEntity->setStorage(Generate::newTimestamp());
             $this->actionMapper->update($actionEntity);
-            
+
             // Publish new action message to RabbitMQ
-            
+
             $this->publishActionMessage($rabbitMQconnection, $actionEntity);
             $rabbitMQconnection->close();
-            
+
             // Unlock project and return new action details
-            
+
             Access::unlockProject($project);
-            
+
             return new DataResponse($actionEntity);
         }
         catch (Exception $e) {
@@ -711,16 +711,16 @@ class FreezingController extends Controller
             }
             catch (Exception $e) {
             }
-            
+
             // Cleanup and report error
-            
+
             $rabbitMQconnection->close();
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Delete frozen files within the scope of a particular node
      *
@@ -738,11 +738,11 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function deleteFiles($nextcloudNodeId, $project, $pathname, $token = null) {
-        
+
         $actionEntity = null;
-        
+
         try {
-            
+
             Util::writeLog('ida', 'deleteFiles:'
                 . ' nextcloudNodeId=' . $nextcloudNodeId
                 . ' project=' . $project
@@ -750,7 +750,7 @@ class FreezingController extends Controller
                 . ' user=' . $this->userId
                 . ' token=' . $token
                 , \OCP\Util::INFO);
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
@@ -760,71 +760,71 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             try {
                 Access::verifyIsAllowedProject($project);
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-    
+
             // Verify Nextcloud node ID per specified pathname
-    
+
             try {
                 $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'delete', $project, $pathname);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-    
+
             // Lock the project so no other user can initiate an action
-            
+
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Store delete action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked.
-            
+
             $actionEntity = $this->registerAction($nextcloudNodeId, 'delete', $project, $this->userId, $pathname);
-            
+
             // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
             // before moving any content (an exception will be thrown if the connection cannot be opened)
-            
+
             try {
                 $rabbitMQconnection = $this->openRabbitMQConnection();
             }
             catch (Exception $e) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::serverErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-            
+
             // Ensure specified pathname identifies a node in the frozen area
-            
+
             $fullPathname = $this->buildFullPathname('delete', $project, $pathname);
-            
+
             $fileInfo = $this->fsView->getFileInfo($fullPathname);
-            
+
             if ($fileInfo === false) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::notFoundErrorResponse('The specified scope could not be found in the frozen area of the project: ' . $fullPathname);
             }
-            
+
             // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
-            
+
             try {
-                
+
                 // If PSO user and batch action token valid, impose no file limit, else use default limit
-                
+
                 if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
                     ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
                     ($token == $this->config['BATCH_ACTION_TOKEN'])) {
@@ -839,43 +839,43 @@ class FreezingController extends Controller
                 }
             }
             catch (Exception $e) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Ensure that the requested action pathname does not conflict with any incomplete action(s)
-            
+
             if ($this->checkIntersectionWithIncompleteActions($project, $pathname, $nextcloudNodes, $actionEntity->getPid())) {
-                
+
                 $this->actionMapper->deleteAction($actionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::conflictErrorResponse('The requested action conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Record details of files within scope of action
-            
+
             $this->registerFiles('delete', $project, $nextcloudNodes, $actionEntity->getPid(), $actionEntity->getInitiated());
-            
+
             // Delete all files in scope from frozen space
-            
+
             $this->deleteNextcloudNode($project, $pathname);
-            
+
             $actionEntity->setStorage(Generate::newTimestamp());
             $this->actionMapper->update($actionEntity);
-            
+
             // Publish new action message to RabbitMQ
-            
+
             $this->publishActionMessage($rabbitMQconnection, $actionEntity);
             $rabbitMQconnection->close();
-            
+
             // Unlock project and return new action details
-            
+
             Access::unlockProject($project);
-            
+
             return new DataResponse($actionEntity);
         }
         catch (Exception $e) {
@@ -888,16 +888,16 @@ class FreezingController extends Controller
             }
             catch (Exception $e) {
             }
-            
+
             // Cleanup and report error
-            
+
             $rabbitMQconnection->close();
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Retry failed action
      *
@@ -909,56 +909,56 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function retryAction($pid) {
-        
+
         $retryActionEntity = null;
         $project = null;
-        
+
         try {
-            
+
             Util::writeLog('ida', 'retryAction: pid=' . $pid . ' user=' . $this->userId, \OCP\Util::INFO);
-            
+
             try {
                 API::verifyRequiredStringParameter('pid', $pid);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Retrieve failed action details
-            
+
             $failedActionEntity = $this->actionMapper->findAction($pid);
-            
+
             if ($failedActionEntity == null) {
                 return API::notFoundErrorResponse('The specified action does not exist.');
             }
-            
+
             $project = $failedActionEntity->getProject();
-            
+
             // Verify that current user has rights to the action project, rejecting request if not...
-            
+
             try {
                 Access::verifyIsAllowedProject($project);
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-            
+
             // Verify that the action actually is failed action
-            
+
             if ($failedActionEntity->getFailed() == null) {
                 return API::badRequestErrorResponse('Specified action is not a failed action.');
             }
-            
+
             // Lock the project so no other user can initiate an action
-            
+
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Store retry action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked. Create new retry action with failed action details.
-            
+
             $retryActionEntity = $this->registerAction(
                 $failedActionEntity->getNode(),
                 $failedActionEntity->getAction(),
@@ -966,42 +966,42 @@ class FreezingController extends Controller
                 $failedActionEntity->getUser(),
                 $failedActionEntity->getPathname()
             );
-            
+
             // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
             // before moving any content (an exception will be thrown if the connection cannot be opened)
-            
+
             try {
                 $rabbitMQconnection = $this->openRabbitMQConnection();
             }
             catch (Exception $e) {
                 $this->actionMapper->deleteAction($retryActionEntity->getPid());
                 Access::unlockProject($project);
-                
+
                 return API::serverErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-            
+
             // Set reference to failed action being retried
-            
+
             $retryActionEntity->setRetrying($failedActionEntity->getPid());
-            
+
             // Copy any timestamps for completed steps
-            
+
             $retryActionEntity->setStorage($failedActionEntity->getStorage());
             $retryActionEntity->setPids($failedActionEntity->getPids());
             $retryActionEntity->setChecksums($failedActionEntity->getChecksums());
             $retryActionEntity->setMetadata($failedActionEntity->getMetadata());
             $retryActionEntity->setReplication($failedActionEntity->getReplication());
-            
+
             $this->actionMapper->update($retryActionEntity);
-            
+
             // Determine if any initial steps are required locally, prior to publishing message to RabbitMQ...
-            
+
             // Ensure that PIDs are generated and stored for all nodes
-            
+
             if ($retryActionEntity->getPids() == null && $retryActionEntity->getAction() == 'freeze') {
-                
+
                 // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
-                
+
                 try {
                     $nextcloudNodes = $this->getNextcloudNodes(
                         $retryActionEntity->getAction(),
@@ -1010,30 +1010,30 @@ class FreezingController extends Controller
                     );
                 }
                 catch (Exception $e) {
-                    
+
                     $this->actionMapper->deleteAction($retryActionEntity->getPid());
                     Access::unlockProject($project);
-                    
+
                     return API::badRequestErrorResponse($e->getMessage());
                 }
-                
+
                 // Ensure that the retried copy of the failed action does not conflict with an incomplete action
                 // (no change to failed action or associated files up to this point, so OK to bail, deleting new retry action)
-                
+
                 if ($this->checkIntersectionWithIncompleteActions($failedActionEntity->getProject(), $failedActionEntity->getPathname(), $nextcloudNodes)) {
                     $this->actionMapper->deleteAction($retryActionEntity->getPid());
                     Access::unlockProject($project);
-                    
+
                     return API::conflictErrorResponse('The requested action conflicts with an ongoing action in the specified project.');
                 }
-                
+
                 // Migrate files from failed action to retry action (zero or more files, depending on when registration process failed)
-                
+
                 $this->cloneFiles($failedActionEntity, $retryActionEntity);
-                
+
                 // Record details of files within scope of action (filling in all files in scope not previously registered with failed action)
                 // (if a file record already exists, it will be reused, else a new file record will be created)
-                
+
                 $this->registerFiles(
                     $retryActionEntity->getAction(),
                     $retryActionEntity->getProject(),
@@ -1041,72 +1041,72 @@ class FreezingController extends Controller
                     $retryActionEntity->getPid(),
                     $retryActionEntity->getInitiated()
                 );
-                
+
                 // Record completion of PID generation (and registration) for all nodes within scope of action
-                
+
                 $retryActionEntity->setPids(Generate::newTimestamp());
                 $this->actionMapper->update($retryActionEntity);
             }
             else {
                 // Get files associated with failed action
-                
+
                 $nextcloudNodes = $this->fileMapper->findFiles($failedActionEntity);
-                
+
                 // Ensure that the files associated with the failed action do not conflict with an incomplete action
                 // (no change to failed action or associated files up to this point, so OK to bail, deleting new retry action)
-                
+
                 if ($this->checkIntersectionWithIncompleteActions($failedActionEntity->getProject(), $failedActionEntity->getPathname(), $nextcloudNodes)) {
                     $this->actionMapper->deleteAction($retryActionEntity->getPid());
                     Access::unlockProject($project);
-                    
+
                     return API::conflictErrorResponse('The requested action conflicts with an ongoing action in the specified project.');
                 }
-                
+
                 // Migrate files from failed action to retry action
-                
+
                 $this->cloneFiles($failedActionEntity, $retryActionEntity);
             }
-            
+
             // Record failed action as retried and clear it
-            
+
             $failedActionEntity->setRetry($retryActionEntity->getPid());
             $failedActionEntity->setCleared(Generate::newTimestamp());
             $this->actionMapper->update($failedActionEntity);
-            
+
             // Ensure that the Nextcloud storage is correctly updated
-            
+
             if ($retryActionEntity->getStorage() == null) {
-                
+
                 // Determine how storage needs to be modified
-                
+
                 if ($retryActionEntity->getAction() == 'delete') {
-                    
+
                     $this->deleteNextcloudNode($retryActionEntity->getProject(), $retryActionEntity->getPathname());
-                    
+
                 }
                 else { // action == 'freeze' or 'unfreeze'
-                    
+
                     // Move node from staging to frozen space, or frozen space to staging, depending on action
-                    
+
                     $this->moveNextcloudNode(
                         $retryActionEntity->getAction(),
                         $retryActionEntity->getProject(),
                         $retryActionEntity->getPathname()
                     );
                 }
-                
+
                 $retryActionEntity->setStorage(Generate::newTimestamp());
             }
-            
+
             // Publish new action message to RabbitMQ
-            
+
             $this->publishActionMessage($rabbitMQconnection, $retryActionEntity);
             $rabbitMQconnection->close();
-            
+
             // Unlock project and return new action details
-            
+
             Access::unlockProject($project);
-            
+
             return new DataResponse($failedActionEntity);
         }
         catch (Exception $e) {
@@ -1119,16 +1119,16 @@ class FreezingController extends Controller
             }
             catch (Exception $e) {
             }
-            
+
             // Cleanup and report error
-            
+
             $rabbitMQconnection->close();
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Clear pending or failed action
      *
@@ -1140,11 +1140,11 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function clearAction($pid) {
-        
+
         Util::writeLog('ida', 'clearAction: pid=' . $pid . ' user=' . $this->userId, \OCP\Util::INFO);
-        
+
         $project = null;
-        
+
         try {
             try {
                 API::verifyRequiredStringParameter('pid', $pid);
@@ -1152,59 +1152,59 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // Retrieve action details
-            
+
             $actionEntity = $this->actionMapper->findAction($pid);
-            
+
             if (!$actionEntity) {
                 return API::notFoundErrorResponse('The specified action does not exist.');
             }
-            
+
             $project = $actionEntity->getProject();
-            
+
             // Verify that current user has rights to the action project, rejecting request if not...
-            
+
             try {
                 Access::verifyIsAllowedProject($project);
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-            
+
             // Verify that action is either failed or pending
-            
+
             if ($actionEntity->getFailed() != null && $actionEntity->getCompleted() != null && $actionEntity->getCleared() != null) {
                 return API::badRequestErrorResponse('Specified action is neither failed nor pending.');
             }
-            
+
             // Lock the project so no other user can initiate an action
-            
+
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Clear action
-            
+
             $actionEntity->setCleared(Generate::newTimestamp());
             $this->actionMapper->update($actionEntity);
-            
+
             // Unlock project and return new action details
-            
+
             Access::unlockProject($project);
-            
+
             return new DataResponse($actionEntity);
         }
         catch (Exception $e) {
-            
+
             // Cleanup and report error
-            
+
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Register the specified action in the database
      *
@@ -1217,7 +1217,7 @@ class FreezingController extends Controller
      * @return Entity
      */
     protected function registerAction($nextcloudNodeId, $action, $project, $user, $pathname) {
-        
+
         Util::writeLog('ida', 'registerAction:'
             . ' nextcloudNodeId=' . $nextcloudNodeId
             . ' action=' . $action
@@ -1225,18 +1225,18 @@ class FreezingController extends Controller
             . ' user=' . $user
             . ' pathname=' . $pathname
             , \OCP\Util::DEBUG);
-    
+
         // Verify Nextcloud node ID per specified pathname
-    
+
         try {
             $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, $action, $project, $pathname);
         }
         catch (Exception $e) {
             return API::badRequestErrorResponse($e->getMessage());
         }
-    
+
         // If the user is the PSO user, record the user as 'service'
-    
+
         if ($user == Constants::PROJECT_USER_PREFIX . $project) {
             $user = 'service';
         }
@@ -1249,14 +1249,14 @@ class FreezingController extends Controller
         $actionEntity->setNode($nextcloudNodeId);
         $actionEntity->setPathname($pathname);
         $actionEntity->setInitiated(Generate::newTimestamp());
-        
+
         $actionEntity = $this->actionMapper->insert($actionEntity);
-        
+
         Util::writeLog('ida', 'registerAction: id=' . $actionEntity->getId(), \OCP\Util::DEBUG);
-        
+
         return $actionEntity;
     }
-    
+
     /**
      * Registers the file in the database, associating it with the specified action
      *
@@ -1270,15 +1270,15 @@ class FreezingController extends Controller
      * @return Entity
      */
     protected function registerFile($fileInfo, $action, $project, $pathname, $actionPid, $timestamp) {
-        
+
         if (empty($pathname)) {
             throw new Exception('Empty pathname.');
         }
-        
+
         if ($timestamp != null) {
             $timestamp = Generate::newTimestamp();
         }
-        
+
         $fileEntity = new File();
         $fileEntity->setAction($actionPid);
         $fileEntity->setNode($fileInfo->getId());
@@ -1289,13 +1289,13 @@ class FreezingController extends Controller
         $fileEntity->setProject($project);
         $fileEntity->setPathname($pathname);
         $fileEntity->setSize(0 + $fileInfo->getSize());
-        
+
         $fileEntity->setModified(Generate::newTimestamp($fileInfo->getMTime()));
         if ($action != 'freeze') {
             $fileEntity->setRemoved($timestamp);
         }
         $fileEntity = $this->fileMapper->insert($fileEntity);
-        
+
         Util::writeLog('ida', 'registerFile:'
             . ' nextcloudNodeId=' . $fileInfo->getId()
             . ' action=' . $action
@@ -1303,10 +1303,10 @@ class FreezingController extends Controller
             . ' pathname=' . $pathname
             . ' actionPid=' . $actionPid
             , \OCP\Util::INFO);
-        
+
         return $fileEntity;
     }
-    
+
     /**
      * Register one or more files, within the scope of a specified node, associating them with the specified action PID.
      *
@@ -1323,7 +1323,7 @@ class FreezingController extends Controller
      * @return Entity[]
      */
     protected function registerFiles($action, $project, $nextcloudNodes, $pid, $timestamp) {
-        
+
         Util::writeLog('ida', 'registerFiles:'
             . ' action=' . $action
             . ' project=' . $project
@@ -1331,40 +1331,40 @@ class FreezingController extends Controller
             . ' pid=' . $pid
             . ' timestamp=' . $timestamp
             , \OCP\Util::DEBUG);
-        
+
         $fileEntities = array();
-        
+
         foreach ($nextcloudNodes as $fileInfo) {
-            
+
             // Node should only ever be file, but we check anyway, just to be sure...
-            
+
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
-                
+
                 $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
-                
+
                 if ($action === 'freeze') {
-                    
+
                     // Register new frozen file
-                    
+
                     $fileEntities[] = $this->registerFile($fileInfo, $action, $project, $pathname, $pid, $timestamp);
                 }
                 else {
-                    
+
                     // Retrieve existing frozen file
-                    
+
                     $fileEntity = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId());
-                    
+
                     // Clone existing, or create new, frozen file record
-                    
+
                     if ($fileEntity !== null) {
-                        
+
                         // Mark existing file record as removed from frozen space
-                        
+
                         $fileEntity->setRemoved($timestamp);
                         $this->fileMapper->update($fileEntity);
-                        
+
                         // Clone existing file record
-                        
+
                         $newFileEntity = $this->cloneFile($fileEntity, $pid);
                     }
                     else {
@@ -1373,9 +1373,9 @@ class FreezingController extends Controller
                         // to indicate unfreezing or deletion of the file. Integrity checks / monitoring should look for
                         // such errors and their cause investigated, even though we ensure the service is resilient and
                         // is able to recover and proceed with the action.
-                        
+
                         $newFileEntity = $this->registerFile($fileInfo, $action, $project, $pathname, $pid, $timestamp);
-                        
+
                         Util::writeLog('ida', 'registerFiles: ERROR: Frozen file data not found!'
                             . ' action=' . $action
                             . ' pid=' . $pid
@@ -1384,15 +1384,15 @@ class FreezingController extends Controller
                             . ' node=' . $fileInfo->getId()
                             , \OCP\Util::ERROR);
                     }
-                    
+
                     $fileEntities[] = $newFileEntity;
                 }
             }
         }
-        
+
         return $fileEntities;
     }
-    
+
     /**
      * Return a valid Nextcloud node ID (defaulting to zero) according to the specified pathname.
      *
@@ -1407,23 +1407,23 @@ class FreezingController extends Controller
      * @return int
      */
     protected function resolveNextcloudNodeId($nextcloudNodeId, $action, $project, $pathname) {
-        
+
         Util::writeLog('ida', 'resolveNextcloudNodeId:'
             . ' nextcloudNodeId=' . $nextcloudNodeId
             . ' action=' . $action
             . ' project=' . $project
             . ' pathname=' . $pathname
             , \OCP\Util::DEBUG);
-        
+
         try {
-            
+
             if ($nextcloudNodeId == null || $nextcloudNodeId == 0 || $nextcloudNodeId == '' || $nextcloudNodeId == '0') {
-    
+
                 $nextcloudNodeId = 0;
-                
+
                 $fullPathname = $this->buildFullPathname($action, $project, $pathname);
                 $fileInfo = $this->fsView->getFileInfo($fullPathname);
-                
+
                 if ($fileInfo) {
                     $nextcloudNodeId = $fileInfo->getId();
                     Util::writeLog('ida', 'resolveNextcloudNodeId: nextcloudNodeId=' . $nextcloudNodeId, \OCP\Util::INFO);
@@ -1433,10 +1433,10 @@ class FreezingController extends Controller
         catch (Exception $e) {;
             return 0;
         }
-        
+
         return $nextcloudNodeId;
     }
-    
+
     /**
      * Register one or more frozen files, within the scope of a specified node, associating them with the specified repair action PID.
      *
@@ -1448,53 +1448,61 @@ class FreezingController extends Controller
      * @param string     $timestamp      the timestamp of when the action was initiated
      */
     protected function repairFrozenFiles($project, $nextcloudNodes, $pid, $timestamp) {
-        
+
         Util::writeLog('ida', 'repairFrozenFiles:'
             . ' project=' . $project
             . ' nextcloudNodes=' . count($nextcloudNodes)
             . ' pid=' . $pid
             . ' timestamp=' . $timestamp
             , \OCP\Util::DEBUG);
-        
+
         foreach ($nextcloudNodes as $fileInfo) {
-            
+
             // Node should only ever be file, but we check anyway, just to be sure...
-            
+
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
-                
+
                 // Retrieve last created frozen file record, if any, for the given file
-                
+
                 $fileEntity = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId(), $project, true);
-                
+
                 // If record exists, clone it
-                
+
                 if ($fileEntity != null) {
-                    
-                    // Clone existing file record
-                    
+
+                    // Clone existing file record, associating it with the repair action
+
                     $newFileEntity = $this->cloneFile($fileEntity, $pid);
-                    
+
                     // Ensure existing file record marked as cleared (even though it ought to already be)
-                    
+
                     $fileEntity->setCleared($timestamp);
                     $this->fileMapper->update($fileEntity);
-                    
+
                     // Ensure cloned file record is treated as actively frozen
-                    
+
                     $newFileEntity->setRemoved(null);
                     $newFileEntity->setCleared(null);
-                    
-                    // If cloned file record has no frozen timestamp, set to current time
-                    
-                    if ($newFileEntity->getFrozen() == null) {
-                        $newFileEntity->setFrozen(Generate::newTimestamp());
+
+                    // Ensure technical metadata is accurately recorded for cloned file record
+
+                    if ($newFileEntity->getSize() === null) {
+                        $newFileEntity->setSize(0 + $fileInfo->getSize());
+                        // If the size was unknown, assume the checksum is invalid and purge it (to be repaired by the agent)
+                        $newFileEntity->setChecksum(null);
                     }
-                    
+                    if ($newFileEntity->getModified() == null) {
+                        $newFileEntity->setModified(Generate::newTimestamp($fileInfo->getMTime()));
+                    }
+                    if ($newFileEntity->getFrozen() == null) {
+                        $newFileEntity->setFrozen($timestamp);
+                    }
+
                     $this->fileMapper->update($newFileEntity);
                 }
-                
+
                 // Else, create new record
-                
+
                 else {
                     $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
                     $this->registerFile($fileInfo, 'freeze', $project, $pathname, $pid, $timestamp);
@@ -1502,7 +1510,7 @@ class FreezingController extends Controller
             }
         }
     }
-    
+
     /**
      * Return true if any of the pathnames of any files in the specified Nextcloud FileInfo instances, per the
      * specified action, which intersect with any files occupying the same pathname within the target space; else
@@ -1515,44 +1523,44 @@ class FreezingController extends Controller
      * @return boolean
      */
     protected function checkIntersectionWithExistingFiles($action, $project, $nextcloudNodes) {
-        
+
         Util::writeLog('ida', 'checkIntersectionWithExistingFiles:'
             . ' project=' . $project
             . ' action=' . $action
             . ' nextcloudNodes=' . count($nextcloudNodes)
             , \OCP\Util::DEBUG);
-        
+
         foreach ($nextcloudNodes as $fileInfo) {
-            
+
             // Only check file nodes...
-            
+
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
-                
+
                 $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
-                
+
                 if ($action === 'freeze') {
                     $targetPathname = $this->buildFullPathname('unfreeze', $project, $pathname);
                 }
                 else {
                     $targetPathname = $this->buildFullPathname('freeze', $project, $pathname);
                 }
-                
+
                 $fileInfo = $this->fsView->getFileInfo($targetPathname);
-                
+
                 if ($fileInfo != null) {
                     Util::writeLog('ida', 'checkIntersectionWithExistingFiles:'
                         . ' project=' . $project
                         . ' action=' . $action
                         . ' pathname=' . $targetPathname, \OCP\Util::INFO);
-                    
+
                     return true;
                 }
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Return true if any incomplete actions have associated with them any file having a pathname which intersects
      * with any files in the Nextcloud node FileInfo instances, regardless of whether the files are in the staging
@@ -1566,49 +1574,49 @@ class FreezingController extends Controller
      * @return boolean
      */
     protected function checkIntersectionWithIncompleteActions($project, $scope, $nextcloudNodes, $action = null) {
-        
+
         Util::writeLog('ida', 'checkIntersectionWithIncompleteActions:'
             . ' project=' . $project
             . ' pathname=' . $scope
             . ' nextcloudNodes=' . count($nextcloudNodes)
             , \OCP\Util::DEBUG);
-        
+
         // Retrieve all incomplete actions for the project
-        
+
         $actionEntities = $this->actionMapper->findActions('incomplete', $project);
-        
+
         // The project normally will have at least one just-initiated action which is incomplete, the pid of
         // which should have been provided via the action parameter; but in case no incomplete actions exist,
         // simply return false.
-        
+
         if (count($actionEntities) == 0) {
             return false;
         }
-        
+
         // If the new action scope does not intersect an incomplete action scope, ignoring any action with the
         // specified pid (i.e. the just-initiated action), then there are no conflicts.
-        
+
         if (!$this->scopeIntersectsAction($scope, $actionEntities, $action)) {
             return false;
         }
-        
+
         // Check for actual intersection of one or more files with any ongoing action, ignoring any action with
         // the specified pid (i.e. the just-initiated action)...
-        
+
         // Create assoc array registering all action PIDs
-        
+
         $actionPids = array();
-        
+
         foreach ($actionEntities as $actionEntity) {
             $pid = $actionEntity->getPid();
             if ($pid != $action) {
                 $actionPids[$pid] = true;
             }
         }
-        
+
         // For each file node associated with new action, check if there exists a frozen file record with
         // the same pathname which is associated with one of the incomplete actions
-        
+
         foreach ($nextcloudNodes as $fileInfo) {
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
                 $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
@@ -1621,16 +1629,16 @@ class FreezingController extends Controller
                             . ' action=' . $actionPid
                             . ' pathname=' . $pathname
                             , \OCP\Util::INFO);
-                        
+
                         return true;
                     }
                 }
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * If the specified node is a file, return false; else, if the specified node is a folder, recursively search for
      * a file within the scope of the specified folder, returning false upon encountering the first file, else return
@@ -1643,27 +1651,27 @@ class FreezingController extends Controller
      * @return boolean
      */
     protected function isEmptyFolder($action, $project, $pathname) {
-        
+
         Util::writeLog('ida', 'isEmptyFolder: action=' . $action . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
-        
+
         $fullPathname = $this->buildFullPathname($action, $project, $pathname);
-        
+
         Util::writeLog('ida', 'isEmptyFolder: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
-        
+
         $fileInfo = $this->fsView->getFileInfo($fullPathname);
-        
+
         if ($fileInfo) {
-            
+
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
                 return false;
             }
-            
+
             $children = $this->fsView->getDirectoryContent($fullPathname);
-            
+
             $folders = array();
-            
+
             foreach ($children as $child) {
-                
+
                 if ($child->getType() === FileInfo::TYPE_FILE) {
                     return false;
                 }
@@ -1671,17 +1679,17 @@ class FreezingController extends Controller
                     $folders[] = $child;
                 }
             }
-            
+
             foreach ($folders as $folder) {
                 if ($this->isEmptyFolder($action, $project, $this->stripRootProjectFolder($project, $folder->getPath())) === false) {
                     return false;
                 }
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Retrieve an ordered array of Nextcloud FileInfo instances for all files within the scope of the
      * specified node in the staging or frozen space, depending on the specified action.
@@ -1701,26 +1709,26 @@ class FreezingController extends Controller
      * @throws MaximumAllowedFilesExceeded
      */
     protected function getNextcloudNodes($action, $project, $pathname, $limit = Constants::MAX_FILE_COUNT) {
-        
+
         Util::writeLog('ida', 'getNextcloudNodes:'
             . ' action=' . $action
             . ' project=' . $project
             . ' pathname=' . $pathname
             . ' limit=' . $limit
             , \OCP\Util::INFO);
-        
+
         $result = array('filecount' => 0, 'nodes' => array());
-        
+
         $result = $this->getNextcloudNodesR($action, $project, $pathname, $limit, $result);
-        
+
         Util::writeLog('ida', 'getNextcloudNodes:'
             . ' filecount=' . $result['filecount']
             . ' nodecount=' . count($result['nodes'])
             , \OCP\Util::INFO);
-        
+
         return ($result['nodes']);
     }
-    
+
     /**
      * Recursively build an ordered array of Nextcloud FileInfo instances for all files within the scope of the
      * specified node in the staging or frozen space, depending on the specified action. Keep track of the total
@@ -1743,7 +1751,7 @@ class FreezingController extends Controller
      * @throws MaximumAllowedFilesExceeded
      */
     protected function getNextcloudNodesR($action, $project, $pathname, $limit, $result, $level = 1) {
-        
+
         Util::writeLog('ida', 'getNextcloudNodesR:'
             . ' action=' . $action
             . ' project=' . $project
@@ -1752,32 +1760,32 @@ class FreezingController extends Controller
             . ' level=' . $level
             . ' filecount=' . $result['filecount']
             , \OCP\Util::DEBUG);
-        
+
         // If limit to be enforced and maximum file count exceeded, throw exception
-        
+
         if ($limit > 0 && $result['filecount'] > $limit) {
             throw new MaximumAllowedFilesExceeded();
         }
-        
+
         // Order the nodes so that at each folder level, files are first, followed by folders
-        
+
         $fullPathname = $this->buildFullPathname($action, $project, $pathname);
-        
+
         Util::writeLog('ida', 'getNextcloudNodesR: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
-        
+
         $fileInfo = $this->fsView->getFileInfo($fullPathname);
-        
+
         if ($fileInfo) {
-            
+
             if ($fileInfo->getType() === FileInfo::TYPE_FOLDER) {
-                
+
                 Util::writeLog('ida', 'getNextcloudNodesR: level=' . $level . ' folder=' . $fileInfo->getPath(), \OCP\Util::DEBUG);
-                
+
                 $children = $this->fsView->getDirectoryContent($fullPathname);
                 $folders = array();
-                
+
                 foreach ($children as $child) {
-                    
+
                     if ($child->getType() === FileInfo::TYPE_FILE) {
                         $result['nodes'][] = $child;
                         $result['filecount'] = $result['filecount'] + 1;
@@ -1792,9 +1800,9 @@ class FreezingController extends Controller
                         $folders[] = $child;
                     }
                 }
-                
+
                 $level = $level + 1;
-                
+
                 foreach ($folders as $folder) {
                     $result = $this->getNextcloudNodesR(
                         $action,
@@ -1817,16 +1825,16 @@ class FreezingController extends Controller
                     , \OCP\Util::INFO);
             }
         }
-        
+
         // If limit to be enforced and maximum file count exceeded, throw exception
-        
+
         if ($limit > 0 && $result['filecount'] > $limit) {
             throw new MaximumAllowedFilesExceeded();
         }
-        
+
         return $result;
     }
-    
+
     /**
      * Construct and return the full Nextcloud pathname of a node based on the action, project, and its relative pathname
      *
@@ -1837,25 +1845,25 @@ class FreezingController extends Controller
      * @return string
      */
     protected function buildFullPathname($action, $project, $pathname) {
-        
+
         Util::writeLog('ida', 'buildFullPathname:'
             . ' action=' . $action
             . ' project=' . $project
             . ' pathname=' . $pathname
             , \OCP\Util::DEBUG);
-        
+
         if ($action === 'freeze') {
             $fullPathname = '/' . $project . Constants::STAGING_FOLDER_SUFFIX . $pathname;
         }
         else {
             $fullPathname = '/' . $project . $pathname;
         }
-        
+
         Util::writeLog('ida', 'buildFullPathname: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
-        
+
         return $fullPathname;
     }
-    
+
     /**
      * Get the parent folder of the specified pathname
      *
@@ -1864,23 +1872,23 @@ class FreezingController extends Controller
      * @return string
      */
     protected function getParentPathname($pathname) {
-        
+
         Util::writeLog('ida', 'getParentPathname: pathname=' . $pathname, \OCP\Util::DEBUG);
-        
+
         $pattern = '/\/[^\/][^\/]*$/';
-        
+
         if ($pathname && trim($pathname) != '') {
             $parentPathname = preg_replace($pattern, '', $pathname);
         }
         else {
             $parentPathname = null;
         }
-        
+
         Util::writeLog('ida', 'getParentPathname: parentPathname=' . $parentPathname, \OCP\Util::DEBUG);
-        
+
         return $parentPathname;
     }
-    
+
     /**
      * Strip the root project folder from the specified full Nextcloud pathname, returning a relative pathname
      *
@@ -1890,26 +1898,26 @@ class FreezingController extends Controller
      * @return string
      */
     protected function stripRootProjectFolder($project, $pathname) {
-        
+
         Util::writeLog('ida', 'stripRootProjectFolder:'
             . ' project=' . $project
             . ' pathname=' . $pathname
             , \OCP\Util::DEBUG);
-        
+
         $pattern = '/^.*\/files\/' . $project . '[^\/]*\//';
-        
+
         if ($pathname && trim($pathname) != '') {
             $relativePathname = preg_replace($pattern, '/', $pathname);
         }
         else {
             $relativePathname = null;
         }
-        
+
         Util::writeLog('ida', 'stripRootProjectFolder: relativePathname=' . $relativePathname, \OCP\Util::DEBUG);
-        
+
         return $relativePathname;
     }
-    
+
     /**
      * Clone all files associated with a failed action with a retry action, marking all files associated
      * with the failed action being retried as removed. If the failed action has no timestamp for PID
@@ -1920,28 +1928,28 @@ class FreezingController extends Controller
      * @param Action $retryAction  the action retrying the failed action
      */
     protected function cloneFiles($failedAction, $retryAction) {
-        
+
         $failedActionPid = $failedAction->getPid();
         $retryActionPid = $retryAction->getPid();
-        
+
         Util::writeLog('ida', 'cloneFiles:'
             . ' failedActionPid=' . $failedActionPid
             . ' retryActionPid=' . $retryActionPid
             , \OCP\Util::DEBUG);
-        
+
         $timestamp = Generate::newTimestamp();
-        
+
         foreach ($this->fileMapper->findFiles($failedActionPid) as $fileEntity) {
-            
+
             if ($failedAction->getPids() != null) {
                 $this->cloneFile($fileEntity, $retryActionPid);
             }
-            
+
             $fileEntity->setCleared($timestamp);
             $this->fileMapper->update($fileEntity);
         }
     }
-    
+
     /**
      * Create a new frozen file record from an existing record, setting its action to an optionally
      * specified value.
@@ -1952,26 +1960,26 @@ class FreezingController extends Controller
      * @return File
      */
     protected function cloneFile($fileEntity, $pid = null) {
-        
+
         $fileEntityPid = $fileEntity->getPid();
-        
+
         Util::writeLog('ida', 'cloneFile: fileEntityPid=' . $fileEntityPid . ' pid=' . $pid, \OCP\Util::DEBUG);
-        
+
         $newFileEntity = new File();
-        
+
         if ($pid !== null) {
             $newFileEntity->setAction($pid);
         }
         else {
             $newFileEntity->setAction($fileEntity->getAction());
         }
-        
+
         $newFileEntity->setNode($fileEntity->getNode());
         $newFileEntity->setPathname($fileEntity->getPathname());
         $newFileEntity->setPid($fileEntity->getPid());
         $newFileEntity->setType($fileEntity->getType());
         $newFileEntity->setProject($fileEntity->getProject());
-        $newFileEntity->setSize($fileEntity->getSize());
+        $newFileEntity->setSize(0 + $fileEntity->getSize());
         $newFileEntity->setChecksum($fileEntity->getChecksum());
         $newFileEntity->setModified($fileEntity->getModified());
         $newFileEntity->setFrozen($fileEntity->getFrozen());
@@ -1979,10 +1987,10 @@ class FreezingController extends Controller
         $newFileEntity->setReplicated($fileEntity->getReplicated());
         $newFileEntity->setRemoved($fileEntity->getRemoved());
         $newFileEntity->setCleared($fileEntity->getCleared());
-        
+
         return ($this->fileMapper->insert($newFileEntity));
     }
-    
+
     /**
      * Move the specified node from/to the staging space from/to the frozen space of the specified project, depending on the action
      *
@@ -2000,13 +2008,13 @@ class FreezingController extends Controller
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
      */
     protected function moveNextcloudNode($action, $project, $pathname) {
-        
+
         Util::writeLog('ida', 'moveNextcloudNode:'
             . ' action=' . $action
             . ' project=' . $project
             . ' pathname=' . $pathname
             , \OCP\Util::INFO);
-        
+
         if ($action === 'freeze') {
             $sourcePathname = $this->buildFullPathname('freeze', $project, $pathname);
             $targetPathname = $this->buildFullPathname('unfreeze', $project, $pathname);
@@ -2015,50 +2023,50 @@ class FreezingController extends Controller
             $sourcePathname = $this->buildFullPathname('unfreeze', $project, $pathname);
             $targetPathname = $this->buildFullPathname('freeze', $project, $pathname);
         }
-        
+
         Util::writeLog('ida', 'moveNextcloudNode:'
             . ' sourcePathname=' . $sourcePathname
             . ' targetPathname=' . $targetPathname
             , \OCP\Util::DEBUG);
-        
+
         // Check that source node exists
-        
+
         $fileInfo = $this->fsView->getFileInfo($sourcePathname);
-        
+
         if ($fileInfo) {
-            
+
             // Check if the target node exists
-            
+
             $targetExists = $this->fsView->getFileInfo($targetPathname) != null;
-            
+
             // If node is a file and target node exists, signal a conflict
-            
+
             if ($targetExists && $fileInfo->getType() === FileInfo::TYPE_FILE) {
                 throw new PathConflict('A file already exists with the target pathname: ' . $targetPathname);
             }
-            
+
             // Initialize for either move or delete...
-            
+
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password = $this->config['PROJECT_USER_PASS'];
             $baseURI = $this->config['URL_BASE_FILE'];
             $sourceURI = $baseURI . API::urlEncodePathname($sourcePathname);
             $targetURI = $baseURI . API::urlEncodePathname($targetPathname);
-            
+
             Util::writeLog('ida', 'moveNextcloudNode:' . ' sourceURI=' . $sourceURI . ' targetURI=' . $targetURI, \OCP\Util::DEBUG);
-            
+
             // If target node does not exist, no matter whether folder or file, move from source to target and we're done
-            
+
             if ($targetExists == false) {
-                
+
                 // Ensure all ancestor folders in target path exist
-                
+
                 $this->createNextcloudPathFolders($project, $targetPathname);
-                
+
                 // Move the folder from source to target pathname
-                
+
                 $ch = curl_init($sourceURI);
-                
+
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'MOVE');
                 curl_setopt($ch, CURLOPT_HTTPHEADER, array('Destination: ' . $targetURI));
                 curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
@@ -2071,32 +2079,32 @@ class FreezingController extends Controller
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-                
+
                 $response = curl_exec($ch);
-                
+
                 if ($response === false || curl_errno($ch)) {
                     Util::writeLog('ida', 'moveNextcloudNode:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::DEBUG);
                     curl_close($ch);
                     throw new Exception('Failed to move node from "' . $sourcePathname . '" to "' . $targetPathname . '"');
                 }
-                
+
                 curl_close($ch);
             }
-            
+
             // Else, the node is a folder which exists in the target space, so recursively call function on each of
             // the immediate children of the folder, to move them into the target space, and then delete the folder
             // from the source space
-            
+
             else {
-                
+
                 $children = $this->fsView->getDirectoryContent($sourcePathname);
-                
+
                 foreach ($children as $child) {
                     $this->moveNextcloudNode($action, $project, $pathname . '/' . $child->getName());
                 }
-                
+
                 $ch = curl_init($sourceURI);
-                
+
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
                 curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
                 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
@@ -2108,15 +2116,15 @@ class FreezingController extends Controller
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-                
+
                 $response = curl_exec($ch);
-                
+
                 if ($response === false || curl_errno($ch)) {
                     Util::writeLog('ida', 'moveNextcloudNode:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::DEBUG);
                     curl_close($ch);
                     throw new Exception('Failed to delete now-empty folder "' . $sourcePathname . '"');
                 }
-                
+
                 curl_close($ch);
             }
         }
@@ -2124,7 +2132,7 @@ class FreezingController extends Controller
             throw new Exception('Node not found: ' . $sourcePathname);
         }
     }
-    
+
     /**
      * Delete the specified node from the frozen space of the specified project
      *
@@ -2134,34 +2142,34 @@ class FreezingController extends Controller
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
      */
     protected function deleteNextcloudNode($project, $pathname) {
-        
+
         Util::writeLog('ida', 'deleteNextcloudNode:' . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::INFO);
-        
+
         $sourcePathname = '/' . $project . $pathname;
-        
+
         Util::writeLog('ida', 'deleteNextcloudNode:' . ' sourcePathname=' . $sourcePathname, \OCP\Util::DEBUG);
-        
+
         // Check that source node exists
-        
+
         $fileInfo = $this->fsView->getFileInfo($sourcePathname);
-        
+
         if ($fileInfo) {
-            
+
             // Delete the specified node
-            
+
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password = $this->config['PROJECT_USER_PASS'];
             $baseURI = $this->config['URL_BASE_FILE'];
             $sourceURI = $baseURI . API::urlEncodePathname($sourcePathname);
-            
+
             Util::writeLog('ida', 'deleteNextcloudNode:'
                 . ' sourceURI=' . $sourceURI
                 . ' username=' . $username
                 . ' password=' . $password
                 , \OCP\Util::INFO);
-            
+
             $ch = curl_init($sourceURI);
-            
+
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
             curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
             curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
@@ -2173,22 +2181,22 @@ class FreezingController extends Controller
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-            
+
             $response = curl_exec($ch);
-            
+
             if ($response === false || curl_errno($ch)) {
                 Util::writeLog('ida', 'deleteNextcloudNode:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::ERROR);
                 curl_close($ch);
                 throw new Exception('Failed to delete node "' . $sourcePathname . '"');
             }
-            
+
             curl_close($ch);
         }
         else {
             throw new Exception('Node not found: ' . $sourcePathname);
         }
     }
-    
+
     /**
      * Create any missing ancestor folders in specified target pathname, so subsequent move request succeeds
      *
@@ -2198,44 +2206,44 @@ class FreezingController extends Controller
      * @param string $pathname the full pathname
      */
     protected function createNextcloudPathFolders($project, $pathname) {
-        
+
         Util::writeLog('ida', 'createNextcloudPathFolders: project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
-        
+
         $folderPath = substr($this->getParentPathname($pathname), 1);
-        
+
         $folders = explode('/', $folderPath);
-        
+
         Util::writeLog('ida', 'createNextcloudPathFolders: folderPath=' . $folderPath . ' count=' . count($folders), \OCP\Util::DEBUG);
-        
+
         if (count($folders) > 0) {
-            
+
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password = $this->config['PROJECT_USER_PASS'];
             $baseURI = $this->config['URL_BASE_FILE'];
             $rootPathname = '';
-            
+
             foreach ($folders as $folder) {
-                
+
                 $folderPathname = $rootPathname . '/' . $folder;
-                
+
                 Util::writeLog('ida', 'createNextcloudPathFolders:' . ' folderPathname=' . $folderPathname, \OCP\Util::DEBUG);
-                
+
                 $fileInfo = $this->fsView->getFileInfo($folderPathname);
-                
+
                 // If folder doesn't exist, create it
-                
+
                 if ($fileInfo === false) {
-                    
+
                     $folderURI = $baseURI . API::urlEncodePathname($folderPathname);
-                    
+
                     Util::writeLog('ida', 'createNextcloudPathFolders:'
                         . ' folderURI=' . $folderURI
                         . ' username=' . $username
                         . ' password=' . $password
                         , \OCP\Util::DEBUG);
-                    
+
                     $ch = curl_init($folderURI);
-                    
+
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'MKCOL');
                     curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
                     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
@@ -2247,23 +2255,23 @@ class FreezingController extends Controller
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-                    
+
                     $response = curl_exec($ch);
-                    
+
                     if ($response === false || curl_errno($ch)) {
                         Util::writeLog('ida', 'createNextcloudPathFolders:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::ERROR);
                         curl_close($ch);
                         throw new Exception('Failed to create path folder "' . $folderPathname . '"');
                     }
-                    
+
                     curl_close($ch);
                 }
-                
+
                 $rootPathname = $rootPathname . '/' . $folder;
             }
         }
     }
-    
+
     /**
      * Clear all failed and/or pending actions in the database, optionally limited to a particular status or one or more projects
      *
@@ -2278,23 +2286,23 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function clearActions($status = 'failed', $projects) {
-        
+
         // TODO Determine whether and how to lock all specified projects during operation
-        
+
         if ($status !== 'failed' && $status !== 'pending') {
             return API::badRequestErrorResponse('Invalid status.');
         }
-        
+
         if ($this->userId === 'admin') {
             $entities = $this->actionMapper->clearActions($status, $projects);
-            
+
             return new DataResponse($entities);
         }
         else {
             return API::unauthorizedErrorResponse();
         }
     }
-    
+
     /**
      * Flush and/or generate database records to load query and index performance, for testing.
      *
@@ -2311,13 +2319,13 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function dbLoad($flush = 'false', $action = 'delete', $actions = null, $filesPerAction = null) {
-        
+
         try {
-            
+
             if ($flush === 'false' && $actions === null) {
                 return API::badRequestErrorResponse('Insufficient parameters specified');
             }
-            
+
             if ($actions !== null) {
                 try {
                     API::validateIntegerParameter('actions', $actions);
@@ -2327,39 +2335,39 @@ class FreezingController extends Controller
                     return API::badRequestErrorResponse($e->getMessage());
                 }
             }
-            
+
             // Allowed for admin
-            
+
             if ($this->userId !== 'admin') {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Allowed only in test environment
-            
+
             if ($this->config['IDA_ENVIRONMENT'] !== 'TEST') {
                 return API::serverErrorResponse('Operation is only permitted in test environment');
             }
-            
+
             // Flush records if specified
-            
+
             if ($flush === 'true') {
                 $this->actionMapper->deleteAllActions('test_dbload');
                 $this->fileMapper->deleteAllFiles('test_dbload');
             }
-            
+
             // Generate new records if specified
-            
+
             if ($actions !== null) {
-                
+
                 $pidBase = '5c18cb0291956461057262dbload';
-                
+
                 for ($i = 1; $i <= $actions; $i++) {
-                    
+
                     // Create action record
-                    
+
                     $timestamp = Generate::newTimestamp();
                     $fakeActionNodeId = 900000000 + $i * $filesPerAction;
-                    
+
                     $actionEntity = new Action();
                     $actionEntity->setPid($pidBase . $i . 'a');
                     $actionEntity->setAction($action);
@@ -2374,11 +2382,11 @@ class FreezingController extends Controller
                     $actionEntity->setMetadata($timestamp);
                     $actionEntity->setCompleted($timestamp);
                     $this->actionMapper->insert($actionEntity);
-                    
+
                     for ($j = 1; $j <= $filesPerAction; $j++) {
-                        
+
                         // Create frozen file record
-                        
+
                         $fileEntity = new File();
                         $fileEntity->setAction($actionEntity->getPid());
                         $fileEntity->setNode($fakeActionNodeId + $j);
@@ -2396,14 +2404,14 @@ class FreezingController extends Controller
                     }
                 }
             }
-            
+
             return $this->dbLoadSummary();
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Return a summary of all existing db load records
      *
@@ -2415,39 +2423,39 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function dbLoadSummary() {
-        
+
         try {
-            
+
             // Allowed for admin
-            
+
             if ($this->userId !== 'admin') {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Allowed only in test environment
-            
+
             if ($this->config['IDA_ENVIRONMENT'] !== 'TEST') {
                 return API::serverErrorResponse('Operation is only permitted in test environment');
             }
-            
+
             $actionCount = $this->actionMapper->countActions(null, 'test_dbload');
             $activeFileCount = $this->fileMapper->countFiles(null, 'test_dbload', false);
             $totalFileCount = $this->fileMapper->countFiles(null, 'test_dbload', true);
-            
+
             $summary = array();
-            
+
             $summary['project'] = 'test_dbload';
             $summary['actions'] = $actionCount;
             $summary['activeFiles'] = $activeFileCount;
             $summary['totalFiles'] = $totalFileCount;
-            
+
             return new DataResponse($summary);
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Flush all action and frozen file records from the database.
      *
@@ -2463,50 +2471,50 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function flushDatabase($project) {
-        
+
         try {
             API::verifyRequiredStringParameter('project', $project);
         }
         catch (Exception $e) {
             return API::badRequestErrorResponse($e->getMessage());
         }
-        
+
         // Allowed for admin or PSO user only
-        
+
         if ($this->userId !== 'admin' && strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
             return API::unauthorizedErrorResponse();
         }
-        
+
         // All projects allowed for admin only
-        
+
         if ($project == 'all') {
-            
+
             if ($this->userId == 'admin') {
-                
+
                 $this->actionMapper->deleteAllActions('all');
                 $this->fileMapper->deleteAllFiles('all');
-                
+
                 return new DataResponse('Database flushed for all projects.');
             }
-            
+
             return API::unauthorizedErrorResponse();
         }
         else {
-            
+
             // PSO user must belong to project
-            
+
             if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                 ($project !== substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX)))) {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             $this->actionMapper->deleteAllActions($project);
             $this->fileMapper->deleteAllFiles($project);
-            
+
             return new DataResponse('Database flushed for project ' . $project . '.');
         }
     }
-    
+
     /**
      * Create action and frozen file database entities for all files within either the staging or frozen
      * areas of the project of the authenticated PSO user based on the pathnames provided as input. Any existing
@@ -2524,62 +2532,62 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function bootstrapProject($action = null, $checksums = null) {
-        
+
         if ($action == null) {
             return API::badRequestErrorResponse('No action specified.');
         }
-        
+
         if ($checksums == null) {
             return API::badRequestErrorResponse('No checksums specified.');
         }
-        
+
         if ($action != 'migrate-s' && $action != 'migrate-f') {
             return API::badRequestErrorResponse('Invalid action specified: ' . $action);
         }
-        
+
         $project = null;
-        
+
         try {
-            
+
             Util::writeLog('ida', 'bootstrapProject:' . ' user=' . $this->userId . ' action=' . $action, \OCP\Util::INFO);
-            
+
             // Ensure user is PSO user...
-            
+
             if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Extract project name from PSO user name...
-            
+
             $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
-            
+
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
-            
+
             // Flush any existing action and frozen file records from db for project...
-            
+
             $this->flushDatabase($project);
-            
+
             $targetPathnameRoot = '/' . $project;
-            
+
             if ($action === 'migrate-s') {
                 $targetPathnameRoot = $targetPathnameRoot . Constants::STAGING_FOLDER_SUFFIX;
             }
-            
+
             $pathnames = array_keys($checksums);
             $pathnameCount = count($pathnames);
-            
+
             if ($pathnameCount == 0) {
                 Access::unlockProject($project);
-                
+
                 return API::badRequestErrorResponse('No checksums specified.');
             }
-            
+
             Util::writeLog('ida', 'bootstrapProject:' . ' pathnameCount=' . $pathnameCount, \OCP\Util::DEBUG);
-            
+
             $fileEntities = [];
-            
+
             $actionEntity = $this->registerAction(0, $action, $project, 'service', '/');
             $timestamp = Generate::newTimestamp();
             $actionEntity->setStorage($timestamp);
@@ -2592,22 +2600,22 @@ class FreezingController extends Controller
                 $actionEntity->setCompleted($timestamp);
             }
             $this->actionMapper->update($actionEntity);
-            
+
             if ($action === 'migrate-s') {
                 $action = 'unfreeze';
             }
             else {
                 $action = 'freeze';
             }
-            
+
             $pid = $actionEntity->getPid();
-            
+
             foreach ($pathnames as $pathname) {
-                
+
                 $targetPathname = $targetPathnameRoot . $pathname;
-                
+
                 $fileInfo = $this->fsView->getFileInfo($targetPathname);
-                
+
                 if ($fileInfo) {
                     $fileEntity = $this->registerFile($fileInfo, $action, $project, $pathname, $pid, $timestamp);
                     $fileEntity->setChecksum($checksums[$pathname]);
@@ -2615,25 +2623,25 @@ class FreezingController extends Controller
                     $fileEntities[] = $fileEntity;
                 }
             }
-            
+
             Util::writeLog('ida', 'bootstrapProject: actionPid=' . $pid . ' filecount=' . count($fileEntities), \OCP\Util::INFO);
-            
+
             // Unlock project and return file details
-            
+
             Access::unlockProject($project);
-            
+
             return new DataResponse($fileEntities);
         }
         catch (Exception $e) {
-            
+
             // Cleanup and report error
-            
+
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Create action and frozen file database entities for all files within frozen area of
      * the project of the authenticated PSO user. Any pending or failed actions will be cleared.
@@ -2658,46 +2666,46 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function repairProject() {
-        
+
         Util::writeLog('ida', 'repairProject:' . ' user=' . $this->userId, \OCP\Util::INFO);
-        
+
         $project = null;
-        
+
         try {
-            
+
             // Ensure user is PSO user...
-            
+
             if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
                 return API::unauthorizedErrorResponse();
             }
-            
+
             // Extract project name from PSO user name...
-            
+
             $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
-            
+
             // Open a connection to RabbitMQ
-            
+
             try {
                 $rabbitMQconnection = $this->openRabbitMQConnection();
             }
             catch (Exception $e) {
                 Util::writeLog('ida', 'repairProject: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
-                
+
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-            
+
             // Ensure project is locked
-            
+
             Access::lockProject($project);
-            
+
             // Get current time
-            
+
             $timestamp = Generate::newTimestamp();
-            
+
             // Clear any incomplete actions (except 'suspend' action)
-            
+
             $incompleteActions = $this->actionMapper->findActions('incomplete', $project);
-            
+
             if (count($incompleteActions) > 0) {
                 foreach ($incompleteActions as $actionEntity) {
                     if ($actionEntity->getAction() != 'suspend') {
@@ -2706,99 +2714,103 @@ class FreezingController extends Controller
                     }
                 }
             }
-            
+
             // Create repair action, which will suspend project and keep project into read-only mode until the action
             // is recorded as completed, due to the root scope.
-            
+
             $repairActionEntity = $this->registerAction(0, 'repair', $project, 'service', '/');
-            
+
             // Retrieve all active frozen file records
-            
+
             $frozenFileEntities = $this->fileMapper->findFrozenFiles($project);
-            
+
             // Mark any existing frozen files as cleared. Files which are physically present in the frozen area will
             // have those same records cloned below.
-            
+
             if (count($frozenFileEntities) > 0) {
                 foreach ($frozenFileEntities as $fileEntity) {
                     $fileEntity->setCleared($timestamp);
                     $this->fileMapper->update($fileEntity);
                 }
             }
-            
+
             // Retrieve and reinstate all files in the frozen area.
             // Disable file count limit by specifying limit as zero.
-            
+
             $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, '/', 0);
-            
+
             // Register all files in frozen area, associating them with the new 'repair' action...
             // (this is the only time the special action 'repair' is used)
-            
+
             if (count($nextcloudNodes) > 0) {
                 $this->repairFrozenFiles($project, $nextcloudNodes, $repairActionEntity->getPid(), $repairActionEntity->getInitiated());
             }
-            
+
             $timestamp = Generate::newTimestamp();
             $repairActionEntity->setPids($timestamp);
             $repairActionEntity->setStorage($timestamp);
             $this->actionMapper->update($repairActionEntity);
-            
+
             // Publish new action message to RabbitMQ
-            
+
             $this->publishActionMessage($rabbitMQconnection, $repairActionEntity);
             $rabbitMQconnection->close();
-            
+
             // Unlock project
-            
+
             Access::unlockProject($project);
-            
+
             // Return new repair action details
-            
+
             return new DataResponse($repairActionEntity);
         }
         catch (Exception $e) {
-            
+
             // Cleanup and report error
-            
+
             if ($repairActionEntity != null) {
                 $this->actionMapper->deleteAction($repairActionEntity->getPid());
             }
-            
+
             $rabbitMQconnection->close();
             Access::unlockProject($project);
-            
+
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Open a connection to RabbitMQ for publication
      *
      * @return AMQPStreamConnection
      */
     protected function openRabbitMQConnection() {
-        
+
         $host = $this->config['RABBIT_HOST'];
         $port = $this->config['RABBIT_PORT'];
         $vhost = $this->config['RABBIT_VHOST'];
         $username = $this->config['RABBIT_WORKER_USER'];
         $password = $this->config['RABBIT_WORKER_PASS'];
-        
+
         return new AMQPStreamConnection($host, $port, $username, $password, $vhost);
     }
-    
+
     /**
      * Publish a message to RabbitMQ about the specified action
+     *
+     * If the HTTP header X-SIMULATE-AGENTS is defined, it takes precidence over the configuration
+     * variable SIMULATE_AGENTS. If agents are to be simulated, the action is simply marked as
+     * completed and no action message is published to rabbitmq.
      *
      * @param AMQPStreamConnection $connection   a connection to RabbitMQ
      * @param Entity               $actionEntity database entity for the new action about which the message should be published
      */
     protected function publishActionMessage($connection, $actionEntity) {
-        
+
         try {
-            
+
             if ($actionEntity) {
-                
+
                 Util::writeLog('ida', 'publishActionMessage:'
                     . ' pid=' . $actionEntity->getPid()
                     . ' action=' . $actionEntity->getAction()
@@ -2807,8 +2819,22 @@ class FreezingController extends Controller
                     . ' pathname=' . $actionEntity->getPathname()
                     . ' initiated=' . $actionEntity->getInitiated()
                     , \OCP\Util::INFO);
-                
-                if ($this->config['SIMULATE_AGENTS']) {
+
+                $simulateAgents = false;
+
+                // If HTTP header is specified, ignore configuration
+                if (isset($_SERVER['HTTP_X_SIMULATE_AGENTS'])) {
+                    if ($_SERVER['HTTP_X_SIMULATE_AGENTS'] === "true") {
+                        $simulateAgents = true;
+                    }
+                }
+                else {
+                    if ($this->config['SIMULATE_AGENTS']) {
+                        $simulateAgents = true;
+                    }
+                }
+
+                if ($simulateAgents === true) {
                     $timestamp = Generate::newTimestamp();
                     if ($actionEntity->getAction() === 'freeze' || $actionEntity->getAction() === 'repair') {
                         $actionEntity->setChecksums($timestamp);
@@ -2817,15 +2843,15 @@ class FreezingController extends Controller
                     $actionEntity->setMetadata($timestamp);
                     $actionEntity->setCompleted($timestamp);
                     $this->actionMapper->update($actionEntity);
-                    
+
                     Util::writeLog('ida', 'publishActionMessage: SIMULATED', \OCP\Util::DEBUG);
                 }
                 else {
                     $channel = $connection->channel();
                     $message = new AMQPMessage(json_encode($actionEntity));
-                    
+
                     Util::writeLog('ida', 'publishActionMessage: message=' . $message->getBody(), \OCP\Util::DEBUG);
-                    
+
                     $channel->basic_publish($message, 'actions', $actionEntity->getAction());
                     $channel->close();
                 }
@@ -2836,7 +2862,7 @@ class FreezingController extends Controller
             throw $e;
         }
     }
-    
+
     /**
      * Check if the specified pathname intersects the scope of any action for a project which is still being initiated,
      * such that the storage has not been fully updated. Return 200 OK if no intersection, else return 409 Conflict
@@ -2851,15 +2877,15 @@ class FreezingController extends Controller
      * @NoCSRFRequired
      */
     public function checkScope($project, $pathname) {
-        
+
         try {
-            
+
             Util::writeLog('ida', 'checkScope:'
                 . ' project=' . $project
                 . ' pathname=' . $pathname
                 . ' user=' . $this->userId
                 , \OCP\Util::DEBUG);
-            
+
             try {
                 API::verifyRequiredStringParameter('project', $project);
                 API::verifyRequiredStringParameter('pathname', $pathname);
@@ -2867,35 +2893,35 @@ class FreezingController extends Controller
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
             }
-            
+
             // If service is locked, always report conflict
-            
+
             if (Access::projectIsLocked('all')) {
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
-            
+
             // Verify that current user has rights to the specified project, rejecting request if not...
-            
+
             try {
                 Access::verifyIsAllowedProject($project);
             }
             catch (Exception $e) {
                 return API::unauthorizedErrorResponse($e->getMessage());
             }
-            
+
             // Check if scope intersects incomplete action of project
-            
+
             if ($this->scopeIntersectsInitiatingAction($pathname, $project)) {
                 return API::conflictErrorResponse('The specified scope conflicts with an ongoing action in the specified project.');
             }
-            
+
             return API::successResponse('The specified scope does not conflict with any ongoing action in the specified project.');
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
     }
-    
+
     /**
      * Return true if the input scope intersects the scope of any action of the specified
      * project which is still being initiated such that the storage has not been fully
@@ -2912,20 +2938,20 @@ class FreezingController extends Controller
      * @throws Exception
      */
     public function scopeIntersectsInitiatingAction($inputScope, $project) {
-        
+
         if ($inputScope == null) {
             throw new Exception('Null input scope.');
         }
-        
+
         if ($project == null) {
             throw new Exception('Null project.');
         }
-        
+
         $initiatingActions = $this->actionMapper->findActions('initiating', $project);
-        
+
         return ($this->scopeIntersectsAction($inputScope, $initiatingActions));
     }
-    
+
     /**
      * Return true if the input scope intersects the scope of any of the provided actions; else, return false.
      *
@@ -2937,106 +2963,106 @@ class FreezingController extends Controller
      * @return boolean
      */
     public function scopeIntersectsAction($inputScope, $actionEntities, $action = null) {
-        
+
         if ($inputScope == null) {
             throw new Exception('Null input scope.');
         }
-        
+
         if ($actionEntities === null) {
             throw new Exception('Null action array.');
         }
-        
+
         $inputScopeLength = strlen($inputScope);
-        
+
         foreach ($actionEntities as $actionEntity) {
-            
+
             if ($actionEntity->getPid() != $action) {
-                
+
                 $actionScope = $actionEntity->getPathname();
-                
+
                 if ($actionScope == null) {
                     throw new Exception('Null action scope.');
                 }
-                
+
                 Util::writeLog('ida', 'scopeIntersectsAction:'
                     . ' inputScope=' . $inputScope
                     . ' actionScope=' . $actionScope
                     , \OCP\Util::DEBUG);
-                
+
                 // If either scope is absolute, they intersect.
-                
+
                 if ($actionScope === '/' || $inputScope === '/') {
-                    
+
                     Util::writeLog('ida', 'scopeIntersectsAction: absolute scope intersection:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
                         . ' actionScope: ' . $actionScope
                         , \OCP\Util::INFO);
-                    
+
                     return true;
                 }
-                
+
                 // If the scopes are the same, they intersect.
-                
+
                 if ($actionScope === $inputScope) {
-                    
+
                     Util::writeLog('ida', 'scopeIntersectsAction: identical scope intersection:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
                         . ' actionScope: ' . $actionScope
                         , \OCP\Util::INFO);
-                    
+
                     return true;
                 }
-                
+
                 // Check for pathname intersection. We do not bother checking if either scope
                 // is a file but simply proceed as if the shorter pathname is a folder by
                 // appending '/'. If the shorter scope corresponds to a file, then there is no
                 // intersection. If the two scopes are of equal length, no comparison will be made
                 // and there is no intersection.
-                
+
                 $actionScopeLength = strlen($actionScope);
-                
+
                 // If the action scope length is shorter than the input scope length, and the
                 // action scope is a folder path prefix of the input scope, they intersect.
-                
+
                 if ($actionScopeLength < $inputScopeLength && substr($inputScope, 0, ($actionScopeLength + 1)) === ($actionScope . '/')) {
-                    
+
                     Util::writeLog('ida', 'scopeIntersectsAction: action scope prefix intersection:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
                         . ' actionScope: ' . $actionScope
                         , \OCP\Util::INFO);
-                    
+
                     return true;
                 }
-                
+
                 // If the input scope length is shorter than the action scope length, and the
                 // input scope is a folder path prefix of the action scope, they intersect.
-                
+
                 if ($inputScopeLength < $actionScopeLength && substr($actionScope, 0, ($inputScopeLength + 1)) === ($inputScope . '/')) {
-                    
+
                     Util::writeLog('ida', 'scopeIntersectsAction: input scope prefix intersection:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
                         . ' actionScope: ' . $actionScope
                         , \OCP\Util::INFO);
-                    
+
                     return true;
                 }
             }
         }
-        
+
         // No intersection.
-        
+
         Util::writeLog('ida', 'scopeIntersectsAction: no intersection', \OCP\Util::DEBUG);
-        
+
         return false;
-        
+
         // Given actions with the following scopes:
         //
         //     /a/b/c/foo.data
@@ -3058,5 +3084,5 @@ class FreezingController extends Controller
         //     /a/b/n
         //     /x/p
     }
-    
+
 }

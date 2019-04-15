@@ -28,7 +28,9 @@
 # alredy exist, they will first be purged, such that every time this script is
 # run, the same baseline configuration for these accounts will exist.
 #
-# The following project and user configuration will be created:
+# An optional account configuration can be specified as an initial parameter.
+#
+# The following default project and user configuration will be created:
 #
 #               test_project_a  test_project_b  test_project_c  test_project_d
 # test_user_a         X
@@ -64,10 +66,30 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PROJECTS="test_project_a test_project_b test_project_c test_project_d"
-USERS="test_user_a test_user_b test_user_c test_user_d test_user_x"
-BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_x:test_project_a"
-EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d"
+CONFIG=""
+
+if [ "$1" = "flush" ]; then
+    if [ "$2" != "" ]; then
+        CONFIG="$2"
+    fi
+else
+    if [ "$1" != "" ]; then
+        CONFIG="$1"
+    fi
+fi
+
+if [ "$CONFIG" != "" ]; then
+    if [ -s "$CONFIG" ]; then
+        . "$CONFIG"
+    else
+        errorExit "Error: The specified configuration file does not exist or is empty. Aborting"
+    fi
+else
+    PROJECTS="test_project_a test_project_b test_project_c test_project_d"
+    USERS="test_user_a test_user_b test_user_c test_user_d test_user_x"
+    BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_x:test_project_a"
+    EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d"
+fi
 
 #--------------------------------------------------------------------------------
 
@@ -83,22 +105,37 @@ function success {
 
 #--------------------------------------------------------------------------------
 
-echo "Flushing all action and frozen node records from database..."
+echo "Flushing all action and file records from IDA service database..."
 
 for PROJECT in $PROJECTS; do
     STEP="   Flushing $PROJECT"
     printf "%${PADDING}s" "$STEP"
-    $CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "$URL_BASE_IDA/api/flush?project=$PROJECT" 2>&1 >/dev/null
+    OUT=`$CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "$URL_BASE_IDA/api/flush?project=$PROJECT" 2>&1`
     if [ "$?" -ne 0 ]; then
-        failure "Failed to flush records for $PROJECT. (ignored)."
+        failure "$OUT (ignored)"
     else
         success
     fi
 done
 
-#--------------------------------------------------------------------------------
+if [ "$METAX_AVAILABLE" = "1" ]; then
 
-export OC_PASS="test"
+    echo "Flushing all frozen file records from METAX database..."
+
+    for PROJECT in $PROJECTS; do
+        STEP="   Flushing $PROJECT"
+        printf "%${PADDING}s" "$STEP"
+        OUT=`$CURL_POST $METAX_API_USER:$METAX_API_PASS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 2>&1`
+        if [ "$?" -ne 0 ]; then
+            failure "$OUT (ignored)"
+        else
+            success
+        fi
+    done
+
+fi
+
+#--------------------------------------------------------------------------------
 
 echo "Cleaning up any existing test projects..."
 echo "Deleting any existing test users..."
@@ -108,8 +145,7 @@ for USER in $USERS; do
     printf "%${PADDING}s" "$STEP"
     OUT=`$ROOT/admin/ida_user DELETE $USER 2>&1`
     if [ "$?" -ne 0 ]; then
-        OUT="$OUT (ignored)"
-        failure "$OUT"
+        failure "$OUT (ignored)"
     else
         success
     fi
@@ -122,8 +158,7 @@ for PROJECT in $PROJECTS; do
     printf "%${PADDING}s" "$STEP"
     OUT=`$ROOT/admin/ida_project DISABLE $PROJECT 2>&1`
     if [ "$?" -ne 0 ]; then
-        OUT="$OUT (ignored)"
-        failure "$OUT"
+        failure "$OUT (ignored)"
     else
         success
     fi
@@ -137,8 +172,7 @@ for PROJECT in $PROJECTS; do
     printf "%${PADDING}s" "$STEP"
     OUT=`$ROOT/admin/ida_user DELETE $USER 2>&1`
     if [ "$?" -ne 0 ]; then
-        OUT="$OUT (ignored)"
-        failure "$OUT"
+        failure "$OUT (ignored)"
     else
         success
     fi
@@ -161,6 +195,7 @@ for PROJECT in $PROJECTS; do
     OUT=`$ROOT/admin/ida_project ADD $PROJECT 1 2>&1`
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
+        exit 1
     else
         success
     fi
@@ -185,8 +220,9 @@ for PROJECT in $PROJECTS; do
     OUT=`cp -r $ROOT/tests/testdata/* $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER`
 
     if [ "$?" -ne 0 ]; then
-         failure "$OUT"
-         continue
+        failure "$OUT"
+        exit 1
+        continue
     fi
 
     rm -fr `find $STORAGE_OC_DATA_ROOT/$USER/files -name .DS_Store`
@@ -197,6 +233,7 @@ for PROJECT in $PROJECTS; do
     OUT=`$OCC files:scan -q $USER`
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
+        exit 1
     else
         success
     fi
@@ -215,6 +252,7 @@ for RELATION in $BASIC_RELATIONS; do
     OUT=`$ROOT/admin/ida_user ADD $USER $PROJECT 2>&1`
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
+        exit 1
     else
         success
     fi
@@ -232,8 +270,8 @@ for RELATION in $EXTRA_RELATIONS; do
     OUT=`$ROOT/admin/ida_user JOIN $USER $PROJECT 2>&1`
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
+        exit 1
     else
         success
     fi
 done
-

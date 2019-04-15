@@ -57,7 +57,7 @@ class TestIdaCli(unittest.TestCase):
         self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config['HTTPD_USER'], self.config['ROOT'])
         self.admin_user = (self.config['NC_ADMIN_USER'], self.config['NC_ADMIN_PASS'])
         self.pso_user = (self.pso_user_name, self.config['PROJECT_USER_PASS'])
-        self.test_user = (self.user_name, "test")
+        self.test_user = (self.user_name, self.config['TEST_USER_PASS'])
         self.staging = "%s/%s/files/%s+" % (self.config['STORAGE_OC_DATA_ROOT'], self.pso_user_name, self.project_name)
         self.frozen = "%s/%s/files/%s" % (self.config['STORAGE_OC_DATA_ROOT'], self.pso_user_name, self.project_name)
         self.testdata = "%s/tests/testdata" % (self.config['ROOT'])
@@ -72,6 +72,9 @@ class TestIdaCli(unittest.TestCase):
         # Ensure CLI script exists where specified
         path = Path(self.cli)
         self.assertTrue(path.is_file())
+
+        # Prefix IDA CLI script pathname with test user password from configuration
+        self.cli = "IDA_PASSWORD=\"%s\" %s" % (self.config['TEST_USER_PASS'], self.cli)
 
         # Ensure test data root exists where specified and is directory
         path = Path(self.testdata)
@@ -103,8 +106,6 @@ class TestIdaCli(unittest.TestCase):
 
     def tearDown(self):
 
-        print("(cleaning)")
-
         # Always unlock the service, even if a test failed
 
         print("Unlock service")
@@ -119,6 +120,8 @@ class TestIdaCli(unittest.TestCase):
         # else leave projects and data as-is so test project state can be inspected
 
         if self.success:
+
+            print("(cleaning)")
 
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
@@ -862,4 +865,3 @@ class TestIdaCli(unittest.TestCase):
         # TODO: Add tests for .netrc usage
 
         self.success = True
-

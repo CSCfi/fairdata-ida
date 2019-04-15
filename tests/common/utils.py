@@ -23,6 +23,8 @@
 
 import importlib.util
 import os
+import time
+import requests
 import subprocess
 
 
@@ -63,18 +65,20 @@ def load_configuration():
     - service constants configuration file
     """
     settings = get_settings()
-    server_configuration = _load_module_from_file("server_configuration.variables",
-                                                  settings['server_configuration_path'])
+    server_configuration = _load_module_from_file("server_configuration.variables", settings['server_configuration_path'])
     service_constants = _load_module_from_file("service_constants.variables", settings['service_constants_path'])
     config = {
-        'HTTPD_USER':             server_configuration.HTTPD_USER,
         'ROOT':                   server_configuration.ROOT,
+        'OCC':                    server_configuration.OCC,
         'IDA_API_ROOT_URL':       server_configuration.IDA_API_ROOT_URL,
-        'METAX_API_ROOT_URL':     server_configuration.METAX_API_ROOT_URL,
-        'METAX_API_USER':         server_configuration.METAX_API_USER,
-        'METAX_API_PASS':         server_configuration.METAX_API_PASS,
+        'HTTPD_USER':             server_configuration.HTTPD_USER,
         'NC_ADMIN_USER':          server_configuration.NC_ADMIN_USER,
         'NC_ADMIN_PASS':          server_configuration.NC_ADMIN_PASS,
+        'PROJECT_USER_PASS':      server_configuration.PROJECT_USER_PASS,
+        'PROJECT_USER_PREFIX':    service_constants.PROJECT_USER_PREFIX,
+        'TEST_USER_PASS':         server_configuration.TEST_USER_PASS,
+        'BATCH_ACTION_TOKEN':     server_configuration.BATCH_ACTION_TOKEN,
+        'STAGING_FOLDER_SUFFIX':  service_constants.STAGING_FOLDER_SUFFIX,
         'STORAGE_OC_DATA_ROOT':   server_configuration.STORAGE_OC_DATA_ROOT,
         'DATA_REPLICATION_ROOT':  server_configuration.DATA_REPLICATION_ROOT,
         'RABBIT_HOST':            server_configuration.RABBIT_HOST,
@@ -86,11 +90,11 @@ def load_configuration():
         'RABBIT_WORKER_USER':     server_configuration.RABBIT_WORKER_USER,
         'RABBIT_WORKER_PASS':     server_configuration.RABBIT_WORKER_PASS,
         'RABBIT_WORKER_LOG_FILE': server_configuration.RABBIT_WORKER_LOG_FILE,
-        'OC_PASS':                server_configuration.OC_PASS,
-        'BATCH_ACTION_TOKEN':     server_configuration.BATCH_ACTION_TOKEN,
-        'PROJECT_USER_PASS':      server_configuration.PROJECT_USER_PASS,
-        'PROJECT_USER_PREFIX':    service_constants.PROJECT_USER_PREFIX,
-        'STAGING_FOLDER_SUFFIX':  service_constants.STAGING_FOLDER_SUFFIX
+        'METAX_AVAILABLE':        server_configuration.METAX_AVAILABLE,
+        'METAX_API_ROOT_URL':     server_configuration.METAX_API_ROOT_URL,
+        'METAX_API_RPC_URL':      server_configuration.METAX_API_RPC_URL,
+        'METAX_API_USER':         server_configuration.METAX_API_USER,
+        'METAX_API_PASS':         server_configuration.METAX_API_PASS
     }
     return config
 

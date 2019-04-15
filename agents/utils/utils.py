@@ -28,7 +28,9 @@ import logging
 import sys
 from base64 import b64encode
 
-from agents.settings import test as test_settings, production as production_settings
+from agents.settings import test as test_settings
+from agents.settings import development as development_settings
+from agents.settings import production as production_settings
 
 
 def _load_module_from_file(made_up_module_name, file_path):
@@ -73,12 +75,12 @@ def current_time():
 def executing_test_case():
     return "unittest" in sys.modules
 
-def get_logger(logger_name='logger'):
+def get_logger(logger_name='logger', uida_conf_vars=None):
     """
     Configure and return a logger which writes to a different file
     when running inside test cases.
     """
-    settings = get_settings()
+    settings = get_settings(uida_conf_vars)
     logger = logging.getLogger(logger_name)
 
     formatter = logging.Formatter(fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
@@ -90,12 +92,19 @@ def get_logger(logger_name='logger'):
 
     return logger
 
-def get_settings():
+def get_settings(uida_conf_vars=None):
     """
-    Automatically return either production or test settings depending on
-    if the code is currently being executed inside a test case or not.
+    Automatically return either production, development, or test settings depending on
+    if the code is currently being executed inside a test case, development environment,
+    or production environment.
     """
-    return deepcopy(test_settings if executing_test_case() else production_settings)
+    if executing_test_case():
+        return deepcopy(test_settings)
+
+    if uida_conf_vars != None and uida_conf_vars.get('IDA_ENVIRONMENT', False) == 'TEST':
+        return deepcopy(development_settings)
+
+    return deepcopy(production_settings)
 
 def load_variables_from_uida_conf_files():
     """
@@ -114,6 +123,8 @@ def load_variables_from_uida_conf_files():
     )
 
     uida_conf_vars = {
+        'ROOT': server_conf.ROOT,
+        'OCC': server_conf.OCC,
         'IDA_ENVIRONMENT': server_conf.IDA_ENVIRONMENT,
         'IDA_API_ROOT_URL': server_conf.IDA_API_ROOT_URL,
         'METAX_API_ROOT_URL': server_conf.METAX_API_ROOT_URL,

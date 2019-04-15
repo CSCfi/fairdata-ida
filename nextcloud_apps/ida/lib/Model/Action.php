@@ -54,7 +54,7 @@ class Action extends Entity implements JsonSerializable
     protected $error;
     protected $retry;
     protected $retrying;
-    
+
     /**
      * Get JSON representation
      *
@@ -62,7 +62,7 @@ class Action extends Entity implements JsonSerializable
      */
     public function jsonSerialize() {
         $values = array();
-    
+
         $values["id"] = $this->id;
         $values["pid"] = $this->pid;
         $values["action"] = $this->action;
@@ -71,43 +71,43 @@ class Action extends Entity implements JsonSerializable
         $values["node"] = (int)$this->node;
         $values["pathname"] = $this->pathname;
         $values["initiated"] = $this->initiated;
-        if ($this->storage != null) {
+        if ($this->storage !== null) {
             $values["storage"] = $this->storage;
         }
-        if ($this->pids != null) {
+        if ($this->pids !== null) {
             $values["pids"] = $this->pids;
         }
-        if ($this->checksums != null) {
+        if ($this->checksums !== null) {
             $values["checksums"] = $this->checksums;
         }
-        if ($this->metadata != null) {
+        if ($this->metadata !== null) {
             $values["metadata"] = $this->metadata;
         }
-        if ($this->replication != null) {
+        if ($this->replication !== null) {
             $values["replication"] = $this->replication;
         }
-        if ($this->completed != null) {
+        if ($this->completed !== null) {
             $values["completed"] = $this->completed;
         }
-        if ($this->failed != null) {
+        if ($this->failed !== null) {
             $values["failed"] = $this->failed;
         }
-        if ($this->cleared != null) {
+        if ($this->cleared !== null) {
             $values["cleared"] = $this->cleared;
         }
-        if ($this->error != null) {
+        if ($this->error !== null) {
             $values["error"] = $this->error;
         }
-        if ($this->retry != null) {
+        if ($this->retry !== null) {
             $values["retry"] = $this->retry;
         }
-        if ($this->retrying != null) {
+        if ($this->retrying !== null) {
             $values["retrying"] = $this->retrying;
         }
-        
+
         return $values;
     }
-    
+
     /**
      * Return true if the action is pending, else return false. We look at the individual operation timestamps
      * rather than the completed timestamp, both to guard against erroneous setting of the completed timestamp when
@@ -117,23 +117,23 @@ class Action extends Entity implements JsonSerializable
      * @return bool
      */
     public function isPending() {
-        
+
         // Any action that has failed is by definition pending and not completed.
         if ($this->failed != null) {
             return true;
         }
-        
+
         // All actions require successful local storage operations and metadata publication/update to be considered completed.
         if ($this->storage == null || $this->metadata == null) {
             return true;
         }
-        
+
         // In addition, Freeze actions require successful PID and checksum generation and replication to be considered completed.
         if ($this->action == 'freeze' && ($this->checksums == null || $this->pids == null || $this->replication == null)) {
             return true;
         }
-        
+
         return false;
     }
-    
+
 }

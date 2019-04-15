@@ -60,7 +60,10 @@ $CONFIG = array(
         'URL_BASE_FILE'      => 'http://localhost/remote.php/webdav',
         'URL_BASE_SHARE'     => 'http://localhost/ocs/v1.php/apps/files_sharing/api/v1/shares',
         'URL_BASE_GROUP'     => 'http://localhost/ocs/v1.php/cloud/groups',
-        'SIMULATE_AGENTS'    => 0, // If set to 1, the Nextcloud app will automatically mark all actions as complete
+        // If SIMULATE_AGENTS is set to true, the Nextcloud app will automatically mark all actions
+        // as complete, and not publish action messages to rabbigmq. Definition of the HTTP header
+        // X-SIMULATE-AGENTS as either true or false will take precidence over this setting here.
+        'SIMULATE_AGENTS'    => false,
     ),
     'debug'                             => false,
     'logfile'                           => '/mnt/storage_vol01/log/nextcloud.log',

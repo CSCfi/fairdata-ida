@@ -21,19 +21,29 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 @link     https://research.csc.fi/
 -->
 
-RabbitMQ listener agents that respond to freeze, unfreeze and delete messages
-published from IDA.
+This is the root directory for all event-driven agents which
+perform core IDA service operations in response to events initiated
+by users or by other components or processes of the service.
 
-The metadata agent responds to freeze, unfreeze, and delete events, and ensures
+Agents are implemented as RabbitMQ listener agents which respond to freeze,
+unfreeze, delete, and repair messages published by the IDA service.
+
+The metadata agent responds to all action messages, and ensures
 that the file specific metadata maintained in METAX is kept up-to-date,
 generating PIDs, checksums (SHA-256), and aggregating all relevant metadata
 accordingly. In practice, unfreeze and delete events are treated the same
-(files are simply marked as deleted in METAX). Once done, the metadata agent
-publishes a replication message to the designated RabbitMQ exchange.
+(files are simply marked as deleted in METAX). Once done, for freeze and
+repair actions, the metadata agent publishes a replication message to the
+designated replication agent RabbitMQ exchange. For other actions, the
+metadata agent marks the action as completed.
 
-The replication agent responds only to freeze events. It copies all files
-associated with a given action, from their freezing location on disk, to
-the configured replication location.
+The replication agent responds only to freeze and repair action messages. It
+copies all files associated with a given action, from the frozen area of the
+project to the configured replication location, employing checksum validation
+on each copied file. However, if the execution environment is 'TEST', or if
+the action is a repair action, and the file both already exists in the replication
+location and the file size of both the frozen file and replicated file are the
+same, the file is skipped.
 
 # agent installation
 

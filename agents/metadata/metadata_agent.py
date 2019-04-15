@@ -22,6 +22,7 @@
 #--------------------------------------------------------------------------------
 
 import os
+import requests
 
 from agents.common import GenericAgent
 from agents.utils.utils import construct_file_path, make_ba_http_header, current_time
@@ -43,6 +44,8 @@ class MetadataAgent(GenericAgent):
             self._handle_freeze_action(action, method)
         elif action['action'] in ('unfreeze', 'delete'):
             self._handle_unfreeze_action(action, method)
+        elif action['action'] == 'repair':
+            self._handle_repair_action(action, method)
         else:
             self._logger.error('Action type = %s is not something we can handle...' % action['action'])
 
@@ -87,6 +90,8 @@ class MetadataAgent(GenericAgent):
     def _handle_unfreeze_action(self, action, method):
         if self._complete_actions_without_metax():
             self._logger.info('Note: Completing action without Metax')
+            self._save_action_completion_timestamp(action, 'metadata')
+            self._save_action_completion_timestamp(action, 'completed')
         elif self._sub_action_processed(action, 'metadata'):
             self._logger.info('Metadata already processed')
         else:
@@ -96,6 +101,52 @@ class MetadataAgent(GenericAgent):
                 self._logger.exception('Metadata deletion failed')
                 self._republish_or_fail_action(method, action, 'metadata', e)
                 return
+        self._ack_message(method)
+
+    def _handle_repair_action(self, action, method):
+
+        # nodes obtained during checksums processing
+        nodes = None
+
+        # Repair checksums (and file sizes) as required
+        #
+        # Note: the default behavior of the checksum processing accommodates both normal freeze
+        # actions and repair actions, so all that is needed here is to process the checksums for
+        # all nodes associated with the action, and is no different than for a repair action
+
+        if self._sub_action_processed(action, 'checksums'):
+            self._logger.info('Checksums already processed')
+        else:
+            try:
+                nodes = self._process_checksums(action)
+            except Exception as e:
+                self._logger.exception('Checksum processing failed')
+                self._republish_or_fail_action(method, action, 'checksums', e)
+                return
+
+        # Repair published metadata as required
+
+        if self._complete_actions_without_metax():
+            self._logger.info('Note: Completing action without Metax')
+            self._save_action_completion_timestamp(action, 'metadata')
+        elif self._sub_action_processed(action, 'metadata'):
+            self._logger.info('Metadata repair already processed')
+        else:
+            try:
+                self._process_metadata_repair(action, nodes)
+            except Exception as e:
+                self._logger.exception('Metadata repair failed')
+                self._republish_or_fail_action(method, action, 'metadata', e)
+                return
+
+        # Publish action message to replication queue
+
+        if self._sub_action_processed(action, 'replication'):
+            self._logger.error('Replication already processed...? Okay... Something weird has happened here')
+        else:
+            self.publish_message(action, exchange='replication')
+            self._logger.info('Publishing action %s to replication queue...' % action['pid'])
+
         self._ack_message(method)
 
     def _process_checksums(self, action):
@@ -108,10 +159,63 @@ class MetadataAgent(GenericAgent):
         for node in nodes:
             if self._graceful_shutdown_started:
                 raise SystemExit
-            file_path = construct_file_path(self._uida_conf_vars, node)
-            node['checksum'] = self._get_file_checksum(file_path)
 
-        self._save_nodes_to_db(nodes, fields=['checksum'])
+            # Generate local filesystem pathname to file in frozen area
+            file_path = construct_file_path(self._uida_conf_vars, node)
+
+            # If the file size reported for the file differs from the file size on disk,
+            # or if no file size is recorded in IDA for the file, or if no checksum is
+            # recorded in IDA for the file, then the file size should be updated in IDA
+            # based on the file size on disk, and a new checksum generated based on the
+            # current file on disk, and the new checksum recorded in IDA.
+            #
+            # The following logic works efficiently both for freeze and repair actions.
+
+            # Assume no updates to either file size or checksum required
+            node_updated = False
+
+            # Get reported file size, if defined
+            try:
+                node_size = node['size']
+            except:
+                node_size = None
+
+            # Get reported checksum, if defined
+            try:
+                node_checksum = node['checksum']
+            except:
+                node_checksum = None
+
+            # If no file size is reported, or we have a repair action, get the actual size on disk
+            # Else trust the reported size and avoid the cost of retrieving the size on disk
+            if node_size == None or action['action'] == 'repair':
+                file_size = os.path.getsize(file_path)
+            else:
+                file_size = node_size
+
+            # If the reported file size disagrees with the determined file size, record file size
+            # on disk and generate and record new checksum
+            if node_size != file_size:
+                self._logger.debug('Recording both size and checksum for file %s' % node['pid'])
+                node_size = file_size
+                node_checksum = self._get_file_checksum(file_path)
+                node_updated = True
+
+            # If still no checksum, generate and record new checksum
+            if node_checksum == None:
+                self._logger.debug('Recording checksum for file %s' % node['pid'])
+                node_checksum = self._get_file_checksum(file_path)
+                node_updated = True
+
+            # If either new file size or new checksum, update node values and flag node as updated
+            if node_updated:
+                node['size'] = node_size
+                node['checksum'] = node_checksum
+                node['_updated'] = node_updated
+
+        # Update db records for all updated nodes
+        self._save_nodes_to_db(nodes, fields=['checksum', 'size'], updated_only=True)
+
         self._save_action_completion_timestamp(action, 'checksums')
         self._logger.info('Checksums processing OK')
         return nodes
@@ -123,15 +227,36 @@ class MetadataAgent(GenericAgent):
             nodes = self._get_nodes_associated_with_action(action)
 
         metadata_start_time = current_time()
+
         for node in nodes:
             node['metadata'] = metadata_start_time
 
         technical_metadata = self._aggregate_technical_metadata(action, nodes)
+
         self._publish_metadata(technical_metadata)
 
         self._save_nodes_to_db(nodes, fields=['metadata'])
         self._save_action_completion_timestamp(action, 'metadata')
         self._logger.info('Metadata publication OK')
+
+    def _process_metadata_repair(self, action, nodes):
+        self._logger.info('Processing metadata repair...')
+
+        if not nodes:
+            nodes = self._get_nodes_associated_with_action(action)
+
+        metadata_start_time = current_time()
+
+        for node in nodes:
+            node['metadata'] = metadata_start_time
+
+        technical_metadata = self._aggregate_technical_metadata(action, nodes)
+
+        self._repair_metadata(technical_metadata, action)
+
+        self._save_nodes_to_db(nodes, fields=['metadata'])
+        self._save_action_completion_timestamp(action, 'metadata')
+        self._logger.info('Metadata repair OK')
 
     def _aggregate_technical_metadata(self, action, nodes):
         self._logger.debug('Aggregating technical metadata...')
@@ -188,12 +313,165 @@ class MetadataAgent(GenericAgent):
 
         return file_metadata
 
+    def _repair_metadata(self, technical_metadata, action):
+        """
+        Repair file metadata in Metax.
+        """
+        self._logger.debug('Repairing file metadata in metax...')
+
+        existing_file_pids = []
+        active_file_pids = []
+        existing_files = []
+        new_files = []
+        removed_file_pids = []
+
+        # retrieve PIDs of all active files known by metax which are associated with project
+        response = self._metax_api_request('get', '/files?fields=identifier&project_identifier=%s&limit=100000000' % (action['project']))
+        # TODO Find more elegant way to unset limit rather than specify insanely high limit
+        if response.status_code != 200:
+            raise Exception(
+                'Failed to retrieve details of frozen files associated with project. HTTP status code: %d. Error messages: %s'
+                % (response.status_code, response.content)
+            )
+        file_data = response.json()
+        recieved_count= len(file_data['results'])
+        if file_data['count'] != recieved_count:
+            raise Exception('Failed to retrieve all records: total = %d returned = %d' % (file_data['count'], recieved_count))
+        for record in file_data['results']:
+            existing_file_pids.append(record['identifier'])
+
+        # segregate descriptions of all files in technical metadata based on whether they are known to metax or not
+        for record in technical_metadata:
+            if record['identifier'] in existing_file_pids:
+                existing_files.append(record)
+            else:
+                new_files.append(record)
+            active_file_pids.append(record['identifier'])
+
+        # extract PIDs of all files known to metax which are no longer actively frozen
+        for pid in existing_file_pids:
+            if pid not in active_file_pids:
+                removed_file_pids.append(pid)
+
+        active_file_count   = len(active_file_pids)
+        existing_file_count = len(existing_files)
+        new_file_count      = len(new_files)
+        removed_file_count  = len(removed_file_pids)
+
+        self._logger.debug('ACTIVE FILE COUNT:   %d' % (active_file_count))
+        self._logger.debug('EXISTING FILE COUNT: %d' % (existing_file_count))
+        self._logger.debug('NEW FILE COUNT:      %d' % (new_file_count))
+        self._logger.debug('REMOVED FILE COUNT:  %d' % (removed_file_count))
+
+        # PATCH metadata descriptions of all existing files
+
+        if existing_file_count > 0:
+
+            response = self._metax_api_request('patch', '/files', data=existing_files)
+
+            if response.status_code not in (200, 201, 204):
+                try:
+                    response_json = response.json()
+                except:
+                    raise Exception(
+                        'Metadata update failed, Metax returned an error. HTTP status code: %d. Error messages: %s'
+                        % (response.status_code, response.content)
+                    )
+
+                if 'failed' in response_json:
+                    errors = []
+                    for i, entry in enumerate(response_json['failed']):
+                        errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                        if i > 10:
+                            break
+
+                    raise Exception(
+                        'Metadata update failed, Metax returned an error. HTTP status code: %d. First %d errors: %s'
+                        % (response.status_code, len(errors), '\n'.join(errors))
+                    )
+
+                # some unexpected type of error...
+                raise Exception(
+                    'Metadata update failed, Metax returned an error. HTTP status code: %d. Error messages: %s'
+                    % (response.status_code, response.content)
+                )
+
+        # POST metadata descriptions of all new files
+
+        if new_file_count > 0:
+
+            response = self._metax_api_request('post', '/files', data=new_files)
+
+            if response.status_code not in (200, 201, 204):
+                try:
+                    response_json = response.json()
+                except:
+                    raise Exception(
+                        'Metadata publication failed, Metax returned an error. HTTP status code: %d. Error messages: %s'
+                        % (response.status_code, response.content)
+                    )
+
+                if 'failed' in response_json:
+                    errors = []
+                    for i, entry in enumerate(response_json['failed']):
+                        errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                        if i > 10:
+                            break
+
+                    raise Exception(
+                        'Metadata publication failed, Metax returned an error. HTTP status code: %d. First %d errors: %s'
+                        % (response.status_code, len(errors), '\n'.join(errors))
+                    )
+
+                # some unexpected type of error...
+                raise Exception(
+                    'Metadata publication failed, Metax returned an error. HTTP status code: %d. Error messages: %s'
+                    % (response.status_code, response.content)
+                )
+
+        # DELETE metadata descriptions of all removed files
+
+        if removed_file_count > 0:
+
+            response = self._metax_api_request('delete', '/files', data=removed_file_pids)
+
+            if response.status_code not in (200, 201, 204):
+                try:
+                    response_json = response.json()
+                except:
+                    raise Exception(
+                        'Metadata deletion failed, Metax returned an error. HTTP status code: %d. Error messages: %s'
+                        % (response.status_code, response.content)
+                    )
+
+                if 'failed' in response_json:
+                    errors = []
+                    for i, entry in enumerate(response_json['failed']):
+                        errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                        if i > 10:
+                            break
+
+                    raise Exception(
+                        'Metadata deletion failed, Metax returned an error. HTTP status code: %d. First %d errors: %s'
+                        % (response.status_code, len(errors), '\n'.join(errors))
+                    )
+
+                # some unexpected type of error...
+                raise Exception(
+                    'Metadata deletion failed, Metax returned an error. HTTP status code: %d. Error messages: %s'
+                    % (response.status_code, response.content)
+                )
+
+
     def _publish_metadata(self, technical_metadata):
         """
         Publish file metadata to Metax.
         """
         self._logger.debug('Publishing file metadata to metax...')
 
+        # TODO Determine if use of ignore_already_exists_errors is correct, or whether an error should be raised
+        # if there exists a record for an active file in metax, since that should not be possible if IDA is working
+        # correctly... or whether a similar treatment to repair actions should be used, with both POST and PATCH...
         response = self._metax_api_request('post', '/files?ignore_already_exists_errors=true', data=technical_metadata)
 
         if response.status_code not in (200, 201, 204):
@@ -241,8 +519,7 @@ class MetadataAgent(GenericAgent):
         # done. that would then trigger the API to place the completed-timestamp. for convenience right now though,
         # immediately place the replication-timestamp. once some processing will happen in replication for deletion,
         # move this to its correct place.
-        self._save_action_completion_timestamp(action, 'replication')
-
+        self._save_action_completion_timestamp(action, 'completed')
         self._logger.info('Metadata deletion OK')
 
     def _metax_api_request(self, method, detail_url, data=None):

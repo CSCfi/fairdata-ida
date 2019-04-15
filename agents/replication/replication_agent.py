@@ -1,4 +1,4 @@
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
 # Copyright (C) 2018 Ministry of Education and Culture, Finland
@@ -19,7 +19,7 @@
 # @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 
 import errno
 import os
@@ -44,7 +44,7 @@ class ReplicationAgent(GenericAgent):
         """
         The main method which executes a single action.
         """
-        if action['action'] == 'freeze':
+        if action['action'] == 'freeze' or action['action'] == 'repair':
             self._handle_freeze_action(action, method)
         else:
             self._logger.error('Action type = %s is not something we can handle...' % action['action'])
@@ -79,12 +79,12 @@ class ReplicationAgent(GenericAgent):
             if not node.get('checksum', None):
                 raise Exception('Node %s did not have checksum generated before starting replication.' % node['pid'])
 
-            if node.get('replicated', None):
+            if node.get('replicated', None) and action['action'] != 'repair':
                 self._logger.debug('Node %s already copied, skipping...' % node['pid'])
                 continue
 
             try:
-                self._copy_to_replication_location(node)
+                self._copy_to_replication_location(node, replication_start_time)
             except Exception:
                 # on any error during file copy, check if the error is because the mount
                 # point disappeared. if there is an error, the below method will raise
@@ -99,12 +99,13 @@ class ReplicationAgent(GenericAgent):
             # save each individual successfully replicated node to IDA db immediately,
             # in case the replication process fails later. this way, already replicated
             # files will not be replicated again during a retry.
-            node['replicated'] = replication_start_time
-            self._save_nodes_to_db([node], fields=['replicated'])
-            files_copied += 1
+            self._save_nodes_to_db([node], fields=['replicated'], updated_only=True)
+            if node.get('_copied', False) == True:
+                files_copied += 1
 
         self.last_number_of_files_replicated = files_copied
         self._save_action_completion_timestamp(action, 'replication')
+        self._save_action_completion_timestamp(action, 'completed')
         self._logger.info('Replication processing OK')
 
     def _check_replication_root_is_mounted(self):
@@ -126,15 +127,34 @@ class ReplicationAgent(GenericAgent):
 
         self._logger.info('Replication root at %s OK' % self._uida_conf_vars['DATA_REPLICATION_ROOT'])
 
-    def _copy_to_replication_location(self, node):
+    def _copy_to_replication_location(self, node, timestamp=current_time()):
         """
         Copy a single node from frozen location to replication location.
 
         As an extra precaution, checksums are re-calculated for files after copy,
         and compared with the checksums of the initial checksum generation phase.
+
+        If the node is already reported as having been replicated, or if running in a
+        test environment, the file will not be re-copied if a replication already exists
+        and the file size is the same for both the frozen file and already replicated file.
         """
+
         src_path = construct_file_path(self._uida_conf_vars, node)
         dest_path = construct_file_path(self._uida_conf_vars, node, replication=True)
+
+        try:
+            replicated = node['replicated']
+        except:
+            replicated = None
+
+        if replicated != None or self._uida_conf_vars.get('IDA_ENVIRONMENT', False) == 'TEST':
+            if os.path.exists(dest_path):
+                if os.stat(src_path).st_size == os.stat(dest_path).st_size:
+                    self._logger.debug('Skipping already replicated file: %s' % dest_path)
+                    if replicated == None:
+                        node['replicated'] = timestamp
+                        node['_updated'] = True
+                    return
 
         try:
             shutil.copy(src_path, dest_path)
@@ -146,8 +166,13 @@ class ReplicationAgent(GenericAgent):
             shutil.copy(src_path, dest_path)
 
         replicated_checksum = self._get_file_checksum(dest_path)
+
         if node['checksum'] != replicated_checksum:
             raise Exception('Checksum mismatch after replication for node: %s' % node['pid'])
+
+        node['replicated'] = timestamp
+        node['_updated'] = True
+        node['_copied'] = True
 
     def _republish_or_fail_action(self, method, action, sub_action_name, exception):
         """
