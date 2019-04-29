@@ -91,6 +91,7 @@ ErrorDocument 404 /core/templates/404.php
   RewriteCond %{REQUEST_FILENAME} !core/img/manifest.json$
   RewriteCond %{REQUEST_FILENAME} !/remote.php
   RewriteCond %{REQUEST_FILENAME} !/public.php
+  RewriteCond %{REQUEST_FILENAME} !/phpinfo.php
   RewriteCond %{REQUEST_FILENAME} !/cron.php
   RewriteCond %{REQUEST_FILENAME} !/core/ajax/update.php
   RewriteCond %{REQUEST_FILENAME} !/status.php
