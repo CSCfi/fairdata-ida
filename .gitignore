@@ -12,6 +12,7 @@
 TODO
 tags
 project.sublime-project
+/log
 /config
 /snapshots
 tmp/
