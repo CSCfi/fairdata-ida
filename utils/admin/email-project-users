@@ -62,7 +62,7 @@ if [ "$EMAIL_SENDER" != "" ]; then
 
     MESSAGE="${MESSAGE}
 
-
+If you have any questions, please contact the CSC Service Desk (servicedesk@csc.fi).
 
 [This is an automated IDA service message regarding project ${PROJECT} sent to all project users]
 "

@@ -145,6 +145,17 @@ if [ -s $ERR ]; then
     errorExit "Error: Failed to flush project action and file records from database!"
 fi
 
+echo "Deleting project share owner account from Nextcloud..."
+
+$OCC user:delete $PROJECT_USER 2>$ERR
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to delete project share owner!"
+fi
+
+#--------------------------------------------------------------------------------
+
 echo "Marking all project files as deleted in METAX..."
 
 if [ "$METAX_AVAILABLE" != "0" ]; then
@@ -153,17 +164,8 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
 
     if [ -s $ERR ]; then
         cat $ERR | tee -a $LOG
-        errorExit "Error: Failed to update file metadata in METAX!"
+        echoAndLog "Error: Failed to update file metadata in METAX!"
     fi
-fi
-
-echo "Deleting project share owner account from Nextcloud..."
-
-$OCC user:delete $PROJECT_USER 2>$ERR
-
-if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to delete project share owner!"
 fi
 
 #--------------------------------------------------------------------------------
@@ -184,7 +186,7 @@ fi
 
 $ROOT/utils/admin/email-project-users $PROJECT \
     "Project ${PROJECT} removed." \
-    "The project ${PROJECT} has been REMOVED from the IDA service and is no longer accessible. ALL PROJECT DATA HAS BEEN DELETED."
+    "The project ${PROJECT} has been REMOVED from the IDA service and is no longer accessible. If the project had any data in IDA, that data has now been DELETED as agreed with the project manager and/or organization's IDA contact person."
 
 rm $ERR 2>/dev/null
 

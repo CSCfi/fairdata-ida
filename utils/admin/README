@@ -50,6 +50,10 @@ the project without any loss of data or change in project membership.
 In short, this first step makes such an error essentially "painless" and easily
 recoverable.
 
+If the suspend-project script is given a second parameter "--delete" then a more
+detailed message will be emailed to project users, informing them of the upcoming
+deletion of the project.
+
 The script "list-suspended-projects" will provide a summary of all projects which
 are currently suspended, and when they were suspended.
  

@@ -35,6 +35,13 @@ fi
 
 #--------------------------------------------------------------------------------
 
+if [ "$LDAP_HOST_URL" = "" ]; then
+    echo "No LDAP connection configured. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
 export LDAP_HOST_URL
 export LDAP_BIND_USER
 export LDAP_PASSWORD
