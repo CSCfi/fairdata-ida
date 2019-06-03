@@ -712,3 +712,19 @@ Note: The SAML/Haka login button link generation in the layout.ida.login.php req
         @ini_set('post_max_size', '10000G');
         @ini_set('file_uploads', '1000000');
 
+-- CSRF Checks on multi-headed front end
+
+When deployed using DNS randomized load balancing across multiple front end instances, CSFR 
+checks fail when the instance randomly changes between page load and page-specific AJAX
+requests, causing page load errors and forced page reloads.
+
+Until and unless a proper load balancer with sticky sessions is employed, which will ensure each
+user will always interact with the same front end instance for the duration of their session, we
+must disable CSRF checks.
+
+>> In /nextcloud/lib/private/AppFramework/Http/Request.php, add the following as the first
+   statement in the public function passesCSRFCheck():
+
+    return true;
+
+    

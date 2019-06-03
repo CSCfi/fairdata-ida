@@ -102,6 +102,9 @@ class FreezingController extends Controller
      * @param FileMapper   $fileMapper   file mapper
      * @param string       $userId       current user
      * @param IConfig      $config       global configuration
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function __construct(
         $appName,
@@ -1215,6 +1218,9 @@ class FreezingController extends Controller
      * @param string $pathname        the relative pathname of the node within the shared project staging or frozen folder
      *
      * @return Entity
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function registerAction($nextcloudNodeId, $action, $project, $user, $pathname) {
 
@@ -1268,6 +1274,9 @@ class FreezingController extends Controller
      * @param string   $timestamp the timestamp of when the action was initiated
      *
      * @return Entity
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function registerFile($fileInfo, $action, $project, $pathname, $actionPid, $timestamp) {
 
@@ -1321,6 +1330,9 @@ class FreezingController extends Controller
      * @param string     $timestamp      the timestamp of when the action was initiated
      *
      * @return Entity[]
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function registerFiles($action, $project, $nextcloudNodes, $pid, $timestamp) {
 
@@ -1405,6 +1417,9 @@ class FreezingController extends Controller
      * @param string $pathname        the relative pathname of the node within the shared project staging or frozen folder
      *
      * @return int
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function resolveNextcloudNodeId($nextcloudNodeId, $action, $project, $pathname) {
 
@@ -1446,6 +1461,9 @@ class FreezingController extends Controller
      * @param FileInfo[] $nextcloudNodes one or more FileInfo instances within the scope of the action
      * @param string     $pid            the PID of the action with which the files should be associated
      * @param string     $timestamp      the timestamp of when the action was initiated
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function repairFrozenFiles($project, $nextcloudNodes, $pid, $timestamp) {
 
@@ -1521,6 +1539,9 @@ class FreezingController extends Controller
      * @param FileInfo[] $nextcloudNodes one or more FileInfo instances within the scope of the action
      *
      * @return boolean
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function checkIntersectionWithExistingFiles($action, $project, $nextcloudNodes) {
 
@@ -1572,6 +1593,9 @@ class FreezingController extends Controller
      * @param string     $action         the pid of a just-initiated action (optional)
      *
      * @return boolean
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function checkIntersectionWithIncompleteActions($project, $scope, $nextcloudNodes, $action = null) {
 
@@ -1649,6 +1673,9 @@ class FreezingController extends Controller
      * @param string $pathname the relative pathname of the node
      *
      * @return boolean
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function isEmptyFolder($action, $project, $pathname) {
 
@@ -1707,6 +1734,9 @@ class FreezingController extends Controller
      * @return FileInfo[]
      *
      * @throws MaximumAllowedFilesExceeded
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function getNextcloudNodes($action, $project, $pathname, $limit = Constants::MAX_FILE_COUNT) {
 
@@ -1749,6 +1779,9 @@ class FreezingController extends Controller
      * @return array
      *
      * @throws MaximumAllowedFilesExceeded
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function getNextcloudNodesR($action, $project, $pathname, $limit, $result, $level = 1) {
 
@@ -1843,6 +1876,9 @@ class FreezingController extends Controller
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
      *
      * @return string
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function buildFullPathname($action, $project, $pathname) {
 
@@ -1870,6 +1906,9 @@ class FreezingController extends Controller
      * @param string $pathname the full pathname
      *
      * @return string
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function getParentPathname($pathname) {
 
@@ -1896,6 +1935,9 @@ class FreezingController extends Controller
      * @param string $pathname the full Nextcloud pathname of a node, including the project staging or frozen root folder
      *
      * @return string
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function stripRootProjectFolder($project, $pathname) {
 
@@ -1926,6 +1968,9 @@ class FreezingController extends Controller
      *
      * @param Action $failedAction the failed action being retried
      * @param Action $retryAction  the action retrying the failed action
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function cloneFiles($failedAction, $retryAction) {
 
@@ -1958,6 +2003,9 @@ class FreezingController extends Controller
      * @param string $pid        the PID of the action with which the files should be associated
      *
      * @return File
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function cloneFile($fileEntity, $pid = null) {
 
@@ -2006,6 +2054,9 @@ class FreezingController extends Controller
      * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
      * @param string $project  the project to which the node belongs
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function moveNextcloudNode($action, $project, $pathname) {
 
@@ -2140,6 +2191,9 @@ class FreezingController extends Controller
      *
      * @param string $project  the project to which the node belongs
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function deleteNextcloudNode($project, $pathname) {
 
@@ -2204,6 +2258,9 @@ class FreezingController extends Controller
      *
      * @param string $project  the project to which the folder belongs
      * @param string $pathname the full pathname
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function createNextcloudPathFolders($project, $pathname) {
 
@@ -2783,6 +2840,9 @@ class FreezingController extends Controller
      * Open a connection to RabbitMQ for publication
      *
      * @return AMQPStreamConnection
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function openRabbitMQConnection() {
 
@@ -2804,6 +2864,9 @@ class FreezingController extends Controller
      *
      * @param AMQPStreamConnection $connection   a connection to RabbitMQ
      * @param Entity               $actionEntity database entity for the new action about which the message should be published
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     protected function publishActionMessage($connection, $actionEntity) {
 
@@ -2936,6 +2999,9 @@ class FreezingController extends Controller
      *
      * @return boolean
      * @throws Exception
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function scopeIntersectsInitiatingAction($inputScope, $project) {
 
@@ -2961,6 +3027,9 @@ class FreezingController extends Controller
      *
      * @throws Exception
      * @return boolean
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function scopeIntersectsAction($inputScope, $actionEntities, $action = null) {
 

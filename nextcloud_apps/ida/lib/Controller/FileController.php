@@ -59,6 +59,9 @@ class FileController extends Controller
      * @param IRequest   $request    request object
      * @param FileMapper $fileMapper file mapper
      * @param string     $userId     userid
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function __construct(
         $appName,

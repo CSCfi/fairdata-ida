@@ -55,6 +55,9 @@ class ActionController extends Controller
      * @param IRequest     $request      request object
      * @param ActionMapper $actionMapper action mapper
      * @param string       $userId       userid
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function __construct(
         $appName,

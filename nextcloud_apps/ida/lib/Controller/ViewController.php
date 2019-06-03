@@ -62,6 +62,9 @@ class ViewController extends Controller
      * @param FreezingController $freezingController freezing controller
      * @param string             $userId             userid
      * @param Navigation         $navigation         navigation bar object
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
      */
     public function __construct(
         $appName,
