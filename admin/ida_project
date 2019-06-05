@@ -180,19 +180,16 @@ if [ "$1" == "ADD" ]; then
         fi
     fi
 
-    NOW_TS=`date '+%s'`
-    # share the project staging directory to the group with read-write privileges, unless migration period is active
-    if [ "$NOW_TS" -gt "$SHARE_PROJECT_AFTER_TS" -o "$MIGRATION_ACTIVE" != "true" ]; then
-        echoAndLog "Sharing project shared staging folder..."
-        OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
-        CURL_ERROR="$?"
-        if [ "$CURL_ERROR" -ne "0" ]; then
-            errorExit "Share staging directory, curl error $CURL_ERROR $OUT"
-        fi
-        HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
-        if [ "$HITS" -ne 1 ]; then
-            errorExit "$OUT"
-        fi
+    # share the project staging directory to the group with read-write privileges
+    echoAndLog "Sharing project shared staging folder..."
+    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Share staging directory, curl error $CURL_ERROR $OUT"
+    fi
+    HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
     fi
 
     echoAndLog "Creating project shared frozen folder..."
@@ -212,18 +209,16 @@ if [ "$1" == "ADD" ]; then
         fi
     fi
 
-    # share the project frozen directory to the group with read-write privileges, unless migration period is active
-    if [ "$NOW_TS" -gt "$SHARE_PROJECT_AFTER_TS" -o "$MIGRATION_ACTIVE" != "true" ]; then
-        echoAndLog "Sharing project shared frozen folder..."
-        OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
-        CURL_ERROR="$?"
-        if [ "$CURL_ERROR" -ne "0" ]; then
-            errorExit "Share frozen directory, curl error $CURL_ERROR $OUT"
-        fi
-        HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
-        if [ "$HITS" -ne 1 ]; then
-            errorExit "$OUT"
-        fi
+    # share the project frozen directory to the group with read-write privileges
+    echoAndLog "Sharing project shared frozen folder..."
+    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Share frozen directory, curl error $CURL_ERROR $OUT"
+    fi
+    HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+    if [ "$HITS" -ne 1 ]; then
+        errorExit "$OUT"
     fi
 
 fi
