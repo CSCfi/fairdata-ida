@@ -110,7 +110,7 @@ if [ "$1" == "ADD" ]; then
         fi
     done
 
-    # If project folder does not exist, create it
+    # If project folder does not exist, create it in whichever volume has the most available free space
 
     if [ ! -e "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
 
@@ -118,9 +118,19 @@ if [ "$1" == "ADD" ]; then
             rm -f "$STORAGE_OC_DATA_ROOT/$PROJECT_USER"
         fi
 
-        SC_SIZE=${#STORAGE_CANDIDATES[@]}
-        SC_INDEX=$(($RANDOM % $SC_SIZE))
-        STORAGE_VOLUME="${STORAGE_CANDIDATES[$SC_INDEX]}"
+        AVAILABLE_SPACE=0
+
+        for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}
+        do
+            CANDIDATE_AVAILABLE_SPACE=`df -k "$CANDIDATE_STORAGE_VOLUME" | tail -1 | sed -e 's/  */\t/g' | cut -f 4 | sed -e 's/[^0-9]//g'`
+            if [ "$CANDIDATE_AVAILABLE_SPACE" = "" ]; then
+                errorExit "Failed to determine available space of volume: $CANDIDATE_STORAGE_VOLUME"
+            fi
+            if [ $CANDIDATE_AVAILABLE_SPACE -ge $AVAILABLE_SPACE ]; then
+                AVAILABLE_SPACE=$CANDIDATE_AVAILABLE_SPACE
+                STORAGE_VOLUME=$CANDIDATE_STORAGE_VOLUME
+            fi
+        done
 
         echoAndLog "Creating new project share owner folder: $STORAGE_VOLUME/$PROJECT_USER"
 
