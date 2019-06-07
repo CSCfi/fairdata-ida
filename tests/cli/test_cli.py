@@ -147,6 +147,17 @@ class TestIdaCli(unittest.TestCase):
         self.assertIn("Usage:", output)
         self.assertIn("checksum:", output)
 
+        print("Attempt to use project name with invalid characters")
+        cmd = "%s info %s -p bad@project:name+ /" % (self.cli, self.args)
+        failed = False
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            failed = True
+            output = error.output.decode(sys.stdout.encoding)
+            self.assertIn("Error: Invalid characters in project name.", output)
+        self.assertTrue(failed, output)
+
         print("Attempt to use invalid action")
         cmd = "%s unknown %s /Contact.txt %s/Contact.txt" % (self.cli, self.args, self.testdata)
         failed = False
@@ -157,6 +168,7 @@ class TestIdaCli(unittest.TestCase):
             output = error.output.decode(sys.stdout.encoding)
             self.assertIn("Error: Invalid action.", output)
         self.assertTrue(failed, output)
+
 
         print("Attempt to upload file to non-existent service")
         cmd = "%s upload %s -t 'http://no.such.service' /Contact.txt %s/Contact.txt" % (self.cli, self.args, self.testdata)
@@ -170,7 +182,7 @@ class TestIdaCli(unittest.TestCase):
         self.assertTrue(failed, output)
 
         print("Attempt to upload file to non-existent project")
-        cmd = "%s upload %s -p no.such.project /Contact.txt %s/Contact.txt" % (self.cli, self.args, self.testdata)
+        cmd = "%s upload %s -p no_such_project /Contact.txt %s/Contact.txt" % (self.cli, self.args, self.testdata)
         failed = False
         try:
             output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
