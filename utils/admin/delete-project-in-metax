@@ -21,6 +21,13 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
+#
+# This script will mark all project records as deleted in METAX, but can only be
+# used for legacy projects which do not still exist in IDA. If the project still
+# exists in IDA, then the delete-project script should be used, which employs all
+# of the relevant safety checks.
+#
+# --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
 INIT_FILE=`dirname $0`/lib/init_script.sh
@@ -34,18 +41,14 @@ else
 fi
 
 #--------------------------------------------------------------------------------
+echo "Verifying project ${PROJECT} does not still exist in IDA..."
 
-if [ "$LDAP_HOST_URL" = "" ]; then
-    echo "Error: No LDAP connection configured!" >&2
-    exit 1
+if [ -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "Error: The specified project ${PROJECT} still exists!"
 fi
 
 #--------------------------------------------------------------------------------
 
-export LDAP_HOST_URL
-export LDAP_BIND_USER
-export LDAP_PASSWORD
-export LDAP_SEARCH_BASE
+echo "Marking all project files as deleted in METAX..."
 
-$ROOT/utils/admin/lib/fetch-project-emails.pl $PROJECT | tr '\n' ',' | sed -e 's/,$//'
-
+$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 

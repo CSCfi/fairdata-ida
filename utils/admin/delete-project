@@ -160,7 +160,7 @@ echo "Marking all project files as deleted in METAX..."
 
 if [ "$METAX_AVAILABLE" != "0" ]; then
 
-    $CURL_POST $METAX_CREDENTIALS "$METAX_API_ROOT_URL/files/flush_project?project=$PROJECT" 2>$ERR >/dev/null
+    $CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 2>$ERR >/dev/null
 
     if [ -s $ERR ]; then
         cat $ERR | tee -a $LOG

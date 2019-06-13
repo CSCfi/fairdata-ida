@@ -54,10 +54,14 @@ fi
 
 if [ "$EMAIL_SENDER" != "" ]; then
 
-    RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT`
+    RECIPIENTS=""
 
-    if [ "$RECIPIENTS" = "" ]; then
-        echo "Warning: The project ${PROJECT} has no users!"
+    if [ "$LDAP_HOST_URL" != "" ]; then
+        RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT`
+
+        if [ "$RECIPIENTS" = "" ]; then
+            echo "Warning: The project ${PROJECT} has no users!"
+        fi
     fi
 
     MESSAGE="${MESSAGE}
