@@ -184,3 +184,19 @@ if [ "$DEBUG" = "true" ]; then
     echo ""
 fi
 
+function bytesToHR()
+{
+    local SIZE=$1
+    local UNITS="B KB MB GB TB PB"
+    for F in $UNITS; do
+        local UNIT=$F
+        test ${SIZE%.*} -lt 1024 && break;
+        SIZE=$(echo "$SIZE / 1024" | bc -l)
+    done
+  
+    if [ "$UNIT" == "B" ]; then
+        printf "%4.0f    %s\n" $SIZE $UNIT
+    else
+        printf "%7.02f %s\n" $SIZE $UNIT
+    fi
+}

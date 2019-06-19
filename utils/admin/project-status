@@ -1,0 +1,62 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+SCRIPT=`basename $0`
+USAGE="Usage: $SCRIPT project"
+
+INIT_FILE=`dirname $0`/lib/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
+    echo "The project '${PROJECT}' does not exist!" >&2
+    exit 1
+fi
+
+DATA=`$CURL_GET $ADMIN_CREDENTIALS "http://${ADMIN_CREDENTIALS}@localhost/ocs/v1.php/cloud/users/${PROJECT_USER_PREFIX}${PROJECT}" -H "OCS-APIRequest: true"`
+
+QUOTA=`echo $DATA | grep "<quota>" | sed -e 's/^.*<quota>//' | sed -e 's/<.*$//'`
+QUOTA=`bytesToHR "0${QUOTA}"`
+echo "Quota:"
+echo "  ${QUOTA}"
+
+USED=`echo $DATA | grep "<used>" | sed -e 's/^.*<used>//' | sed -e 's/<.*$//'`
+USED=`bytesToHR "0${USED}"`
+echo "Used:"
+echo "  ${USED}"
+
+echo "Users: "
+
+$CURL_GET $ADMIN_CREDENTIALS "http://${ADMIN_CREDENTIALS}@localhost/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
+    grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/  /' | sed -e 's/<.*$//' 
+
