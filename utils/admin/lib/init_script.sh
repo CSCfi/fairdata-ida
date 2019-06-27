@@ -152,6 +152,12 @@ METAX_CREDENTIALS="${METAX_API_USER}:${METAX_API_PASS}"
 
 ERR="/tmp/${SCRIPT}.$$.err"
 
+if [ "$FORCE_HTTP" = "true" ]; then
+    REQUEST_URL_ROOT="http://${ADMIN_CREDENTIALS}@localhost"
+else
+    REQUEST_URL_ROOT="https://${ADMIN_CREDENTIALS}@localhost"
+fi
+
 if [ "$DEBUG" = "true" ]; then
     echo ""
     echo "NC_ADMIN_USER                $NC_ADMIN_USER"
@@ -181,6 +187,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "ADMIN_CREDENTIALS            $ADMIN_CREDENTIALS"
     echo "LOG                          $LOG"
     echo "ERR                          $ERR"
+    echo "REQUEST_URL_ROOT             $REQUEST_URL_ROOT"
     echo ""
 fi
 

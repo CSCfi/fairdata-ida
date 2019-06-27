@@ -48,7 +48,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-EXISTS=`$CURL_GET $ADMIN_CREDENTIALS "http://${ADMIN_CREDENTIALS}@localhost/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" | grep "<statuscode>100<"`
+EXISTS=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" | grep "<statuscode>100<"`
 
 if [ "$EXISTS" = "" ]; then
     echo "The user '${USER}' does not exist!" >&2
@@ -68,8 +68,13 @@ if [ "$LASTLOGIN" = "" ]; then
 else
     echo "  $LASTLOGIN"
 fi
+
 echo "Projects:"
 
-$CURL_GET $ADMIN_CREDENTIALS "http://${ADMIN_CREDENTIALS}@localhost/ocs/v1.php/cloud/users/${USER}/groups" -H "OCS-APIRequest: true" | \
+$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${USER}/groups" -H "OCS-APIRequest: true" | \
     grep "<element>" | sed -e 's/^.*<element>/  /' | sed -e 's/<.*$//' 
 
+echo "Enabled:"
+
+$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" |
+    grep "<enabled>" | sed -e 's/^.*<enabled>/  /' | sed -e 's/<.*$//' 

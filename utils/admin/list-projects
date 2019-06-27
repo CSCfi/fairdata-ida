@@ -39,7 +39,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-$CURL_GET $ADMIN_CREDENTIALS "http://${ADMIN_CREDENTIALS}@localhost/ocs/v1.php/cloud/groups" -H "OCS-APIRequest: true" | \
+$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups" -H "OCS-APIRequest: true" | \
     grep "<element>" | grep -v "<element>admin<" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u 
 
 
