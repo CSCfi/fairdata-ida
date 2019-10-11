@@ -9,14 +9,10 @@
     "provisioning_api",
     "oauth2",
     "twofactor_backupcodes",
-    "workflowengine",
-    "ida",
-    "idafirstrunwizard",
-    "user_saml"
+    "workflowengine"
   ],
   "alwaysEnabled": [
     "files",
-    "files_sharing",
     "cloud_federation_api",
     "dav",
     "federatedfilesharing",
@@ -24,9 +20,6 @@
     "provisioning_api",
     "oauth2",
     "twofactor_backupcodes",
-    "workflowengine",
-    "ida",
-    "idafirstrunwizard",
-    "user_saml"
+    "workflowengine"
   ]
 }
