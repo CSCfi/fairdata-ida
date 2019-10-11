@@ -2,7 +2,6 @@
   "shippedApps": [
     "files",
     "files_sharing",
-    "firstrunwizard",
     "cloud_federation_api",
     "dav",
     "federatedfilesharing",
@@ -10,10 +9,14 @@
     "provisioning_api",
     "oauth2",
     "twofactor_backupcodes",
-    "workflowengine"
+    "workflowengine",
+    "ida",
+    "idafirstrunwizard",
+    "user_saml"
   ],
   "alwaysEnabled": [
     "files",
+    "files_sharing",
     "cloud_federation_api",
     "dav",
     "federatedfilesharing",
@@ -21,6 +24,9 @@
     "provisioning_api",
     "oauth2",
     "twofactor_backupcodes",
-    "workflowengine"
+    "workflowengine",
+    "ida",
+    "idafirstrunwizard",
+    "user_saml"
   ]
 }
