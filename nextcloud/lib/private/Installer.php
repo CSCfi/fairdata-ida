@@ -4,22 +4,16 @@
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Bart Visscher <bartv@thisnet.nl>
  * @author Brice Maron <brice@bmaron.net>
- * @author Christian Weiske <cweiske@cweiske.de>
- * @author Christopher Schäpers <kondou@ts.unde.re>
+ * @author Christoph Wurst <christoph@owncloud.com>
  * @author Frank Karlitschek <frank@karlitschek.de>
- * @author Georg Ehrke <georg@owncloud.com>
- * @author Jakob Sack <mail@jakobsack.de>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Kamil Domanski <kdomanski@kdemail.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author michag86 <micha_g@arcor.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author root <root@oc.(none)>
+ * @author root "root@oc.(none)"
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
  *
@@ -42,17 +36,12 @@
 namespace OC;
 
 use Doctrine\DBAL\Exception\TableExistsException;
-use OC\App\AppManager;
 use OC\App\AppStore\Bundles\Bundle;
 use OC\App\AppStore\Fetcher\AppFetcher;
-use OC\App\CodeChecker\CodeChecker;
-use OC\App\CodeChecker\EmptyCheck;
-use OC\App\CodeChecker\PrivateCheck;
 use OC\Archive\TAR;
 use OC_App;
 use OC_DB;
 use OC_Helper;
-use OCP\App\IAppManager;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\ILogger;
@@ -73,6 +62,10 @@ class Installer {
 	private $logger;
 	/** @var IConfig */
 	private $config;
+	/** @var array - for caching the result of app fetcher */
+	private $apps = null;
+	/** @var bool|null - for caching the result of the ready status */
+	private $isInstanceReadyForUpdates = null;
 
 	/**
 	 * @param AppFetcher $appFetcher
@@ -114,13 +107,16 @@ class Installer {
 		if(!is_array($info)) {
 			throw new \Exception(
 				$l->t('App "%s" cannot be installed because appinfo file cannot be read.',
-					[$info['name']]
+					[$appId]
 				)
 			);
 		}
 
-		$version = \OCP\Util::getVersion();
-		if (!\OC_App::isAppCompatible($version, $info)) {
+		$ignoreMaxApps = $this->config->getSystemValue('app_install_overwrite', []);
+		$ignoreMax = in_array($appId, $ignoreMaxApps);
+
+		$version = implode('.', \OCP\Util::getVersion());
+		if (!\OC_App::isAppCompatible($version, $info, $ignoreMax)) {
 			throw new \Exception(
 				// TODO $l
 				$l->t('App "%s" cannot be installed because it is not compatible with this version of the server.',
@@ -130,27 +126,25 @@ class Installer {
 		}
 
 		// check for required dependencies
-		\OC_App::checkAppDependencies($this->config, $l, $info);
+		\OC_App::checkAppDependencies($this->config, $l, $info, $ignoreMax);
+		\OC_App::registerAutoloading($appId, $basedir);
 
 		//install the database
 		if(is_file($basedir.'/appinfo/database.xml')) {
-			if (\OC::$server->getAppConfig()->getValue($info['id'], 'installed_version') === null) {
+			if (\OC::$server->getConfig()->getAppValue($info['id'], 'installed_version') === null) {
 				OC_DB::createDbFromStructure($basedir.'/appinfo/database.xml');
 			} else {
 				OC_DB::updateDbFromStructure($basedir.'/appinfo/database.xml');
 			}
+		} else {
+			$ms = new \OC\DB\MigrationService($info['id'], \OC::$server->getDatabaseConnection());
+			$ms->migrate();
 		}
 
-		\OC_App::registerAutoloading($appId, $basedir);
 		\OC_App::setupBackgroundJobs($info['background-jobs']);
-		if(isset($info['settings']) && is_array($info['settings'])) {
-			\OC::$server->getSettingsManager()->setupSettings($info['settings']);
-		}
 
 		//run appinfo/install.php
-		if((!isset($data['noinstall']) or $data['noinstall']==false)) {
-			self::includeAppScript($basedir . '/appinfo/install.php');
-		}
+		self::includeAppScript($basedir . '/appinfo/install.php');
 
 		$appData = OC_App::getAppInfo($appId);
 		OC_App::executeRepairSteps($appId, $appData['repair-steps']['install']);
@@ -173,28 +167,20 @@ class Installer {
 	}
 
 	/**
-	 * @brief checks whether or not an app is installed
-	 * @param string $app app
-	 * @returns bool
-	 *
-	 * Checks whether or not an app is installed, i.e. registered in apps table.
-	 */
-	public static function isInstalled( $app ) {
-		return (\OC::$server->getConfig()->getAppValue($app, "installed_version", null) !== null);
-	}
-
-	/**
 	 * Updates the specified app from the appstore
 	 *
 	 * @param string $appId
 	 * @return bool
 	 */
 	public function updateAppstoreApp($appId) {
-		if(self::isUpdateAvailable($appId, $this->appFetcher)) {
+		if($this->isUpdateAvailable($appId)) {
 			try {
 				$this->downloadApp($appId);
 			} catch (\Exception $e) {
-				$this->logger->error($e->getMessage(), ['app' => 'core']);
+				$this->logger->logException($e, [
+					'level' => ILogger::ERROR,
+					'app' => 'core',
+				]);
 				return false;
 			}
 			return OC_App::updateApp($appId);
@@ -285,7 +271,14 @@ class Installer {
 					$archive = new TAR($tempFile);
 
 					if($archive) {
-						$archive->extract($extractDir);
+						if (!$archive->extract($extractDir)) {
+							throw new \Exception(
+								sprintf(
+									'Could not extract app %s',
+									$appId
+								)
+							);
+						}
 						$allFiles = scandir($extractDir);
 						$folders = array_diff($allFiles, ['.', '..']);
 						$folders = array_values($folders);
@@ -371,32 +364,39 @@ class Installer {
 	 * Check if an update for the app is available
 	 *
 	 * @param string $appId
-	 * @param AppFetcher $appFetcher
 	 * @return string|false false or the version number of the update
 	 */
-	public static function isUpdateAvailable($appId,
-									  AppFetcher $appFetcher) {
-		static $isInstanceReadyForUpdates = null;
-
-		if ($isInstanceReadyForUpdates === null) {
+	public function isUpdateAvailable($appId) {
+		if ($this->isInstanceReadyForUpdates === null) {
 			$installPath = OC_App::getInstallPath();
 			if ($installPath === false || $installPath === null) {
-				$isInstanceReadyForUpdates = false;
+				$this->isInstanceReadyForUpdates = false;
 			} else {
-				$isInstanceReadyForUpdates = true;
+				$this->isInstanceReadyForUpdates = true;
 			}
 		}
 
-		if ($isInstanceReadyForUpdates === false) {
+		if ($this->isInstanceReadyForUpdates === false) {
 			return false;
 		}
 
-		$apps = $appFetcher->get();
-		foreach($apps as $app) {
+		if ($this->isInstalledFromGit($appId) === true) {
+			return false;
+		}
+
+		if ($this->apps === null) {
+			$this->apps = $this->appFetcher->get();
+		}
+
+		foreach($this->apps as $app) {
 			if($app['id'] === $appId) {
 				$currentVersion = OC_App::getAppVersion($appId);
+
+				if (!isset($app['releases'][0]['version'])) {
+					return false;
+				}
 				$newestVersion = $app['releases'][0]['version'];
-				if (version_compare($newestVersion, $currentVersion, '>')) {
+				if ($currentVersion !== '0' && version_compare($newestVersion, $currentVersion, '>')) {
 					return $newestVersion;
 				} else {
 					return false;
@@ -405,6 +405,22 @@ class Installer {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Check if app has been installed from git
+	 * @param string $name name of the application to remove
+	 * @return boolean
+	 *
+	 * The function will check if the path contains a .git folder
+	 */
+	private function isInstalledFromGit($appId) {
+		$app = \OC_App::findAppInDirectories($appId);
+		if($app === false) {
+			return false;
+		}
+		$basedir = $app['path'].'/'.$appId;
+		return file_exists($basedir.'/.git/');
 	}
 
 	/**
@@ -444,11 +460,14 @@ class Installer {
 	 */
 	public function removeApp($appId) {
 		if($this->isDownloaded( $appId )) {
+			if (\OC::$server->getAppManager()->isShipped($appId)) {
+				return false;
+			}
 			$appDir = OC_App::getInstallPath() . '/' . $appId;
 			OC_Helper::rmdirr($appDir);
 			return true;
 		}else{
-			\OCP\Util::writeLog('core', 'can\'t remove app '.$appId.'. It is not installed.', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('core', 'can\'t remove app '.$appId.'. It is not installed.', ILogger::ERROR);
 
 			return false;
 		}
@@ -485,17 +504,19 @@ class Installer {
 	 * @return array Array of error messages (appid => Exception)
 	 */
 	public static function installShippedApps($softErrors = false) {
+		$appManager = \OC::$server->getAppManager();
+		$config = \OC::$server->getConfig();
 		$errors = [];
 		foreach(\OC::$APPSROOTS as $app_dir) {
 			if($dir = opendir( $app_dir['path'] )) {
 				while( false !== ( $filename = readdir( $dir ))) {
-					if( substr( $filename, 0, 1 ) != '.' and is_dir($app_dir['path']."/$filename") ) {
+					if( $filename[0] !== '.' and is_dir($app_dir['path']."/$filename") ) {
 						if( file_exists( $app_dir['path']."/$filename/appinfo/info.xml" )) {
-							if(!Installer::isInstalled($filename)) {
+							if($config->getAppValue($filename, "installed_version", null) === null) {
 								$info=OC_App::getAppInfo($filename);
 								$enabled = isset($info['default_enable']);
-								if (($enabled || in_array($filename, \OC::$server->getAppManager()->getAlwaysEnabledApps()))
-									  && \OC::$server->getConfig()->getAppValue($filename, 'enabled') !== 'no') {
+								if (($enabled || in_array($filename, $appManager->getAlwaysEnabledApps()))
+									  && $config->getAppValue($filename, 'enabled') !== 'no') {
 									if ($softErrors) {
 										try {
 											Installer::installShippedApp($filename);
@@ -509,7 +530,7 @@ class Installer {
 									} else {
 										Installer::installShippedApp($filename);
 									}
-									\OC::$server->getConfig()->setAppValue($filename, 'enabled', 'yes');
+									$config->setAppValue($filename, 'enabled', 'yes');
 								}
 							}
 						}
@@ -530,20 +551,24 @@ class Installer {
 	public static function installShippedApp($app) {
 		//install the database
 		$appPath = OC_App::getAppPath($app);
+		\OC_App::registerAutoloading($app, $appPath);
+
 		if(is_file("$appPath/appinfo/database.xml")) {
 			try {
 				OC_DB::createDbFromStructure("$appPath/appinfo/database.xml");
 			} catch (TableExistsException $e) {
 				throw new HintException(
 					'Failed to enable app ' . $app,
-					'Please ask for help via one of our <a href="https://nextcloud.com/support/" target="_blank" rel="noreferrer">support channels</a>.',
+					'Please ask for help via one of our <a href="https://nextcloud.com/support/" target="_blank" rel="noreferrer noopener">support channels</a>.',
 					0, $e
 				);
 			}
+		} else {
+			$ms = new \OC\DB\MigrationService($app, \OC::$server->getDatabaseConnection());
+			$ms->migrate();
 		}
 
 		//run appinfo/install.php
-		\OC_App::registerAutoloading($app, $appPath);
 		self::includeAppScript("$appPath/appinfo/install.php");
 
 		$info = OC_App::getAppInfo($app);
@@ -571,30 +596,7 @@ class Installer {
 
 		OC_App::setAppTypes($info['id']);
 
-		if(isset($info['settings']) && is_array($info['settings'])) {
-			// requires that autoloading was registered for the app,
-			// as happens before running the install.php some lines above
-			\OC::$server->getSettingsManager()->setupSettings($info['settings']);
-		}
-
 		return $info['id'];
-	}
-
-	/**
-	 * check the code of an app with some static code checks
-	 * @param string $folder the folder of the app to check
-	 * @return boolean true for app is o.k. and false for app is not o.k.
-	 */
-	public static function checkCode($folder) {
-		// is the code checker enabled?
-		if(!\OC::$server->getConfig()->getSystemValue('appcodechecker', false)) {
-			return true;
-		}
-
-		$codeChecker = new CodeChecker(new PrivateCheck(new EmptyCheck()));
-		$errors = $codeChecker->analyseFolder(basename($folder), $folder);
-
-		return empty($errors);
 	}
 
 	/**

@@ -3,12 +3,8 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Björn Schießle <bjoern@schiessle.org>
- * @author Georg Ehrke <georg@owncloud.com>
- * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
  *
@@ -26,10 +22,7 @@
  *
  */
 
-use OCP\API;
-
-$application = new \OCA\Files_Sharing\AppInfo\Application();
-$application->registerRoutes($this, [
+return [
 	'resources' => [
 		'ExternalShares' => ['url' => '/api/externalShares'],
 	],
@@ -41,14 +34,14 @@ $application->registerRoutes($this, [
 		],
 		[
 			'name' => 'PublicPreview#getPreview',
-			'url' => '/publicpreview',
+			'url' => '/publicpreview/{token}',
 			'verb' => 'GET',
 		],
 
 		[
-			'name' => 'PublicPreview#getPreview',
-			'url' => '/ajax/publicpreview.php',
-			'verb' => 'GET',
+			'name' => 'ShareInfo#info',
+			'url' => '/shareinfo',
+			'verb' => 'POST',
 		],
 	],
 	'ocs' => [
@@ -81,11 +74,29 @@ $application->registerRoutes($this, [
 			'verb' => 'DELETE',
 		],
 		/*
+		 * Deleted Shares
+		 */
+		[
+			'name' => 'DeletedShareAPI#index',
+			'url'  => '/api/v1/deletedshares',
+			'verb' => 'GET',
+		],
+		[
+			'name' => 'DeletedShareAPI#undelete',
+			'url'  => '/api/v1/deletedshares/{id}',
+			'verb' => 'POST',
+		],
+		/*
 		 * OCS Sharee API
 		 */
 		[
 			'name' => 'ShareesAPI#search',
 			'url' => '/api/v1/sharees',
+			'verb' => 'GET',
+		],
+		[
+			'name' => 'ShareesAPI#findRecommended',
+			'url' => '/api/v1/sharees_recommended',
 			'verb' => 'GET',
 		],
 		/*
@@ -122,12 +133,4 @@ $application->registerRoutes($this, [
 			'verb' => 'DELETE',
 		],
 	],
-]);
-
-/** @var $this \OCP\Route\IRouter */
-$this->create('sharing_external_shareinfo', '/shareinfo')
-	->actionInclude('files_sharing/ajax/shareinfo.php');
-
-// OCS API
-
-//TODO: SET: mail notification, waiting for PR #4689 to be accepted
+];

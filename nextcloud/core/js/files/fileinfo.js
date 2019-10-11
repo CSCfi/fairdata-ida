@@ -135,9 +135,9 @@
 		hasPreview: true,
 
 		/**
-		 * @type boolean
+		 * @type int
 		 */
-		isFavorite: false
+		sharePermissions: null
 	};
 
 	if (!OC.Files) {

@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -23,6 +26,7 @@
 namespace OC\Core\Controller;
 
 use bantu\IniGetWrapper\IniGetWrapper;
+use OC\CapabilitiesManager;
 use OC\Template\JSConfigHelper;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
@@ -31,11 +35,11 @@ use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\Defaults;
 use OCP\IConfig;
 use OCP\IGroupManager;
-use OCP\IL10N;
 use OCP\IRequest;
 use OCP\ISession;
 use OCP\IURLGenerator;
 use OCP\IUserSession;
+use OCP\L10N\IFactory;
 
 class OCJSController extends Controller {
 
@@ -47,7 +51,7 @@ class OCJSController extends Controller {
 	 *
 	 * @param string $appName
 	 * @param IRequest $request
-	 * @param IL10N $l
+	 * @param IFactory $l10nFactory
 	 * @param Defaults $defaults
 	 * @param IAppManager $appManager
 	 * @param ISession $session
@@ -56,10 +60,11 @@ class OCJSController extends Controller {
 	 * @param IGroupManager $groupManager
 	 * @param IniGetWrapper $iniWrapper
 	 * @param IURLGenerator $urlGenerator
+	 * @param CapabilitiesManager $capabilitiesManager
 	 */
 	public function __construct($appName,
 								IRequest $request,
-								IL10N $l,
+								IFactory $l10nFactory,
 								Defaults $defaults,
 								IAppManager $appManager,
 								ISession $session,
@@ -67,11 +72,12 @@ class OCJSController extends Controller {
 								IConfig $config,
 								IGroupManager $groupManager,
 								IniGetWrapper $iniWrapper,
-								IURLGenerator $urlGenerator) {
+								IURLGenerator $urlGenerator,
+								CapabilitiesManager $capabilitiesManager) {
 		parent::__construct($appName, $request);
 
 		$this->helper = new JSConfigHelper(
-			$l,
+			$l10nFactory->get('lib'),
 			$defaults,
 			$appManager,
 			$session,
@@ -79,7 +85,8 @@ class OCJSController extends Controller {
 			$config,
 			$groupManager,
 			$iniWrapper,
-			$urlGenerator
+			$urlGenerator,
+			$capabilitiesManager
 		);
 	}
 

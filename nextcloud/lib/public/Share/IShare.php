@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
@@ -168,6 +170,40 @@ interface IShare {
 	public function getSharedWith();
 
 	/**
+	 * Set the display name of the receiver of this share.
+	 *
+	 * @param string $displayName
+	 * @return \OCP\Share\IShare The modified object
+	 * @since 14.0.0
+	 */
+	public function setSharedWithDisplayName($displayName);
+
+	/**
+	 * Get the display name of the receiver of this share.
+	 *
+	 * @return string
+	 * @since 14.0.0
+	 */
+	public function getSharedWithDisplayName();
+
+	/**
+	 * Set the avatar of the receiver of this share.
+	 *
+	 * @param string $src
+	 * @return \OCP\Share\IShare The modified object
+	 * @since 14.0.0
+	 */
+	public function setSharedWithAvatar($src);
+
+	/**
+	 * Get the avatar of the receiver of this share.
+	 *
+	 * @return string
+	 * @since 14.0.0
+	 */
+	public function getSharedWithAvatar();
+
+	/**
 	 * Set the permissions.
 	 * See \OCP\Constants::PERMISSION_*
 	 *
@@ -187,6 +223,24 @@ interface IShare {
 	public function getPermissions();
 
 	/**
+	 * Attach a note to a share
+	 *
+	 * @param string $note
+	 * @return \OCP\Share\IShare The modified object
+	 * @since 14.0.0
+	 */
+	public function setNote($note);
+
+	/**
+	 * Get note attached to a share
+	 *
+	 * @return string
+	 * @since 14.0.0
+	 */
+	public function getNote();
+
+
+	/**
 	 * Set the expiration date
 	 *
 	 * @param null|\DateTime $expireDate
@@ -202,6 +256,23 @@ interface IShare {
 	 * @since 9.0.0
 	 */
 	public function getExpirationDate();
+
+	/**
+	 * set a label for a share, some shares, e.g. public links can have a label
+	 *
+	 * @param string $label
+	 * @return \OCP\Share\IShare The modified object
+	 * @since 15.0.0
+	 */
+	public function setLabel($label);
+
+	/**
+	 * get label for the share, some shares, e.g. public links can have a label
+	 *
+	 * @return string
+	 * @since 15.0.0
+	 */
+	public function getLabel();
 
 	/**
 	 * Set the sharer of the path.
@@ -257,6 +328,29 @@ interface IShare {
 	 * @since 9.0.0
 	 */
 	public function getPassword();
+
+
+	/**
+	 * Set if the recipient can start a conversation with the owner to get the
+	 * password using Nextcloud Talk.
+	 *
+	 * @param bool $sendPasswordByTalk
+	 * @return \OCP\Share\IShare The modified object
+	 * @since 14.0.0
+	 */
+	public function setSendPasswordByTalk(bool $sendPasswordByTalk);
+
+	/**
+	 * Get if the recipient can start a conversation with the owner to get the
+	 * password using Nextcloud Talk.
+	 * The returned value does not take into account other factors, like Talk
+	 * being enabled for the owner of the share or not; it just cover whether
+	 * the option is enabled for the share itself or not.
+	 *
+	 * @return bool
+	 * @since 14.0.0
+	 */
+	public function getSendPasswordByTalk(): bool;
 
 	/**
 	 * Set the public link token.
@@ -341,4 +435,25 @@ interface IShare {
 	 * @since 11.0.0
 	 */
 	public function getNodeCacheEntry();
+
+	/**
+	 * Sets a shares hide download state
+	 * This is mainly for public shares. It will signal that the share page should
+	 * hide download buttons etc.
+	 *
+	 * @param bool $ro
+	 * @return IShare
+	 * @since 15.0.0
+	 */
+	public function setHideDownload(bool $hide): IShare;
+
+	/**
+	 * Gets a shares hide download state
+	 * This is mainly for public shares. It will signal that the share page should
+	 * hide download buttons etc.
+	 *
+	 * @return bool
+	 * @since 15.0.0
+	 */
+	public function getHideDownload(): bool;
 }

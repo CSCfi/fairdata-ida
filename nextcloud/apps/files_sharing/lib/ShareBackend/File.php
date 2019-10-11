@@ -117,13 +117,13 @@ class File implements \OCP\Share_Backend_File_Dependent {
 			}
 		}
 
-		$excludeList = (is_array($exclude)) ? $exclude : array();
+		$excludeList = is_array($exclude) ? $exclude : array();
 
 		return \OCA\Files_Sharing\Helper::generateUniqueTarget($target, $excludeList, $view);
 	}
 
 	public function formatItems($items, $format, $parameters = null) {
-		if ($format == self::FORMAT_SHARED_STORAGE) {
+		if ($format === self::FORMAT_SHARED_STORAGE) {
 			// Only 1 item should come through for this format call
 			$item = array_shift($items);
 			return array(
@@ -133,7 +133,7 @@ class File implements \OCP\Share_Backend_File_Dependent {
 				'permissions' => $item['permissions'],
 				'uid_owner' => $item['uid_owner'],
 			);
-		} else if ($format == self::FORMAT_GET_FOLDER_CONTENTS) {
+		} else if ($format === self::FORMAT_GET_FOLDER_CONTENTS) {
 			$files = array();
 			foreach ($items as $item) {
 				$file = array();
@@ -156,13 +156,13 @@ class File implements \OCP\Share_Backend_File_Dependent {
 				$files[] = $file;
 			}
 			return $files;
-		} else if ($format == self::FORMAT_OPENDIR) {
+		} else if ($format === self::FORMAT_OPENDIR) {
 			$files = array();
 			foreach ($items as $item) {
 				$files[] = basename($item['file_target']);
 			}
 			return $files;
-		} else if ($format == self::FORMAT_GET_ALL) {
+		} else if ($format === self::FORMAT_GET_ALL) {
 			$ids = array();
 			foreach ($items as $item) {
 				$ids[] = $item['file_source'];
@@ -195,6 +195,10 @@ class File implements \OCP\Share_Backend_File_Dependent {
 			return $this->federatedShareProvider->isOutgoingServer2serverShareEnabled();
 		}
 
+		if ($shareType === \OCP\Share::SHARE_TYPE_REMOTE_GROUP) {
+			return $this->federatedShareProvider->isOutgoingServer2serverGroupShareEnabled();
+		}
+
 		return true;
 	}
 
@@ -207,8 +211,15 @@ class File implements \OCP\Share_Backend_File_Dependent {
 		if (isset($source['parent'])) {
 			$parent = $source['parent'];
 			while (isset($parent)) {
-				$query = \OCP\DB::prepare('SELECT `parent`, `uid_owner` FROM `*PREFIX*share` WHERE `id` = ?', 1);
-				$item = $query->execute(array($parent))->fetchRow();
+				$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+				$qb->select('parent', 'uid_owner')
+					->from('share')
+					->where(
+						$qb->expr()->eq('id', $qb->createNamedParameter($parent))
+					);
+				$result = $qb->execute();
+				$item = $result->fetch();
+				$result->closeCursor();
 				if (isset($item['parent'])) {
 					$parent = $item['parent'];
 				} else {
@@ -222,7 +233,7 @@ class File implements \OCP\Share_Backend_File_Dependent {
 		if (isset($fileOwner)) {
 			$source['fileOwner'] = $fileOwner;
 		} else {
-			\OCP\Util::writeLog('files_sharing', "No owner found for reshare", \OCP\Util::ERROR);
+			\OC::$server->getLogger()->error('No owner found for reshare', ['app' => 'files_sharing']);
 		}
 
 		return $source;

@@ -5,10 +5,12 @@
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Stefan Weil <sw@weilnetz.de>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -280,9 +282,10 @@ class Root extends Folder implements IRootFolder {
 	}
 
 	/**
+	 * @param bool $includeMounts
 	 * @return int
 	 */
-	public function getSize() {
+	public function getSize($includeMounts = true) {
 		return null;
 	}
 
@@ -346,7 +349,7 @@ class Root extends Folder implements IRootFolder {
 	/**
 	 * Returns a view to user's files folder
 	 *
-	 * @param String $userId user ID
+	 * @param string $userId user ID
 	 * @return \OCP\Files\Folder
 	 * @throws \OC\User\NoUserException
 	 */

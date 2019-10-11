@@ -2,9 +2,12 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author 1 Man Projects <reed@1manprojects.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Piotr M <mrow4a@yahoo.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -78,6 +81,13 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	private $subMountsUsed = false;
 
 	/**
+	 * The size of the file/folder without any sub mount
+	 *
+	 * @var int
+	 */
+	private $rawSize = 0;
+
+	/**
 	 * @param string|boolean $path
 	 * @param Storage\Storage $storage
 	 * @param string $internalPath
@@ -92,6 +102,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		$this->data = $data;
 		$this->mount = $mount;
 		$this->owner = $owner;
+		$this->rawSize = $this->data['size'] ?? 0;
 	}
 
 	public function offsetSet($offset, $value) {
@@ -172,7 +183,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 * @return string
 	 */
 	public function getName() {
-		return basename($this->getPath());
+		return isset($this->data['name']) ? $this->data['name'] : basename($this->getPath());
 	}
 
 	/**
@@ -191,9 +202,13 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	/**
 	 * @return int
 	 */
-	public function getSize() {
-		$this->updateEntryfromSubMounts();
-		return isset($this->data['size']) ? 0 + $this->data['size'] : 0;
+	public function getSize($includeMounts = true) {
+		if ($includeMounts) {
+			$this->updateEntryfromSubMounts();
+			return isset($this->data['size']) ? 0 + $this->data['size'] : 0;
+		} else {
+			return $this->rawSize;
+		}
 	}
 
 	/**
@@ -232,7 +247,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	}
 
 	/**
-	 * @return \OCP\Files\FileInfo::TYPE_FILE|\OCP\Files\FileInfo::TYPE_FOLDER
+	 * @return string \OCP\Files\FileInfo::TYPE_FILE|\OCP\Files\FileInfo::TYPE_FOLDER
 	 */
 	public function getType() {
 		if (!isset($this->data['type'])) {
@@ -386,5 +401,9 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 */
 	public function getChecksum() {
 		return $this->data['checksum'];
+	}
+
+	public function getExtension(): string {
+		return pathinfo($this->getName(), PATHINFO_EXTENSION);
 	}
 }

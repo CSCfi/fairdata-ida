@@ -6,6 +6,8 @@
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Stefan Weil <sw@weilnetz.de>
  *
  * @license AGPL-3.0
@@ -143,7 +145,7 @@ class Redis extends Cache implements IMemcacheTTL {
 			$result = self::$cache->multi()
 				->set($this->getNameSpace() . $key, $new)
 				->exec();
-			return ($result === false) ? false : true;
+			return $result !== false;
 		}
 		self::$cache->unwatch();
 		return false;
@@ -162,7 +164,7 @@ class Redis extends Cache implements IMemcacheTTL {
 			$result = self::$cache->multi()
 				->del($this->getNameSpace() . $key)
 				->exec();
-			return ($result === false) ? false : true;
+			return $result !== false;
 		}
 		self::$cache->unwatch();
 		return false;

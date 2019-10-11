@@ -9,6 +9,7 @@
  * @author Olivier Paroz <github@oparoz.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Stefan Weil <sw@weilnetz.de>
  *
  * @license AGPL-3.0
@@ -256,7 +257,7 @@ class TempManager implements ITempManager {
 		// suppress any possible errors caused by is_writable
 		// checks missing or invalid path or characters, wrong permissions etc
 		try {
-			if (is_writeable($directory)) {
+			if (is_writable($directory)) {
 				return true;
 			}
 		} catch (\Exception $e) {

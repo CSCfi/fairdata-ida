@@ -2,8 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -30,36 +30,47 @@
 
 namespace OC;
 
-use OC\App\AppStore\Bundles\BundleFetcher;
-use OC\Files\AppData\Factory;
+use OC\Avatar\AvatarManager;
+use OC\Repair\AddCleanupUpdaterBackupsJob;
 use OC\Repair\CleanTags;
+use OC\Repair\ClearFrontendCaches;
+use OC\Repair\ClearGeneratedAvatarCache;
 use OC\Repair\Collation;
 use OC\Repair\MoveUpdaterStepFile;
-use OC\Repair\NC11\CleanPreviews;
 use OC\Repair\NC11\FixMountStorages;
-use OC\Repair\NC11\MoveAvatars;
-use OC\Repair\NC12\InstallCoreBundle;
-use OC\Repair\NC12\UpdateLanguageCodes;
-use OC\Repair\NC12\RepairIdentityProofKeyFolders;
+use OC\Repair\NC13\AddLogRotateJob;
+use OC\Repair\NC13\RepairInvalidPaths;
+use OC\Repair\NC14\AddPreviewBackgroundCleanupJob;
+use OC\Repair\NC14\RepairPendingCronJobs;
+use OC\Repair\NC15\SetVcardDatabaseUID;
+use OC\Repair\NC16\AddClenupLoginFlowV2BackgroundJob;
+use OC\Repair\NC16\CleanupCardDAVPhotoCache;
+use OC\Repair\NC16\RemoveCypressFiles;
 use OC\Repair\OldGroupMembershipShares;
 use OC\Repair\Owncloud\DropAccountTermsTable;
 use OC\Repair\Owncloud\SaveAccountsTableData;
+use OC\Repair\RemoveLinkShares;
 use OC\Repair\RemoveRootShares;
-use OC\Repair\NC13\RepairInvalidPaths;
-use OC\Repair\SqliteAutoincrement;
-use OC\Repair\RepairMimeTypes;
 use OC\Repair\RepairInvalidShares;
+use OC\Repair\RepairMimeTypes;
+use OC\Repair\SqliteAutoincrement;
+use OC\Template\JSCombiner;
+use OC\Template\SCSSCacher;
 use OCP\AppFramework\QueryException;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Migration\IOutput;
 use OCP\Migration\IRepairStep;
-use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
-class Repair implements IOutput{
-	/* @var IRepairStep[] */
+class Repair implements IOutput {
+
+	/** @var IRepairStep[] */
 	private $repairSteps;
-	/** @var EventDispatcher */
+
+	/** @var EventDispatcherInterface */
 	private $dispatcher;
+
 	/** @var string */
 	private $currentStep;
 
@@ -67,11 +78,11 @@ class Repair implements IOutput{
 	 * Creates a new repair step runner
 	 *
 	 * @param IRepairStep[] $repairSteps array of RepairStep instances
-	 * @param EventDispatcher $dispatcher
+	 * @param EventDispatcherInterface $dispatcher
 	 */
-	public function __construct($repairSteps = [], EventDispatcher $dispatcher = null) {
+	public function __construct(array $repairSteps, EventDispatcherInterface $dispatcher) {
 		$this->repairSteps = $repairSteps;
-		$this->dispatcher = $dispatcher;
+		$this->dispatcher  = $dispatcher;
 	}
 
 	/**
@@ -80,6 +91,7 @@ class Repair implements IOutput{
 	public function run() {
 		if (count($this->repairSteps) === 0) {
 			$this->emit('\OC\Repair', 'info', array('No repair steps available'));
+
 			return;
 		}
 		// run each repair step
@@ -132,24 +144,19 @@ class Repair implements IOutput{
 			new RepairInvalidShares(\OC::$server->getConfig(), \OC::$server->getDatabaseConnection()),
 			new RemoveRootShares(\OC::$server->getDatabaseConnection(), \OC::$server->getUserManager(), \OC::$server->getLazyRootFolder()),
 			new MoveUpdaterStepFile(\OC::$server->getConfig()),
-			new MoveAvatars(
-				\OC::$server->getJobList(),
-				\OC::$server->getConfig()
-			),
-			new CleanPreviews(
-				\OC::$server->getJobList(),
-				\OC::$server->getUserManager(),
-				\OC::$server->getConfig()
-			),
 			new FixMountStorages(\OC::$server->getDatabaseConnection()),
-			new UpdateLanguageCodes(\OC::$server->getDatabaseConnection(), \OC::$server->getConfig()),
-			new InstallCoreBundle(
-				\OC::$server->query(BundleFetcher::class),
-				\OC::$server->getConfig(),
-				\OC::$server->query(Installer::class)
-			),
 			new RepairInvalidPaths(\OC::$server->getDatabaseConnection(), \OC::$server->getConfig()),
-			new RepairIdentityProofKeyFolders(\OC::$server->getConfig(), \OC::$server->query(Factory::class), \OC::$server->getRootFolder()),
+			new AddLogRotateJob(\OC::$server->getJobList()),
+			new ClearFrontendCaches(\OC::$server->getMemCacheFactory(), \OC::$server->query(SCSSCacher::class), \OC::$server->query(JSCombiner::class)),
+			new ClearGeneratedAvatarCache(\OC::$server->getConfig(), \OC::$server->query(AvatarManager::class)),
+			new AddPreviewBackgroundCleanupJob(\OC::$server->getJobList()),
+			new AddCleanupUpdaterBackupsJob(\OC::$server->getJobList()),
+			new RepairPendingCronJobs(\OC::$server->getDatabaseConnection(), \OC::$server->getConfig()),
+			new SetVcardDatabaseUID(\OC::$server->getDatabaseConnection(), \OC::$server->getConfig(), \OC::$server->getLogger()),
+			new CleanupCardDAVPhotoCache(\OC::$server->getConfig(), \OC::$server->getAppDataDir('dav-photocache'), \OC::$server->getLogger()),
+			new AddClenupLoginFlowV2BackgroundJob(\OC::$server->getJobList()),
+			new RemoveLinkShares(\OC::$server->getDatabaseConnection(), \OC::$server->getConfig(), \OC::$server->getGroupManager(), \OC::$server->getNotificationManager(), \OC::$server->query(ITimeFactory::class)),
+			\OC::$server->query(RemoveCypressFiles::class),
 		];
 	}
 
@@ -173,12 +180,12 @@ class Repair implements IOutput{
 	 */
 	public static function getBeforeUpgradeRepairSteps() {
 		$connection = \OC::$server->getDatabaseConnection();
-		$config = \OC::$server->getConfig();
-		$steps = [
+		$config     = \OC::$server->getConfig();
+		$steps      = [
 			new Collation(\OC::$server->getConfig(), \OC::$server->getLogger(), $connection, true),
 			new SqliteAutoincrement($connection),
 			new SaveAccountsTableData($connection, $config),
-			new DropAccountTermsTable($connection),
+			new DropAccountTermsTable($connection)
 		];
 
 		return $steps;

@@ -27,6 +27,7 @@
 namespace OC\Files\Node;
 
 use OC\DB\QueryBuilder\Literal;
+use OCA\Files_Sharing\SharedStorage;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\Config\ICachedMountInfo;
 use OCP\Files\FileInfo;
@@ -157,7 +158,9 @@ class Folder extends Node implements \OCP\Files\Folder {
 			$nonExisting = new NonExistingFolder($this->root, $this->view, $fullPath);
 			$this->root->emit('\OC\Files', 'preWrite', array($nonExisting));
 			$this->root->emit('\OC\Files', 'preCreate', array($nonExisting));
-			$this->view->mkdir($fullPath);
+			if(!$this->view->mkdir($fullPath)) {
+				throw new NotPermittedException('Could not create folder');
+			}
 			$node = new Folder($this->root, $this->view, $fullPath);
 			$this->root->emit('\OC\Files', 'postWrite', array($node));
 			$this->root->emit('\OC\Files', 'postCreate', array($node));
@@ -178,14 +181,15 @@ class Folder extends Node implements \OCP\Files\Folder {
 			$nonExisting = new NonExistingFile($this->root, $this->view, $fullPath);
 			$this->root->emit('\OC\Files', 'preWrite', array($nonExisting));
 			$this->root->emit('\OC\Files', 'preCreate', array($nonExisting));
-			$this->view->touch($fullPath);
+			if (!$this->view->touch($fullPath)) {
+				throw new NotPermittedException('Could not create path');
+			}
 			$node = new File($this->root, $this->view, $fullPath);
 			$this->root->emit('\OC\Files', 'postWrite', array($node));
 			$this->root->emit('\OC\Files', 'postCreate', array($node));
 			return $node;
-		} else {
-			throw new NotPermittedException('No create permission for path');
 		}
+		throw new NotPermittedException('No create permission for path');
 	}
 
 	/**
@@ -258,7 +262,7 @@ class Folder extends Node implements \OCP\Files\Folder {
 			if ($storage) {
 				$cache = $storage->getCache('');
 
-				$relativeMountPoint = substr($mount->getMountPoint(), $rootLength);
+				$relativeMountPoint = ltrim(substr($mount->getMountPoint(), $rootLength), '/');
 				$results = call_user_func_array(array($cache, $method), $args);
 				foreach ($results as $result) {
 					$result['internalPath'] = $result['path'];
@@ -302,26 +306,25 @@ class Folder extends Node implements \OCP\Files\Folder {
 			return [];
 		}
 
-		// we only need to get the cache info once, since all mounts we found point to the same storage
-
-		$mount = $folderMounts[$mountsContainingFile[0]->getMountPoint()];
-		$cacheEntry = $mount->getStorage()->getCache()->get((int)$id);
-		if (!$cacheEntry) {
-			return [];
-		}
-		// cache jails will hide the "true" internal path
-		$internalPath = ltrim($mountsContainingFile[0]->getRootInternalPath() . '/' . $cacheEntry->getPath(), '/');
-
-		$nodes = array_map(function (ICachedMountInfo $cachedMountInfo) use ($cacheEntry, $folderMounts, $internalPath) {
+		$nodes = array_map(function (ICachedMountInfo $cachedMountInfo) use ($folderMounts, $id) {
 			$mount = $folderMounts[$cachedMountInfo->getMountPoint()];
+			$cacheEntry = $mount->getStorage()->getCache()->get((int)$id);
+			if (!$cacheEntry) {
+				return null;
+			}
+
+			// cache jails will hide the "true" internal path
+			$internalPath = ltrim($cachedMountInfo->getRootInternalPath() . '/' . $cacheEntry->getPath(), '/');
 			$pathRelativeToMount = substr($internalPath, strlen($cachedMountInfo->getRootInternalPath()));
 			$pathRelativeToMount = ltrim($pathRelativeToMount, '/');
-			$absolutePath = $cachedMountInfo->getMountPoint() . $pathRelativeToMount;
+			$absolutePath = rtrim($cachedMountInfo->getMountPoint() . $pathRelativeToMount, '/');
 			return $this->root->createNode($absolutePath, new \OC\Files\FileInfo(
 				$absolutePath, $mount->getStorage(), $cacheEntry->getPath(), $cacheEntry, $mount,
 				\OC::$server->getUserManager()->get($mount->getStorage()->getOwner($pathRelativeToMount))
 			));
 		}, $mountsContainingFile);
+
+		$nodes = array_filter($nodes);
 
 		return array_filter($nodes, function (Node $node) {
 			return $this->getRelativePath($node->getPath());
@@ -377,8 +380,30 @@ class Folder extends Node implements \OCP\Files\Folder {
 		$mountMap = array_combine($storageIds, $mounts);
 		$folderMimetype = $mimetypeLoader->getId(FileInfo::MIMETYPE_FOLDER);
 
-		//todo look into options of filtering path based on storage id (only search in files/ for home storage, filter by share root for shared, etc)
+		// Search in batches of 500 entries
+		$searchLimit = 500;
+		$results = [];
+		do {
+			$searchResult = $this->recentSearch($searchLimit, $offset, $storageIds, $folderMimetype);
 
+			// Exit condition if there are no more results
+			if (count($searchResult) === 0) {
+				break;
+			}
+
+			$parseResult = $this->recentParse($searchResult, $mountMap, $mimetypeLoader);
+
+			foreach ($parseResult as $result) {
+				$results[] = $result;
+			}
+
+			$offset += $searchLimit;
+		} while (count($results) < $limit);
+
+		return array_slice($results, 0, $limit);
+	}
+
+	private function recentSearch($limit, $offset, $storageIds, $folderMimetype) {
 		$builder = \OC::$server->getDatabaseConnection()->getQueryBuilder();
 		$query = $builder
 			->select('f.*')
@@ -389,12 +414,15 @@ class Folder extends Node implements \OCP\Files\Folder {
 				$builder->expr()->neq('f.mimetype', $builder->createNamedParameter($folderMimetype, IQueryBuilder::PARAM_INT)),
 				$builder->expr()->eq('f.size', new Literal(0))
 			))
+			->andWhere($builder->expr()->notLike('f.path', $builder->createNamedParameter('files_versions/%')))
+			->andWhere($builder->expr()->notLike('f.path', $builder->createNamedParameter('files_trashbin/%')))
 			->orderBy('f.mtime', 'DESC')
 			->setMaxResults($limit)
 			->setFirstResult($offset);
+		return $query->execute()->fetchAll();
+	}
 
-		$result = $query->execute()->fetchAll();
-
+	private function recentParse($result, $mountMap, $mimetypeLoader) {
 		$files = array_filter(array_map(function (array $entry) use ($mountMap, $mimetypeLoader) {
 			$mount = $mountMap[$entry['storage']];
 			$entry['internalPath'] = $entry['path'];
@@ -417,6 +445,9 @@ class Folder extends Node implements \OCP\Files\Folder {
 	private function getAbsolutePath(IMountPoint $mount, $path) {
 		$storage = $mount->getStorage();
 		if ($storage->instanceOfStorage('\OC\Files\Storage\Wrapper\Jail')) {
+			if ($storage->instanceOfStorage(SharedStorage::class)) {
+				$storage->getSourceStorage();
+			}
 			/** @var \OC\Files\Storage\Wrapper\Jail $storage */
 			$jailRoot = $storage->getUnjailedPath('');
 			$rootLength = strlen($jailRoot) + 1;

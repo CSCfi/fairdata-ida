@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Knut Ahlers <knut@ahlers.me>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -38,6 +40,7 @@ abstract class Backend implements \OCP\GroupInterface {
 		self::REMOVE_FROM_GOUP => 'removeFromGroup',
 		self::COUNT_USERS => 'countUsersInGroup',
 		self::GROUP_DETAILS => 'getGroupDetails',
+		self::IS_ADMIN => 'isAdmin',
 	];
 
 	/**

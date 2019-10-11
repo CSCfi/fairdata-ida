@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -29,6 +32,8 @@ use OCA\FederatedFileSharing\AddressHandler;
 use OCA\FederatedFileSharing\Controller\RequestHandlerController;
 use OCA\FederatedFileSharing\FederatedShareProvider;
 use OCA\FederatedFileSharing\Notifications;
+use OCA\FederatedFileSharing\OCM\CloudFederationProvider;
+use OCA\FederatedFileSharing\OCM\CloudFederationProviderFiles;
 use OCP\AppFramework\App;
 use OCP\GlobalScale\IConfig;
 
@@ -43,6 +48,28 @@ class Application extends App {
 		$container = $this->getContainer();
 		$server = $container->getServer();
 
+		$cloudFederationManager = $server->getCloudFederationProviderManager();
+		$cloudFederationManager->addCloudFederationProvider('file',
+			'Federated Files Sharing',
+			function() use ($container) {
+				$server = $container->getServer();
+				return new CloudFederationProviderFiles(
+					$server->getAppManager(),
+					$server->query(FederatedShareProvider::class),
+					$server->query(AddressHandler::class),
+					$server->getLogger(),
+					$server->getUserManager(),
+					$server->getCloudIdManager(),
+					$server->getActivityManager(),
+					$server->getNotificationManager(),
+					$server->getURLGenerator(),
+					$server->getCloudFederationFactory(),
+					$server->getCloudFederationProviderManager(),
+					$server->getDatabaseConnection(),
+					$server->getGroupManager()
+				);
+			});
+
 		$container->registerService('RequestHandlerController', function(SimpleContainer $c) use ($server) {
 			$addressHandler = new AddressHandler(
 				$server->getURLGenerator(),
@@ -53,7 +80,9 @@ class Application extends App {
 				$addressHandler,
 				$server->getHTTPClientService(),
 				$server->query(\OCP\OCS\IDiscoveryService::class),
-				\OC::$server->getJobList()
+				\OC::$server->getJobList(),
+				\OC::$server->getCloudFederationProviderManager(),
+				\OC::$server->getCloudFederationFactory()
 			);
 			return new RequestHandlerController(
 				$c->query('AppName'),
@@ -64,16 +93,12 @@ class Application extends App {
 				$notification,
 				$addressHandler,
 				$server->getUserManager(),
-				$server->getCloudIdManager()
+				$server->getCloudIdManager(),
+				$server->getLogger(),
+				$server->getCloudFederationFactory(),
+				$server->getCloudFederationProviderManager()
 			);
 		});
-	}
-
-	/**
-	 * register personal and admin settings page
-	 */
-	public function registerSettings() {
-		\OCP\App::registerPersonal('federatedfilesharing', 'settings-personal');
 	}
 
 	/**
@@ -102,7 +127,9 @@ class Application extends App {
 			$addressHandler,
 			\OC::$server->getHTTPClientService(),
 			\OC::$server->query(\OCP\OCS\IDiscoveryService::class),
-			\OC::$server->getJobList()
+			\OC::$server->getJobList(),
+			\OC::$server->getCloudFederationProviderManager(),
+			\OC::$server->getCloudFederationFactory()
 		);
 		$tokenHandler = new \OCA\FederatedFileSharing\TokenHandler(
 			\OC::$server->getSecureRandom()
@@ -119,7 +146,9 @@ class Application extends App {
 			\OC::$server->getConfig(),
 			\OC::$server->getUserManager(),
 			\OC::$server->getCloudIdManager(),
-			$c->query(IConfig::class)
+			$c->query(IConfig::class),
+			\OC::$server->getCloudFederationProviderManager()
+
 		);
 	}
 

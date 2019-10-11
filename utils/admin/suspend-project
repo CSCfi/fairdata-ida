@@ -21,6 +21,19 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
+
+SCRIPT=`basename $0`
+
+USAGE="
+Usage: $SCRIPT project [--delete | --silent]
+       $SCRIPT -h
+
+       project  = the project name
+       --delete = the project users will be sent a more detailed message regarding deletion of the project
+       --silent = no email will be sent to project users
+"
+
+#--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
 INIT_FILE=`dirname $0`/lib/init_script.sh
@@ -31,6 +44,14 @@ then
 else
     echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
     exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Output script usage if requested
+
+if [ "$1" = "" -o "$1" = "-h" ]; then
+    echo "$USAGE"
+    exit 0
 fi
 
 #--------------------------------------------------------------------------------
@@ -85,7 +106,15 @@ if [ "$SUCCESS" = "" ]; then
     errorExit "Error: Failed to create suspend action for project ${PROJECT}!"
 fi
 
+rm $ERR 2>/dev/null
+
+echoAndLog "Project ${PROJECT} suspended."
+
 #--------------------------------------------------------------------------------
+
+if [ "$2" = "--silent" ]; then
+    exit
+fi
 
 if [ "$2" = "--delete" ]; then
     SUBJECT="Project ${PROJECT} will be removed from the IDA service."
@@ -106,8 +135,4 @@ else
 fi
 
 $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
-
-rm $ERR 2>/dev/null
-
-echoAndLog "Project ${PROJECT} suspended."
 

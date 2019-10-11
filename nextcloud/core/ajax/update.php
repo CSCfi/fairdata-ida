@@ -4,6 +4,7 @@
  *
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -27,6 +28,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  *
  */
+
+use OCP\ILogger;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
@@ -50,6 +53,10 @@ class FeedBackHandler {
 	private $progressStateStep = 0;
 	/** @var string */
 	private $currentStep;
+	/** @var \OCP\IEventSource */
+	private $eventSource;
+	/** @var \OCP\IL10N */
+	private $l10n;
 
 	public function __construct(\OCP\IEventSource $eventSource, \OCP\IL10N $l10n) {
 		$this->eventSource = $eventSource;
@@ -80,20 +87,22 @@ class FeedBackHandler {
 				$this->eventSource->send('success', (string)$this->l10n->t('[%d / %d]: %s', [$this->progressStateStep, $this->progressStateMax, $this->currentStep]));
 				break;
 			case '\OC\Repair::step':
+				$this->eventSource->send('success', (string)$this->l10n->t('Repair step:') . ' ' . $event->getArgument(0));
 				break;
 			case '\OC\Repair::info':
+				$this->eventSource->send('success', (string)$this->l10n->t('Repair info:') . ' ' . $event->getArgument(0));
 				break;
 			case '\OC\Repair::warning':
-				$this->eventSource->send('notice', (string)$this->l10n->t('Repair warning: ') . $event->getArgument(0));
+				$this->eventSource->send('notice', (string)$this->l10n->t('Repair warning:') . ' ' . $event->getArgument(0));
 				break;
 			case '\OC\Repair::error':
-				$this->eventSource->send('notice', (string)$this->l10n->t('Repair error: ') . $event->getArgument(0));
+				$this->eventSource->send('notice', (string)$this->l10n->t('Repair error:') . ' ' . $event->getArgument(0));
 				break;
 		}
 	}
 }
 
-if (OC::checkUpgrade(false)) {
+if (\OCP\Util::needUpgrade()) {
 
 	$config = \OC::$server->getSystemConfig();
 	if ($config->getValue('upgrade.disable-web', false)) {
@@ -111,10 +120,10 @@ if (OC::checkUpgrade(false)) {
 	$updater = new \OC\Updater(
 			$config,
 			\OC::$server->getIntegrityCodeChecker(),
-			$logger
+			$logger,
+			\OC::$server->query(\OC\Installer::class)
 	);
 	$incompatibleApps = [];
-	$disabledThirdPartyApps = [];
 
 	$dispatcher = \OC::$server->getEventDispatcher();
 	$dispatcher->addListener('\OC\DB\Migrator::executeSql', function($event) use ($eventSource, $l) {
@@ -176,13 +185,10 @@ if (OC::checkUpgrade(false)) {
 		$eventSource->send('success', (string)$l->t('Checked database schema update for apps'));
 	});
 	$updater->listen('\OC\Updater', 'appUpgrade', function ($app, $version) use ($eventSource, $l) {
-		$eventSource->send('success', (string)$l->t('Updated "%s" to %s', array($app, $version)));
+		$eventSource->send('success', (string)$l->t('Updated "%1$s" to %2$s', array($app, $version)));
 	});
 	$updater->listen('\OC\Updater', 'incompatibleAppDisabled', function ($app) use (&$incompatibleApps) {
 		$incompatibleApps[]= $app;
-	});
-	$updater->listen('\OC\Updater', 'thirdPartyAppDisabled', function ($app) use (&$disabledThirdPartyApps) {
-		$disabledThirdPartyApps[]= $app;
 	});
 	$updater->listen('\OC\Updater', 'failure', function ($message) use ($eventSource, $config) {
 		$eventSource->send('failure', $message);
@@ -205,22 +211,23 @@ if (OC::checkUpgrade(false)) {
 	try {
 		$updater->upgrade();
 	} catch (\Exception $e) {
+		\OC::$server->getLogger()->logException($e, [
+			'level' => ILogger::ERROR,
+			'app' => 'update',
+		]);
 		$eventSource->send('failure', get_class($e) . ': ' . $e->getMessage());
 		$eventSource->close();
 		exit();
 	}
 
 	$disabledApps = [];
-	foreach ($disabledThirdPartyApps as $app) {
-		$disabledApps[$app] = (string) $l->t('%s (3rdparty)', [$app]);
-	}
 	foreach ($incompatibleApps as $app) {
 		$disabledApps[$app] = (string) $l->t('%s (incompatible)', [$app]);
 	}
 
 	if (!empty($disabledApps)) {
 		$eventSource->send('notice',
-			(string)$l->t('Following apps have been disabled: %s', implode(', ', $disabledApps)));
+			(string)$l->t('Following apps have been disabled: %s', [implode(', ', $disabledApps)]));
 	}
 } else {
 	$eventSource->send('notice', (string)$l->t('Already up to date'));

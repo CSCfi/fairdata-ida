@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Robin Appelman <robin@icewind.nl>
  *
  * @license AGPL-3.0
  *
@@ -82,8 +84,7 @@ class AddressHandler {
 	 * @return string url of the current server
 	 */
 	public function generateRemoteURL() {
-		$url = $this->urlGenerator->getAbsoluteURL('/');
-		return $url;
+		return $this->urlGenerator->getAbsoluteURL('/');
 	}
 
 	/**

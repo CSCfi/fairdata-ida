@@ -39,6 +39,25 @@ namespace OCP;
  * @since 6.0.0
  */
 interface INavigationManager {
+
+	/**
+	 * Navigation entries of the app navigation
+	 * @since 16.0.0
+	 */
+	const TYPE_APPS = 'link';
+
+	/**
+	 * Navigation entries of the settings navigation
+	 * @since 16.0.0
+	 */
+	const TYPE_SETTINGS = 'settings';
+
+	/**
+	 * Navigation entries for public page footer navigation
+	 * @since 16.0.0
+	 */
+	const TYPE_GUEST = 'guest';
+
 	/**
 	 * Creates a new navigation entry
 	 *
@@ -57,4 +76,13 @@ interface INavigationManager {
 	 * @since 6.0.0
 	 */
 	public function setActiveEntry($appId);
+
+	/**
+	 * Get a list of navigation entries
+	 *
+	 * @param string $type type of the navigation entries
+	 * @return array
+	 * @since 14.0.0
+	 */
+	public function getAll(string $type = self::TYPE_APPS): array;
 }

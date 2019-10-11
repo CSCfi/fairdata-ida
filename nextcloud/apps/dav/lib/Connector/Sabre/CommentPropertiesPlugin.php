@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Robin Appelman <robin@icewind.nl>
  *
  * @license AGPL-3.0
  *
@@ -96,7 +97,7 @@ class CommentPropertiesPlugin extends ServerPlugin {
 		}
 
 		$propFind->handle(self::PROPERTY_NAME_COUNT, function() use ($node) {
-			return $this->commentsManager->getNumberOfCommentsForObject('files', strval($node->getId()));
+			return $this->commentsManager->getNumberOfCommentsForObject('files', (string)$node->getId());
 		});
 
 		$propFind->handle(self::PROPERTY_NAME_HREF, function() use ($node) {
@@ -111,11 +112,11 @@ class CommentPropertiesPlugin extends ServerPlugin {
 				if ($parentPath === '') {
 					$parentPath = '/';
 				}
-				// if we already cached the folder this file is in we know there are no shares for this file
+				// if we already cached the folder this file is in we know there are no comments for this file
 				if (array_search($parentPath, $this->cachedFolders) === false) {
-					return $this->getUnreadCount($node);
-				} else {
 					return 0;
+				} else {
+					return $this->getUnreadCount($node);
 				}
 			}
 		});
@@ -152,9 +153,9 @@ class CommentPropertiesPlugin extends ServerPlugin {
 			return null;
 		}
 
-		$lastRead = $this->commentsManager->getReadMark('files', strval($node->getId()), $user);
+		$lastRead = $this->commentsManager->getReadMark('files', (string)$node->getId(), $user);
 
-		return $this->commentsManager->getNumberOfCommentsForObject('files', strval($node->getId()), $lastRead);
+		return $this->commentsManager->getNumberOfCommentsForObject('files', (string)$node->getId(), $lastRead);
 	}
 
 }

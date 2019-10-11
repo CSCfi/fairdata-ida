@@ -76,6 +76,11 @@ class FileMimeType extends AbstractStringCheck {
 			return $this->mimeType[$this->storage->getId()][$this->path];
 		}
 
+		if ($this->storage->is_dir($this->path)) {
+			$this->mimeType[$this->storage->getId()][$this->path] = 'httpd/unix-directory';
+			return $this->mimeType[$this->storage->getId()][$this->path];
+		}
+
 		if ($this->isWebDAVRequest()) {
 			// Creating a folder
 			if ($this->request->getMethod() === 'MKCOL') {
@@ -83,9 +88,13 @@ class FileMimeType extends AbstractStringCheck {
 				return $this->mimeType[$this->storage->getId()][$this->path];
 			}
 
-			if ($this->request->getMethod() === 'PUT') {
-				$path = $this->request->getPathInfo();
-				$this->mimeType[$this->storage->getId()][$this->path] = $this->mimeTypeDetector->detectPath($path);
+			if ($this->request->getMethod() === 'PUT' || $this->request->getMethod() === 'MOVE') {
+				if ($this->request->getMethod() === 'MOVE') {
+					$this->mimeType[$this->storage->getId()][$this->path] = $this->mimeTypeDetector->detectPath($this->path);
+				} else {
+					$path = $this->request->getPathInfo();
+					$this->mimeType[$this->storage->getId()][$this->path] = $this->mimeTypeDetector->detectPath($path);
+				}
 				return $this->mimeType[$this->storage->getId()][$this->path];
 			}
 		} else if ($this->isPublicWebDAVRequest()) {
@@ -171,7 +180,9 @@ class FileMimeType extends AbstractStringCheck {
 			$this->request->getPathInfo() === '/webdav' ||
 			strpos($this->request->getPathInfo(), '/webdav/') === 0 ||
 			$this->request->getPathInfo() === '/dav/files' ||
-			strpos($this->request->getPathInfo(), '/dav/files/') === 0
+			strpos($this->request->getPathInfo(), '/dav/files/') === 0 ||
+			$this->request->getPathInfo() === '/dav/uploads' ||
+			strpos($this->request->getPathInfo(), '/dav/uploads/') === 0
 		);
 	}
 

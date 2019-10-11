@@ -15,13 +15,6 @@
 		OC.Share = {};
 	}
 
-	var TEMPLATE =
-		'<span class="reshare">' +
-		'    <div class="avatar" data-userName="{{reshareOwner}}"></div>' +
-		'    {{sharedByText}}' +
-		'</span><br/>'
-		;
-
 	/**
 	 * @class OCA.Share.ShareDialogView
 	 * @member {OC.Share.ShareItemModel} model
@@ -72,7 +65,10 @@
 
 			var reshareTemplate = this.template();
 			var ownerDisplayName = this.model.getReshareOwnerDisplayname();
+			var shareNote = this.model.getReshareNote();
+			
 			var sharedByText = '';
+
 			if (this.model.getReshareType() === OC.Share.SHARE_TYPE_GROUP) {
 				sharedByText = t(
 					'core',
@@ -80,19 +76,61 @@
 					{
 						group: this.model.getReshareWithDisplayName(),
 						owner: ownerDisplayName
-					}
+					},
+					undefined,
+					{escape: false}
 				);
-			}  else {
+			} else if (this.model.getReshareType() === OC.Share.SHARE_TYPE_CIRCLE) {
+				sharedByText = t(
+					'core',
+					'Shared with you and {circle} by {owner}',
+					{
+						circle: this.model.getReshareWithDisplayName(),
+						owner: ownerDisplayName
+					},
+					undefined,
+					{escape: false}
+				);
+			} else if (this.model.getReshareType() === OC.Share.SHARE_TYPE_ROOM) {
+				if (this.model.get('reshare').share_with_displayname) {
+					sharedByText = t(
+						'core',
+						'Shared with you and the conversation {conversation} by {owner}',
+						{
+							conversation: this.model.getReshareWithDisplayName(),
+							owner: ownerDisplayName
+						},
+						undefined,
+						{escape: false}
+					);
+				} else {
+					sharedByText = t(
+						'core',
+						'Shared with you in a conversation by {owner}',
+						{
+							owner: ownerDisplayName
+						},
+						undefined,
+						{escape: false}
+					);
+				}
+			} else {
 				sharedByText = t(
 					'core',
 					'Shared with you by {owner}',
-					{ owner: ownerDisplayName }
+					{ owner: ownerDisplayName },
+					undefined,
+					{escape: false}
 				);
 			}
 
+
+
 			this.$el.html(reshareTemplate({
 				reshareOwner: this.model.getReshareOwner(),
-				sharedByText: sharedByText
+				sharedByText: sharedByText,
+				shareNote: shareNote,
+				hasShareNote: shareNote !== ''
 			}));
 
 			this.$el.find('.avatar').each(function() {
@@ -113,10 +151,7 @@
 		 * @private
 		 */
 		template: function () {
-			if (!this._template) {
-				this._template = Handlebars.compile(TEMPLATE);
-			}
-			return this._template;
+			return OC.Share.Templates['sharedialogresharerinfoview'];
 		}
 
 	});

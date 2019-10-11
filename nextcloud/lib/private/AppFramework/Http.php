@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -111,7 +112,7 @@ class Http extends BaseHttp {
 
 	/**
 	 * Gets the correct header
-	 * @param Http::CONSTANT $status the constant from the Http class
+	 * @param int Http::CONSTANT $status the constant from the Http class
 	 * @param \DateTime $lastModified formatted last modified date
 	 * @param string $ETag the etag
 	 * @return string

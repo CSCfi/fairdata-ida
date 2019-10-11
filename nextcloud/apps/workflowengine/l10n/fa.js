@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "ذخیره شده ",
-    "Saving failed:" : "ذخیره فایل با خطا مواجه شد.",
     "File MIME type" : "فایل از نوع MIME",
     "is" : "هست ",
     "is not" : "نیست",
@@ -40,6 +38,14 @@ OC.L10N.register(
     "User group membership" : "عضویت کاربر در گروه",
     "is member of" : "عضو است در ",
     "is not member of" : "عضو نیست در ",
+    "Short rule description" : "توضیحات مختصر درباره قوانین ",
+    "Add rule" : "اضافه کردن قوانین ",
+    "Reset" : "ریست",
+    "Save" : "ذخیره",
+    "Saving…" : "در حال ذخیره",
+    "Saved" : "ذخیره شده ",
+    "Saving failed:" : "ذخیره فایل با خطا مواجه شد.",
+    "Add rule group" : "اضافه کردن قوانین گروه",
     "The given operator is invalid" : "اپراتور گرفته شده بی اعتبار است ",
     "The given regular expression is invalid" : "عبارت منظم گرفته شده معتبر نیست ",
     "The given file size is invalid" : "حجم فایل معتبر نیست",
@@ -58,16 +64,8 @@ OC.L10N.register(
     "Check %s does not exist" : "%s را چک کنید وجود ندارد",
     "Check %s is invalid" : "%s را چک کنید معتبر نیست",
     "Check #%s does not exist" : "%s را چک کنید وجود ندارد ",
-    "Workflow" : "جریان کاری",
     "Open documentation" : "مستندات باز",
-    "Add rule group" : "اضافه کردن قوانین گروه",
-    "Short rule description" : "توضیحات مختصر درباره قوانین ",
-    "Add rule" : "اضافه کردن قوانین ",
-    "Reset" : "ریست",
-    "Save" : "ذخیره",
-    "Saving…" : "در حال ذخیره",
     "Loading…" : "در حال بار گزاری",
-    "Successfully saved" : "با موفقیت ذخیره شد ",
-    "File mime type" : "نوع فایل "
+    "Workflow" : "جریان کاری"
 },
-"nplurals=1; plural=0;");
+"nplurals=2; plural=(n > 1);");

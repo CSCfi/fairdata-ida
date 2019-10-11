@@ -6,6 +6,7 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Jakob Sack <mail@jakobsack.de>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Klaas Freitag <freitag@owncloud.com>
  * @author Markus Goetz <markus@woboq.com>
@@ -37,8 +38,11 @@ use OC\Files\Mount\MoveableMount;
 use OC\Files\View;
 use OCA\DAV\Connector\Sabre\Exception\InvalidPath;
 use OCP\Files\FileInfo;
+use OCP\Files\StorageNotAvailableException;
 use OCP\Share\Exceptions\ShareNotFound;
 use OCP\Share\IManager;
+use OCP\Share;
+use OCP\Share\IShare;
 
 
 abstract class Node implements \Sabre\DAV\INode {
@@ -126,15 +130,17 @@ abstract class Node implements \Sabre\DAV\INode {
 			throw new \Sabre\DAV\Exception\Forbidden();
 		}
 
-		list($parentPath,) = \Sabre\HTTP\URLUtil::splitPath($this->path);
-		list(, $newName) = \Sabre\HTTP\URLUtil::splitPath($name);
+		list($parentPath,) = \Sabre\Uri\split($this->path);
+		list(, $newName) = \Sabre\Uri\split($name);
 
 		// verify path of the target
 		$this->verifyPath();
 
 		$newPath = $parentPath . '/' . $newName;
 
-		$this->fileView->rename($this->path, $newPath);
+		if (!$this->fileView->rename($this->path, $newPath)) {
+			throw new \Sabre\DAV\Exception('Failed to rename '. $this->path . ' to ' . $newPath);
+		}
 
 		$this->path = $newPath;
 
@@ -164,6 +170,7 @@ abstract class Node implements \Sabre\DAV\INode {
 	 *  Even if the modification time is set to a custom value the access time is set to now.
 	 */
 	public function touch($mtime) {
+		$mtime = $this->sanitizeMtime($mtime);
 		$this->fileView->touch($this->path, $mtime);
 		$this->refreshInfo();
 	}
@@ -248,15 +255,17 @@ abstract class Node implements \Sabre\DAV\INode {
 			}
 		}
 
-		$storage = $this->info->getStorage();
+		try {
+			$storage = $this->info->getStorage();
+		} catch (StorageNotAvailableException $e) {
+			$storage = null;
+		}
 
-		$path = $this->info->getInternalPath();
-
-		if ($storage->instanceOfStorage('\OCA\Files_Sharing\SharedStorage')) {
+		if ($storage && $storage->instanceOfStorage('\OCA\Files_Sharing\SharedStorage')) {
 			/** @var \OCA\Files_Sharing\SharedStorage $storage */
 			$permissions = (int)$storage->getShare()->getPermissions();
 		} else {
-			$permissions = $storage->getPermissions($path);
+			$permissions = $this->info->getPermissions();
 		}
 
 		/*
@@ -270,7 +279,7 @@ abstract class Node implements \Sabre\DAV\INode {
 				$mountpointpath = substr($mountpointpath, 0, -1);
 			}
 
-			if ($mountpointpath === $this->info->getPath()) {
+			if (!$mountpoint->getOption('readonly', false) && $mountpointpath === $this->info->getPath()) {
 				$permissions |= \OCP\Constants::PERMISSION_DELETE | \OCP\Constants::PERMISSION_UPDATE;
 			}
 		}
@@ -286,6 +295,35 @@ abstract class Node implements \Sabre\DAV\INode {
 	}
 
 	/**
+	 * @param string $user
+	 * @return string
+	 */
+	public function getNoteFromShare($user) {
+		if ($user === null) {
+			return '';
+		}
+
+		$types = [
+			Share::SHARE_TYPE_USER,
+			Share::SHARE_TYPE_GROUP,
+			Share::SHARE_TYPE_CIRCLE,
+			Share::SHARE_TYPE_ROOM
+		];
+
+		foreach ($types as $shareType) {
+			$shares = $this->shareManager->getSharedWith($user, $shareType, $this, -1);
+			foreach ($shares as $share) {
+				$note = $share->getNote();
+				if($share->getShareOwner() !== $user && !empty($note)) {
+					return $note;
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * @return string
 	 */
 	public function getDavPermissions() {
@@ -298,6 +336,9 @@ abstract class Node implements \Sabre\DAV\INode {
 		}
 		if ($this->info->isMounted()) {
 			$p .= 'M';
+		}
+		if ($this->info->isReadable()) {
+			$p .= 'G';
 		}
 		if ($this->info->isDeletable()) {
 			$p .= 'D';
@@ -354,4 +395,17 @@ abstract class Node implements \Sabre\DAV\INode {
 	public function getFileInfo() {
 		return $this->info;
 	}
+
+	protected function sanitizeMtime($mtimeFromRequest) {
+		// In PHP 5.X "is_numeric" returns true for strings in hexadecimal
+		// notation. This is no longer the case in PHP 7.X, so this check
+		// ensures that strings with hexadecimal notations fail too in PHP 5.X.
+		$isHexadecimal = is_string($mtimeFromRequest) && preg_match('/^\s*0[xX]/', $mtimeFromRequest);
+		if ($isHexadecimal || !is_numeric($mtimeFromRequest)) {
+			throw new \InvalidArgumentException('X-OC-MTime header must be an integer (unix timestamp).');
+		}
+
+		return (int)$mtimeFromRequest;
+	}
+
 }

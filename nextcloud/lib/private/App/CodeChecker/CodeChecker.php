@@ -25,9 +25,9 @@
 namespace OC\App\CodeChecker;
 
 use OC\Hooks\BasicEmitter;
-use PhpParser\Lexer;
 use PhpParser\NodeTraverser;
 use PhpParser\Parser;
+use PhpParser\ParserFactory;
 use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -51,16 +51,21 @@ class CodeChecker extends BasicEmitter {
 	/** @var ICheck */
 	protected $checkList;
 
-	public function __construct(ICheck $checkList) {
+	/** @var bool */
+	protected $checkMigrationSchema;
+
+	public function __construct(ICheck $checkList, $checkMigrationSchema) {
 		$this->checkList = $checkList;
-		$this->parser = new Parser(new Lexer);
+		$this->checkMigrationSchema = $checkMigrationSchema;
+		$this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
 	}
 
 	/**
 	 * @param string $appId
 	 * @return array
+	 * @throws \RuntimeException if app with $appId is unknown
 	 */
-	public function analyse($appId) {
+	public function analyse(string $appId): array {
 		$appPath = \OC_App::getAppPath($appId);
 		if ($appPath === false) {
 			throw new \RuntimeException("No app with given id <$appId> known.");
@@ -74,10 +79,10 @@ class CodeChecker extends BasicEmitter {
 	 * @param string $folder
 	 * @return array
 	 */
-	public function analyseFolder($appId, $folder) {
+	public function analyseFolder(string $appId, string $folder): array {
 		$errors = [];
 
-		$excludedDirectories = ['vendor', '3rdparty', '.git', 'l10n', 'tests', 'test'];
+		$excludedDirectories = ['vendor', '3rdparty', '.git', 'l10n', 'tests', 'test', 'build'];
 		if ($appId === 'password_policy') {
 			$excludedDirectories[] = 'lists';
 		}
@@ -102,7 +107,7 @@ class CodeChecker extends BasicEmitter {
 		foreach ($iterator as $file) {
 			/** @var SplFileInfo $file */
 			$this->emit('CodeChecker', 'analyseFileBegin', [$file->getPathname()]);
-			$fileErrors = $this->analyseFile($file);
+			$fileErrors = $this->analyseFile($file->__toString());
 			$this->emit('CodeChecker', 'analyseFileFinished', [$file->getPathname(), $fileErrors]);
 			$errors = array_merge($fileErrors, $errors);
 		}
@@ -115,16 +120,21 @@ class CodeChecker extends BasicEmitter {
 	 * @param string $file
 	 * @return array
 	 */
-	public function analyseFile($file) {
+	public function analyseFile(string $file): array {
 		$code = file_get_contents($file);
 		$statements = $this->parser->parse($code);
 
 		$visitor = new NodeVisitor($this->checkList);
+		$migrationVisitor = new MigrationSchemaChecker();
 		$traverser = new NodeTraverser;
 		$traverser->addVisitor($visitor);
 
+		if ($this->checkMigrationSchema && preg_match('#^.+\\/Migration\\/Version[^\\/]{1,255}\\.php$#i', $file)) {
+			$traverser->addVisitor($migrationVisitor);
+		}
+
 		$traverser->traverse($statements);
 
-		return $visitor->errors;
+		return array_merge($visitor->errors, $migrationVisitor->errors);
 	}
 }

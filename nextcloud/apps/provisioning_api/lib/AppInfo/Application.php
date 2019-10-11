@@ -1,5 +1,27 @@
 <?php
-
+/**
+ *
+ *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
+ * @license GNU AGPL version 3 or any later version
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 namespace OCA\Provisioning_API\AppInfo;
 
 use OC\AppFramework\Utility\SimpleContainer;
@@ -7,6 +29,7 @@ use OC\AppFramework\Utility\TimeFactory;
 use OC\Settings\Mailer\NewUserMailHelper;
 use OCA\Provisioning_API\Middleware\ProvisioningApiMiddleware;
 use OCP\AppFramework\App;
+use OCP\AppFramework\Utility\IControllerMethodReflector;
 use OCP\Defaults;
 use OCP\Util;
 
@@ -21,7 +44,7 @@ class Application extends App {
 			return new NewUserMailHelper(
 				$server->query(Defaults::class),
 				$server->getURLGenerator(),
-				$server->getL10N('settings'),
+				$server->getL10NFactory(),
 				$server->getMailer(),
 				$server->getSecureRandom(),
 				new TimeFactory(),
@@ -35,7 +58,7 @@ class Application extends App {
 			$isAdmin = $user !== null ? $server->getGroupManager()->isAdmin($user->getUID()) : false;
 			$isSubAdmin = $user !== null ? $server->getGroupManager()->getSubAdmin()->isSubAdmin($user) : false;
 			return new ProvisioningApiMiddleware(
-				$c['ControllerMethodReflector'],
+				$c->query(IControllerMethodReflector::class),
 				$isAdmin,
 				$isSubAdmin
 			);

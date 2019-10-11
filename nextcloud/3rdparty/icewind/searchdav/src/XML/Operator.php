@@ -21,28 +21,14 @@
 
 namespace SearchDAV\XML;
 
-
 use Sabre\Xml\Reader;
 use Sabre\Xml\XmlDeserializable;
 
 class Operator implements XmlDeserializable {
-	const OPERATION_AND = '{DAV:}and';
-	const OPERATION_OR = '{DAV:}or';
-	const OPERATION_NOT = '{DAV:}not';
-	const OPERATION_EQUAL = '{DAV:}eq';
-	const OPERATION_LESS_THAN = '{DAV:}lt';
-	const OPERATION_LESS_OR_EQUAL_THAN = '{DAV:}lte';
-	const OPERATION_GREATER_THAN = '{DAV:}gt';
-	const OPERATION_GREATER_OR_EQUAL_THAN = '{DAV:}gte';
-	const OPERATION_IS_COLLECTION = '{DAV:}is-collection';
-	const OPERATION_IS_DEFINED = '{DAV:}is-defined';
-	const OPERATION_IS_LIKE = '{DAV:}like';
-	const OPERATION_CONTAINS = '{DAV:}contains';
-
 	/**
 	 * @var string
 	 *
-	 * The type of operation, one of the Operation::OPERATION_* constants
+	 * The type of operation, one of the Operator::OPERATION_* constants
 	 */
 	public $type;
 	/**
@@ -68,7 +54,6 @@ class Operator implements XmlDeserializable {
 		$this->type = $type;
 		$this->arguments = $arguments;
 	}
-
 
 	static function xmlDeserialize(Reader $reader) {
 		$operator = new self();

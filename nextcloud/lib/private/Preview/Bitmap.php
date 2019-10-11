@@ -5,7 +5,7 @@
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -26,6 +26,7 @@
 namespace OC\Preview;
 
 use Imagick;
+use OCP\ILogger;
 
 /**
  * Creates a PNG preview using ImageMagick via the PECL extension
@@ -48,7 +49,11 @@ abstract class Bitmap extends Provider {
 		try {
 			$bp = $this->getResizedPreview($tmpPath, $maxX, $maxY);
 		} catch (\Exception $e) {
-			\OCP\Util::writeLog('core', 'ImageMagick says: ' . $e->getmessage(), \OCP\Util::ERROR);
+			\OC::$server->getLogger()->logException($e, [
+				'message' => 'File: ' . $fileview->getAbsolutePath($path) . ' Imagick says:',
+				'level' => ILogger::ERROR,
+				'app' => 'core',
+			]);
 			return false;
 		}
 

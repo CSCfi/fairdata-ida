@@ -4,6 +4,8 @@
  *
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  *
  * @license AGPL-3.0
  *
@@ -25,8 +27,6 @@ use OCA\FederatedFileSharing\Notifier;
 
 $app = new \OCA\FederatedFileSharing\AppInfo\Application();
 $eventDispatcher = \OC::$server->getEventDispatcher();
-
-$app->registerSettings();
 
 $manager = \OC::$server->getNotificationManager();
 $manager->registerNotifier(function() {

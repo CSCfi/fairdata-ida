@@ -3,6 +3,9 @@
  * @copyright Copyright (c) 2016 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -25,19 +28,31 @@ namespace OC\Settings\Admin;
 
 use OC\Share\Share;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\Constants;
 use OCP\IConfig;
+use OCP\IL10N;
+use OCP\L10N\IFactory;
 use OCP\Settings\ISettings;
+use OCP\Share\IManager;
 use OCP\Util;
 
 class Sharing implements ISettings {
 	/** @var IConfig */
 	private $config;
 
+	/** @var IL10N */
+	private $l;
+
+	/** @var IManager */
+	private $shareManager;
+
 	/**
 	 * @param IConfig $config
 	 */
-	public function __construct(IConfig $config) {
+	public function __construct(IConfig $config, IFactory $l, IManager $shareManager) {
 		$this->config = $config;
+		$this->l = $l->get('lib');
+		$this->shareManager = $shareManager;
 	}
 
 	/**
@@ -50,24 +65,56 @@ class Sharing implements ISettings {
 
 		$parameters = [
 			// Built-In Sharing
-			'allowGroupSharing'               => $this->config->getAppValue('core', 'shareapi_allow_group_sharing', 'yes'),
-			'allowLinks'                      => $this->config->getAppValue('core', 'shareapi_allow_links', 'yes'),
-			'allowPublicUpload'               => $this->config->getAppValue('core', 'shareapi_allow_public_upload', 'yes'),
-			'allowResharing'                  => $this->config->getAppValue('core', 'shareapi_allow_resharing', 'yes'),
-			'allowShareDialogUserEnumeration' => $this->config->getAppValue('core', 'shareapi_allow_share_dialog_user_enumeration', 'yes'),
-			'enforceLinkPassword'             => Util::isPublicLinkPasswordRequired(),
-			'onlyShareWithGroupMembers'       => Share::shareWithGroupMembersOnly(),
-			'shareAPIEnabled'                 => $this->config->getAppValue('core', 'shareapi_enabled', 'yes'),
-			'shareDefaultExpireDateSet'       => $this->config->getAppValue('core', 'shareapi_default_expire_date', 'no'),
-			'shareExpireAfterNDays'           => $this->config->getAppValue('core', 'shareapi_expire_after_n_days', '7'),
-			'shareEnforceExpireDate'          => $this->config->getAppValue('core', 'shareapi_enforce_expire_date', 'no'),
-			'shareExcludeGroups'              => $this->config->getAppValue('core', 'shareapi_exclude_groups', 'no') === 'yes' ? true : false,
-			'shareExcludedGroupsList'         => $excludeGroupsList,
-			'publicShareDisclaimerText'       => $this->config->getAppValue('core', 'shareapi_public_link_disclaimertext', null),
-			'enableLinkPasswordByDefault'     => $this->config->getAppValue('core', 'shareapi_enable_link_password_by_default', 'no'),
+			'allowGroupSharing'                    => $this->config->getAppValue('core', 'shareapi_allow_group_sharing', 'yes'),
+			'allowLinks'                           => $this->config->getAppValue('core', 'shareapi_allow_links', 'yes'),
+			'allowPublicUpload'                    => $this->config->getAppValue('core', 'shareapi_allow_public_upload', 'yes'),
+			'allowResharing'                       => $this->config->getAppValue('core', 'shareapi_allow_resharing', 'yes'),
+			'allowShareDialogUserEnumeration'      => $this->config->getAppValue('core', 'shareapi_allow_share_dialog_user_enumeration', 'yes'),
+			'enforceLinkPassword'                  => Util::isPublicLinkPasswordRequired(),
+			'onlyShareWithGroupMembers'            => $this->shareManager->shareWithGroupMembersOnly(),
+			'shareAPIEnabled'                      => $this->config->getAppValue('core', 'shareapi_enabled', 'yes'),
+			'shareDefaultExpireDateSet'            => $this->config->getAppValue('core', 'shareapi_default_expire_date', 'no'),
+			'shareExpireAfterNDays'                => $this->config->getAppValue('core', 'shareapi_expire_after_n_days', '7'),
+			'shareEnforceExpireDate'               => $this->config->getAppValue('core', 'shareapi_enforce_expire_date', 'no'),
+			'shareExcludeGroups'                   => $this->config->getAppValue('core', 'shareapi_exclude_groups', 'no') === 'yes',
+			'shareExcludedGroupsList'              => $excludeGroupsList,
+			'publicShareDisclaimerText'            => $this->config->getAppValue('core', 'shareapi_public_link_disclaimertext', null),
+			'enableLinkPasswordByDefault'          => $this->config->getAppValue('core', 'shareapi_enable_link_password_by_default', 'no'),
+			'shareApiDefaultPermissions'           => $this->config->getAppValue('core', 'shareapi_default_permissions', Constants::PERMISSION_ALL),
+			'shareApiDefaultPermissionsCheckboxes' => $this->getSharePermissionList(),
 		];
 
-		return new TemplateResponse('settings', 'admin/sharing', $parameters, '');
+		return new TemplateResponse('settings', 'settings/admin/sharing', $parameters, '');
+	}
+
+	/**
+	 * get share permission list for template
+	 *
+	 * @return array
+	 */
+	private function getSharePermissionList() {
+		return [
+			[
+				'id' => 'cancreate',
+				'label' => $this->l->t('Create'),
+				'value' => Constants::PERMISSION_CREATE
+			],
+			[
+				'id' => 'canupdate',
+				'label' => $this->l->t('Change'),
+				'value' => Constants::PERMISSION_UPDATE
+			],
+			[
+				'id' => 'candelete',
+				'label' => $this->l->t('Delete'),
+				'value' => Constants::PERMISSION_DELETE
+			],
+			[
+				'id' => 'canshare',
+				'label' => $this->l->t('Share'),
+				'value' => Constants::PERMISSION_SHARE
+			],
+		];
 	}
 
 	/**

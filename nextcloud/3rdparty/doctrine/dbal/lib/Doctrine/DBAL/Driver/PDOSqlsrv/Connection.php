@@ -20,6 +20,9 @@
 namespace Doctrine\DBAL\Driver\PDOSqlsrv;
 
 use Doctrine\DBAL\Driver\PDOConnection;
+use Doctrine\DBAL\ParameterType;
+use function strpos;
+use function substr;
 
 /**
  * Sqlsrv Connection implementation.
@@ -29,9 +32,33 @@ use Doctrine\DBAL\Driver\PDOConnection;
 class Connection extends PDOConnection implements \Doctrine\DBAL\Driver\Connection
 {
     /**
-     * @override
+     * {@inheritdoc}
      */
-    public function quote($value, $type=\PDO::PARAM_STR)
+    public function __construct($dsn, $user = null, $password = null, array $options = null)
+    {
+        parent::__construct($dsn, $user, $password, $options);
+        $this->setAttribute(\PDO::ATTR_STATEMENT_CLASS, [Statement::class, []]);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function lastInsertId($name = null)
+    {
+        if (null === $name) {
+            return parent::lastInsertId($name);
+        }
+
+        $stmt = $this->prepare('SELECT CONVERT(VARCHAR(MAX), current_value) FROM sys.sequences WHERE name = ?');
+        $stmt->execute([$name]);
+
+        return $stmt->fetchColumn();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function quote($value, $type = ParameterType::STRING)
     {
         $val = parent::quote($value, $type);
 

@@ -28,6 +28,7 @@
 namespace OC\Files\Node;
 
 use OC\Files\Filesystem;
+use OC\Files\Mount\MoveableMount;
 use OCP\Files\FileInfo;
 use OCP\Files\InvalidPathException;
 use OCP\Files\NotFoundException;
@@ -118,7 +119,6 @@ class Node implements \OCP\Files\Node {
 	}
 
 	public function delete() {
-		return;
 	}
 
 	/**
@@ -191,12 +191,13 @@ class Node implements \OCP\Files\Node {
 	}
 
 	/**
+	 * @param bool $includeMounts
 	 * @return int
 	 * @throws InvalidPathException
 	 * @throws NotFoundException
 	 */
-	public function getSize() {
-		return $this->getFileInfo()->getSize();
+	public function getSize($includeMounts = true) {
+		return $this->getFileInfo()->getSize($includeMounts);
 	}
 
 	/**
@@ -266,7 +267,11 @@ class Node implements \OCP\Files\Node {
 	 * @return Node
 	 */
 	public function getParent() {
-		return $this->root->get(dirname($this->path));
+		$newPath = dirname($this->path);
+		if ($newPath === '' || $newPath === '.' || $newPath === '/') {
+			return $this->root;
+		}
+		return $this->root->get($newPath);
 	}
 
 	/**
@@ -349,7 +354,10 @@ class Node implements \OCP\Files\Node {
 	}
 
 	public function getChecksum() {
-		return;
+	}
+
+	public function getExtension(): string {
+		return $this->getFileInfo()->getExtension();
 	}
 
 	/**
@@ -408,7 +416,14 @@ class Node implements \OCP\Files\Node {
 	public function move($targetPath) {
 		$targetPath = $this->normalizePath($targetPath);
 		$parent = $this->root->get(dirname($targetPath));
-		if ($parent instanceof Folder and $this->isValidPath($targetPath) and $parent->isCreatable()) {
+		if (
+			$parent instanceof Folder and
+			$this->isValidPath($targetPath) and
+			(
+				$parent->isCreatable() ||
+				($parent->getInternalPath() === '' && $parent->getMountPoint() instanceof MoveableMount)
+			)
+		) {
 			$nonExisting = $this->createNonExistingNode($targetPath);
 			$this->root->emit('\OC\Files', 'preRename', [$this, $nonExisting]);
 			$this->root->emit('\OC\Files', 'preWrite', [$nonExisting]);

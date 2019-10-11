@@ -90,7 +90,8 @@ window.oc_isadmin = false;
 // FIXME: oc_webroot is supposed to be only the path!!!
 window.oc_webroot = location.href + '/';
 window.oc_appswebroots = {
-	"files": window.oc_webroot + '/apps/files/'
+	"files": window.oc_webroot + '/apps/files/',
+	"files_sharing": window.oc_webroot + '/apps/files_sharing/'
 };
 window.oc_config = {
 	session_lifetime: 600 * 1000,
@@ -100,7 +101,11 @@ window.oc_config = {
 window.oc_appconfig = {
 	core: {}
 };
-window.oc_defaults = {};
+window.oc_defaults = {
+	docPlaceholderUrl: 'https://docs.example.org/PLACEHOLDER'
+};
+window.oc_capabilities = {
+}
 
 /* jshint camelcase: true */
 

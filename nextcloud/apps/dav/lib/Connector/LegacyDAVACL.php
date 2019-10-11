@@ -4,6 +4,7 @@
  *
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -27,7 +28,6 @@ namespace OCA\DAV\Connector;
 use OCA\DAV\Connector\Sabre\DavAclPlugin;
 use Sabre\DAV\INode;
 use Sabre\DAV\PropFind;
-use Sabre\HTTP\URLUtil;
 use Sabre\DAVACL\Xml\Property\Principal;
 
 class LegacyDAVACL extends DavAclPlugin {
@@ -51,7 +51,7 @@ class LegacyDAVACL extends DavAclPlugin {
 	}
 
 	private function convertPrincipal($principal, $toV2) {
-		list(, $name) = URLUtil::splitPath($principal);
+		list(, $name) = \Sabre\Uri\split($principal);
 		if ($toV2) {
 			return "principals/users/$name";
 		}

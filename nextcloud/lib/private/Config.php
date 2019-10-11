@@ -13,6 +13,7 @@
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Philipp Schaffrath <github@philipp.schaffrath.email>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  *
@@ -36,7 +37,7 @@ namespace OC;
 
 /**
  * This class is responsible for reading and writing config.php, the very basic
- * configuration file of ownCloud.
+ * configuration file of Nextcloud.
  */
 class Config {
 
@@ -264,10 +265,8 @@ class Config {
 		flock($filePointer, LOCK_UN);
 		fclose($filePointer);
 
-		// Try invalidating the opcache just for the file we wrote...
-		if (!\OC_Util::deleteFromOpcodeCache($this->configFilePath)) {
-			// But if that doesn't work, clear the whole cache.
-			\OC_Util::clearOpcodeCache();
+		if (function_exists('opcache_invalidate')) {
+			@opcache_invalidate($this->configFilePath, true);
 		}
 	}
 }

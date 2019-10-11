@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
@@ -22,6 +23,7 @@
 namespace OCA\Files_Sharing;
 
 use OCP\Capabilities\ICapability;
+use OCP\Constants;
 use \OCP\IConfig;
 
 /**
@@ -61,6 +63,7 @@ class Capabilities implements ICapability {
 				$public['password']['enforced'] = ($this->config->getAppValue('core', 'shareapi_enforce_links_password', 'no') === 'yes');
 
 				$public['expire_date'] = [];
+				$public['multiple_links'] = true;
 				$public['expire_date']['enabled'] = $this->config->getAppValue('core', 'shareapi_default_expire_date', 'no') === 'yes';
 				if ($public['expire_date']['enabled']) {
 					$public['expire_date']['days'] = $this->config->getAppValue('core', 'shareapi_expire_after_n_days', '7');
@@ -71,7 +74,7 @@ class Capabilities implements ICapability {
 				$public['upload'] = $this->config->getAppValue('core', 'shareapi_allow_public_upload', 'yes') === 'yes';
 				$public['upload_files_drop'] = $public['upload'];
 			}
-			$res["public"] = $public;
+			$res['public'] = $public;
 
 			$res['resharing'] = $this->config->getAppValue('core', 'shareapi_allow_resharing', 'yes') === 'yes';
 
@@ -85,6 +88,7 @@ class Capabilities implements ICapability {
 			$res['group'] = [];
 			$res['group']['enabled'] = $this->config->getAppValue('core', 'shareapi_allow_group_sharing', 'yes') === 'yes';
 			$res['group']['expire_date']['enabled'] = true;
+			$res['default_permissions'] = (int)$this->config->getAppValue('core', 'shareapi_default_permissions', Constants::PERMISSION_ALL);
 		}
 
 		//Federated sharing

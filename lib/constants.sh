@@ -25,5 +25,5 @@ DISALLOWED_NAMES="ADMIN SYSTEM"    # whitespace separated list of names in upper
 STAGING_FOLDER_SUFFIX="+"          # appended to project name to construct staging share folder name
 PROJECT_USER_PREFIX="PSO_"         # "PSO" = "Project Share Owner"
 USER_QUOTA=0                       # Normal users require no storage allocation
-MAX_FILE_COUNT=500                 # Maximum number of files allowed for a single action
+MAX_FILE_COUNT=5000                # Maximum number of files allowed for a single action
 

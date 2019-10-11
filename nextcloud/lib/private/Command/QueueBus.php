@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Robin Appelman <robin@icewind.nl>
  *
  * @license AGPL-3.0
@@ -27,7 +28,7 @@ use OCP\Command\ICommand;
 
 class QueueBus implements IBus {
 	/**
-	 * @var (ICommand|callable)[]
+	 * @var ICommand[]|callable[]
 	 */
 	private $queue = [];
 

@@ -2,9 +2,12 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -32,6 +35,7 @@ use OC\Files\Filesystem;
 use OC\Files\View;
 use OCP\Encryption\IEncryptionModule;
 use OCP\IConfig;
+use OCP\IUser;
 
 class Util {
 
@@ -268,9 +272,12 @@ class Util {
 	}
 
 	public function getUserWithAccessToMountPoint($users, $groups) {
-		$result = array();
+		$result = [];
 		if (in_array('all', $users)) {
-			$result = \OCP\User::getUsers();
+			$users = $this->userManager->search('', null, null);
+			$result = array_map(function(IUser $user) {
+				return $user->getUID();
+			}, $users);
 		} else {
 			$result = array_merge($result, $users);
 
@@ -381,7 +388,7 @@ class Util {
 	public function recoveryEnabled($uid) {
 		$enabled = $this->config->getUserValue($uid, 'encryption', 'recovery_enabled', '0');
 
-		return ($enabled === '1') ? true : false;
+		return $enabled === '1';
 	}
 
 	/**

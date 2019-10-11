@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -24,6 +25,7 @@
 namespace OCA\DAV\Connector\Sabre;
 
 use OC\Files\View;
+use OCP\App\IAppManager;
 use Sabre\DAV\Exception\PreconditionFailed;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\ServerPlugin;
@@ -45,6 +47,7 @@ class FilesReportPlugin extends ServerPlugin {
 	const NS_OWNCLOUD = 'http://owncloud.org/ns';
 	const REPORT_NAME            = '{http://owncloud.org/ns}filter-files';
 	const SYSTEMTAG_PROPERTYNAME = '{http://owncloud.org/ns}systemtag';
+	const CIRCLE_PROPERTYNAME = '{http://owncloud.org/ns}circle';
 
 	/**
 	 * Reference to main server object
@@ -96,6 +99,11 @@ class FilesReportPlugin extends ServerPlugin {
 	private $userFolder;
 
 	/**
+	 * @var IAppManager
+	 */
+	private $appManager;
+
+	/**
 	 * @param Tree $tree
 	 * @param View $view
 	 * @param ISystemTagManager $tagManager
@@ -104,6 +112,7 @@ class FilesReportPlugin extends ServerPlugin {
 	 * @param IUserSession $userSession
 	 * @param IGroupManager $groupManager
 	 * @param Folder $userFolder
+	 * @param IAppManager $appManager
 	 */
 	public function __construct(Tree $tree,
 								View $view,
@@ -112,7 +121,8 @@ class FilesReportPlugin extends ServerPlugin {
 								ITagManager $fileTagger,
 								IUserSession $userSession,
 								IGroupManager $groupManager,
-								Folder $userFolder
+								Folder $userFolder,
+								IAppManager $appManager
 	) {
 		$this->tree = $tree;
 		$this->fileView = $view;
@@ -122,6 +132,7 @@ class FilesReportPlugin extends ServerPlugin {
 		$this->userSession = $userSession;
 		$this->groupManager = $groupManager;
 		$this->userFolder = $userFolder;
+		$this->appManager = $appManager;
 	}
 
 	/**
@@ -255,14 +266,19 @@ class FilesReportPlugin extends ServerPlugin {
 		$ns = '{' . $this::NS_OWNCLOUD . '}';
 		$resultFileIds = null;
 		$systemTagIds = [];
+		$circlesIds = [];
 		$favoriteFilter = null;
 		foreach ($filterRules as $filterRule) {
 			if ($filterRule['name'] === $ns . 'systemtag') {
 				$systemTagIds[] = $filterRule['value'];
 			}
+			if ($filterRule['name'] === self::CIRCLE_PROPERTYNAME) {
+				$circlesIds[] = $filterRule['value'];
+			}
 			if ($filterRule['name'] === $ns . 'favorite') {
 				$favoriteFilter = true;
 			}
+
 		}
 
 		if ($favoriteFilter !== null) {
@@ -274,6 +290,15 @@ class FilesReportPlugin extends ServerPlugin {
 
 		if (!empty($systemTagIds)) {
 			$fileIds = $this->getSystemTagFileIds($systemTagIds);
+			if (empty($resultFileIds)) {
+				$resultFileIds = $fileIds;
+			} else {
+				$resultFileIds = array_intersect($fileIds, $resultFileIds);
+			}
+		}
+
+		if (!empty($circlesIds)) {
+			$fileIds = $this->getCirclesFileIds($circlesIds);
 			if (empty($resultFileIds)) {
 				$resultFileIds = $fileIds;
 			} else {
@@ -326,6 +351,19 @@ class FilesReportPlugin extends ServerPlugin {
 		}
 		return $resultFileIds;
 	}
+
+	/**
+	 * @suppress PhanUndeclaredClassMethod
+	 * @param array $circlesIds
+	 * @return array
+	 */
+	private function getCirclesFileIds(array $circlesIds) {
+		if (!$this->appManager->isEnabledForUser('circles') || !class_exists('\OCA\Circles\Api\v1\Circles')) {
+			return [];
+		}
+		return \OCA\Circles\Api\v1\Circles::getFilesForCircles($circlesIds);
+	}
+
 
 	/**
 	 * Prepare propfind response for the given nodes

@@ -7,6 +7,7 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -34,6 +35,7 @@
 // use OCP namespace for all classes that are considered public.
 // This means that they should be used by apps instead of the internal ownCloud classes
 namespace OCP;
+use Doctrine\DBAL\Schema\Schema;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 
 /**
@@ -43,6 +45,10 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
  * @since 6.0.0
  */
 interface IDBConnection {
+
+	const ADD_MISSING_INDEXES_EVENT = self::class . '::ADD_MISSING_INDEXES';
+	const CHECK_MISSING_INDEXES_EVENT = self::class . '::CHECK_MISSING_INDEXES';
+
 	/**
 	 * Gets the QueryBuilder for the connection.
 	 *
@@ -98,7 +104,9 @@ interface IDBConnection {
 	public function lastInsertId($table = null);
 
 	/**
-	 * Insert a row if the matching row does not exists.
+	 * Insert a row if the matching row does not exists. To accomplish proper race condition avoidance
+	 * it is needed that there is also a unique constraint on the values. Then this method will
+	 * catch the exception and return 0.
 	 *
 	 * @param string $table The table name (will replace *PREFIX* with the actual prefix)
 	 * @param array $input data that should be inserted into the table  (column name => value)
@@ -108,8 +116,23 @@ interface IDBConnection {
 	 * @return int number of inserted rows
 	 * @throws \Doctrine\DBAL\DBALException
 	 * @since 6.0.0 - parameter $compare was added in 8.1.0, return type changed from boolean in 8.1.0
+	 * @deprecated 15.0.0 - use unique index and "try { $db->insert() } catch (UniqueConstraintViolationException $e) {}" instead, because it is more reliable and does not have the risk for deadlocks - see https://github.com/nextcloud/server/pull/12371
 	 */
 	public function insertIfNotExist($table, $input, array $compare = null);
+
+
+	/**
+	 *
+	 * Insert a row if the row does not exist. Eventual conflicts during insert will be ignored.
+	 *
+	 * Implementation is not fully finished and should not be used!
+	 *
+	 * @param string $table The table name (will replace *PREFIX* with the actual prefix)
+	 * @param array $values data that should be inserted into the table  (column name => value)
+	 * @return int number of inserted rows
+	 * @since 16.0.0
+	 */
+	public function insertIgnoreConflict(string $table,array $values) : int;
 
 	/**
 	 * Insert or update a row value
@@ -259,4 +282,20 @@ interface IDBConnection {
 	 * @since 11.0.0
 	 */
 	public function supports4ByteText();
+
+	/**
+	 * Create the schema of the connected database
+	 *
+	 * @return Schema
+	 * @since 13.0.0
+	 */
+	public function createSchema();
+
+	/**
+	 * Migrate the database to the given schema
+	 *
+	 * @param Schema $toSchema
+	 * @since 13.0.0
+	 */
+	public function migrateToSchema(Schema $toSchema);
 }

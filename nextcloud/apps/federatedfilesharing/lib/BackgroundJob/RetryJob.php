@@ -2,7 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -71,7 +75,9 @@ class RetryJob extends Job {
 				$addressHandler,
 				\OC::$server->getHTTPClientService(),
 				\OC::$server->query(\OCP\OCS\IDiscoveryService::class),
-				\OC::$server->getJobList()
+				\OC::$server->getJobList(),
+				\OC::$server->getCloudFederationProviderManager(),
+				\OC::$server->getCloudFederationFactory()
 			);
 		}
 
@@ -81,7 +87,7 @@ class RetryJob extends Job {
 	 * run the job, then remove it from the jobList
 	 *
 	 * @param JobList $jobList
-	 * @param ILogger $logger
+	 * @param ILogger|null $logger
 	 */
 	public function execute($jobList, ILogger $logger = null) {
 
@@ -116,7 +122,7 @@ class RetryJob extends Job {
 	 * @param array $argument
 	 */
 	protected function reAddJob(IJobList $jobList, array $argument) {
-		$jobList->add('OCA\FederatedFileSharing\BackgroundJob\RetryJob',
+		$jobList->add(RetryJob::class,
 			[
 				'remote' => $argument['remote'],
 				'remoteId' => $argument['remoteId'],

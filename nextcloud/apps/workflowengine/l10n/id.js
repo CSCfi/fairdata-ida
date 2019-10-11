@@ -1,9 +1,7 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Successfully saved" : "Berhasil disimpan",
-    "Saving failed:" : "Penyimpanan gagal:",
-    "File mime type" : "Tipe MIME berkas",
+    "File MIME type" : "Berkas tipe MIME",
     "is" : "adalah",
     "is not" : "bukan",
     "matches" : "cocok dengan",
@@ -40,6 +38,14 @@ OC.L10N.register(
     "User group membership" : "Keanggotaan grup pengguna",
     "is member of" : "anggota dari",
     "is not member of" : "bukan anggota dari",
+    "Short rule description" : "Deskripsi aturan singkat",
+    "Add rule" : "Tambahkan aturan",
+    "Reset" : "Setel ulang",
+    "Save" : "Simpan",
+    "Saving…" : "Menyimpan...",
+    "Saved" : "Disimpan",
+    "Saving failed:" : "Penyimpanan gagal:",
+    "Add rule group" : "Tambahkan aturan grup ",
     "The given operator is invalid" : "Operator yang diberikan tidak sah",
     "The given regular expression is invalid" : "Regular expression yang diberikan tidak sah",
     "The given file size is invalid" : "Ukuran berkas yang diberikan tidak sah",
@@ -50,6 +56,16 @@ OC.L10N.register(
     "The given time span is invalid" : "Rentang waktu yang diberikan tidak sah",
     "The given start time is invalid" : "Waktu mulai yang diberikan tidak sah",
     "The given end time is invalid" : "Waktu selesai yang diberikan tidak sah",
-    "The given group does not exist" : "Grup yang diberikan tidak ada"
+    "The given group does not exist" : "Grup yang diberikan tidak ada",
+    "Check %s is invalid or does not exist" : "Cek %s tidak valid atau tidak ada",
+    "Operation #%s does not exist" : "Operasi #%s tidak ada",
+    "Operation %s does not exist" : "Operasi %s tidak ada",
+    "Operation %s is invalid" : "Operasi %s tidak valid",
+    "Check %s does not exist" : "Cek %s tidak ada",
+    "Check %s is invalid" : "Cek %s tidak valid",
+    "Check #%s does not exist" : "Cek #%s tidak ada",
+    "Open documentation" : "Buka dokumentasi",
+    "Loading…" : "Memuat...",
+    "Workflow" : "Alur kerja"
 },
 "nplurals=1; plural=0;");

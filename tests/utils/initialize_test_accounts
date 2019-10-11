@@ -46,8 +46,25 @@
 # but no files, allowing for testing restrictions against freezing folders with
 # no files.
 #
-# If the argument "flush" is given, then only the existing accounts and data
-# are purged and no new accounts created.
+# In addition to the above test projects and users, several special projects and
+# users will be created to test notification icon functionality in the UI.
+#
+# Project test_project_s with test_user_s will be suspended, causing the suspended
+# (lock) notification icon to appear in the UI when logged in as test_user_s.
+#
+# Project test_project_p with test_user_p will have a perpetually pending action,
+# causing the pending (gears) notification icon to appear in the UI when logged in
+# as test_user_p.
+#
+# Project test_project_f with test_user_f will be suspended, causing the failed
+# (alert) notification icon to appear in the UI when logged in as test_user_f.
+#
+#--------------------------------------------------------------------------------
+#
+# NOTE: 
+#
+# If the single argument "flush" is given to this script, then all existing
+# accounts and data are purged and no new accounts created.
 #
 #--------------------------------------------------------------------------------
 . `dirname $0`/../../lib/init_script.sh
@@ -85,9 +102,9 @@ if [ "$CONFIG" != "" ]; then
         errorExit "Error: The specified configuration file does not exist or is empty. Aborting"
     fi
 else
-    PROJECTS="test_project_a test_project_b test_project_c test_project_d"
-    USERS="test_user_a test_user_b test_user_c test_user_d test_user_x"
-    BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_x:test_project_a"
+    PROJECTS="test_project_a test_project_b test_project_c test_project_d test_project_s test_project_p test_project_f"
+    USERS="test_user_a test_user_b test_user_c test_user_d test_user_x test_user_s test_user_p test_user_f"
+    BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_x:test_project_a test_user_s:test_project_s test_user_p:test_project_p test_user_f:test_project_f"
     EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d"
 fi
 
@@ -291,3 +308,22 @@ for RELATION in $EXTRA_RELATIONS; do
         success
     fi
 done
+
+#--------------------------------------------------------------------------------
+
+echo "Suspending project test_project_s..."
+
+/var/ida/utils/admin/suspend-project test_project_s --silent >/dev/null
+
+#--------------------------------------------------------------------------------
+
+echo "Creating pending action in project test_project_p..."
+
+
+$CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_p&pathname=/&action=freeze" >/dev/null
+
+#--------------------------------------------------------------------------------
+
+echo "Creating failed action in project test_project_f..."
+
+$CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${TIMESTAMP}" >/dev/null

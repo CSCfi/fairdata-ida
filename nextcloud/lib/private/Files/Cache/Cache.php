@@ -3,8 +3,11 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Andreas Fischer <bantu@owncloud.com>
+ * @author Ari Selseng <ari@selseng.net>
+ * @author Artem Kochnev <MrJeos@gmail.com>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Florin Peter <github@florin-peter.de>
+ * @author Frédéric Fortier <frederic.fortier@oronospolytechnique.com>
  * @author Jens-Christian Fischer <jens-christian.fischer@switch.ch>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
@@ -14,10 +17,8 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author TheSFReader <TheSFReader@gmail.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
- * @author Xuanwo <xuanwo@yunify.com>
  *
  * @license AGPL-3.0
  *
@@ -37,12 +38,16 @@
 
 namespace OC\Files\Cache;
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use Doctrine\DBAL\Driver\Statement;
+use OCP\Files\Cache\CacheInsertEvent;
+use OCP\Files\Cache\CacheUpdateEvent;
 use OCP\Files\Cache\ICache;
 use OCP\Files\Cache\ICacheEntry;
 use \OCP\Files\IMimeTypeLoader;
 use OCP\Files\Search\ISearchQuery;
+use OCP\Files\Storage\IStorage;
 use OCP\IDBConnection;
 
 /**
@@ -70,6 +75,8 @@ class Cache implements ICache {
 	 */
 	protected $storageId;
 
+	private $storage;
+
 	/**
 	 * @var Storage $storageCache
 	 */
@@ -83,18 +90,17 @@ class Cache implements ICache {
 	 */
 	protected $connection;
 
+	protected $eventDispatcher;
+
 	/** @var QuerySearchHelper */
 	protected $querySearchHelper;
 
 	/**
-	 * @param \OC\Files\Storage\Storage|string $storage
+	 * @param IStorage $storage
 	 */
-	public function __construct($storage) {
-		if ($storage instanceof \OC\Files\Storage\Storage) {
-			$this->storageId = $storage->getId();
-		} else {
-			$this->storageId = $storage;
-		}
+	public function __construct(IStorage $storage) {
+		$this->storageId = $storage->getId();
+		$this->storage = $storage;
 		if (strlen($this->storageId) > 64) {
 			$this->storageId = md5($this->storageId);
 		}
@@ -102,6 +108,7 @@ class Cache implements ICache {
 		$this->storageCache = new Storage($storage);
 		$this->mimetypeLoader = \OC::$server->getMimeTypeLoader();
 		$this->connection = \OC::$server->getDatabaseConnection();
+		$this->eventDispatcher = \OC::$server->getEventDispatcher();
 		$this->querySearchHelper = new QuerySearchHelper($this->mimetypeLoader);
 	}
 
@@ -148,6 +155,8 @@ class Cache implements ICache {
 			if (isset($this->partial[$file])) {
 				$data = $this->partial[$file];
 			}
+			return $data;
+		} else if (!$data) {
 			return $data;
 		} else {
 			return self::cacheEntryFromData($data, $this->mimetypeLoader);
@@ -206,11 +215,10 @@ class Cache implements ICache {
 			$result = $this->connection->executeQuery($sql, [$fileId]);
 			$files = $result->fetchAll();
 			return array_map(function (array $data) {
-				return self::cacheEntryFromData($data, $this->mimetypeLoader);;
+				return self::cacheEntryFromData($data, $this->mimetypeLoader);
 			}, $files);
-		} else {
-			return array();
 		}
+		return [];
 	}
 
 	/**
@@ -239,6 +247,8 @@ class Cache implements ICache {
 	 *
 	 * @return int file id
 	 * @throws \RuntimeException
+	 *
+	 * @suppress SqlInjectionChecker
 	 */
 	public function insert($file, array $data) {
 		// normalize file
@@ -259,7 +269,7 @@ class Cache implements ICache {
 
 		$data['path'] = $file;
 		$data['parent'] = $this->getParentId($file);
-		$data['name'] = \OC_Util::basename($file);
+		$data['name'] = basename($file);
 
 		list($queryParts, $params) = $this->buildParts($data);
 		$queryParts[] = '`storage`';
@@ -269,12 +279,22 @@ class Cache implements ICache {
 			return trim($item, "`");
 		}, $queryParts);
 		$values = array_combine($queryParts, $params);
-		if (\OC::$server->getDatabaseConnection()->insertIfNotExist('*PREFIX*filecache', $values, [
-			'storage',
-			'path_hash',
-		])
-		) {
-			return (int)$this->connection->lastInsertId('*PREFIX*filecache');
+
+		try {
+			$builder = $this->connection->getQueryBuilder();
+			$builder->insert('filecache');
+
+			foreach ($values as $column => $value) {
+				$builder->setValue($column, $builder->createNamedParameter($value));
+			}
+
+			if ($builder->execute()) {
+				$fileId = (int)$this->connection->lastInsertId('*PREFIX*filecache');
+				$this->eventDispatcher->dispatch(CacheInsertEvent::class, new CacheInsertEvent($this->storage, $file, $fileId));
+				return $fileId;
+			}
+		} catch (UniqueConstraintViolationException $e) {
+			// entry exists already
 		}
 
 		// The file was created in the mean time
@@ -282,7 +302,7 @@ class Cache implements ICache {
 			$this->update($id, $data);
 			return $id;
 		} else {
-			throw new \RuntimeException('File entry could not be inserted with insertIfNotExist() but could also not be selected with getId() in order to perform an update. Please try again.');
+			throw new \RuntimeException('File entry could not be inserted but could also not be selected with getId() in order to perform an update. Please try again.');
 		}
 	}
 
@@ -319,6 +339,11 @@ class Cache implements ICache {
 			') AND `fileid` = ? ';
 		$this->connection->executeQuery($sql, $params);
 
+		$path = $this->getPathById($id);
+		// path can still be null if the file doesn't exist
+		if ($path !== null) {
+			$this->eventDispatcher->dispatch(CacheUpdateEvent::class, new CacheUpdateEvent($this->storage, $path, $id));
+		}
 	}
 
 	/**
@@ -502,6 +527,7 @@ class Cache implements ICache {
 	 * @param string $targetPath
 	 * @throws \OC\DatabaseException
 	 * @throws \Exception if the given storages have an invalid id
+	 * @suppress SqlInjectionChecker
 	 */
 	public function moveFromCache(ICache $sourceCache, $sourcePath, $targetPath) {
 		if ($sourceCache instanceof Cache) {
@@ -550,7 +576,7 @@ class Cache implements ICache {
 			}
 
 			$sql = 'UPDATE `*PREFIX*filecache` SET `storage` = ?, `path` = ?, `path_hash` = ?, `name` = ?, `parent` = ? WHERE `fileid` = ?';
-			$this->connection->executeQuery($sql, array($targetStorageId, $targetPath, md5($targetPath), \OC_Util::basename($targetPath), $newParentId, $sourceId));
+			$this->connection->executeQuery($sql, array($targetStorageId, $targetPath, md5($targetPath), basename($targetPath), $newParentId, $sourceId));
 			$this->connection->commit();
 		} else {
 			$this->moveFromCacheFallback($sourceCache, $sourcePath, $targetPath);
@@ -749,15 +775,38 @@ class Cache implements ICache {
 	 * @param string|boolean $path
 	 * @param array $data (optional) meta data of the folder
 	 */
-	public function correctFolderSize($path, $data = null) {
+	public function correctFolderSize($path, $data = null, $isBackgroundScan = false) {
 		$this->calculateFolderSize($path, $data);
 		if ($path !== '') {
 			$parent = dirname($path);
 			if ($parent === '.' or $parent === '/') {
 				$parent = '';
 			}
-			$this->correctFolderSize($parent);
+			if ($isBackgroundScan) {
+				$parentData = $this->get($parent);
+				if ($parentData['size'] !== -1 && $this->getIncompleteChildrenCount($parentData['fileid']) === 0) {
+					$this->correctFolderSize($parent, $parentData, $isBackgroundScan);
+				}
+			} else {
+				$this->correctFolderSize($parent);
+			}
 		}
+	}
+
+	/**
+	 * get the incomplete count that shares parent $folder
+	 *
+	 * @param int $fileId the file id of the folder
+	 * @return int
+	 */
+	public function getIncompleteChildrenCount($fileId) {
+		if ($fileId > -1) {
+			$sql = 'SELECT count(*)
+					FROM `*PREFIX*filecache` WHERE `parent` = ? AND size = -1';
+			$result = $this->connection->executeQuery($sql, [$fileId]);
+			return (int)$result->fetchColumn();
+		}
+		return -1;
 	}
 
 	/**

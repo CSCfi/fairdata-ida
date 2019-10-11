@@ -26,6 +26,11 @@
 # test method create side effects which subsequent actions and assertions may
 # depend on. The state of the test accounts and data must be taken into account
 # whenever adding tests at any particular point in that execution sequence.
+#
+# Note regarding zero size files: proper handling of zero size files is
+# primarily tested by including zero size files in the pre-defined test
+# data and ensuring that on copy and move operations, a selected zero size
+# file is included as expected in the target location.
 # --------------------------------------------------------------------------------
 
 import requests
@@ -366,6 +371,64 @@ class TestIdaCli(unittest.TestCase):
         path = Path("%s/License2.txt" % (self.staging))
         self.assertTrue(path.is_file(), output)
 
+        print("Upload zero size file")
+        cmd = "%s upload %s /zero_size_file %s/2017-08/Experiment_1/zero_size_file" % (self.cli, self.args, self.testdata)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target uploaded successfully.", output)
+        path = Path("%s/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+
+        print("Copy file within staging")
+        cmd = "%s copy %s /Contact.txt /a/b/c/Contact.txt" % (self.cli, self.args)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target copied successfully.", output)
+        path = Path("%s/Contact.txt" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        path = Path("%s/a/b/c/Contact.txt" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+
+        print("(freeze file)")
+        data = {"project": "test_project_a", "pathname": "/a/b/c/Contact.txt"}
+        response = requests.post("%s/freeze" % self.api, json=data, auth=self.test_user, verify=False)
+        self.assertEqual(response.status_code, 200)
+        path = Path("%s/a/b/c/Contact.txt" % (self.frozen))
+        self.assertTrue(path.is_file(), output)
+        path = Path("%s/a/b/c/Contact.txt" % (self.staging))
+        self.assertFalse(path.exists(), output)
+
+        print("Copy file from frozen area to staging area")
+        cmd = "%s copy %s -f /a/b/c/Contact.txt /a/b/c/Contact.txt" % (self.cli, self.args)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target copied successfully.", output)
+        path = Path("%s/a/b/c/Contact.txt" % (self.frozen))
+        self.assertTrue(path.is_file(), output)
+        path = Path("%s/a/b/c/Contact.txt" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+
+        print("Copy zero size file")
+        cmd = "%s copy %s /zero_size_file /a/b/c/zero_size_file" % (self.cli, self.args)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target copied successfully.", output)
+        path = Path("%s/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+        path = Path("%s/a/b/c/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+
         print("Rename file")
         cmd = "%s move %s /Contact.txt /Contact2.txt" % (self.cli, self.args)
         try:
@@ -412,7 +475,18 @@ class TestIdaCli(unittest.TestCase):
             self.assertIn("Error: Can't find specified file or directory.", output)
         self.assertTrue(failed, output)
 
-        print("Attempt to rename file to existing target pathname")
+        print("Attempt to copy file to existing target pathname")
+        cmd = "%s copy %s /License2.txt /x/y/z/Contact.txt" % (self.cli, self.args)
+        failed = False
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            failed = True
+            output = error.output.decode(sys.stdout.encoding)
+            self.assertIn("Error: Specified new target already exists.", output)
+        self.assertTrue(failed, output)
+
+        print("Attempt to move file to existing target pathname")
         cmd = "%s move %s /License2.txt /x/y/z/Contact.txt" % (self.cli, self.args)
         failed = False
         try:
@@ -421,6 +495,39 @@ class TestIdaCli(unittest.TestCase):
             failed = True
             output = error.output.decode(sys.stdout.encoding)
             self.assertIn("Error: Specified new target already exists.", output)
+        self.assertTrue(failed, output)
+
+        print("Attempt to upload file to frozen area")
+        cmd = "%s upload %s -f /LicenseX.txt %s/License.txt" % (self.cli, self.args, self.testdata)
+        failed = False
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            failed = True
+            output = error.output.decode(sys.stdout.encoding)
+            self.assertIn("Error: The -f option is not allowed for the specified action.", output)
+        self.assertTrue(failed, output)
+
+        print("Attempt to move frozen file")
+        cmd = "%s move %s -f /License.txt /LicenseX.txt" % (self.cli, self.args)
+        failed = False
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            failed = True
+            output = error.output.decode(sys.stdout.encoding)
+            self.assertIn("Error: The -f option is not allowed for the specified action.", output)
+        self.assertTrue(failed, output)
+
+        print("Attempt to delete frozen file")
+        cmd = "%s delete %s -f /License.txt" % (self.cli, self.args)
+        failed = False
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            failed = True
+            output = error.output.decode(sys.stdout.encoding)
+            self.assertIn("Error: The -f option is not allowed for the specified action.", output)
         self.assertTrue(failed, output)
 
         print("Attempt to download file using invalid target pathname")
@@ -572,6 +679,51 @@ class TestIdaCli(unittest.TestCase):
         path = Path("%s/2017-10/Experiment_3/.hidden_file" % (self.staging))
         self.assertFalse(path.exists(), output)
 
+        print("Copy folder within staging area")
+        cmd = "%s copy %s /2017-10/Experiment_3/baseline /2017-11/Experiment_8/baseline" % (self.cli, self.args)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target copied successfully.", output)
+        path = Path("%s/2017-10/Experiment_3/baseline" % (self.staging))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-10/Experiment_3/baseline/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+        path = Path("%s/2017-11/Experiment_8/baseline" % (self.staging))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-11/Experiment_8/baseline/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+
+        print("(freeze folder)")
+        data = {"project": "test_project_a", "pathname": "/2017-11/Experiment_8"}
+        response = requests.post("%s/freeze" % self.api, json=data, auth=self.test_user, verify=False)
+        self.assertEqual(response.status_code, 200)
+        path = Path("%s/2017-11/Experiment_8" % (self.frozen))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-11/Experiment_8" % (self.staging))
+        self.assertFalse(path.exists(), output)
+
+        print("Copy folder from frozen area to staging area")
+        cmd = "%s copy %s -f /2017-11/Experiment_8/baseline /2017-11/Experiment_8/baseline" % (self.cli, self.args)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target copied successfully.", output)
+        path = Path("%s/2017-11/Experiment_8/baseline" % (self.frozen))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-11/Experiment_8/baseline/zero_size_file" % (self.frozen))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+        path = Path("%s/2017-11/Experiment_8/baseline" % (self.staging))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-11/Experiment_8/baseline/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
+
         print("Rename folder")
         cmd = "%s move %s /2017-10/Experiment_3/baseline /2017-10/Experiment_3/baseline_old" % (self.cli, self.args)
         try:
@@ -595,6 +747,9 @@ class TestIdaCli(unittest.TestCase):
         self.assertFalse(path.exists(), output)
         path = Path("%s/2017-11/Experiment_9/baseline_x" % (self.staging))
         self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-11/Experiment_9/baseline_x/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
 
         print("Download folder as package")
         cmd = "%s download %s /2017-10/Experiment_5 %s/2017-10_Experiment_5.zip" % (self.cli, self.args, self.tempdir)
@@ -605,7 +760,7 @@ class TestIdaCli(unittest.TestCase):
         self.assertIn("Target downloaded successfully.", output)
         path = Path("%s/2017-10_Experiment_5.zip" % (self.tempdir))
         self.assertTrue(path.is_file(), output)
-        self.assertEquals(17306, path.stat().st_size, output)
+        self.assertEquals(16868, path.stat().st_size, output)
 
         print("Attempt to upload folder using invalid local pathname")
         cmd = "%s upload %s /no/such/folder /no/such/folder" % (self.cli, self.args)
@@ -665,6 +820,9 @@ class TestIdaCli(unittest.TestCase):
         path = Path("%s/2017-12/Experiment_1/baseline/test05.dat" % (self.staging))
         self.assertTrue(path.is_file(), output)
         self.assertEquals(3728, path.stat().st_size, output)
+        path = Path("%s/2017-12/Experiment_1/baseline/zero_size_file" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(0, path.stat().st_size, output)
 
         print("Retrieve file info from staging area")
         cmd = "%s info %s /2017-12/Experiment_1/baseline/test01.dat" % (self.cli, self.args)
@@ -697,11 +855,16 @@ class TestIdaCli(unittest.TestCase):
         self.assertIn("  /2017-12/Experiment_1/baseline/test03.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/test04.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/test05.dat", output)
+        self.assertIn("  /2017-12/Experiment_1/baseline/zero_size_file", output)
 
-        print("Freeze folder")
+        print("(freeze folder)")
         data = {"project": "test_project_a", "pathname": "/2017-12/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.api, json=data, auth=self.test_user, verify=False)
         self.assertEqual(response.status_code, 200)
+        path = Path("%s/2017-12/Experiment_1/baseline" % (self.frozen))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/2017-12/Experiment_1/baseline" % (self.staging))
+        self.assertFalse(path.exists(), output)
 
         print("Retrieve file info from frozen area")
         cmd = "%s info %s -f /2017-12/Experiment_1/baseline/test01.dat" % (self.cli, self.args)
@@ -736,6 +899,7 @@ class TestIdaCli(unittest.TestCase):
         self.assertIn("  /2017-12/Experiment_1/baseline/test03.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/test04.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/test05.dat", output)
+        self.assertIn("  /2017-12/Experiment_1/baseline/zero_size_file", output)
 
         print("Attempt to retrieve file info from staging area using invalid target pathname")
         cmd = "%s info %s /no/such/file.txt" % (self.cli, self.args)

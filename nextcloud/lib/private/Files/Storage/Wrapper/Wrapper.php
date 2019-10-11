@@ -2,11 +2,14 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -28,9 +31,11 @@ namespace OC\Files\Storage\Wrapper;
 
 use OCP\Files\InvalidPathException;
 use OCP\Files\Storage\ILockingStorage;
+use OCP\Files\Storage\IStorage;
+use OCP\Files\Storage\IWriteStreamStorage;
 use OCP\Lock\ILockingProvider;
 
-class Wrapper implements \OC\Files\Storage\Storage, ILockingStorage {
+class Wrapper implements \OC\Files\Storage\Storage, ILockingStorage, IWriteStreamStorage {
 	/**
 	 * @var \OC\Files\Storage\Storage $storage
 	 */
@@ -542,12 +547,12 @@ class Wrapper implements \OC\Files\Storage\Storage, ILockingStorage {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @return bool
 	 */
-	public function copyFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
+	public function copyFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
 		if ($sourceStorage === $this) {
 			return $this->copy($sourceInternalPath, $targetInternalPath);
 		}
@@ -556,12 +561,12 @@ class Wrapper implements \OC\Files\Storage\Storage, ILockingStorage {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @return bool
 	 */
-	public function moveFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
+	public function moveFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
 		if ($sourceStorage === $this) {
 			return $this->rename($sourceInternalPath, $targetInternalPath);
 		}
@@ -616,5 +621,19 @@ class Wrapper implements \OC\Files\Storage\Storage, ILockingStorage {
 	 */
 	public function needsPartFile() {
 		return $this->getWrapperStorage()->needsPartFile();
+	}
+
+	public function writeStream(string $path, $stream, int $size = null): int {
+		$storage = $this->getWrapperStorage();
+		if ($storage->instanceOfStorage(IWriteStreamStorage::class)) {
+			/** @var IWriteStreamStorage $storage */
+			return $storage->writeStream($path, $stream, $size);
+		} else {
+			$target = $this->fopen($path, 'w');
+			list($count, $result) = \OC_Helper::streamCopy($stream, $target);
+			fclose($stream);
+			fclose($target);
+			return $count;
+		}
 	}
 }

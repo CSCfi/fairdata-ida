@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
@@ -30,9 +31,14 @@ class OracleConnection extends Connection {
 	 * Quote the keys of the array
 	 */
 	private function quoteKeys(array $data) {
-		$return = array();
+		$return = [];
+		$c = $this->getDatabasePlatform()->getIdentifierQuoteCharacter();
 		foreach($data as $key => $value) {
-			$return[$this->quoteIdentifier($key)] = $value;
+			if ($key[0] !== $c) {
+				$return[$this->quoteIdentifier($key)] = $value;
+			} else {
+				$return[$key] = $value;
+			}
 		}
 		return $return;
 	}
@@ -41,7 +47,9 @@ class OracleConnection extends Connection {
 	 * {@inheritDoc}
 	 */
 	public function insert($tableName, array $data, array $types = array()) {
-		$tableName = $this->quoteIdentifier($tableName);
+		if ($tableName[0] !== $this->getDatabasePlatform()->getIdentifierQuoteCharacter()) {
+			$tableName = $this->quoteIdentifier($tableName);
+		}
 		$data = $this->quoteKeys($data);
 		return parent::insert($tableName, $data, $types);
 	}
@@ -50,7 +58,9 @@ class OracleConnection extends Connection {
 	 * {@inheritDoc}
 	 */
 	public function update($tableName, array $data, array $identifier, array $types = array()) {
-		$tableName = $this->quoteIdentifier($tableName);
+		if ($tableName[0] !== $this->getDatabasePlatform()->getIdentifierQuoteCharacter()) {
+			$tableName = $this->quoteIdentifier($tableName);
+		}
 		$data = $this->quoteKeys($data);
 		$identifier = $this->quoteKeys($identifier);
 		return parent::update($tableName, $data, $identifier, $types);
@@ -60,9 +70,11 @@ class OracleConnection extends Connection {
 	 * {@inheritDoc}
 	 */
 	public function delete($tableExpression, array $identifier, array $types = array()) {
-		$tableName = $this->quoteIdentifier($tableExpression);
+		if ($tableExpression[0] !== $this->getDatabasePlatform()->getIdentifierQuoteCharacter()) {
+			$tableExpression = $this->quoteIdentifier($tableExpression);
+		}
 		$identifier = $this->quoteKeys($identifier);
-		return parent::delete($tableName, $identifier);
+		return parent::delete($tableExpression, $identifier);
 	}
 
 	/**

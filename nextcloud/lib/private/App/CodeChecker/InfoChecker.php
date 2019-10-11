@@ -23,145 +23,88 @@
 
 namespace OC\App\CodeChecker;
 
-use OC\App\InfoParser;
 use OC\Hooks\BasicEmitter;
+use OCP\App\AppPathNotFoundException;
+use OCP\App\IAppManager;
 
 class InfoChecker extends BasicEmitter {
 
-	/** @var InfoParser */
-	private $infoParser;
+	/** @var string[] */
+	private $shippedApps;
 
-	private $mandatoryFields = [
-		'author',
-		'description',
-		'id',
-		'licence',
-		'name',
-	];
-	private $optionalFields = [
-		'bugs',
-		'category',
-		'default_enable',
-		'dependencies', // TODO: Mandatory as of ownCloud 11
-		'documentation',
-		'namespace',
-		'ocsid',
-		'public',
-		'remote',
-		'repository',
-		'types',
-		'version',
-		'website',
-	];
-	private $deprecatedFields = [
-		'info',
-		'require',
-		'requiremax',
-		'requiremin',
-		'shipped',
-		'standalone',
-	];
-
-	public function __construct(InfoParser $infoParser) {
-		$this->infoParser = $infoParser;
-	}
+	/** @var string[] */
+	private $alwaysEnabled;
 
 	/**
 	 * @param string $appId
 	 * @return array
+	 * @throws \RuntimeException
 	 */
-	public function analyse($appId) {
+	public function analyse($appId): array {
 		$appPath = \OC_App::getAppPath($appId);
 		if ($appPath === false) {
 			throw new \RuntimeException("No app with given id <$appId> known.");
 		}
 
+		$xml = new \DOMDocument();
+		$xml->load($appPath . '/appinfo/info.xml');
+
+		$schema = \OC::$SERVERROOT . '/resources/app-info.xsd';
+		try {
+			if ($this->isShipped($appId)) {
+				// Shipped apps are allowed to have the public and default_enabled tags
+				$schema = \OC::$SERVERROOT . '/resources/app-info-shipped.xsd';
+			}
+		} catch (\Exception $e) {
+			// Assume it is not shipped
+		}
+
 		$errors = [];
-
-		$info = $this->infoParser->parse($appPath . '/appinfo/info.xml');
-
-		if (isset($info['dependencies']['owncloud']['@attributes']['min-version']) && (isset($info['requiremin']) || isset($info['require']))) {
-			$this->emit('InfoChecker', 'duplicateRequirement', ['min']);
-			$errors[] = [
-				'type' => 'duplicateRequirement',
-				'field' => 'min',
-			];
-		} else if (
-			!isset($info['dependencies']['owncloud']['@attributes']['min-version']) &&
-			!isset($info['dependencies']['nextcloud']['@attributes']['min-version'])
-		) {
-			$this->emit('InfoChecker', 'missingRequirement', ['min']);
-		}
-
-		if (isset($info['dependencies']['owncloud']['@attributes']['max-version']) && isset($info['requiremax'])) {
-			$this->emit('InfoChecker', 'duplicateRequirement', ['max']);
-			$errors[] = [
-				'type' => 'duplicateRequirement',
-				'field' => 'max',
-			];
-		} else if (
-			!isset($info['dependencies']['owncloud']['@attributes']['max-version']) &&
-			!isset($info['dependencies']['nextcloud']['@attributes']['max-version'])
-		) {
-			$this->emit('InfoChecker', 'missingRequirement', ['max']);
-		}
-
-		foreach ($info as $key => $value) {
-			if(is_array($value)) {
-				$value = json_encode($value);
-			}
-			if (in_array($key, $this->mandatoryFields)) {
-				$this->emit('InfoChecker', 'mandatoryFieldFound', [$key, $value]);
-				continue;
-			}
-
-			if (in_array($key, $this->optionalFields)) {
-				$this->emit('InfoChecker', 'optionalFieldFound', [$key, $value]);
-				continue;
-			}
-
-			if (in_array($key, $this->deprecatedFields)) {
-				// skip empty arrays - empty arrays for remote and public are always added
-				if($value === '[]' && in_array($key, ['public', 'remote', 'info'])) {
-					continue;
-				}
-				$this->emit('InfoChecker', 'deprecatedFieldFound', [$key, $value]);
-				continue;
-			}
-
-			$this->emit('InfoChecker', 'unusedFieldFound', [$key, $value]);
-		}
-
-		foreach ($this->mandatoryFields as $key) {
-			if(!isset($info[$key])) {
-				$this->emit('InfoChecker', 'mandatoryFieldMissing', [$key]);
+		if (!$xml->schemaValidate($schema)) {
+			foreach (libxml_get_errors() as $error) {
 				$errors[] = [
-					'type' => 'mandatoryFieldMissing',
-					'field' => $key,
+					'type' => 'parseError',
+					'field' => $error->message,
 				];
-			}
-		}
-
-		$versionFile = $appPath . '/appinfo/version';
-		if (is_file($versionFile)) {
-			$version = trim(file_get_contents($versionFile));
-			if (isset($info['version'])) {
-				if($info['version'] !== $version) {
-					$this->emit('InfoChecker', 'differentVersions',
-						[$version, $info['version']]);
-					$errors[] = [
-						'type' => 'differentVersions',
-						'message' => 'appinfo/version: ' . $version .
-							' - appinfo/info.xml: ' . $info['version'],
-					];
-				} else {
-					$this->emit('InfoChecker', 'sameVersions', [$versionFile]);
-				}
-			} else {
-				$this->emit('InfoChecker', 'migrateVersion', [$version]);
+				$this->emit('InfoChecker', 'parseError', [$error->message]);
 			}
 		}
 
 		return $errors;
+	}
+
+	/**
+	 * This is a copy of \OC\App\AppManager::isShipped(), keep both in sync.
+	 * This method is copied, so the code checker works even when Nextcloud is
+	 * not installed yet. The AppManager requires a database connection, which
+	 * fails in that case.
+	 *
+	 * @param string $appId
+	 * @return bool
+	 * @throws \Exception
+	 */
+	protected function isShipped(string $appId): bool {
+		$this->loadShippedJson();
+		return \in_array($appId, $this->shippedApps, true);
+	}
+
+	/**
+	 * This is a copy of \OC\App\AppManager::loadShippedJson(), keep both in sync
+	 * This method is copied, so the code checker works even when Nextcloud is
+	 * not installed yet. The AppManager requires a database connection, which
+	 * fails in that case.
+	 *
+	 * @throws \Exception
+	 */
+	protected function loadShippedJson() {
+		if ($this->shippedApps === null) {
+			$shippedJson = \OC::$SERVERROOT . '/core/shipped.json';
+			if (!file_exists($shippedJson)) {
+				throw new \Exception("File not found: $shippedJson");
+			}
+			$content = json_decode(file_get_contents($shippedJson), true);
+			$this->shippedApps = $content['shippedApps'];
+			$this->alwaysEnabled = $content['alwaysEnabled'];
+		}
 	}
 }

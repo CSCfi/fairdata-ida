@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Leon Klingele <leon@struktur.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,6 +26,7 @@
 
 namespace OC\Settings\Mailer;
 
+use OCP\L10N\IFactory;
 use OCP\Mail\IEMailTemplate;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Defaults;
@@ -37,8 +43,8 @@ class NewUserMailHelper {
 	private $themingDefaults;
 	/** @var IURLGenerator */
 	private $urlGenerator;
-	/** @var IL10N */
-	private $l10n;
+	/** @var IFactory */
+	private $l10nFactory;
 	/** @var IMailer */
 	private $mailer;
 	/** @var ISecureRandom */
@@ -55,7 +61,7 @@ class NewUserMailHelper {
 	/**
 	 * @param Defaults $themingDefaults
 	 * @param IURLGenerator $urlGenerator
-	 * @param IL10N $l10n
+	 * @param IFactory $l10nFactory
 	 * @param IMailer $mailer
 	 * @param ISecureRandom $secureRandom
 	 * @param ITimeFactory $timeFactory
@@ -65,7 +71,7 @@ class NewUserMailHelper {
 	 */
 	public function __construct(Defaults $themingDefaults,
 								IURLGenerator $urlGenerator,
-								IL10N $l10n,
+								IFactory $l10nFactory,
 								IMailer $mailer,
 								ISecureRandom $secureRandom,
 								ITimeFactory $timeFactory,
@@ -74,7 +80,7 @@ class NewUserMailHelper {
 								$fromAddress) {
 		$this->themingDefaults = $themingDefaults;
 		$this->urlGenerator = $urlGenerator;
-		$this->l10n = $l10n;
+		$this->l10nFactory = $l10nFactory;
 		$this->mailer = $mailer;
 		$this->secureRandom = $secureRandom;
 		$this->timeFactory = $timeFactory;
@@ -84,20 +90,19 @@ class NewUserMailHelper {
 	}
 
 	/**
-	 * Set the IL10N object
-	 *
-	 * @param IL10N $l10n
-	 */
-	public function setL10N(IL10N $l10n) {
-		$this->l10n = $l10n;
-	}
-
-	/**
 	 * @param IUser $user
 	 * @param bool $generatePasswordResetToken
 	 * @return IEMailTemplate
 	 */
 	public function generateTemplate(IUser $user, $generatePasswordResetToken = false) {
+		$userId = $user->getUID();
+		$lang = $this->config->getUserValue($userId, 'core', 'lang', 'en');
+		if (!$this->l10nFactory->languageExists('settings', $lang)) {
+			$lang = 'en';
+		}
+
+		$l10n = $this->l10nFactory->get('settings', $lang);
+
 		if ($generatePasswordResetToken) {
 			$token = $this->secureRandom->generate(
 				21,
@@ -114,7 +119,6 @@ class NewUserMailHelper {
 			$link = $this->urlGenerator->getAbsoluteURL('/');
 		}
 		$displayName = $user->getDisplayName();
-		$userId = $user->getUID();
 
 		$emailTemplate = $this->mailer->createEMailTemplate('settings.Welcome', [
 			'link' => $link,
@@ -124,23 +128,24 @@ class NewUserMailHelper {
 			'resetTokenGenerated' => $generatePasswordResetToken,
 		]);
 
+		$emailTemplate->setSubject($l10n->t('Your %s account was created', [$this->themingDefaults->getName()]));
 		$emailTemplate->addHeader();
 		if ($displayName === $userId) {
-			$emailTemplate->addHeading($this->l10n->t('Welcome aboard'));
+			$emailTemplate->addHeading($l10n->t('Welcome aboard'));
 		} else {
-			$emailTemplate->addHeading($this->l10n->t('Welcome aboard %s', [$displayName]));
+			$emailTemplate->addHeading($l10n->t('Welcome aboard %s', [$displayName]));
 		}
-		$emailTemplate->addBodyText($this->l10n->t('You have now an %s account, you can add, protect, and share your data.', [$this->themingDefaults->getName()]));
-		$emailTemplate->addBodyText($this->l10n->t('Your username is: %s', [$userId]));
+		$emailTemplate->addBodyText($l10n->t('Welcome to your %s account, you can add, protect, and share your data.', [$this->themingDefaults->getName()]));
+		$emailTemplate->addBodyText($l10n->t('Your username is: %s', [$userId]));
 		if ($generatePasswordResetToken) {
-			$leftButtonText = $this->l10n->t('Set your password');
+			$leftButtonText = $l10n->t('Set your password');
 		} else {
-			$leftButtonText = $this->l10n->t('Go to %s', [$this->themingDefaults->getName()]);
+			$leftButtonText = $l10n->t('Go to %s', [$this->themingDefaults->getName()]);
 		}
 		$emailTemplate->addBodyButtonGroup(
 			$leftButtonText,
 			$link,
-			$this->l10n->t('Install Client'),
+			$l10n->t('Install Client'),
 			'https://nextcloud.com/install/#install-clients'
 		);
 		$emailTemplate->addFooter();
@@ -159,10 +164,8 @@ class NewUserMailHelper {
 							 IEMailTemplate $emailTemplate) {
 		$message = $this->mailer->createMessage();
 		$message->setTo([$user->getEMailAddress() => $user->getDisplayName()]);
-		$message->setSubject($this->l10n->t('Your %s account was created', [$this->themingDefaults->getName()]));
-		$message->setHtmlBody($emailTemplate->renderHtml());
-		$message->setPlainBody($emailTemplate->renderText());
 		$message->setFrom([$this->fromAddress => $this->themingDefaults->getName()]);
+		$message->useTemplate($emailTemplate);
 		$this->mailer->send($message);
 	}
 }

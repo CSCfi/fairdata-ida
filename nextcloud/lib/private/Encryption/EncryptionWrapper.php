@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
  *
  * @license AGPL-3.0
  *
@@ -81,9 +82,7 @@ class EncryptionWrapper {
 			'mount' => $mount
 		];
 
-		if (!$storage->instanceOfStorage('OCA\Files_Sharing\SharedStorage')
-			&& !$storage->instanceOfStorage('OCA\Files_Sharing\External\Storage')
-			&& !$storage->instanceOfStorage('OC\Files\Storage\OwnCloud')) {
+		if (!$storage->instanceOfStorage(Storage\IDisableEncryptionStorage::class)) {
 
 			$user = \OC::$server->getUserSession()->getUser();
 			$mountManager = Filesystem::getMountManager();

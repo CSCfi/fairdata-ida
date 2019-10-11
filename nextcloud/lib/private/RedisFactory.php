@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Robin McCorkell <robin@mccorkell.me.uk>
  *
  * @license AGPL-3.0
  *
@@ -54,7 +56,11 @@ class RedisFactory {
 			} else {
 				$readTimeout = null;
 			}
-			$this->instance = new \RedisCluster(null, $config['seeds'], $timeout, $readTimeout);
+			if (isset($config['password']) && $config['password'] !== '') {
+				$this->instance = new \RedisCluster(null, $config['seeds'], $timeout, $readTimeout, false, $config['password']);
+			} else {
+				$this->instance = new \RedisCluster(null, $config['seeds'], $timeout, $readTimeout);
+			}
 
 			if (isset($config['failover_mode'])) {
 				$this->instance->setOption(\RedisCluster::OPT_SLAVE_FAILOVER, $config['failover_mode']);

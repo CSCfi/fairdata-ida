@@ -4,12 +4,12 @@
  *
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christopher Schäpers <kondou@ts.unde.re>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -27,14 +27,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  *
  */
+
+require_once __DIR__ . '/lib/versioncheck.php';
+
 try {
 
 	require_once __DIR__ . '/lib/base.php';
 	if (\OCP\Util::needUpgrade()) {
 		// since the behavior of apps or remotes are unpredictable during
 		// an upgrade, return a 503 directly
-		OC_Response::setStatus(OC_Response::STATUS_SERVICE_UNAVAILABLE);
-		OC_Template::printErrorPage('Service unavailable');
+		OC_Template::printErrorPage('Service unavailable', '', 503);
 		exit;
 	}
 
@@ -43,7 +45,7 @@ try {
 	$pathInfo = $request->getPathInfo();
 
 	if (!$pathInfo && $request->getParam('service', '') === '') {
-		header('HTTP/1.0 404 Not Found');
+		http_response_code(404);
 		exit;
 	} elseif ($request->getParam('service', '')) {
 		$service = $request->getParam('service', '');
@@ -51,9 +53,9 @@ try {
 		$pathInfo = trim($pathInfo, '/');
 		list($service) = explode('/', $pathInfo);
 	}
-	$file = OCP\Config::getAppValue('core', 'public_' . strip_tags($service));
-	if (is_null($file)) {
-		header('HTTP/1.0 404 Not Found');
+	$file = \OC::$server->getConfig()->getAppValue('core', 'public_' . strip_tags($service));
+	if ($file === '') {
+		http_response_code(404);
 		exit;
 	}
 
@@ -66,7 +68,8 @@ try {
 	OC_App::loadApps(array('filesystem', 'logging'));
 
 	if (!\OC::$server->getAppManager()->isInstalled($app)) {
-		throw new Exception('App not installed: ' . $app);
+		http_response_code(501);
+		exit;
 	}
 	OC_App::loadApp($app);
 	OC_User::setIncognitoMode(true);
@@ -76,17 +79,15 @@ try {
 	require_once OC_App::getAppPath($app) . '/' . $parts[1];
 
 } catch (Exception $ex) {
+	$status = 500;
 	if ($ex instanceof \OC\ServiceUnavailableException) {
-		OC_Response::setStatus(OC_Response::STATUS_SERVICE_UNAVAILABLE);
-	} else {
-		OC_Response::setStatus(OC_Response::STATUS_INTERNAL_SERVER_ERROR);
+		$status = 503;
 	}
 	//show the user a detailed error page
 	\OC::$server->getLogger()->logException($ex, ['app' => 'public']);
-	OC_Template::printExceptionErrorPage($ex);
+	OC_Template::printExceptionErrorPage($ex, $status);
 } catch (Error $ex) {
 	//show the user a detailed error page
-	OC_Response::setStatus(OC_Response::STATUS_INTERNAL_SERVER_ERROR);
 	\OC::$server->getLogger()->logException($ex, ['app' => 'public']);
-	OC_Template::printExceptionErrorPage($ex);
+	OC_Template::printExceptionErrorPage($ex, 500);
 }

@@ -7,12 +7,6 @@
 	clear: both;
 }
 
-#app-sidebar .mainFileInfoView {
-	margin-right: 20px; /* accommodate for close icon */
-	float:left;
-	display:block;
-	width: 100%;
-}
 
 #app-sidebar .mainFileInfoView .icon {
 	display: inline-block;
@@ -21,7 +15,13 @@
 
 #app-sidebar .mainFileInfoView .permalink {
 	padding: 6px 10px;
-	vertical-align: text-top;
+	vertical-align: top;
+	opacity: .6;
+
+	&:hover,
+	&:focus {
+		opacity: 1;
+	}
 }
 #app-sidebar .mainFileInfoView .permalink-field>input {
 	clear: both;
@@ -66,18 +66,19 @@
 #app-sidebar .large.text {
 	overflow-y: scroll;
 	overflow-x: hidden;
-	padding-top: 15px;
+	padding-top: 14px;
 	font-size: 80%;
 	margin-left: 0;
 }
 
 #app-sidebar .thumbnail {
-	width: 75px;
-	height: 75px;
+	width: 100%;
+	min-height: 75px;
 	display: inline-block;
 	float: left;
 	margin-right: 10px;
-	background-size: 75px;
+	background-size: contain;
+	background-repeat: no-repeat;
 }
 
 #app-sidebar .ellipsis {
@@ -93,14 +94,14 @@
 }
 
 #app-sidebar .fileName h3 {
-	width: calc(100% - 36px); /* 36px is the with of the copy link icon */
+	width: calc(100% - 42px); /* 36px is the with of the copy link icon, but this breaks so we add some more to be sure */
 	display: inline-block;
 	padding: 5px 0;
 	margin: -5px 0;
 }
 
 #app-sidebar .file-details {
-	color: #999;
+	color: var(--color-text-maxcontrast);
 }
 
 #app-sidebar .action-favorite {
@@ -121,7 +122,8 @@
 	position: absolute;
 	top: 0;
 	right: 0;
-	padding: 15px;
-	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
 	opacity: .5;
+	z-index: 1;
+	width: 44px;
+	height: 44px;
 }

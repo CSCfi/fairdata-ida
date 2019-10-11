@@ -3,6 +3,8 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Tobias Kaminsky <tobias@kaminsky.me>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -24,11 +26,16 @@
  */
 namespace OCA\Files\AppInfo;
 
+use OCA\Files\Activity\Helper;
+use OCA\Files\Collaboration\Resources\Listener;
+use OCA\Files\Collaboration\Resources\ResourceProvider;
 use OCA\Files\Controller\ApiController;
 use OCP\AppFramework\App;
 use \OCA\Files\Service\TagService;
+use OCP\Collaboration\Resources\IManager;
 use \OCP\IContainer;
 use OCA\Files\Controller\ViewController;
+use OCA\Files\Capabilities;
 
 class Application extends App {
 	public function __construct(array $urlParams=array()) {
@@ -62,7 +69,8 @@ class Application extends App {
 				$server->getEventDispatcher(),
 				$server->getUserSession(),
 				$server->getAppManager(),
-				$server->getRootFolder()
+				$server->getRootFolder(),
+				$c->query(Helper::class)
 			);
 		});
 
@@ -79,19 +87,28 @@ class Application extends App {
 		$container->registerService('Tagger', function(IContainer $c)  {
 			return $c->query('ServerContainer')->getTagManager()->load('files');
 		});
-		$container->registerService('TagService', function(IContainer $c)  {
+		$container->registerService('TagService', function(IContainer $c) use ($server) {
 			$homeFolder = $c->query('ServerContainer')->getUserFolder();
 			return new TagService(
 				$c->query('ServerContainer')->getUserSession(),
 				$c->query('ServerContainer')->getActivityManager(),
 				$c->query('Tagger'),
-				$homeFolder
+				$homeFolder,
+				$server->getEventDispatcher()
 			);
 		});
 
 		/*
 		 * Register capabilities
 		 */
-		$container->registerCapability('OCA\Files\Capabilities');
+		$container->registerCapability(Capabilities::class);
+
+		/**
+		 * Register Collaboration ResourceProvider
+		 */
+		/** @var IManager $resourceManager */
+		$resourceManager = $container->query(IManager::class);
+		$resourceManager->registerResourceProvider(ResourceProvider::class);
+		Listener::register($server->getEventDispatcher());
 	}
 }

@@ -3,11 +3,11 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -29,17 +29,17 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
+use OC\Files\Storage\FailedStorage;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden;
 use OCA\DAV\Connector\Sabre\Exception\InvalidPath;
 use OCA\DAV\Connector\Sabre\Exception\FileLocked;
 use OC\Files\FileInfo;
-use OC\Files\Mount\MoveableMount;
 use OCP\Files\ForbiddenException;
 use OCP\Files\StorageInvalidException;
 use OCP\Files\StorageNotAvailableException;
 use OCP\Lock\LockedException;
 
-class ObjectTree extends \Sabre\DAV\Tree {
+class ObjectTree extends CachingTree {
 
 	/**
 	 * @var \OC\Files\View
@@ -80,8 +80,8 @@ class ObjectTree extends \Sabre\DAV\Tree {
 	private function resolveChunkFile($path) {
 		if (isset($_SERVER['HTTP_OC_CHUNKED'])) {
 			// resolve to real file name to find the proper node
-			list($dir, $name) = \Sabre\HTTP\URLUtil::splitPath($path);
-			if ($dir == '/' || $dir == '.') {
+			list($dir, $name) = \Sabre\Uri\split($path);
+			if ($dir === '/' || $dir === '.') {
 				$dir = '';
 			}
 
@@ -95,10 +95,6 @@ class ObjectTree extends \Sabre\DAV\Tree {
 			}
 		}
 		return $path;
-	}
-
-	public function cacheNode(Node $node) {
-		$this->cache[trim($node->getPath(), '/')] = $node;
 	}
 
 	/**
@@ -158,8 +154,12 @@ class ObjectTree extends \Sabre\DAV\Tree {
 			// read from cache
 			try {
 				$info = $this->fileView->getFileInfo($path);
+
+				if ($info instanceof \OCP\Files\FileInfo && $info->getStorage()->instanceOfStorage(FailedStorage::class)) {
+					throw new StorageNotAvailableException();
+				}
 			} catch (StorageNotAvailableException $e) {
-				throw new \Sabre\DAV\Exception\ServiceUnavailable('Storage is temporarily not available');
+				throw new \Sabre\DAV\Exception\ServiceUnavailable('Storage is temporarily not available', 0, $e);
 			} catch (StorageInvalidException $e) {
 				throw new \Sabre\DAV\Exception\NotFound('Storage ' . $path . ' is invalid');
 			} catch (LockedException $e) {
@@ -221,7 +221,7 @@ class ObjectTree extends \Sabre\DAV\Tree {
 		// this will trigger existence check
 		$this->getNodeForPath($source);
 
-		list($destinationDir, $destinationName) = \Sabre\HTTP\URLUtil::splitPath($destination);
+		list($destinationDir, $destinationName) = \Sabre\Uri\split($destination);
 		try {
 			$this->fileView->verifyPath($destinationDir, $destinationName);
 		} catch (\OCP\Files\InvalidPathException $ex) {
@@ -238,7 +238,7 @@ class ObjectTree extends \Sabre\DAV\Tree {
 			throw new FileLocked($e->getMessage(), $e->getCode(), $e);
 		}
 
-		list($destinationDir,) = \Sabre\HTTP\URLUtil::splitPath($destination);
+		list($destinationDir,) = \Sabre\Uri\split($destination);
 		$this->markDirty($destinationDir);
 	}
 }

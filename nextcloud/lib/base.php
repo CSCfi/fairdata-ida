@@ -1,4 +1,11 @@
 <?php
+/*
+ * This file is part of the IDA research data storage service
+ *
+ * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @link     https://research.csc.fi/
+ */
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -7,18 +14,21 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Damjan Georgievski <gdamjan@gmail.com>
  * @author davidgumberg <davidnoizgumberg@gmail.com>
  * @author Florin Peter <github@florin-peter.de>
- * @author Georg Ehrke <georg@owncloud.com>
- * @author Hugo Gonzalez Labrador <hglavra@gmail.com>
  * @author Individual IT Services <info@individual-it.net>
  * @author Jakob Sack <mail@jakobsack.de>
- * @author Joachim Bauch <bauch@struktur.de>
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joachim Sokolowski <github@sokolowski.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -28,9 +38,9 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Wessalowski <sebastian@wessalowski.org>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Thomas Pulzer <t.pulzer@kniel.de>
  * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Vincent Petry <pvince81@owncloud.com>
  * @author Volkan Gezer <volkangezer@gmail.com>
@@ -50,6 +60,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  *
  */
+
+use OCP\ILogger;
+use OCP\Share;
+use OC\Encryption\HookManager;
+use OC\Files\Filesystem;
+use OC\Share20\Hooks;
 
 require_once 'public/Constants.php';
 
@@ -233,21 +249,26 @@ class OC {
 		// Check if config is writable
 		$configFileWritable = is_writable($configFilePath);
 		if (!$configFileWritable && !OC_Helper::isReadOnlyConfigEnabled()
-			|| !$configFileWritable && self::checkUpgrade(false)) {
+			|| !$configFileWritable && \OCP\Util::needUpgrade()) {
 
 			$urlGenerator = \OC::$server->getURLGenerator();
 
 			if (self::$CLI) {
 				echo $l->t('Cannot write into "config" directory!')."\n";
 				echo $l->t('This can usually be fixed by giving the webserver write access to the config directory')."\n";
-				echo "\n";
 				echo $l->t('See %s', [ $urlGenerator->linkToDocs('admin-dir_permissions') ])."\n";
+				echo "\n";
+				echo $l->t('Or, if you prefer to keep config.php file read only, set the option "config_is_read_only" to true in it.')."\n";
+				echo $l->t('See %s', [ $urlGenerator->linkToDocs('admin-config') ])."\n";
 				exit;
 			} else {
 				OC_Template::printErrorPage(
 					$l->t('Cannot write into "config" directory!'),
 					$l->t('This can usually be fixed by giving the webserver write access to the config directory. See %s',
-					 [ $urlGenerator->linkToDocs('admin-dir_permissions') ])
+					[ $urlGenerator->linkToDocs('admin-dir_permissions') ]) . '. '
+					. $l->t('Or, if you prefer to keep config.php file read only, set the option "config_is_read_only" to true in it. See %s',
+					[ $urlGenerator->linkToDocs('admin-config') ] ),
+					503
 				);
 			}
 		}
@@ -271,10 +292,9 @@ class OC {
 
 	public static function checkMaintenanceMode() {
 		// Allow ajax update script to execute without being stopped
-		if (\OC::$server->getSystemConfig()->getValue('maintenance', false) && OC::$SUBURI != '/core/ajax/update.php') {
+		if (((bool) \OC::$server->getSystemConfig()->getValue('maintenance', false)) && OC::$SUBURI != '/core/ajax/update.php') {
 			// send http status 503
-			header('HTTP/1.1 503 Service Temporarily Unavailable');
-			header('Status: 503 Service Temporarily Unavailable');
+			http_response_code(503);
 			header('Retry-After: 120');
 
 			// render error page
@@ -287,41 +307,19 @@ class OC {
 	}
 
 	/**
-	 * Checks if the version requires an update and shows
-	 * @param bool $showTemplate Whether an update screen should get shown
-	 * @return bool|void
-	 */
-	public static function checkUpgrade($showTemplate = true) {
-		if (\OCP\Util::needUpgrade()) {
-			if (function_exists('opcache_reset')) {
-				opcache_reset();
-			}
-			$systemConfig = \OC::$server->getSystemConfig();
-			if ($showTemplate && !$systemConfig->getValue('maintenance', false)) {
-				self::printUpgradePage();
-				exit();
-			} else {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
 	 * Prints the upgrade page
+	 *
+	 * @param \OC\SystemConfig $systemConfig
 	 */
-	private static function printUpgradePage() {
-		$systemConfig = \OC::$server->getSystemConfig();
-
+	private static function printUpgradePage(\OC\SystemConfig $systemConfig) {
 		$disableWebUpdater = $systemConfig->getValue('upgrade.disable-web', false);
 		$tooBig = false;
 		if (!$disableWebUpdater) {
 			$apps = \OC::$server->getAppManager();
-			$tooBig = false;
 			if ($apps->isInstalled('user_ldap')) {
 				$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
 
-				$result = $qb->selectAlias($qb->createFunction('COUNT(*)'), 'user_count')
+				$result = $qb->select($qb->func()->count('*', 'user_count'))
 					->from('ldap_user_mapping')
 					->execute();
 				$row = $result->fetch();
@@ -332,7 +330,7 @@ class OC {
 			if (!$tooBig && $apps->isInstalled('user_saml')) {
 				$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
 
-				$result = $qb->selectAlias($qb->createFunction('COUNT(*)'), 'user_count')
+				$result = $qb->select($qb->func()->count('*', 'user_count'))
 					->from('user_saml_users')
 					->execute();
 				$row = $result->fetch();
@@ -352,8 +350,7 @@ class OC {
 
 		if ($disableWebUpdater || ($tooBig && !$ignoreTooBigWarning)) {
 			// send http status 503
-			header('HTTP/1.1 503 Service Temporarily Unavailable');
-			header('Status: 503 Service Temporarily Unavailable');
+			http_response_code(503);
 			header('Retry-After: 120');
 
 			// render error page
@@ -371,7 +368,7 @@ class OC {
 		$currentVersion = implode('.', \OCP\Util::getVersion());
 
 		// if not a core upgrade, then it's apps upgrade
-		$isAppsOnlyUpgrade = (version_compare($currentVersion, $installedVersion, '='));
+		$isAppsOnlyUpgrade = version_compare($currentVersion, $installedVersion, '=');
 
 		$oldTheme = $systemConfig->getValue('theme');
 		$systemConfig->setValue('theme', '');
@@ -387,6 +384,7 @@ class OC {
 
 		// get third party apps
 		$ocVersion = \OCP\Util::getVersion();
+		$ocVersion = implode('.', $ocVersion);
 		$incompatibleApps = $appManager->getIncompatibleApps($ocVersion);
 		$incompatibleShippedApps = [];
 		foreach ($incompatibleApps as $appInfo) {
@@ -397,7 +395,7 @@ class OC {
 
 		if (!empty($incompatibleShippedApps)) {
 			$l = \OC::$server->getL10N('core');
-			$hint = $l->t('The files of the app %$1s were not replaced correctly. Make sure it is a version compatible with the server.', [implode(', ', $incompatibleShippedApps)]);
+			$hint = $l->t('The files of the app %1$s were not replaced correctly. Make sure it is a version compatible with the server.', [implode(', ', $incompatibleShippedApps)]);
 			throw new \OC\HintException('The files of the app ' . implode(', ', $incompatibleShippedApps) . ' were not replaced correctly. Make sure it is a version compatible with the server.', $hint);
 		}
 
@@ -409,8 +407,12 @@ class OC {
 	}
 
 	public static function initSession() {
+		if(self::$server->getRequest()->getServerProtocol() === 'https') {
+			ini_set('session.cookie_secure', true);
+		}
+
 		// prevents javascript from accessing php session cookies
-		ini_set('session.cookie_httponly', true);
+		ini_set('session.cookie_httponly', 'true');
 
 		// set the cookie path to the Nextcloud directory
 		$cookie_path = OC::$WEBROOT ? : '/';
@@ -435,10 +437,9 @@ class OC {
 
 			// if session can't be started break with http 500 error
 		} catch (Exception $e) {
-			\OCP\Util::logException('base', $e);
+			\OC::$server->getLogger()->logException($e, ['app' => 'base']);
 			//show the user a detailed error page
-			OC_Response::setStatus(OC_Response::STATUS_INTERNAL_SERVER_ERROR);
-			OC_Template::printExceptionErrorPage($e);
+			OC_Template::printExceptionErrorPage($e, 500);
 			die();
 		}
 
@@ -447,7 +448,7 @@ class OC {
 		// session timeout
 		if ($session->exists('LAST_ACTIVITY') && (time() - $session->get('LAST_ACTIVITY') > $sessionLifeTime)) {
 			if (isset($_COOKIE[session_name()])) {
-				setcookie(session_name(), null, -1, self::$WEBROOT ? : '/');
+				setcookie(session_name(), '', -1, self::$WEBROOT ? : '/');
 			}
 			\OC::$server->getUserSession()->logout();
 		}
@@ -462,26 +463,12 @@ class OC {
 		return \OC::$server->getConfig()->getSystemValue('session_lifetime', 60 * 60 * 24);
 	}
 
-	public static function loadAppClassPaths() {
-		foreach (OC_App::getEnabledApps() as $app) {
-			$appPath = OC_App::getAppPath($app);
-			if ($appPath === false) {
-				continue;
-			}
-
-			$file = $appPath . '/appinfo/classpath.php';
-			if (file_exists($file)) {
-				require_once $file;
-			}
-		}
-	}
-
 	/**
 	 * Try to set some values to the required Nextcloud default
 	 */
 	public static function setRequiredIniValues() {
 		@ini_set('default_charset', 'UTF-8');
-		@ini_set('gd.jpeg_ignore_warning', 1);
+		@ini_set('gd.jpeg_ignore_warning', '1');
 	}
 
 	/**
@@ -531,10 +518,18 @@ class OC {
 		// specifications. For those, have an automated opt-out. Since the protection
 		// for remote.php is applied in base.php as starting point we need to opt out
 		// here.
-		$incompatibleUserAgents = [
-			// OS X Finder
-			'/^WebDAVFS/',
-		];
+		$incompatibleUserAgents = \OC::$server->getConfig()->getSystemValue('csrf.optout');
+
+		// Fallback, if csrf.optout is unset
+		if (!is_array($incompatibleUserAgents)) {
+			$incompatibleUserAgents = [
+				// OS X Finder
+				'/^WebDAVFS/',
+				// Windows webdav drive
+				'/^Microsoft-WebDAV-MiniRedir/',
+			];
+		}
+
 		if($request->isUserAgent($incompatibleUserAgents)) {
 			return;
 		}
@@ -543,39 +538,20 @@ class OC {
 			$requestUri = $request->getScriptName();
 			$processingScript = explode('/', $requestUri);
 			$processingScript = $processingScript[count($processingScript)-1];
-			// FIXME: In a SAML scenario we don't get any strict or lax cookie
-			// send for the ACS endpoint. Since we have some legacy code in Nextcloud
-			// (direct PHP files) the enforcement of lax cookies is performed here
-			// instead of the middleware.
-			//
-			// This means we cannot exclude some routes from the cookie validation,
-			// which normally is not a problem but is a little bit cumbersome for
-			// this use-case.
-			// Once the old legacy PHP endpoints have been removed we can move
-			// the verification into a middleware and also adds some exemptions.
-			//
-			// Questions about this code? Ask Lukas ;-)
-			$currentUrl = substr(explode('?',$request->getRequestUri(), 2)[0], strlen(\OC::$WEBROOT));
-			if($currentUrl === '/index.php/apps/user_saml/saml/acs' || $currentUrl === '/apps/user_saml/saml/acs') {
+
+			// index.php routes are handled in the middleware
+			if($processingScript === 'index.php') {
 				return;
 			}
-			// For the "index.php" endpoint only a lax cookie is required.
-			if($processingScript === 'index.php') {
-				if(!$request->passesLaxCookieCheck()) {
-					self::sendSameSiteCookies();
-					header('Location: '.$_SERVER['REQUEST_URI']);
+
+			// All other endpoints require the lax and the strict cookie
+			if(!$request->passesStrictCookieCheck()) {
+				self::sendSameSiteCookies();
+				// Debug mode gets access to the resources without strict cookie
+				// due to the fact that the SabreDAV browser also lives there.
+				if(!\OC::$server->getConfig()->getSystemValue('debug', false)) {
+					http_response_code(\OCP\AppFramework\Http::STATUS_SERVICE_UNAVAILABLE);
 					exit();
-				}
-			} else {
-				// All other endpoints require the lax and the strict cookie
-				if(!$request->passesStrictCookieCheck()) {
-					self::sendSameSiteCookies();
-					// Debug mode gets access to the resources without strict cookie
-					// due to the fact that the SabreDAV browser also lives there.
-					if(!\OC::$server->getConfig()->getSystemValue('debug', false)) {
-						http_response_code(\OCP\AppFramework\Http::STATUS_SERVICE_UNAVAILABLE);
-						exit();
-					}
 				}
 			}
 		} elseif(!isset($_COOKIE['nc_sameSiteCookielax']) || !isset($_COOKIE['nc_sameSiteCookiestrict'])) {
@@ -615,9 +591,7 @@ class OC {
 
 		} catch (\RuntimeException $e) {
 			if (!self::$CLI) {
-				$claimedProtocol = strtoupper($_SERVER['SERVER_PROTOCOL']);
-				$protocol = in_array($claimedProtocol, ['HTTP/1.0', 'HTTP/1.1', 'HTTP/2']) ? $claimedProtocol : 'HTTP/1.1';
-				header($protocol . ' ' . OC_Response::STATUS_SERVICE_UNAVAILABLE);
+				http_response_code(503);
 			}
 			// we can't use the template error page here, because this needs the
 			// DI container which isn't available yet
@@ -632,44 +606,28 @@ class OC {
 
 		// Don't display errors and log them
 		error_reporting(E_ALL | E_STRICT);
-		@ini_set('display_errors', 0);
-		@ini_set('log_errors', 1);
+		@ini_set('display_errors', '0');
+		@ini_set('log_errors', '1');
 
 		if(!date_default_timezone_set('UTC')) {
 			throw new \RuntimeException('Could not set timezone to UTC');
-		};
+		}
 
 		//try to configure php to enable big file uploads.
 		//this doesn´t work always depending on the webserver and php configuration.
 		//Let´s try to overwrite some defaults anyway
-        
-        // IDA MODIFICATION
-        // BEGIN ORIGINAL
-		//try to set the maximum execution time to 60min
-		//if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
-		//	@set_time_limit(3600);
-		//}
-		//@ini_set('max_execution_time', 3600);
-		//@ini_set('max_input_time', 3600);
 
-		//try to set the maximum filesize to 10G
-		//@ini_set('upload_max_filesize', '10G');
-		//@ini_set('post_max_size', '10G');
-		//@ini_set('file_uploads', '50');
-		// END ORIGINAL
-        // BEGIN MODIFICATION
         //try to set execution time limits to 30 days
         if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
             @set_time_limit(2592000);
         }
         @ini_set('max_execution_time',2592000);
         @ini_set('max_input_time', 2592000);
-        
+
         //try to set the maximum filesize to 10TB and upload of up to 1 million files
         @ini_set('upload_max_filesize', '10000G');
         @ini_set('post_max_size', '10000G');
         @ini_set('file_uploads', '1000000');
-        // END MODIFICATION
 
 		self::setRequiredIniValues();
 		self::handleAuthHeaders();
@@ -695,9 +653,6 @@ class OC {
 		self::checkInstalled();
 
 		OC_Response::addSecurityHeaders();
-		if(self::$server->getRequest()->getServerProtocol() === 'https') {
-			ini_set('session.cookie_secure', true);
-		}
 
 		self::performSameSiteCookieProtection();
 
@@ -723,7 +678,7 @@ class OC {
 					}
 					exit(1);
 				} else {
-					OC_Response::setStatus(OC_Response::STATUS_SERVICE_UNAVAILABLE);
+					http_response_code(503);
 					OC_Util::addStyle('guest');
 					OC_Template::printGuestPage('', 'error', array('errors' => $errors));
 					exit;
@@ -755,24 +710,26 @@ class OC {
 		);
 
 		//setup extra user backends
-		if (!self::checkUpgrade(false)) {
+		if (!\OCP\Util::needUpgrade()) {
 			OC_User::setupBackends();
 		} else {
 			// Run upgrades in incognito mode
 			OC_User::setIncognitoMode(true);
 		}
 
-		self::registerCacheHooks();
+		self::registerCleanupHooks();
 		self::registerFilesystemHooks();
 		self::registerShareHooks();
-		self::registerLogRotate();
 		self::registerEncryptionWrapper();
 		self::registerEncryptionHooks();
 		self::registerAccountHooks();
-		self::registerSettingsHooks();
+		self::registerResourceCollectionHooks();
 
-		$settings = new \OC\Settings\Application();
-		$settings->register();
+		// Make sure that the application class is not loaded before the database is setup
+		if ($systemConfig->getValue("installed", false)) {
+			$settings = new \OC\Settings\Application();
+			$settings->register();
+		}
 
 		//make sure temporary files are cleaned up
 		$tmpManager = \OC::$server->getTempManager();
@@ -783,11 +740,10 @@ class OC {
 		// Check whether the sample configuration has been copied
 		if($systemConfig->getValue('copied_sample_config', false)) {
 			$l = \OC::$server->getL10N('lib');
-			header('HTTP/1.1 503 Service Temporarily Unavailable');
-			header('Status: 503 Service Temporarily Unavailable');
 			OC_Template::printErrorPage(
 				$l->t('Sample configuration detected'),
-				$l->t('It has been detected that the sample configuration has been copied. This can break your installation and is unsupported. Please read the documentation before performing changes on config.php')
+				$l->t('It has been detected that the sample configuration has been copied. This can break your installation and is unsupported. Please read the documentation before performing changes on config.php'),
+				503
 			);
 			return;
 		}
@@ -811,11 +767,17 @@ class OC {
 				$isScssRequest = true;
 			}
 
-			if (!$isScssRequest) {
-				header('HTTP/1.1 400 Bad Request');
-				header('Status: 400 Bad Request');
+			if(substr($request->getRequestUri(), -11) === '/status.php') {
+				http_response_code(400);
+				header('Content-Type: application/json');
+				echo '{"error": "Trusted domain error.", "code": 15}';
+				exit();
+			}
 
-				\OC::$server->getLogger()->warning(
+			if (!$isScssRequest) {
+				http_response_code(400);
+
+				\OC::$server->getLogger()->info(
 					'Trusted domain error. "{remoteAddress}" tried to access using "{host}" as host.',
 					[
 						'app' => 'core',
@@ -825,7 +787,7 @@ class OC {
 				);
 
 				$tmpl = new OCP\Template('core', 'untrustedDomain', 'guest');
-				$tmpl->assign('domain', $host);
+				$tmpl->assign('docUrl', \OC::$server->getURLGenerator()->linkToDocs('admin-trusted-domains'));
 				$tmpl->printPage();
 
 				exit();
@@ -835,15 +797,23 @@ class OC {
 	}
 
 	/**
-	 * register hooks for the cache
+	 * register hooks for the cleanup of cache and bruteforce protection
 	 */
-	public static function registerCacheHooks() {
+	public static function registerCleanupHooks() {
 		//don't try to do this before we are properly setup
-		if (\OC::$server->getSystemConfig()->getValue('installed', false) && !self::checkUpgrade(false)) {
+		if (\OC::$server->getSystemConfig()->getValue('installed', false) && !\OCP\Util::needUpgrade()) {
 
 			// NOTE: This will be replaced to use OCP
 			$userSession = self::$server->getUserSession();
-			$userSession->listen('\OC\User', 'postLogin', function () {
+			$userSession->listen('\OC\User', 'postLogin', function () use ($userSession) {
+				if (!defined('PHPUNIT_RUN')) {
+					// reset brute force delay for this IP address and username
+					$uid = \OC::$server->getUserSession()->getUser()->getUID();
+					$request = \OC::$server->getRequest();
+					$throttler = \OC::$server->getBruteForceThrottler();
+					$throttler->resetDelay($request->getRemoteAddress(), 'login', ['user' => $uid]);
+				}
+
 				try {
 					$cache = new \OC\Cache\File();
 					$cache->gc();
@@ -855,26 +825,14 @@ class OC {
 				} catch (\Exception $e) {
 					// a GC exception should not prevent users from using OC,
 					// so log the exception
-					\OC::$server->getLogger()->warning('Exception when running cache gc: ' . $e->getMessage(), array('app' => 'core'));
+					\OC::$server->getLogger()->logException($e, [
+						'message' => 'Exception when running cache gc.',
+						'level' => ILogger::WARN,
+						'app' => 'core',
+					]);
 				}
 			});
 		}
-	}
-
-	public static function registerSettingsHooks() {
-		$dispatcher = \OC::$server->getEventDispatcher();
-		$dispatcher->addListener(OCP\App\ManagerEvent::EVENT_APP_DISABLE, function($event) {
-			/** @var \OCP\App\ManagerEvent $event */
-			\OC::$server->getSettingsManager()->onAppDisabled($event->getAppID());
-		});
-		$dispatcher->addListener(OCP\App\ManagerEvent::EVENT_APP_UPDATE, function($event) {
-			/** @var \OCP\App\ManagerEvent $event */
-			$jobList = \OC::$server->getJobList();
-			$job = 'OC\\Settings\\RemoveOrphaned';
-			if(!($jobList->has($job, null))) {
-				$jobList->add($job);
-			}
-		});
 	}
 
 	private static function registerEncryptionWrapper() {
@@ -885,10 +843,10 @@ class OC {
 	private static function registerEncryptionHooks() {
 		$enabled = self::$server->getEncryptionManager()->isEnabled();
 		if ($enabled) {
-			\OCP\Util::connectHook('OCP\Share', 'post_shared', 'OC\Encryption\HookManager', 'postShared');
-			\OCP\Util::connectHook('OCP\Share', 'post_unshare', 'OC\Encryption\HookManager', 'postUnshared');
-			\OCP\Util::connectHook('OC_Filesystem', 'post_rename', 'OC\Encryption\HookManager', 'postRename');
-			\OCP\Util::connectHook('\OCA\Files_Trashbin\Trashbin', 'post_restore', 'OC\Encryption\HookManager', 'postRestore');
+			\OCP\Util::connectHook(Share::class, 'post_shared', HookManager::class, 'postShared');
+			\OCP\Util::connectHook(Share::class, 'post_unshare', HookManager::class, 'postUnshared');
+			\OCP\Util::connectHook('OC_Filesystem', 'post_rename', HookManager::class, 'postRename');
+			\OCP\Util::connectHook('\OCA\Files_Trashbin\Trashbin', 'post_restore', HookManager::class, 'postRestore');
 		}
 	}
 
@@ -897,16 +855,8 @@ class OC {
 		\OCP\Util::connectHook('OC_User', 'changeUser', $hookHandler, 'changeUserHook');
 	}
 
-	/**
-	 * register hooks for the cache
-	 */
-	public static function registerLogRotate() {
-		$systemConfig = \OC::$server->getSystemConfig();
-		if ($systemConfig->getValue('installed', false) && $systemConfig->getValue('log_rotate_size', false) && !self::checkUpgrade(false)) {
-			//don't try to do this before we are properly setup
-			//use custom logfile path if defined, otherwise use default of nextcloud.log in data directory
-			\OC::$server->getJobList()->add('OC\Log\Rotate');
-		}
+	private static function registerResourceCollectionHooks() {
+		\OC\Collaboration\Resources\Listener::register(\OC::$server->getEventDispatcher());
 	}
 
 	/**
@@ -914,8 +864,8 @@ class OC {
 	 */
 	public static function registerFilesystemHooks() {
 		// Check for blacklisted files
-		OC_Hook::connect('OC_Filesystem', 'write', 'OC\Files\Filesystem', 'isBlacklisted');
-		OC_Hook::connect('OC_Filesystem', 'rename', 'OC\Files\Filesystem', 'isBlacklisted');
+		OC_Hook::connect('OC_Filesystem', 'write', Filesystem::class, 'isBlacklisted');
+		OC_Hook::connect('OC_Filesystem', 'rename', Filesystem::class, 'isBlacklisted');
 	}
 
 	/**
@@ -923,9 +873,9 @@ class OC {
 	 */
 	public static function registerShareHooks() {
 		if (\OC::$server->getSystemConfig()->getValue('installed')) {
-			OC_Hook::connect('OC_User', 'post_deleteUser', 'OC\Share20\Hooks', 'post_deleteUser');
-			OC_Hook::connect('OC_User', 'post_removeFromGroup', 'OC\Share20\Hooks', 'post_removeFromGroup');
-			OC_Hook::connect('OC_User', 'post_deleteGroup', 'OC\Share20\Hooks', 'post_deleteGroup');
+			OC_Hook::connect('OC_User', 'post_deleteUser', Hooks::class, 'post_deleteUser');
+			OC_Hook::connect('OC_User', 'post_removeFromGroup', Hooks::class, 'post_removeFromGroup');
+			OC_Hook::connect('OC_User', 'post_deleteGroup', Hooks::class, 'post_deleteGroup');
 		}
 	}
 
@@ -953,16 +903,19 @@ class OC {
 
 		\OC::$server->getEventLogger()->start('handle_request', 'Handle request');
 		$systemConfig = \OC::$server->getSystemConfig();
-		// load all the classpaths from the enabled apps so they are available
-		// in the routing files of each app
-		OC::loadAppClassPaths();
 
 		// Check if Nextcloud is installed or in maintenance (update) mode
 		if (!$systemConfig->getValue('installed', false)) {
 			\OC::$server->getSession()->clear();
-			$setupHelper = new OC\Setup(\OC::$server->getSystemConfig(), \OC::$server->getIniWrapper(),
-				\OC::$server->getL10N('lib'), \OC::$server->query(\OCP\Defaults::class), \OC::$server->getLogger(),
-				\OC::$server->getSecureRandom());
+			$setupHelper = new OC\Setup(
+				$systemConfig,
+				\OC::$server->getIniWrapper(),
+				\OC::$server->getL10N('lib'),
+				\OC::$server->query(\OCP\Defaults::class),
+				\OC::$server->getLogger(),
+				\OC::$server->getSecureRandom(),
+				\OC::$server->query(\OC\Installer::class)
+			);
 			$controller = new OC\Core\Controller\SetupController($setupHelper);
 			$controller->run($_POST);
 			exit();
@@ -975,7 +928,16 @@ class OC {
 		}
 		if (substr($requestPath, -3) !== '.js') { // we need these files during the upgrade
 			self::checkMaintenanceMode();
-			self::checkUpgrade();
+
+			if (\OCP\Util::needUpgrade()) {
+				if (function_exists('opcache_reset')) {
+					opcache_reset();
+				}
+				if (!((bool) $systemConfig->getValue('maintenance', false))) {
+					self::printUpgradePage($systemConfig);
+					exit();
+				}
+			}
 		}
 
 		// emergency app disabling
@@ -983,12 +945,12 @@ class OC {
 			&& $request->getMethod() === 'POST'
 			&& ((array)$request->getParam('appid')) !== ''
 		) {
-			\OCP\JSON::callCheck();
-			\OCP\JSON::checkAdminUser();
+			\OC_JSON::callCheck();
+			\OC_JSON::checkAdminUser();
 			$appIds = (array)$request->getParam('appid');
 			foreach($appIds as $appId) {
 				$appId = \OC_App::cleanAppId($appId);
-				\OC_App::disable($appId);
+				\OC::$server->getAppManager()->disableApp($appId);
 			}
 			\OC_JSON::success();
 			exit();
@@ -998,8 +960,8 @@ class OC {
 		OC_App::loadApps(['authentication']);
 
 		// Load minimum set of apps
-		if (!self::checkUpgrade(false)
-			&& !$systemConfig->getValue('maintenance', false)) {
+		if (!\OCP\Util::needUpgrade()
+			&& !((bool) $systemConfig->getValue('maintenance', false))) {
 			// For logged-in users: Load everything
 			if(\OC::$server->getUserSession()->isLoggedIn()) {
 				OC_App::loadApps();
@@ -1012,7 +974,7 @@ class OC {
 
 		if (!self::$CLI) {
 			try {
-				if (!$systemConfig->getValue('maintenance', false) && !self::checkUpgrade(false)) {
+				if (!((bool) $systemConfig->getValue('maintenance', false)) && !\OCP\Util::needUpgrade()) {
 					OC_App::loadApps(array('filesystem', 'logging'));
 					OC_App::loadApps();
 				}
@@ -1022,7 +984,7 @@ class OC {
 			} catch (Symfony\Component\Routing\Exception\ResourceNotFoundException $e) {
 				//header('HTTP/1.0 404 Not Found');
 			} catch (Symfony\Component\Routing\Exception\MethodNotAllowedException $e) {
-				OC_Response::setStatus(405);
+				http_response_code(405);
 				return;
 			}
 		}
@@ -1032,8 +994,7 @@ class OC {
 			// not allowed any more to prevent people
 			// mounting this root directly.
 			// Users need to mount remote.php/webdav instead.
-			header('HTTP/1.1 405 Method Not Allowed');
-			header('Status: 405 Method Not Allowed');
+			http_response_code(405);
 			return;
 		}
 

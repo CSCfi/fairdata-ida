@@ -4,7 +4,7 @@
 *
 * You can update the list of MimeType Aliases in config/mimetypealiases.json
 * The list of files is fetched from core/img/filetypes
-* To regenerate this file run ./occ maintenance:mimetypesjs
+* To regenerate this file run ./occ maintenance:mimetype:update-js
 */
 OC.MimeTypeList={
 	aliases: {
@@ -12,6 +12,7 @@ OC.MimeTypeList={
     "application/epub+zip": "text",
     "application/font-sfnt": "image",
     "application/font-woff": "image",
+    "application/gpx+xml": "location",
     "application/illustrator": "image",
     "application/javascript": "text/code",
     "application/json": "text/code",
@@ -25,6 +26,9 @@ OC.MimeTypeList={
     "application/rss+xml": "application/xml",
     "application/vnd.android.package-archive": "package/x-generic",
     "application/vnd.lotus-wordpro": "x-office/document",
+    "application/vnd.garmin.tcx+xml": "location",
+    "application/vnd.google-earth.kml+xml": "location",
+    "application/vnd.google-earth.kmz": "location",
     "application/vnd.ms-excel": "x-office/spreadsheet",
     "application/vnd.ms-excel.addin.macroEnabled.12": "x-office/spreadsheet",
     "application/vnd.ms-excel.sheet.binary.macroEnabled.12": "x-office/spreadsheet",
@@ -36,6 +40,12 @@ OC.MimeTypeList={
     "application/vnd.ms-powerpoint.presentation.macroEnabled.12": "x-office/presentation",
     "application/vnd.ms-powerpoint.slideshow.macroEnabled.12": "x-office/presentation",
     "application/vnd.ms-powerpoint.template.macroEnabled.12": "x-office/presentation",
+    "application/vnd.ms-visio.drawing.macroEnabled.12": "application/vnd.visio",
+    "application/vnd.ms-visio.drawing": "application/vnd.visio",
+    "application/vnd.ms-visio.stencil.macroEnabled.12": "application/vnd.visio",
+    "application/vnd.ms-visio.stencil": "application/vnd.visio",
+    "application/vnd.ms-visio.template.macroEnabled.12": "application/vnd.visio",
+    "application/vnd.ms-visio.template": "application/vnd.visio",
     "application/vnd.ms-word.document.macroEnabled.12": "x-office/document",
     "application/vnd.ms-word.template.macroEnabled.12": "x-office/document",
     "application/vnd.oasis.opendocument.presentation": "x-office/presentation",
@@ -86,11 +96,12 @@ OC.MimeTypeList={
     "text/x-c": "text/code",
     "text/x-c++src": "text/code",
     "text/x-h": "text/code",
-    "text/x-ldif": "text/code",
     "text/x-java-source": "text/code",
+    "text/x-ldif": "text/code",
     "text/x-python": "text/code",
     "text/x-shellscript": "text/code",
-    "web": "text/code"
+    "web": "text/code",
+    "application/internet-shortcut": "link"
 },
 	files: [
     "application",
@@ -99,11 +110,14 @@ OC.MimeTypeList={
     "file",
     "folder",
     "folder-drag-accept",
+    "folder-encrypted",
     "folder-external",
     "folder-public",
     "folder-shared",
     "folder-starred",
     "image",
+    "link",
+    "location",
     "package-x-generic",
     "text",
     "text-calendar",

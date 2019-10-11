@@ -4,6 +4,7 @@
  *
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -29,50 +30,56 @@ use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\ICollection;
 
 class UploadHome implements ICollection {
-	/**
-	 * UploadHome constructor.
-	 *
-	 * @param array $principalInfo
-	 */
-	public function __construct($principalInfo) {
+
+	/** @var array */
+	private $principalInfo;
+	/** @var CleanupService */
+	private $cleanupService;
+
+	public function __construct(array $principalInfo, CleanupService $cleanupService) {
 		$this->principalInfo = $principalInfo;
+		$this->cleanupService = $cleanupService;
 	}
 
-	function createFile($name, $data = null) {
+	public function createFile($name, $data = null) {
 		throw new Forbidden('Permission denied to create file (filename ' . $name . ')');
 	}
 
-	function createDirectory($name) {
+	public function createDirectory($name) {
 		$this->impl()->createDirectory($name);
+
+		// Add a cleanup job
+		$this->cleanupService->addJob($name);
 	}
 
-	function getChild($name) {
-		return new UploadFolder($this->impl()->getChild($name));
+	public function getChild($name): UploadFolder {
+		return new UploadFolder($this->impl()->getChild($name), $this->cleanupService);
 	}
 
-	function getChildren() {
+	public function getChildren(): array {
 		return array_map(function($node) {
-			return new UploadFolder($node);
+			return new UploadFolder($node, $this->cleanupService);
 		}, $this->impl()->getChildren());
 	}
 
-	function childExists($name) {
+	public function childExists($name): bool {
 		return !is_null($this->getChild($name));
 	}
 
-	function delete() {
+	public function delete() {
 		$this->impl()->delete();
 	}
 
-	function getName() {
-		return 'uploads';
+	public function getName() {
+		list(,$name) = \Sabre\Uri\split($this->principalInfo['uri']);
+		return $name;
 	}
 
-	function setName($name) {
+	public function setName($name) {
 		throw new Forbidden('Permission denied to rename this folder');
 	}
 
-	function getLastModified() {
+	public function getLastModified() {
 		return $this->impl()->getLastModified();
 	}
 
@@ -88,7 +95,6 @@ class UploadHome implements ICollection {
 		}
 		$view = new View('/' . $user->getUID() . '/uploads');
 		$rootInfo = $view->getFileInfo('');
-		$impl = new Directory($view, $rootInfo);
-		return $impl;
+		return new Directory($view, $rootInfo);
 	}
 }

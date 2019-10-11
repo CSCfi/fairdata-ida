@@ -2,10 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Felix Heidecke <felix@heidecke.me>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -80,10 +81,11 @@ interface FileInfo {
 	/**
 	 * Get the size in bytes for the file or folder
 	 *
+	 * @param bool $includeMounts whether or not to include the size of any sub mounts, since 16.0.0
 	 * @return int
 	 * @since 7.0.0
 	 */
-	public function getSize();
+	public function getSize($includeMounts = true);
 
 	/**
 	 * Get the last modified date as timestamp for the file or folder
@@ -174,7 +176,7 @@ interface FileInfo {
 	/**
 	 * Check whether this is a file or a folder
 	 *
-	 * @return \OCP\Files\FileInfo::TYPE_FILE|\OCP\Files\FileInfo::TYPE_FOLDER
+	 * @return string \OCP\Files\FileInfo::TYPE_FILE|\OCP\Files\FileInfo::TYPE_FOLDER
 	 * @since 7.0.0
 	 */
 	public function getType();
@@ -258,4 +260,12 @@ interface FileInfo {
 	 * @since 9.0.0
 	 */
 	public function getChecksum();
+
+	/**
+	 * Get the extension of the file
+	 *
+	 * @return string
+	 * @since 15.0.0
+	 */
+	public function getExtension(): string;
 }

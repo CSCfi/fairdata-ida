@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -38,46 +39,28 @@ interface IManager {
 	const KEY_ADMIN_SECTION  = 'admin-section';
 
 	/**
-	 * sets up settings according to data specified by an apps info.xml, within
-	 * the <settings> element.
-	 *
-	 * @param array $settings an associative array, allowed keys are as specified
-	 *                        by the KEY_ constant of  this interface. The value
-	 *                        must always be a class name, implement either
-	 *                        IAdmin or ISection. I.e. only one section and admin
-	 *                        setting can be configured per app.
-	 * @since 9.1.0
+	 * @since 13.0.0
 	 */
-	public function setupSettings(array $settings);
+	const KEY_PERSONAL_SETTINGS = 'personal';
 
 	/**
-	 * attempts to remove an apps section and/or settings entry. A listener is
-	 * added centrally making sure that this method is called ones an app was
-	 * disabled.
-	 *
-	 * What this does not help with is when applications change their settings
-	 * or section classes during their life time. New entries will be added,
-	 * but inactive ones will still reside in the database.
-	 *
-	 * @param string $appId
-	 * @since 9.1.0
+	 * @since 13.0.0
 	 */
-	public function onAppDisabled($appId);
+	const KEY_PERSONAL_SECTION  = 'personal-section';
 
 	/**
-	 * The method should check all registered classes whether they are still
-	 * instantiable and remove them, if not. This method is called by a
-	 * background job once, after one or more apps were updated.
-	 *
-	 * An app`s info.xml can change during an update and make it unknown whether
-	 * a registered class name was changed or not. An old one would just stay
-	 * registered. Another case is if an admin takes a radical approach and
-	 * simply removes an app from the app folder. These unregular checks will
-	 * take care of such situations.
-	 *
-	 * @since 9.1.0
+	 * @param string $type 'admin' or 'personal'
+	 * @param string $section Class must implement OCP\Settings\ISection
+	 * @since 14.0.0
 	 */
-	public function checkForOrphanedClassNames();
+	public function registerSection(string $type, string $section);
+
+	/**
+	 * @param string $type 'admin' or 'personal'
+	 * @param string $setting Class must implement OCP\Settings\ISetting
+	 * @since 14.0.0
+	 */
+	public function registerSetting(string $type, string $setting);
 
 	/**
 	 * returns a list of the admin sections
@@ -85,7 +68,15 @@ interface IManager {
 	 * @return array array of ISection[] where key is the priority
 	 * @since 9.1.0
 	 */
-	public function getAdminSections();
+	public function getAdminSections(): array;
+
+	/**
+	 * returns a list of the personal sections
+	 *
+	 * @return array array of ISection[] where key is the priority
+	 * @since 13.0.0
+	 */
+	public function getPersonalSections(): array;
 
 	/**
 	 * returns a list of the admin settings
@@ -94,5 +85,14 @@ interface IManager {
 	 * @return array array of IAdmin[] where key is the priority
 	 * @since 9.1.0
 	 */
-	public function getAdminSettings($section);
+	public function getAdminSettings($section): array;
+
+	/**
+	 * returns a list of the personal  settings
+	 *
+	 * @param string $section the section id for which to load the settings
+	 * @return array array of IPersonal[] where key is the priority
+	 * @since 13.0.0
+	 */
+	public function getPersonalSettings($section): array;
 }

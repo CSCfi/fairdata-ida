@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Felix Heidecke <felix@heidecke.me>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -23,6 +28,7 @@
 namespace OC\Template;
 
 use bantu\IniGetWrapper\IniGetWrapper;
+use OC\CapabilitiesManager;
 use OCP\App\IAppManager;
 use OCP\Defaults;
 use OCP\IConfig;
@@ -31,6 +37,7 @@ use OCP\IL10N;
 use OCP\ISession;
 use OCP\IURLGenerator;
 use OCP\IUser;
+use OCP\User\Backend\IPasswordConfirmationBackend;
 
 class JSConfigHelper {
 
@@ -61,6 +68,12 @@ class JSConfigHelper {
 	/** @var IURLGenerator */
 	private $urlGenerator;
 
+	/** @var CapabilitiesManager */
+	private $capabilitiesManager;
+
+	/** @var array user back-ends excluded from password verification */
+	private $excludedUserBackEnds = ['user_saml' => true, 'user_globalsiteselector' => true];
+
 	/**
 	 * @param IL10N $l
 	 * @param Defaults $defaults
@@ -71,6 +84,7 @@ class JSConfigHelper {
 	 * @param IGroupManager $groupManager
 	 * @param IniGetWrapper $iniWrapper
 	 * @param IURLGenerator $urlGenerator
+	 * @param CapabilitiesManager $capabilitiesManager
 	 */
 	public function __construct(IL10N $l,
 								Defaults $defaults,
@@ -80,7 +94,8 @@ class JSConfigHelper {
 								IConfig $config,
 								IGroupManager $groupManager,
 								IniGetWrapper $iniWrapper,
-								IURLGenerator $urlGenerator) {
+								IURLGenerator $urlGenerator,
+								CapabilitiesManager $capabilitiesManager) {
 		$this->l = $l;
 		$this->defaults = $defaults;
 		$this->appManager = $appManager;
@@ -90,12 +105,21 @@ class JSConfigHelper {
 		$this->groupManager = $groupManager;
 		$this->iniWrapper = $iniWrapper;
 		$this->urlGenerator = $urlGenerator;
+		$this->capabilitiesManager = $capabilitiesManager;
 	}
 
 	public function getConfig() {
 
+		$userBackendAllowsPasswordConfirmation = true;
 		if ($this->currentUser !== null) {
 			$uid = $this->currentUser->getUID();
+
+			$backend = $this->currentUser->getBackend();
+			if ($backend instanceof IPasswordConfirmationBackend) {
+				$userBackendAllowsPasswordConfirmation = $backend->canConfirmPassword($uid);
+			} else if (isset($this->excludedUserBackEnds[$this->currentUser->getBackendClassName()])) {
+				$userBackendAllowsPasswordConfirmation = false;
+			}
 		} else {
 			$uid = null;
 		}
@@ -115,7 +139,7 @@ class JSConfigHelper {
 
 
 		$enableLinkPasswordByDefault = $this->config->getAppValue('core', 'shareapi_enable_link_password_by_default', 'no');
-		$enableLinkPasswordByDefault = ($enableLinkPasswordByDefault === 'yes') ? true : false;
+		$enableLinkPasswordByDefault = $enableLinkPasswordByDefault === 'yes';
 		$defaultExpireDateEnabled = $this->config->getAppValue('core', 'shareapi_default_expire_date', 'no') === 'yes';
 		$defaultExpireDate = $enforceDefaultExpireDate = null;
 		if ($defaultExpireDateEnabled) {
@@ -139,14 +163,18 @@ class JSConfigHelper {
 			$lastConfirmTimestamp = 0;
 		}
 
+		$capabilities = $this->capabilitiesManager->getCapabilities();
+
 		$array = [
 			"oc_debug" => $this->config->getSystemValue('debug', false) ? 'true' : 'false',
 			"oc_isadmin" => $this->groupManager->isAdmin($uid) ? 'true' : 'false',
+			"backendAllowsPasswordConfirmation" => $userBackendAllowsPasswordConfirmation ? 'true' : 'false',
 			"oc_dataURL" => is_string($dataLocation) ? "\"".$dataLocation."\"" : 'false',
 			"oc_webroot" => "\"".\OC::$WEBROOT."\"",
 			"oc_appswebroots" =>  str_replace('\\/', '/', json_encode($apps_paths)), // Ugly unescape slashes waiting for better solution
 			"datepickerFormatDate" => json_encode($this->l->l('jsdate', null)),
 			'nc_lastLogin' => $lastConfirmTimestamp,
+			'nc_pageLoad' => time(),
 			"dayNames" =>  json_encode([
 				(string)$this->l->t('Sunday'),
 				(string)$this->l->t('Monday'),
@@ -210,9 +238,9 @@ class JSConfigHelper {
 				'versionstring'		=> \OC_Util::getVersionString(),
 				'enable_avatars'	=> true, // here for legacy reasons - to not crash existing code that relies on this value
 				'lost_password_link'=> $this->config->getSystemValue('lost_password_link', null),
-				'modRewriteWorking'	=> ($this->config->getSystemValue('htaccess.IgnoreFrontController', false) === true || getenv('front_controller_active') === 'true'),
-				'sharing.maxAutocompleteResults' => intval($this->config->getSystemValue('sharing.maxAutocompleteResults', 0)),
-				'sharing.minSearchStringLength' => intval($this->config->getSystemValue('sharing.minSearchStringLength', 0)),
+				'modRewriteWorking'	=> $this->config->getSystemValue('htaccess.IgnoreFrontController', false) === true || getenv('front_controller_active') === 'true',
+				'sharing.maxAutocompleteResults' => (int)$this->config->getSystemValue('sharing.maxAutocompleteResults', 0),
+				'sharing.minSearchStringLength' => (int)$this->config->getSystemValue('sharing.minSearchStringLength', 0),
 				'blacklist_files_regex' => \OCP\Files\FileInfo::BLACKLIST_FILES_REGEX,
 			]),
 			"oc_appconfig" => json_encode([
@@ -223,7 +251,7 @@ class JSConfigHelper {
 					'enforcePasswordForPublicLink' => \OCP\Util::isPublicLinkPasswordRequired(),
 					'enableLinkPasswordByDefault' => $enableLinkPasswordByDefault,
 					'sharingDisabledForUser' => \OCP\Util::isSharingDisabledForUser(),
-					'resharingAllowed' => \OCP\Share::isResharingAllowed(),
+					'resharingAllowed' => \OC\Share\Share::isResharingAllowed(),
 					'remoteShareAllowed' => $outgoingServer2serverShareEnabled,
 					'federatedCloudShareDoc' => $this->urlGenerator->linkToDocs('user-sharing-federated'),
 					'allowGroupSharing' => \OC::$server->getShareManager()->allowGroupSharing()
@@ -238,17 +266,19 @@ class JSConfigHelper {
 				'docBaseUrl' => $this->defaults->getDocBaseUrl(),
 				'docPlaceholderUrl' => $this->defaults->buildDocLinkToKey('PLACEHOLDER'),
 				'slogan' => $this->defaults->getSlogan(),
-				'logoClaim' => $this->defaults->getLogoClaim(),
+				'logoClaim' => '',
 				'shortFooter' => $this->defaults->getShortFooter(),
 				'longFooter' => $this->defaults->getLongFooter(),
 				'folder' => \OC_Util::getTheme(),
 			]),
+			"oc_capabilities" => json_encode($capabilities),
 		];
 
 		if ($this->currentUser !== null) {
 			$array['oc_userconfig'] = json_encode([
 				'avatar' => [
 					'version' => (int)$this->config->getUserValue($uid, 'avatar', 'version', 0),
+					'generated' => $this->config->getUserValue($uid, 'avatar', 'generated', 'true') === 'true',
 				]
 			]);
 		}

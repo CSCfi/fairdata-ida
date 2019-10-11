@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -104,11 +105,11 @@ class CreateJs extends Command implements CompletionAwareInterface {
 		$jsTrans = array();
 		foreach ($translations as $id => $val) {
 			if (is_array($val)) {
-				$val = '[ ' . join(',', $val) . ']';
+				$val = '[ ' . implode(',', $val) . ']';
 			}
 			$jsTrans[] = "\"$id\" : \"$val\"";
 		}
-		$content .= join(",\n    ", $jsTrans);
+		$content .= implode(",\n    ", $jsTrans);
 		$content .= "\n},\n\"$plurals\");\n";
 
 		file_put_contents($jsFile, $content);

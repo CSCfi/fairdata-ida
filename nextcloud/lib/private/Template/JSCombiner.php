@@ -2,6 +2,8 @@
 /**
  * @copyright 2017, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -28,6 +30,8 @@ use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\Files\SimpleFS\ISimpleFolder;
+use OCP\ICacheFactory;
+use OCP\ILogger;
 use OCP\IURLGenerator;
 
 class JSCombiner {
@@ -44,20 +48,30 @@ class JSCombiner {
 	/** @var SystemConfig */
 	protected $config;
 
+	/** @var ILogger */
+	protected $logger;
+
+	/** @var ICacheFactory */
+	private $cacheFactory;
+
 	/**
 	 * @param IAppData $appData
 	 * @param IURLGenerator $urlGenerator
-	 * @param ICache $depsCache
+	 * @param ICacheFactory $cacheFactory
 	 * @param SystemConfig $config
+	 * @param ILogger $logger
 	 */
 	public function __construct(IAppData $appData,
 								IURLGenerator $urlGenerator,
-								ICache $depsCache,
-								SystemConfig $config) {
+								ICacheFactory $cacheFactory,
+								SystemConfig $config,
+								ILogger $logger) {
 		$this->appData = $appData;
 		$this->urlGenerator = $urlGenerator;
-		$this->depsCache = $depsCache;
+		$this->cacheFactory = $cacheFactory;
+		$this->depsCache = $this->cacheFactory->createDistributed('JS-' . md5($this->urlGenerator->getBaseUrl()));
 		$this->config = $config;
+		$this->logger = $logger;
 	}
 
 	/**
@@ -95,14 +109,31 @@ class JSCombiner {
 	 * @return bool
 	 */
 	protected function isCached($fileName, ISimpleFolder $folder) {
-		$fileName = str_replace('.json', '.js', $fileName) . '.deps';
+		$fileName = str_replace('.json', '.js', $fileName);
+
+		if (!$folder->fileExists($fileName)) {
+			return false;
+		}
+
+		$fileName = $fileName . '.deps';
 		try {
 			$deps = $this->depsCache->get($folder->getName() . '-' . $fileName);
 			if ($deps === null || $deps === '') {
 				$depFile = $folder->getFile($fileName);
 				$deps = $depFile->getContent();
 			}
+
+			// check again
+			if ($deps === null || $deps === '') {
+				$this->logger->info('JSCombiner: deps file empty: ' . $fileName);
+				return false;
+			}
+
 			$deps = json_decode($deps, true);
+
+			if ($deps === NULL) {
+				return false;
+			}
 
 			foreach ($deps as $file=>$mtime) {
 				if (!file_exists($file) || filemtime($file) > $mtime) {
@@ -165,9 +196,10 @@ class JSCombiner {
 			$depFile->putContent($deps);
 			$this->depsCache->set($folder->getName() . '-' . $depFileName, $deps);
 			$gzipFile->putContent(gzencode($res, 9));
-
+			$this->logger->debug('JSCombiner: successfully cached: ' . $fileName);
 			return true;
 		} catch (NotPermittedException $e) {
+			$this->logger->error('JSCombiner: unable to cache: ' . $fileName);
 			return false;
 		}
 	}
@@ -207,5 +239,21 @@ class JSCombiner {
 		}
 
 		return $result;
+	}
+
+
+	/**
+	 * Clear cache with combined javascript files
+	 *
+	 * @throws NotFoundException
+	 */
+	public function resetCache() {
+		$this->cacheFactory->createDistributed('JS-')->clear();
+		$appDirectory = $this->appData->getDirectoryListing();
+		foreach ($appDirectory as $folder) {
+			foreach ($folder->getDirectoryListing() as $file) {
+				$file->delete();
+			}
+		}
 	}
 }

@@ -81,6 +81,7 @@ def load_configuration():
         'STAGING_FOLDER_SUFFIX':  service_constants.STAGING_FOLDER_SUFFIX,
         'STORAGE_OC_DATA_ROOT':   server_configuration.STORAGE_OC_DATA_ROOT,
         'DATA_REPLICATION_ROOT':  server_configuration.DATA_REPLICATION_ROOT,
+        'MAX_FILE_COUNT':         service_constants.MAX_FILE_COUNT,
         'RABBIT_HOST':            server_configuration.RABBIT_HOST,
         'RABBIT_PORT':            server_configuration.RABBIT_PORT,
         'RABBIT_WEB_API_PORT':    server_configuration.RABBIT_WEB_API_PORT,

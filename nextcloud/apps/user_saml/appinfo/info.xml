@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<info>
+	<id>user_saml</id>
+	<name>SSO &amp; SAML authentication IDA version</name>
+	<summary>Authenticate using single sign-on</summary>
+	<description><![CDATA[Using the SSO & SAML app of your Nextcloud you can make it easily possible to integrate your existing Single-Sign-On solution with Nextcloud. In addition, you can use the Nextcloud LDAP user provider to keep the convenience for users. (e.g. when sharing)
+The following providers are supported and tested at the moment:
+
+* **SAML 2.0**
+	* OneLogin
+	* Shibboleth
+	* Active Directory Federation Services (ADFS)
+
+* **Authentication via Environment Variable**
+	* Kerberos (mod_auth_kerb)
+	* Any other provider that authenticates using the environment variable
+
+* **This is an IDA version with modifications**
+       * allow local users from b2drop 1.3.2
+
+While theoretically any other authentication provider implementing either one of those standards is compatible, we like to note that they are not part of any internal test matrix.]]></description>
+	<version>1.5.0</version>
+	<licence>AGPL</licence>
+	<author>Lukas Reschke</author>
+	<author>CSC</author>
+	<namespace>User_SAML</namespace>
+	<types>
+		<authentication/>
+	</types>
+	<documentation>
+		<admin>https://docs.nextcloud.com/server/13/admin_manual/configuration_server/sso_configuration.html</admin>
+	</documentation>
+	<category>auth</category>
+	<screenshot>https://raw.githubusercontent.com/nextcloud/user_saml/master/screenshots/1.png</screenshot>
+	<website>https://github.com/nextcloud/user_saml</website>
+	<bugs>https://github.com/nextcloud/user_saml/issues</bugs>
+	<repository type="git">https://github.com/nextcloud/user_saml.git</repository>
+	<dependencies>
+		<lib>mcrypt</lib>
+		<nextcloud min-version="12" max-version="16" />
+	</dependencies>
+	<settings>
+		<admin>\OCA\User_SAML\Settings\Admin</admin>
+		<admin-section>OCA\User_SAML\Settings\Section</admin-section>
+	</settings>
+</info>

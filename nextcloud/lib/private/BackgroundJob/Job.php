@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Noveen Sachdeva <noveen.sachdeva@research.iiit.ac.in>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -45,7 +47,7 @@ abstract class Job implements IJob {
 
 	/**
 	 * @param JobList $jobList
-	 * @param ILogger $logger
+	 * @param ILogger|null $logger
 	 */
 	public function execute($jobList, ILogger $logger = null) {
 		$jobList->setLastRun($this);

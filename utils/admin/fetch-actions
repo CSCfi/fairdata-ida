@@ -1,0 +1,120 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+SCRIPT=`basename $0`
+
+USAGE="
+Usage: $SCRIPT [project] [status]
+       $SCRIPT -h
+
+       project  = the project name
+       status   = one of 'pending', 'failed', 'cleared', 'completed', 'incomplete', 'initiating'
+
+       If no project is specified, fetches actions for all projects.
+       If no status is specified, fetches actions iregardless of status.
+"
+
+PROJECT="null"
+STATUS="null"
+
+INIT_FILE=`dirname $0`/lib/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$1" = "-h" ]; then
+    echo "$USAGE"
+    exit 0
+fi
+
+if [ "$#" = 1 ]; then
+    PROJECT="$1"
+
+    case $PROJECT in
+        "pending" | "failed" | "cleared" | "completed" | "incomplete" | "initiating")
+            STATUS="$PROJECT"
+            PROJECT="null"
+            ;;
+    esac
+fi
+
+if [ "$#" -ge 2 ]; then
+    PROJECT="$1"
+    STATUS="$2"
+    case $STATUS in
+        "pending" | "failed" | "cleared" | "completed" | "incomplete" | "initiating")
+            ;;
+        *)
+            echo "Error: Invalid status: ${STATUS}" >&2
+            exit 1;
+            ;;
+    esac
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT_PARAMETER=""
+STATUS_PARAMETER=""
+
+if [ "$STATUS" != "null" ]
+then
+    STATUS_PARAMETER="?status=${STATUS}"
+fi
+
+if [ "$PROJECT" != "null" ]
+then
+    if [ "$STATUS" = "null" ]
+    then
+        PROJECT_PARAMETER="?projects=${PROJECT}"
+    else
+        PROJECT_PARAMETER="&projects=${PROJECT}"
+    fi
+fi
+
+URL="${IDA_API_ROOT_URL}/actions${STATUS_PARAMETER}${PROJECT_PARAMETER}"
+
+if [ "$DEBUG" != "false" ]
+then
+    echo "PROJECT: $PROJECT"
+    echo "STATUS:  $STATUS"
+    echo "URL:     $URL"
+fi
+
+OUT=`$CURL_GET $ADMIN_CREDENTIALS "${URL}" 2>$ERR `
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to retrieve actions!"
+fi
+
+echo "$OUT" | python -m json.tool

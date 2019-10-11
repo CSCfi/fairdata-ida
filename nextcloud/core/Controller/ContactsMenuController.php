@@ -1,9 +1,10 @@
 <?php
-
 /**
  * @copyright 2017 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
- * @author 2017 Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -54,7 +55,7 @@ class ContactsMenuController extends Controller {
 	 * @NoAdminRequired
 	 *
 	 * @param string|null filter
-	 * @return JSONResponse
+	 * @return \JsonSerializable[]
 	 */
 	public function index($filter = null) {
 		return $this->manager->getEntries($this->userSession->getUser(), $filter);
@@ -65,15 +66,14 @@ class ContactsMenuController extends Controller {
 	 *
 	 * @param integer $shareType
 	 * @param string $shareWith
-	 * @return JSONResponse
+	 * @return JSONResponse|\JsonSerializable
 	 */
 	public function findOne($shareType, $shareWith) {
 		$contact = $this->manager->findOne($this->userSession->getUser(), $shareType, $shareWith);
 
 		if ($contact) {
 			return $contact;
-		} else {
-			return new JSONResponse([], Http::STATUS_NOT_FOUND);
 		}
+		return new JSONResponse([], Http::STATUS_NOT_FOUND);
 	}
 }

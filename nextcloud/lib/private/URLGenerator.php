@@ -1,10 +1,13 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
- * @author Felix Anand Epp <work@felixepp.de>
+ * @author Felix Epp <work@felixepp.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Haertl <jus@bitgrid.net>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author mmccarn <mmccarn-github@mmsionline.us>
@@ -32,12 +35,11 @@
 
 namespace OC;
 
-
+use OCA\Theming\ThemingDefaults;
 use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IURLGenerator;
-use OCP\Route\IRoute;
 use RuntimeException;
 
 /**
@@ -72,10 +74,9 @@ class URLGenerator implements IURLGenerator {
 	 *
 	 * Returns a url to the given route.
 	 */
-	public function linkToRoute($route, $parameters = array()) {
+	public function linkToRoute(string $route, array $parameters = array()): string {
 		// TODO: mock router
-		$urlLinkTo = \OC::$server->getRouter()->generate($route, $parameters);
-		return $urlLinkTo;
+		return \OC::$server->getRouter()->generate($route, $parameters);
 	}
 
 	/**
@@ -86,8 +87,21 @@ class URLGenerator implements IURLGenerator {
 	 *
 	 * Returns an absolute url to the given route.
 	 */
-	public function linkToRouteAbsolute($routeName, $arguments = array()) {
+	public function linkToRouteAbsolute(string $routeName, array $arguments = array()): string {
 		return $this->getAbsoluteURL($this->linkToRoute($routeName, $arguments));
+	}
+
+	public function linkToOCSRouteAbsolute(string $routeName, array $arguments = []): string {
+		$route = \OC::$server->getRouter()->generate('ocs.'.$routeName, $arguments, false);
+
+		if (strpos($route, '/index.php') === 0) {
+			$route = substr($route, 10);
+		}
+
+		$route = substr($route, 7);
+		$route = '/ocs/v2.php' . $route;
+
+		return $this->getAbsoluteURL($route);
 	}
 
 	/**
@@ -100,20 +114,20 @@ class URLGenerator implements IURLGenerator {
 	 *
 	 * Returns a url to the given app and file.
 	 */
-	public function linkTo( $app, $file, $args = array() ) {
+	public function linkTo(string $app, string $file, array $args = array()): string {
 		$frontControllerActive = ($this->config->getSystemValue('htaccess.IgnoreFrontController', false) === true || getenv('front_controller_active') === 'true');
 
-		if( $app != '' ) {
+		if( $app !== '' ) {
 			$app_path = \OC_App::getAppPath($app);
 			// Check if the app is in the app folder
 			if ($app_path && file_exists($app_path . '/' . $file)) {
-				if (substr($file, -3) == 'php') {
+				if (substr($file, -3) === 'php') {
 
 					$urlLinkTo = \OC::$WEBROOT . '/index.php/apps/' . $app;
 					if ($frontControllerActive) {
 						$urlLinkTo = \OC::$WEBROOT . '/apps/' . $app;
 					}
-					$urlLinkTo .= ($file != 'index.php') ? '/' . $file : '';
+					$urlLinkTo .= ($file !== 'index.php') ? '/' . $file : '';
 				} else {
 					$urlLinkTo = \OC_App::getAppWebPath($app) . '/' . $file;
 				}
@@ -148,8 +162,8 @@ class URLGenerator implements IURLGenerator {
 	 *
 	 * Returns the path to the image.
 	 */
-	public function imagePath($app, $image) {
-		$cache = $this->cacheFactory->create('imagePath-'.md5($this->getBaseUrl()).'-');
+	public function imagePath(string $app, string $image): string {
+		$cache = $this->cacheFactory->createDistributed('imagePath-'.md5($this->getBaseUrl()).'-');
 		$cacheKey = $app.'-'.$image;
 		if($key = $cache->get($cacheKey)) {
 			return $key;
@@ -166,19 +180,15 @@ class URLGenerator implements IURLGenerator {
 		// Check if the app is in the app folder
 		$path = '';
 		$themingEnabled = $this->config->getSystemValue('installed', false) && \OCP\App::isEnabled('theming') && \OC_App::isAppLoaded('theming');
-		if($themingEnabled && $image === 'favicon.ico' && \OC::$server->getThemingDefaults()->shouldReplaceIcons()) {
-			$cacheBusterValue = $this->config->getAppValue('theming', 'cachebuster', '0');
-			if($app === '') { $app = 'core'; }
-			$path = $this->linkToRoute('theming.Icon.getFavicon', [ 'app' => $app ]) . '?v='. $cacheBusterValue;
-		} elseif($themingEnabled && $image === 'favicon-touch.png' && \OC::$server->getThemingDefaults()->shouldReplaceIcons()) {
-			$cacheBusterValue = $this->config->getAppValue('theming', 'cachebuster', '0');
-			if($app === '') { $app = 'core'; }
-			$path = $this->linkToRoute('theming.Icon.getTouchIcon', [ 'app' => $app ]) . '?v='. $cacheBusterValue;
-		} elseif($themingEnabled && $image === 'favicon-fb.png' && \OC::$server->getThemingDefaults()->shouldReplaceIcons()) {
-			$cacheBusterValue = $this->config->getAppValue('theming', 'cachebuster', '0');
-			if($app === '') { $app = 'core'; }
-			$path = $this->linkToRoute('theming.Icon.getTouchIcon', [ 'app' => $app ]) . '?v='. $cacheBusterValue;
-		} elseif (file_exists(\OC::$SERVERROOT . "/themes/$theme/apps/$app/img/$image")) {
+		$themingImagePath = false;
+		if($themingEnabled) {
+			$themingDefaults = \OC::$server->getThemingDefaults();
+			if ($themingDefaults instanceof ThemingDefaults) {
+				$themingImagePath = $themingDefaults->replaceImagePath($app, $image);
+			}
+		}
+
+		if (file_exists(\OC::$SERVERROOT . "/themes/$theme/apps/$app/img/$image")) {
 			$path = \OC::$WEBROOT . "/themes/$theme/apps/$app/img/$image";
 		} elseif (!file_exists(\OC::$SERVERROOT . "/themes/$theme/apps/$app/img/$basename.svg")
 			&& file_exists(\OC::$SERVERROOT . "/themes/$theme/apps/$app/img/$basename.png")) {
@@ -193,6 +203,8 @@ class URLGenerator implements IURLGenerator {
 		} elseif (!file_exists(\OC::$SERVERROOT . "/themes/$theme/core/img/$basename.svg")
 			&& file_exists(\OC::$SERVERROOT . "/themes/$theme/core/img/$basename.png")) {
 			$path =  \OC::$WEBROOT . "/themes/$theme/core/img/$basename.png";
+		} elseif($themingEnabled && $themingImagePath) {
+			$path = $themingImagePath;
 		} elseif ($appPath && file_exists($appPath . "/img/$image")) {
 			$path =  \OC_App::getAppWebPath($app) . "/img/$image";
 		} elseif ($appPath && !file_exists($appPath . "/img/$basename.svg")
@@ -213,9 +225,9 @@ class URLGenerator implements IURLGenerator {
 		if($path !== '') {
 			$cache->set($cacheKey, $path);
 			return $path;
-		} else {
-			throw new RuntimeException('image not found: image:' . $image . ' webroot:' . \OC::$WEBROOT . ' serverroot:' . \OC::$SERVERROOT);
 		}
+
+		throw new RuntimeException('image not found: image:' . $image . ' webroot:' . \OC::$WEBROOT . ' serverroot:' . \OC::$SERVERROOT);
 	}
 
 
@@ -224,15 +236,15 @@ class URLGenerator implements IURLGenerator {
 	 * @param string $url the url in the ownCloud host
 	 * @return string the absolute version of the url
 	 */
-	public function getAbsoluteURL($url) {
-		$separator = $url[0] === '/' ? '' : '/';
+	public function getAbsoluteURL(string $url): string {
+		$separator = strpos($url, '/') === 0 ? '' : '/';
 
-		if (\OC::$CLI && !defined('PHPUNIT_RUN')) {
+		if (\OC::$CLI && !\defined('PHPUNIT_RUN')) {
 			return rtrim($this->config->getSystemValue('overwrite.cli.url'), '/') . '/' . ltrim($url, '/');
 		}
 		// The ownCloud web root can already be prepended.
-		if(substr($url, 0, strlen(\OC::$WEBROOT)) === \OC::$WEBROOT) {
-			$url = substr($url, strlen(\OC::$WEBROOT));
+		if(\OC::$WEBROOT !== '' && strpos($url, \OC::$WEBROOT) === 0) {
+			$url = substr($url, \strlen(\OC::$WEBROOT));
 		}
 
 		return $this->getBaseUrl() . $separator . $url;
@@ -242,7 +254,7 @@ class URLGenerator implements IURLGenerator {
 	 * @param string $key
 	 * @return string url to the online documentation
 	 */
-	public function linkToDocs($key) {
+	public function linkToDocs(string $key): string {
 		$theme = \OC::$server->getThemingDefaults();
 		return $theme->buildDocLinkToKey($key);
 	}
@@ -250,7 +262,7 @@ class URLGenerator implements IURLGenerator {
 	/**
 	 * @return string base url of the current request
 	 */
-	public function getBaseUrl() {
+	public function getBaseUrl(): string {
 		return $this->request->getServerProtocol() . '://' . $this->request->getServerHost() . \OC::$WEBROOT;
 	}
 }

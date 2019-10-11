@@ -3,14 +3,18 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Boris Rybalkin <ribalkin@gmail.com>
  * @author Brice Maron <brice@bmaron.net>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Klaas Freitag <freitag@owncloud.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Martin Mattel <martin.mattel@diemattels.at>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sjors van der Pluijm <sjors@desjors.nl>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -35,8 +39,11 @@
 
 namespace OC\Files\Storage;
 
+use OC\Files\Filesystem;
 use OC\Files\Storage\Wrapper\Jail;
 use OCP\Files\ForbiddenException;
+use OCP\Files\Storage\IStorage;
+use OCP\ILogger;
 
 /**
  * for local filestore, we only have to map the paths
@@ -54,12 +61,13 @@ class Local extends \OC\Files\Storage\Common {
 		if (!isset($arguments['datadir']) || !is_string($arguments['datadir'])) {
 			throw new \InvalidArgumentException('No data directory set for local storage');
 		}
-		$this->datadir = $arguments['datadir'];
+		$this->datadir = str_replace('//', '/', $arguments['datadir']);
 		// some crazy code uses a local storage on root...
 		if ($this->datadir === '/') {
 			$this->realDataDir = $this->datadir;
 		} else {
-			$this->realDataDir = rtrim(realpath($this->datadir), '/') . '/';
+			$realPath = realpath($this->datadir) ?: $this->datadir;
+			$this->realDataDir = rtrim($realPath, '/') . '/';
 		}
 		if (substr($this->datadir, -1) !== '/') {
 			$this->datadir .= '/';
@@ -175,7 +183,7 @@ class Local extends \OC\Files\Storage\Common {
 
 	public function filemtime($path) {
 		$fullPath = $this->getSourcePath($path);
-		clearstatcache($fullPath);
+		clearstatcache(true, $fullPath);
 		if (!$this->file_exists($path)) {
 			return false;
 		}
@@ -224,22 +232,34 @@ class Local extends \OC\Files\Storage\Common {
 
 	}
 
+	private function treeContainsBlacklistedFile(string $path): bool {
+		$iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path));
+		foreach ($iterator as $file) {
+			/** @var \SplFileInfo $file */
+			if (Filesystem::isFileBlacklisted($file->getBasename())) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public function rename($path1, $path2) {
 		$srcParent = dirname($path1);
 		$dstParent = dirname($path2);
 
 		if (!$this->isUpdatable($srcParent)) {
-			\OCP\Util::writeLog('core', 'unable to rename, source directory is not writable : ' . $srcParent, \OCP\Util::ERROR);
+			\OCP\Util::writeLog('core', 'unable to rename, source directory is not writable : ' . $srcParent, ILogger::ERROR);
 			return false;
 		}
 
 		if (!$this->isUpdatable($dstParent)) {
-			\OCP\Util::writeLog('core', 'unable to rename, destination directory is not writable : ' . $dstParent, \OCP\Util::ERROR);
+			\OCP\Util::writeLog('core', 'unable to rename, destination directory is not writable : ' . $dstParent, ILogger::ERROR);
 			return false;
 		}
 
 		if (!$this->file_exists($path1)) {
-			\OCP\Util::writeLog('core', 'unable to rename, file does not exists : ' . $path1, \OCP\Util::ERROR);
+			\OCP\Util::writeLog('core', 'unable to rename, file does not exists : ' . $path1, ILogger::ERROR);
 			return false;
 		}
 
@@ -259,6 +279,10 @@ class Local extends \OC\Files\Storage\Common {
 					$result &= $this->rmdir($path1);
 				}
 				return $result;
+			}
+
+			if ($this->treeContainsBlacklistedFile($this->getSourcePath($path1))) {
+				throw new ForbiddenException('Invalid path', false);
 			}
 		}
 
@@ -355,15 +379,23 @@ class Local extends \OC\Files\Storage\Common {
 	 * @throws ForbiddenException
 	 */
 	public function getSourcePath($path) {
+		if (Filesystem::isFileBlacklisted($path)) {
+			throw new ForbiddenException('Invalid path', false);
+		}
+
 		$fullPath = $this->datadir . $path;
-		if ($this->allowSymlinks || $path === '') {
+		$currentPath = $path;
+		if ($this->allowSymlinks || $currentPath === '') {
 			return $fullPath;
 		}
 		$pathToResolve = $fullPath;
 		$realPath = realpath($pathToResolve);
 		while ($realPath === false) { // for non existing files check the parent directory
-			$pathToResolve = dirname($pathToResolve);
-			$realPath = realpath($pathToResolve);
+			$currentPath = dirname($currentPath);
+			if ($currentPath === '' || $currentPath === '.') {
+				return $fullPath;
+			}
+			$realPath = realpath($this->datadir . $currentPath);
 		}
 		if ($realPath) {
 			$realPath = $realPath . '/';
@@ -372,7 +404,7 @@ class Local extends \OC\Files\Storage\Common {
 			return $fullPath;
 		}
 
-		\OCP\Util::writeLog('core', "Following symlinks is not allowed ('$fullPath' -> '$realPath' not inside '{$this->realDataDir}')", \OCP\Util::ERROR);
+		\OCP\Util::writeLog('core', "Following symlinks is not allowed ('$fullPath' -> '$realPath' not inside '{$this->realDataDir}')", ILogger::ERROR);
 		throw new ForbiddenException('Following symlinks is not allowed', false);
 	}
 
@@ -404,13 +436,14 @@ class Local extends \OC\Files\Storage\Common {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
+	 * @param bool $preserveMtime
 	 * @return bool
 	 */
-	public function copyFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath, $preserveMtime = false) {
-		if ($sourceStorage->instanceOfStorage('\OC\Files\Storage\Local')) {
+	public function copyFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath, $preserveMtime = false) {
+		if ($sourceStorage->instanceOfStorage(Local::class)) {
 			if ($sourceStorage->instanceOfStorage(Jail::class)) {
 				/**
 				 * @var \OC\Files\Storage\Wrapper\Jail $sourceStorage
@@ -428,12 +461,12 @@ class Local extends \OC\Files\Storage\Common {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @return bool
 	 */
-	public function moveFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
+	public function moveFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
 		if ($sourceStorage->instanceOfStorage(Local::class)) {
 			if ($sourceStorage->instanceOfStorage(Jail::class)) {
 				/**
@@ -449,5 +482,9 @@ class Local extends \OC\Files\Storage\Common {
 		} else {
 			return parent::moveFromStorage($sourceStorage, $sourceInternalPath, $targetInternalPath);
 		}
+	}
+
+	public function writeStream(string $path, $stream, int $size = null): int {
+		return (int)file_put_contents($this->getSourcePath($path), $stream);
 	}
 }

@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -89,6 +92,7 @@ class Throttler {
 	 * @param string $action
 	 * @param string $ip
 	 * @param array $metadata Optional metadata logged to the database
+	 * @suppress SqlInjectionChecker
 	 */
 	public function registerAttempt($action,
 									$ip,
@@ -173,8 +177,10 @@ class Throttler {
 				$part = ord($addr[(int)($i/8)]);
 				$orig = ord($ip[(int)($i/8)]);
 
-				$part = $part & (15 << (1 - ($i % 2)));
-				$orig = $orig & (15 << (1 - ($i % 2)));
+				$bitmask = 1 << (7 - ($i % 8));
+
+				$part = $part & $bitmask;
+				$orig = $orig & $bitmask;
 
 				if ($part !== $orig) {
 					$valid = false;
@@ -224,7 +230,7 @@ class Throttler {
 			return 0;
 		}
 
-		$maxDelay = 30;
+		$maxDelay = 25;
 		$firstDelay = 0.1;
 		if ($attempts > (8 * PHP_INT_SIZE - 1))  {
 			// Don't ever overflow. Just assume the maxDelay time:s
@@ -236,6 +242,33 @@ class Throttler {
 			}
 		}
 		return (int) \ceil($firstDelay * 1000);
+	}
+
+	/**
+	 * Reset the throttling delay for an IP address, action and metadata
+	 *
+	 * @param string $ip
+	 * @param string $action
+	 * @param string $metadata
+	 */
+	public function resetDelay($ip, $action, $metadata) {
+		$ipAddress = new IpAddress($ip);
+		if ($this->isIPWhitelisted((string)$ipAddress)) {
+			return;
+		}
+
+		$cutoffTime = (new \DateTime())
+			->sub($this->getCutoff(43200))
+			->getTimestamp();
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->delete('bruteforce_attempts')
+			->where($qb->expr()->gt('occurred', $qb->createNamedParameter($cutoffTime)))
+			->andWhere($qb->expr()->eq('subnet', $qb->createNamedParameter($ipAddress->getSubnet())))
+			->andWhere($qb->expr()->eq('action', $qb->createNamedParameter($action)))
+			->andWhere($qb->expr()->eq('metadata', $qb->createNamedParameter(json_encode($metadata))));
+
+		$qb->execute();
 	}
 
 	/**

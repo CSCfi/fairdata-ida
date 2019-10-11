@@ -28,6 +28,8 @@
 
 namespace OC\Files\Cache;
 
+use OCP\Files\Storage\IStorage;
+
 /**
  * Handle the mapping between the string and numeric storage ids
  *
@@ -61,7 +63,7 @@ class Storage {
 	 * @throws \RuntimeException
 	 */
 	public function __construct($storage, $isAvailable = true) {
-		if ($storage instanceof \OC\Files\Storage\Storage) {
+		if ($storage instanceof IStorage) {
 			$this->storageId = $storage->getId();
 		} else {
 			$this->storageId = $storage;
@@ -154,7 +156,7 @@ class Storage {
 	public function getAvailability() {
 		if ($row = self::getStorageById($this->storageId)) {
 			return [
-				'available' => ((int)$row['available'] === 1),
+				'available' => (int)$row['available'] === 1,
 				'last_checked' => $row['last_checked']
 			];
 		} else {

@@ -2,9 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Michael Jobst <mjobst+github@tecratech.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
@@ -30,7 +32,8 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
-use OC\Files\View;
+use OC\AppFramework\Http\Request;
+use OCP\Constants;
 use OCP\Files\ForbiddenException;
 use OCP\IPreview;
 use Sabre\DAV\Exception\Forbidden;
@@ -45,7 +48,6 @@ use \Sabre\HTTP\ResponseInterface;
 use OCP\Files\StorageNotAvailableException;
 use OCP\IConfig;
 use OCP\IRequest;
-use OCA\DAV\Upload\FutureFile;
 
 class FilesPlugin extends ServerPlugin {
 
@@ -56,6 +58,7 @@ class FilesPlugin extends ServerPlugin {
 	const INTERNAL_FILEID_PROPERTYNAME = '{http://owncloud.org/ns}fileid';
 	const PERMISSIONS_PROPERTYNAME = '{http://owncloud.org/ns}permissions';
 	const SHARE_PERMISSIONS_PROPERTYNAME = '{http://open-collaboration-services.org/ns}share-permissions';
+	const OCM_SHARE_PERMISSIONS_PROPERTYNAME = '{http://open-cloud-mesh.org/ns}share-permissions';
 	const DOWNLOADURL_PROPERTYNAME = '{http://owncloud.org/ns}downloadURL';
 	const SIZE_PROPERTYNAME = '{http://owncloud.org/ns}size';
 	const GETETAG_PROPERTYNAME = '{DAV:}getetag';
@@ -67,6 +70,7 @@ class FilesPlugin extends ServerPlugin {
 	const HAS_PREVIEW_PROPERTYNAME = '{http://nextcloud.org/ns}has-preview';
 	const MOUNT_TYPE_PROPERTYNAME = '{http://nextcloud.org/ns}mount-type';
 	const IS_ENCRYPTED_PROPERTYNAME = '{http://nextcloud.org/ns}is-encrypted';
+	const SHARE_NOTE = '{http://nextcloud.org/ns}note';
 
 	/**
 	 * Reference to main server object
@@ -87,11 +91,6 @@ class FilesPlugin extends ServerPlugin {
 	 * @var bool
 	 */
 	private $isPublic;
-
-	/**
-	 * @var View
-	 */
-	private $fileView;
 
 	/**
 	 * @var bool
@@ -153,6 +152,7 @@ class FilesPlugin extends ServerPlugin {
 		$server->protectedProperties[] = self::INTERNAL_FILEID_PROPERTYNAME;
 		$server->protectedProperties[] = self::PERMISSIONS_PROPERTYNAME;
 		$server->protectedProperties[] = self::SHARE_PERMISSIONS_PROPERTYNAME;
+		$server->protectedProperties[] = self::OCM_SHARE_PERMISSIONS_PROPERTYNAME;
 		$server->protectedProperties[] = self::SIZE_PROPERTYNAME;
 		$server->protectedProperties[] = self::DOWNLOADURL_PROPERTYNAME;
 		$server->protectedProperties[] = self::OWNER_ID_PROPERTYNAME;
@@ -162,6 +162,7 @@ class FilesPlugin extends ServerPlugin {
 		$server->protectedProperties[] = self::HAS_PREVIEW_PROPERTYNAME;
 		$server->protectedProperties[] = self::MOUNT_TYPE_PROPERTYNAME;
 		$server->protectedProperties[] = self::IS_ENCRYPTED_PROPERTYNAME;
+		$server->protectedProperties[] = self::SHARE_NOTE;
 
 		// normally these cannot be changed (RFC4918), but we want them modifiable through PROPPATCH
 		$allowedProperties = ['{DAV:}getetag'];
@@ -181,7 +182,6 @@ class FilesPlugin extends ServerPlugin {
 			}
 		});
 		$this->server->on('beforeMove', [$this, 'checkMove']);
-		$this->server->on('beforeMove', [$this, 'beforeMoveFutureFile']);
 	}
 
 	/**
@@ -197,14 +197,14 @@ class FilesPlugin extends ServerPlugin {
 		if (!$sourceNode instanceof Node) {
 			return;
 		}
-		list($sourceDir,) = \Sabre\HTTP\URLUtil::splitPath($source);
-		list($destinationDir,) = \Sabre\HTTP\URLUtil::splitPath($destination);
+		list($sourceDir,) = \Sabre\Uri\split($source);
+		list($destinationDir,) = \Sabre\Uri\split($destination);
 
 		if ($sourceDir !== $destinationDir) {
 			$sourceNodeFileInfo = $sourceNode->getFileInfo();
-			if (is_null($sourceNodeFileInfo)) {
+			if ($sourceNodeFileInfo === null) {
 				throw new NotFound($source . ' does not exist');
-			}
+ 			}
 
 			if (!$sourceNodeFileInfo->isDeletable()) {
 				throw new Forbidden($source . " cannot be deleted");
@@ -256,9 +256,9 @@ class FilesPlugin extends ServerPlugin {
 			$filename = $node->getName();
 			if ($this->request->isUserAgent(
 				[
-					\OC\AppFramework\Http\Request::USER_AGENT_IE,
-					\OC\AppFramework\Http\Request::USER_AGENT_ANDROID_MOBILE_CHROME,
-					\OC\AppFramework\Http\Request::USER_AGENT_FREEBOX,
+					Request::USER_AGENT_IE,
+					Request::USER_AGENT_ANDROID_MOBILE_CHROME,
+					Request::USER_AGENT_FREEBOX,
 				])) {
 				$response->addHeader('Content-Disposition', 'attachment; filename="' . rawurlencode($filename) . '"');
 			} else {
@@ -323,6 +323,14 @@ class FilesPlugin extends ServerPlugin {
 				);
 			});
 
+			$propFind->handle(self::OCM_SHARE_PERMISSIONS_PROPERTYNAME, function() use ($node, $httpRequest) {
+				$ncPermissions = $node->getSharePermissions(
+					$httpRequest->getRawServerValue('PHP_AUTH_USER')
+				);
+				$ocmPermissions = $this->ncPermissions2ocmPermissions($ncPermissions);
+				return json_encode($ocmPermissions);
+			});
+
 			$propFind->handle(self::GETETAG_PROPERTYNAME, function() use ($node) {
 				return $node->getETag();
 			});
@@ -344,11 +352,6 @@ class FilesPlugin extends ServerPlugin {
 				}
 			});
 
-			$propFind->handle(self::IS_ENCRYPTED_PROPERTYNAME, function() use ($node) {
-				$result = $node->getFileInfo()->isEncrypted() ? '1' : '0';
-				return $result;
-			});
-
 			$propFind->handle(self::HAS_PREVIEW_PROPERTYNAME, function () use ($node) {
 				return json_encode($this->previewManager->isAvailable($node->getFileInfo()));
 			});
@@ -357,6 +360,12 @@ class FilesPlugin extends ServerPlugin {
 			});
 			$propFind->handle(self::MOUNT_TYPE_PROPERTYNAME, function () use ($node) {
 				return $node->getFileInfo()->getMountPoint()->getMountType();
+			});
+
+			$propFind->handle(self::SHARE_NOTE, function() use ($node, $httpRequest) {
+				return $node->getNoteFromShare(
+					$httpRequest->getRawServerValue('PHP_AUTH_USER')
+				);
 			});
 		}
 
@@ -397,7 +406,38 @@ class FilesPlugin extends ServerPlugin {
 			$propFind->handle(self::SIZE_PROPERTYNAME, function() use ($node) {
 				return $node->getSize();
 			});
+
+			$propFind->handle(self::IS_ENCRYPTED_PROPERTYNAME, function() use ($node) {
+				return $node->getFileInfo()->isEncrypted() ? '1' : '0';
+			});
 		}
+	}
+
+	/**
+	 * translate Nextcloud permissions to OCM Permissions
+	 *
+	 * @param $ncPermissions
+	 * @return array
+	 */
+	protected function ncPermissions2ocmPermissions($ncPermissions) {
+
+		$ocmPermissions = [];
+
+		if ($ncPermissions & Constants::PERMISSION_SHARE) {
+			$ocmPermissions[] = 'share';
+		}
+
+		if ($ncPermissions & Constants::PERMISSION_READ) {
+			$ocmPermissions[] = 'read';
+		}
+
+		if (($ncPermissions & Constants::PERMISSION_CREATE) ||
+			($ncPermissions & Constants::PERMISSION_UPDATE)) {
+			$ocmPermissions[] = 'write';
+		}
+
+		return $ocmPermissions;
+
 	}
 
 	/**
@@ -440,7 +480,7 @@ class FilesPlugin extends ServerPlugin {
 	public function sendFileIdHeader($filePath, \Sabre\DAV\INode $node = null) {
 		// chunked upload handling
 		if (isset($_SERVER['HTTP_OC_CHUNKED'])) {
-			list($path, $name) = \Sabre\HTTP\URLUtil::splitPath($filePath);
+			list($path, $name) = \Sabre\Uri\split($filePath);
 			$info = \OC_FileChunking::decodeName($name);
 			if (!empty($info)) {
 				$filePath = $path . '/' . $info['name'];
@@ -459,43 +499,4 @@ class FilesPlugin extends ServerPlugin {
 			}
 		}
 	}
-
-	/**
-	 * Move handler for future file.
-	 *
-	 * This overrides the default move behavior to prevent Sabre
-	 * to delete the target file before moving. Because deleting would
-	 * lose the file id and metadata.
-	 *
-	 * @param string $path source path
-	 * @param string $destination destination path
-	 * @return bool|void false to stop handling, void to skip this handler
-	 */
-	public function beforeMoveFutureFile($path, $destination) {
-		$sourceNode = $this->tree->getNodeForPath($path);
-		if (!$sourceNode instanceof FutureFile) {
-			// skip handling as the source is not a chunked FutureFile
-			return;
-		}
-
-		if (!$this->tree->nodeExists($destination)) {
-			// skip and let the default handler do its work
-			return;
-		}
-
-		// do a move manually, skipping Sabre's default "delete" for existing nodes
-		$this->tree->move($path, $destination);
-
-		// trigger all default events (copied from CorePlugin::move)
-		$this->server->emit('afterMove', [$path, $destination]);
-		$this->server->emit('afterUnbind', [$path]);
-		$this->server->emit('afterBind', [$destination]);
-
-		$response = $this->server->httpResponse;
-		$response->setHeader('Content-Length', '0');
-		$response->setStatus(204);
-
-		return false;
-	}
-
 }

@@ -35,7 +35,6 @@ htuser='apache'
 htgroup='apache'
 
 chown -R ${htuser}:${htgroup} ${wwwroot}
-chmod -R o-rwx ${wwwroot}
-chmod -R g+rwX ${wwwroot}
+chmod -R g+rwX,o+rX-w ${wwwroot}
 chmod +x ${ocroot}/occ
 

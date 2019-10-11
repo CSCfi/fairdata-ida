@@ -3,9 +3,11 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Christoph Wurst <christoph@owncloud.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
  *
@@ -33,6 +35,7 @@
 namespace OCP\AppFramework\Http;
 
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Utility\ITimeFactory;
 
 /**
  * Base class for responses. Also used to just send headers.
@@ -83,6 +86,8 @@ class Response {
 
 	/** @var bool */
 	private $throttled = false;
+	/** @var array */
+	private $throttleMetadata = [];
 
 	/**
 	 * Caches the response
@@ -91,12 +96,23 @@ class Response {
 	 * @return $this
 	 * @since 6.0.0 - return value was added in 7.0.0
 	 */
-	public function cacheFor($cacheSeconds) {
-
+	public function cacheFor(int $cacheSeconds) {
 		if($cacheSeconds > 0) {
 			$this->addHeader('Cache-Control', 'max-age=' . $cacheSeconds . ', must-revalidate');
+
+			// Old scool prama caching
+			$this->addHeader('Pragma', 'public');
+
+			// Set expires header
+			$expires = new \DateTime();
+			/** @var ITimeFactory $time */
+			$time = \OC::$server->query(ITimeFactory::class);
+			$expires->setTimestamp($time->getTime());
+			$expires->add(new \DateInterval('PT'.$cacheSeconds.'S'));
+			$this->addHeader('Expires', $expires->format(\DateTime::RFC2822));
 		} else {
 			$this->addHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+			unset($this->headers['Expires'], $this->headers['Pragma']);
 		}
 
 		return $this;
@@ -228,11 +244,11 @@ class Response {
 
 	/**
 	 * By default renders no output
-	 * @return null
+	 * @return string
 	 * @since 6.0.0
 	 */
 	public function render() {
-		return null;
+		return '';
 	}
 
 
@@ -328,10 +344,22 @@ class Response {
 	 * Marks the response as to throttle. Will be throttled when the
 	 * @BruteForceProtection annotation is added.
 	 *
+	 * @param array $metadata
 	 * @since 12.0.0
 	 */
-	public function throttle() {
+	public function throttle(array $metadata = []) {
 		$this->throttled = true;
+		$this->throttleMetadata = $metadata;
+	}
+
+	/**
+	 * Returns the throttle metadata, defaults to empty array
+	 *
+	 * @return array
+	 * @since 13.0.0
+	 */
+	public function getThrottleMetadata() {
+		return $this->throttleMetadata;
 	}
 
 	/**

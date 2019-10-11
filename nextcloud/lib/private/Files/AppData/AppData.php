@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright 2016 Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -23,6 +24,7 @@
 
 namespace OC\Files\AppData;
 
+use OC\Cache\CappedMemoryCache;
 use OC\Files\SimpleFS\SimpleFolder;
 use OCP\Files\IAppData;
 use OCP\Files\IRootFolder;
@@ -31,6 +33,7 @@ use OC\SystemConfig;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\Files\SimpleFS\ISimpleFolder;
 
 class AppData implements IAppData {
 
@@ -46,6 +49,9 @@ class AppData implements IAppData {
 	/** @var Folder */
 	private $folder;
 
+	/** @var (ISimpleFolder|NotFoundException)[]|CappedMemoryCache */
+	private $folders;
+
 	/**
 	 * AppData constructor.
 	 *
@@ -55,69 +61,108 @@ class AppData implements IAppData {
 	 */
 	public function __construct(IRootFolder $rootFolder,
 								SystemConfig $systemConfig,
-								$appId) {
+								string $appId) {
 
 		$this->rootFolder = $rootFolder;
 		$this->config = $systemConfig;
 		$this->appId = $appId;
+		$this->folders = new CappedMemoryCache();
+	}
+
+	private function getAppDataFolderName() {
+		$instanceId = $this->config->getValue('instanceid', null);
+		if ($instanceId === null) {
+			throw new \RuntimeException('no instance id!');
+		}
+
+		return 'appdata_' . $instanceId;
+	}
+
+	private function getAppDataRootFolder(): Folder {
+		$name = $this->getAppDataFolderName();
+
+		try {
+			/** @var Folder $node */
+			$node = $this->rootFolder->get($name);
+			return $node;
+		} catch (NotFoundException $e) {
+			try {
+				return $this->rootFolder->newFolder($name);
+			} catch (NotPermittedException $e) {
+				throw new \RuntimeException('Could not get appdata folder');
+			}
+		}
 	}
 
 	/**
 	 * @return Folder
 	 * @throws \RuntimeException
 	 */
-	private function getAppDataFolder() {
+	private function getAppDataFolder(): Folder {
 		if ($this->folder === null) {
-			$instanceId = $this->config->getValue('instanceid', null);
-			if ($instanceId === null) {
-				throw new \RuntimeException('no instance id!');
-			}
-
-			$name = 'appdata_' . $instanceId;
+			$name = $this->getAppDataFolderName();
 
 			try {
-				$appDataFolder = $this->rootFolder->get($name);
+				$this->folder = $this->rootFolder->get($name . '/' . $this->appId);
 			} catch (NotFoundException $e) {
+				$appDataRootFolder = $this->getAppDataRootFolder();
+
 				try {
-					$appDataFolder = $this->rootFolder->newFolder($name);
-				} catch (NotPermittedException $e) {
-					throw new \RuntimeException('Could not get appdata folder');
+					$this->folder = $appDataRootFolder->get($this->appId);
+				} catch (NotFoundException $e) {
+					try {
+						$this->folder = $appDataRootFolder->newFolder($this->appId);
+					} catch (NotPermittedException $e) {
+						throw new \RuntimeException('Could not get appdata folder for ' . $this->appId);
+					}
 				}
 			}
-
-			try {
-				$appDataFolder = $appDataFolder->get($this->appId);
-			} catch (NotFoundException $e) {
-				try {
-					$appDataFolder = $appDataFolder->newFolder($this->appId);
-				} catch (NotPermittedException $e) {
-					throw new \RuntimeException('Could not get appdata folder for ' . $this->appId);
-				}
-			}
-
-			$this->folder = $appDataFolder;
 		}
 
 		return $this->folder;
 	}
 
-	public function getFolder($name) {
-		$node = $this->getAppDataFolder()->get($name);
+	public function getFolder(string $name): ISimpleFolder {
+		$key = $this->appId . '/' . $name;
+		if ($cachedFolder = $this->folders->get($key)) {
+			if ($cachedFolder instanceof \Exception) {
+				throw $cachedFolder;
+			} else {
+				return $cachedFolder;
+			}
+		}
+		try {
+			// Hardening if somebody wants to retrieve '/'
+			if ($name === '/') {
+				$node = $this->getAppDataFolder();
+			} else {
+				$path = $this->getAppDataFolderName() . '/' . $this->appId . '/' . $name;
+				$node = $this->rootFolder->get($path);
+			}
+		} catch (NotFoundException $e) {
+			$this->folders->set($key, $e);
+			throw $e;
+		}
 
 		/** @var Folder $node */
-		return new SimpleFolder($node);
+		$folder = new SimpleFolder($node);
+		$this->folders->set($key, $folder);
+		return $folder;
 	}
 
-	public function newFolder($name) {
+	public function newFolder(string $name): ISimpleFolder {
+		$key = $this->appId . '/' . $name;
 		$folder = $this->getAppDataFolder()->newFolder($name);
 
-		return new SimpleFolder($folder);
+		$simpleFolder = new SimpleFolder($folder);
+		$this->folders->set($key, $simpleFolder);
+		return $simpleFolder;
 	}
 
-	public function getDirectoryListing() {
+	public function getDirectoryListing(): array {
 		$listing = $this->getAppDataFolder()->getDirectoryListing();
 
-		$fileListing = array_map(function(Node $folder) {
+		$fileListing = array_map(function (Node $folder) {
 			if ($folder instanceof Folder) {
 				return new SimpleFolder($folder);
 			}
@@ -127,5 +172,9 @@ class AppData implements IAppData {
 		$fileListing = array_filter($fileListing);
 
 		return array_values($fileListing);
+	}
+
+	public function getId(): int {
+		return $this->getAppDataFolder()->getId();
 	}
 }

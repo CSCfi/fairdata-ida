@@ -12,8 +12,12 @@
  * @author Owen Winkler <a_github@midnightcircus.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Semih Serhat Karakaya <karakayasemi@itu.edu.tr>
+ * @author Stefan Schneider <stefan.schneider@squareweave.com.au>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
+ * @author CSC <support@csc.fi>
  *
  * @license AGPL-3.0
  *
@@ -21,7 +25,7 @@
  * it under the terms of the GNU Affero General Public License, version 3,
  * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
+ * This program is distributeo in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
@@ -33,21 +37,28 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
+use Icewind\Streams\CallbackWrapper;
+use OC\AppFramework\Http\Request;
 use OC\Files\Filesystem;
+use OC\Files\View;
 use OCA\DAV\Connector\Sabre\Exception\EntityTooLarge;
 use OCA\DAV\Connector\Sabre\Exception\FileLocked;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden as DAVForbiddenException;
 use OCA\DAV\Connector\Sabre\Exception\UnsupportedMediaType;
 use OCP\Encryption\Exceptions\GenericEncryptionException;
 use OCP\Files\EntityTooLargeException;
+use OCP\Files\FileInfo;
 use OCP\Files\ForbiddenException;
 use OCP\Files\InvalidContentException;
 use OCP\Files\InvalidPathException;
 use OCP\Files\LockNotAcquiredException;
+use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\Files\Storage;
 use OCP\Files\StorageNotAvailableException;
 use OCP\Lock\ILockingProvider;
 use OCP\Lock\LockedException;
+use OCP\Share\IManager;
 use Sabre\DAV\Exception;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\Exception\Forbidden;
@@ -57,6 +68,26 @@ use Sabre\DAV\IFile;
 use Sabre\DAV\Exception\NotFound;
 
 class File extends Node implements IFile {
+
+	protected $request;
+
+	/**
+	 * Sets up the node, expects a full path name
+	 *
+	 * @param \OC\Files\View $view
+	 * @param \OCP\Files\FileInfo $info
+	 * @param \OCP\Share\IManager $shareManager
+	 * @param \OC\AppFramework\Http\Request $request
+	 */
+	public function __construct(View $view, FileInfo $info, IManager $shareManager = null, Request $request = null) {
+		parent::__construct($view, $info, $shareManager);
+
+		if (isset($request)) {
+			$this->request = $request;
+		} else {
+			$this->request = \OC::$server->getRequest();
+		}
+	}
 
 	/**
 	 * Updates the data
@@ -87,6 +118,7 @@ class File extends Node implements IFile {
 	 * @return string|null
 	 */
 	public function put($data) {
+
 		try {
 			$exists = $this->fileView->file_exists($this->path);
 			if ($this->info && $exists && !$this->info->isUpdateable()) {
@@ -99,6 +131,69 @@ class File extends Node implements IFile {
 		// verify path of the target
 		$this->verifyPath();
 
+        // Special handling for zero size files
+        $zero_size = false;
+        try {
+            $filesize   = false;
+            $headers    = null;
+            $firstbyte  = null;
+            $test_basis = null;
+
+            // Retrieve stream metadata
+            $metadata = stream_get_meta_data($data);
+
+            if ($metadata != null && is_array($metadata) && isset($metadata['uri'])) {
+                // First, we'll attempt to get the filesize based on the URI defined in the
+                // stream metadata, assuming the stream wrapper type supports os.filesize;
+                // which if not, it will either return false or throw an exception
+                $test_basis = 'filesize-stat';
+                $file_uri = $metadata['uri'];
+                try {
+                    $filesize = filesize($file_uri);
+                    if ($filesize === 0) {
+                        $zero_size = true;
+                    }
+                } catch (Exception $e) {
+                    $filesize = false;
+                }
+            }
+            if ($filesize === false) {
+                // If we're here, then either no URI was defined or the stream wrapper type does not
+                // support os.filesize, so we'll try to get the size from the content length header,
+                // if it exists
+                $test_basis = 'content-length-header';
+                $headers = get_headers($data, 1);
+                if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
+                    $filesize = (int)$headers['Content-Length'];
+                    if ($filesize === 0) {
+                        $zero_size = true;
+                    }
+                }
+            }
+            if ($filesize === false) {
+                // OK, last recourse is to actually read from the stream, but only if it 
+                // is seekable and thus can be reset to the beginning so there is no loss
+                // of data during the actual copy operation...
+               $test_basis = 'read-first-byte';
+                if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
+                    $firstbyte = fread($data, 1);
+                    fseek($data, 0);
+                    if (strlen($firstbyte) === 0) {
+                        $zero_size = true;
+                    }
+                }
+            }
+            \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: '
+                . ' metadata: '   . json_encode($metadata)
+                . ' headers: '    . json_encode($headers)
+                . ' filesize: '   . json_encode($filesize)
+                . ' firstbyte: '  . json_encode(strlen($firstbyte))
+                . ' zero_size: '  . json_encode($zero_size)
+                . ' test_basis: ' . $test_basis);
+        } catch (Exception $e) {
+            \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: Error: ' . $e->getMessage());
+        }
+
 		// chunked handling
 		if (isset($_SERVER['HTTP_OC_CHUNKED'])) {
 			try {
@@ -108,15 +203,27 @@ class File extends Node implements IFile {
 			}
 		}
 
+		/** @var Storage $partStorage */
 		list($partStorage) = $this->fileView->resolvePath($this->path);
-		$needsPartFile = $this->needsPartFile($partStorage) && (strlen($this->path) > 1);
+		$needsPartFile = $partStorage->needsPartFile() && (strlen($this->path) > 1);
+
+		$view = \OC\Files\Filesystem::getView();
 
 		if ($needsPartFile) {
 			// mark file as partial while uploading (ignored by the scanner)
 			$partFilePath = $this->getPartFileBasePath($this->path) . '.ocTransferId' . rand() . '.part';
-		} else {
+
+			if (!$view->isCreatable($partFilePath) && $view->isUpdatable($this->path)) {
+				$needsPartFile = false;
+			}
+		}
+		if (!$needsPartFile) {
 			// upload file directly as the final path
 			$partFilePath = $this->path;
+
+			if ($view && !$this->emitPreHooks($exists)) {
+				throw new Exception('Could not write to final file, canceled by hook');
+			}
 		}
 
 		// the part file and target file might be on a different storage in case of a single file storage (e.g. single file share)
@@ -125,34 +232,74 @@ class File extends Node implements IFile {
 		/** @var \OC\Files\Storage\Storage $storage */
 		list($storage, $internalPath) = $this->fileView->resolvePath($this->path);
 		try {
-			$target = $partStorage->fopen($internalPartPath, 'wb');
-			if ($target === false) {
-				\OCP\Util::writeLog('webdav', '\OC\Files\Filesystem::fopen() failed', \OCP\Util::ERROR);
-				// because we have no clue about the cause we can only throw back a 500/Internal Server Error
-				throw new Exception('Could not write file contents');
+			if (!$needsPartFile) {
+				$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
 			}
-			list($count, $result) = \OC_Helper::streamCopy($data, $target);
-			fclose($target);
+
+			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
+
+				if (!is_resource($data)) {
+					$tmpData = fopen('php://temp', 'r+');
+					if ($data !== null) {
+						fwrite($tmpData, $data);
+						rewind($tmpData);
+					}
+					$data = $tmpData;
+				}
+
+				$isEOF = false;
+				$wrappedData = CallbackWrapper::wrap($data, null, null, null, null, function ($stream) use (&$isEOF) {
+					$isEOF = feof($stream);
+				});
+
+				$count = $partStorage->writeStream($internalPartPath, $wrappedData);
+				$result = $count > 0;
+
+				if ($result === false) {
+					$result = $isEOF;
+					if (is_resource($wrappedData)) {
+						$result = feof($wrappedData);
+					}
+				}
+
+			} else {
+				$target = $partStorage->fopen($internalPartPath, 'wb');
+				if ($target === false) {
+					\OC::$server->getLogger()->error('\OC\Files\Filesystem::fopen() failed', ['app' => 'webdav']);
+					// because we have no clue about the cause we can only throw back a 500/Internal Server Error
+					throw new Exception('Could not write file contents');
+				}
+				list($count, $result) = \OC_Helper::streamCopy($data, $target);
+				fclose($target);
+			}
+
+            // Special handling for zero size files
+            if ($zero_size === true && $count === 0) {
+                $result = true;
+            }
 
 			if ($result === false) {
 				$expected = -1;
 				if (isset($_SERVER['CONTENT_LENGTH'])) {
 					$expected = $_SERVER['CONTENT_LENGTH'];
 				}
-				throw new Exception('Error while copying file to target location (copied bytes: ' . $count . ', expected filesize: ' . $expected . ' )');
+				if ($expected !== "0") {
+					throw new Exception('Error while copying file to target location (copied bytes: ' . $count . ', expected filesize: ' . $expected . ' )');
+				}
 			}
 
 			// if content length is sent by client:
 			// double check if the file was fully received
 			// compare expected and actual size
 			if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
-				$expected = $_SERVER['CONTENT_LENGTH'];
-				if ($count != $expected) {
+				$expected = (int)$_SERVER['CONTENT_LENGTH'];
+				if ($count !== $expected) {
 					throw new BadRequest('expected filesize ' . $expected . ' got ' . $count);
 				}
 			}
 
 		} catch (\Exception $e) {
+			\OC::$server->getLogger()->logException($e);
 			if ($needsPartFile) {
 				$partStorage->unlink($internalPartPath);
 			}
@@ -160,31 +307,26 @@ class File extends Node implements IFile {
 		}
 
 		try {
-			$view = \OC\Files\Filesystem::getView();
-			if ($view) {
-				$run = $this->emitPreHooks($exists);
-			} else {
-				$run = true;
-			}
-
-			try {
-				$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
-			} catch (LockedException $e) {
-				if ($needsPartFile) {
-					$partStorage->unlink($internalPartPath);
-				}
-				throw new FileLocked($e->getMessage(), $e->getCode(), $e);
-			}
-
 			if ($needsPartFile) {
+				if ($view && !$this->emitPreHooks($exists)) {
+					$partStorage->unlink($internalPartPath);
+					throw new Exception('Could not rename part file to final file, canceled by hook');
+				}
+				try {
+					$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
+				} catch (LockedException $e) {
+					if ($needsPartFile) {
+						$partStorage->unlink($internalPartPath);
+					}
+					throw new FileLocked($e->getMessage(), $e->getCode(), $e);
+				}
+
 				// rename to correct path
 				try {
-					if ($run) {
-						$renameOkay = $storage->moveFromStorage($partStorage, $internalPartPath, $internalPath);
-						$fileExists = $storage->file_exists($internalPath);
-					}
-					if (!$run || $renameOkay === false || $fileExists === false) {
-						\OCP\Util::writeLog('webdav', 'renaming part file to final file failed ($run: ' . ( $run ? 'true' : 'false' ) . ', $renameOkay: '  . ( $renameOkay ? 'true' : 'false' ) . ', $fileExists: ' . ( $fileExists ? 'true' : 'false' ) . ')', \OCP\Util::ERROR);
+					$renameOkay = $storage->moveFromStorage($partStorage, $internalPartPath, $internalPath);
+					$fileExists = $storage->file_exists($internalPath);
+					if ($renameOkay === false || $fileExists === false) {
+						\OC::$server->getLogger()->error('renaming part file to final file failed $renameOkay: ' . ($renameOkay ? 'true' : 'false') . ', $fileExists: ' . ($fileExists ? 'true' : 'false') . ')', ['app' => 'webdav']);
 						throw new Exception('Could not rename part file to final file');
 					}
 				} catch (ForbiddenException $ex) {
@@ -205,26 +347,21 @@ class File extends Node implements IFile {
 			}
 
 			// allow sync clients to send the mtime along in a header
-			$request = \OC::$server->getRequest();
-			if (isset($request->server['HTTP_X_OC_MTIME'])) {
-				$mtimeStr = $request->server['HTTP_X_OC_MTIME'];
-				if (!is_numeric($mtimeStr)) {
-					throw new \InvalidArgumentException('X-OC-Mtime header must be an integer (unix timestamp).');
-				}
-				$mtime = intval($mtimeStr);
+			if (isset($this->request->server['HTTP_X_OC_MTIME'])) {
+				$mtime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_MTIME']);
 				if ($this->fileView->touch($this->path, $mtime)) {
-					header('X-OC-MTime: accepted');
+					$this->header('X-OC-MTime: accepted');
 				}
 			}
-					
+
 			if ($view) {
 				$this->emitPostHooks($exists);
 			}
 
 			$this->refreshInfo();
 
-			if (isset($request->server['HTTP_OC_CHECKSUM'])) {
-				$checksum = trim($request->server['HTTP_OC_CHECKSUM']);
+			if (isset($this->request->server['HTTP_OC_CHECKSUM'])) {
+				$checksum = trim($this->request->server['HTTP_OC_CHECKSUM']);
 				$this->fileView->putFileInfo($this->path, ['checksum' => $checksum]);
 				$this->refreshInfo();
 			} else if ($this->getChecksum() !== null && $this->getChecksum() !== '') {
@@ -312,7 +449,11 @@ class File extends Node implements IFile {
 				// do a if the file did not exist
 				throw new NotFound();
 			}
-			$res = $this->fileView->fopen(ltrim($this->path, '/'), 'rb');
+			try {
+				$res = $this->fileView->fopen(ltrim($this->path, '/'), 'rb');
+			} catch (\Exception $e) {
+				$this->convertToSabreException($e);
+			}
 			if ($res === false) {
 				throw new ServiceUnavailable("Could not open file");
 			}
@@ -396,7 +537,7 @@ class File extends Node implements IFile {
 	 * @throws ServiceUnavailable
 	 */
 	private function createFileChunked($data) {
-		list($path, $name) = \Sabre\HTTP\URLUtil::splitPath($this->path);
+		list($path, $name) = \Sabre\Uri\split($this->path);
 
 		$info = \OC_FileChunking::decodeName($name);
 		if (empty($info)) {
@@ -409,8 +550,8 @@ class File extends Node implements IFile {
 		//detect aborted upload
 		if (isset ($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
 			if (isset($_SERVER['CONTENT_LENGTH'])) {
-				$expected = $_SERVER['CONTENT_LENGTH'];
-				if ($bytesWritten != $expected) {
+				$expected = (int)$_SERVER['CONTENT_LENGTH'];
+				if ($bytesWritten !== $expected) {
 					$chunk_handler->remove($info['index']);
 					throw new BadRequest(
 						'expected filesize ' . $expected . ' got ' . $bytesWritten);
@@ -419,8 +560,9 @@ class File extends Node implements IFile {
 		}
 
 		if ($chunk_handler->isComplete()) {
+			/** @var Storage $storage */
 			list($storage,) = $this->fileView->resolvePath($path);
-			$needsPartFile = $this->needsPartFile($storage);
+			$needsPartFile = $storage->needsPartFile();
 			$partFile = null;
 
 			$targetPath = $path . '/' . $info['name'];
@@ -450,7 +592,7 @@ class File extends Node implements IFile {
 					$renameOkay = $targetStorage->moveFromStorage($partStorage, $partInternalPath, $targetInternalPath);
 					$fileExists = $targetStorage->file_exists($targetInternalPath);
 					if ($renameOkay === false || $fileExists === false) {
-						\OCP\Util::writeLog('webdav', '\OC\Files\Filesystem::rename() failed', \OCP\Util::ERROR);
+						\OC::$server->getLogger()->error('\OC\Files\Filesystem::rename() failed', ['app' => 'webdav']);
 						// only delete if an error occurred and the target file was already created
 						if ($fileExists) {
 							// set to null to avoid double-deletion when handling exception
@@ -467,10 +609,10 @@ class File extends Node implements IFile {
 				}
 
 				// allow sync clients to send the mtime along in a header
-				$request = \OC::$server->getRequest();
-				if (isset($request->server['HTTP_X_OC_MTIME'])) {
-					if ($targetStorage->touch($targetInternalPath, $request->server['HTTP_X_OC_MTIME'])) {
-						header('X-OC-MTime: accepted');
+				if (isset($this->request->server['HTTP_X_OC_MTIME'])) {
+					$mtime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_MTIME']);
+					if ($targetStorage->touch($targetInternalPath, $mtime)) {
+						$this->header('X-OC-MTime: accepted');
 					}
 				}
 
@@ -484,8 +626,8 @@ class File extends Node implements IFile {
 				// FIXME: should call refreshInfo but can't because $this->path is not the of the final file
 				$info = $this->fileView->getFileInfo($targetPath);
 
-				if (isset($request->server['HTTP_OC_CHECKSUM'])) {
-					$checksum = trim($request->server['HTTP_OC_CHECKSUM']);
+				if (isset($this->request->server['HTTP_OC_CHECKSUM'])) {
+					$checksum = trim($this->request->server['HTTP_OC_CHECKSUM']);
 					$this->fileView->putFileInfo($targetPath, ['checksum' => $checksum]);
 				} else if ($info->getChecksum() !== null && $info->getChecksum() !== '') {
 					$this->fileView->putFileInfo($this->path, ['checksum' => '']);
@@ -503,21 +645,6 @@ class File extends Node implements IFile {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Returns whether a part file is needed for the given storage
-	 * or whether the file can be assembled/uploaded directly on the
-	 * target storage.
-	 *
-	 * @param \OCP\Files\Storage $storage
-	 * @return bool true if the storage needs part file handling
-	 */
-	private function needsPartFile($storage) {
-		// TODO: in the future use ChunkHandler provided by storage
-		return !$storage->instanceOfStorage('OCA\Files_Sharing\External\Storage') &&
-			!$storage->instanceOfStorage('OC\Files\Storage\OwnCloud') &&
-			$storage->needsPartFile();
 	}
 
 	/**
@@ -563,6 +690,9 @@ class File extends Node implements IFile {
 		if ($e instanceof StorageNotAvailableException) {
 			throw new ServiceUnavailable('Failed to write file contents: ' . $e->getMessage(), 0, $e);
 		}
+		if ($e instanceof NotFoundException) {
+			throw new NotFound('File not found: ' . $e->getMessage(), 0, $e);
+		}
 
 		throw new \Sabre\DAV\Exception($e->getMessage(), 0, $e);
 	}
@@ -574,5 +704,9 @@ class File extends Node implements IFile {
 	 */
 	public function getChecksum() {
 		return $this->info->getChecksum();
+	}
+
+	protected function header($string) {
+		\header($string);
 	}
 }

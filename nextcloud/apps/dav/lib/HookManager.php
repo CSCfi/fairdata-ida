@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Thomas Citharel <tcit@tcit.fr>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -38,7 +43,7 @@ class HookManager {
 	private $syncService;
 
 	/** @var IUser[] */
-	private $usersToDelete;
+	private $usersToDelete = [];
 
 	/** @var CalDavBackend */
 	private $calDav;
@@ -47,10 +52,10 @@ class HookManager {
 	private $cardDav;
 
 	/** @var array */
-	private $calendarsToDelete;
+	private $calendarsToDelete = [];
 
 	/** @var array */
-	private $addressBooksToDelete;
+	private $addressBooksToDelete = [];
 
 	/** @var EventDispatcher */
 	private $eventDispatcher;
@@ -72,14 +77,22 @@ class HookManager {
 			'post_createUser',
 			$this,
 			'postCreateUser');
+		\OC::$server->getUserManager()->listen('\OC\User', 'assignedUserId', function ($uid) {
+			$this->postCreateUser(['uid' => $uid]);
+		});
 		Util::connectHook('OC_User',
 			'pre_deleteUser',
 			$this,
 			'preDeleteUser');
+		\OC::$server->getUserManager()->listen('\OC\User', 'preUnassignedUserId', [$this, 'preUnassignedUserId']);
 		Util::connectHook('OC_User',
 			'post_deleteUser',
 			$this,
 			'postDeleteUser');
+		\OC::$server->getUserManager()->listen('\OC\User', 'postUnassignedUserId', function ($uid) {
+			$this->postDeleteUser(['uid' => $uid]);
+		});
+		\OC::$server->getUserManager()->listen('\OC\User', 'postUnassignedUserId', [$this, 'postUnassignedUserId']);
 		Util::connectHook('OC_User',
 			'changeUser',
 			$this,
@@ -88,7 +101,9 @@ class HookManager {
 
 	public function postCreateUser($params) {
 		$user = $this->userManager->get($params['uid']);
-		$this->syncService->updateUser($user);
+		if ($user instanceof IUser) {
+			$this->syncService->updateUser($user);
+		}
 	}
 
 	public function preDeleteUser($params) {
@@ -96,6 +111,10 @@ class HookManager {
 		$this->usersToDelete[$uid] = $this->userManager->get($uid);
 		$this->calendarsToDelete = $this->calDav->getUsersOwnCalendars('principals/users/' . $uid);
 		$this->addressBooksToDelete = $this->cardDav->getUsersOwnAddressBooks('principals/users/' . $uid);
+	}
+
+	public function preUnassignedUserId($uid) {
+		$this->usersToDelete[$uid] = $this->userManager->get($uid);
 	}
 
 	public function postDeleteUser($params) {
@@ -111,6 +130,12 @@ class HookManager {
 
 		foreach ($this->addressBooksToDelete as $addressBook) {
 			$this->cardDav->deleteAddressBook($addressBook['id']);
+		}
+	}
+
+	public function postUnassignedUserId($uid) {
+		if (isset($this->usersToDelete[$uid])){
+			$this->syncService->deleteUser($this->usersToDelete[$uid]);
 		}
 	}
 

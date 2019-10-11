@@ -4,9 +4,10 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Christoph Schaefer <christophł@wolkesicher.de>
+ * @author Christoph Schaefer "christophł@wolkesicher.de"
  * @author Christoph Wurst <christoph@owncloud.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Haertl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
@@ -31,10 +32,10 @@
 
 namespace OC\App;
 
+use OC\AppConfig;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
 use OCP\App\ManagerEvent;
-use OCP\IAppConfig;
 use OCP\ICacheFactory;
 use OCP\IGroupManager;
 use OCP\IUser;
@@ -58,7 +59,7 @@ class AppManager implements IAppManager {
 	/** @var IUserSession */
 	private $userSession;
 
-	/** @var IAppConfig */
+	/** @var AppConfig */
 	private $appConfig;
 
 	/** @var IGroupManager */
@@ -79,15 +80,21 @@ class AppManager implements IAppManager {
 	/** @var string[] */
 	private $alwaysEnabled;
 
+	/** @var array */
+	private $appInfos = [];
+
+	/** @var array */
+	private $appVersions = [];
+
 	/**
 	 * @param IUserSession $userSession
-	 * @param IAppConfig $appConfig
+	 * @param AppConfig $appConfig
 	 * @param IGroupManager $groupManager
 	 * @param ICacheFactory $memCacheFactory
 	 * @param EventDispatcherInterface $dispatcher
 	 */
 	public function __construct(IUserSession $userSession,
-								IAppConfig $appConfig,
+								AppConfig $appConfig,
 								IGroupManager $groupManager,
 								ICacheFactory $memCacheFactory,
 								EventDispatcherInterface $dispatcher) {
@@ -197,7 +204,9 @@ class AppManager implements IAppManager {
 	}
 
 	/**
-	 * Check if an app is installed in the instance
+	 * Check if an app is enabled in the instance
+	 *
+	 * Notice: This actually checks if the app is enabled and not only if it is installed.
 	 *
 	 * @param string $appId
 	 * @return bool
@@ -245,15 +254,16 @@ class AppManager implements IAppManager {
 	 *
 	 * @param string $appId
 	 * @param \OCP\IGroup[] $groups
-	 * @throws \Exception if app can't be enabled for groups
+	 * @throws \InvalidArgumentException if app can't be enabled for groups
+	 * @throws AppPathNotFoundException
 	 */
 	public function enableAppForGroups($appId, $groups) {
+		// Check if app exists
+		$this->getAppPath($appId);
+
 		$info = $this->getAppInfo($appId);
-		if (!empty($info['types'])) {
-			$protectedTypes = array_intersect($this->protectedAppTypes, $info['types']);
-			if (!empty($protectedTypes)) {
-				throw new \Exception("$appId can't be enabled for groups.");
-			}
+		if (!empty($info['types']) && $this->hasProtectedAppType($info['types'])) {
+			throw new \InvalidArgumentException("$appId can't be enabled for groups.");
 		}
 
 		$groupIds = array_map(function ($group) {
@@ -280,6 +290,13 @@ class AppManager implements IAppManager {
 		}
 		unset($this->installedAppsCache[$appId]);
 		$this->appConfig->setValue($appId, 'enabled', 'no');
+
+		// run uninstall steps
+		$appData = $this->getAppInfo($appId);
+		if (!is_null($appData)) {
+			\OC_App::executeRepairSteps($appId, $appData['repair-steps']['uninstall']);
+		}
+
 		$this->dispatcher->dispatch(ManagerEvent::EVENT_APP_DISABLE, new ManagerEvent(
 			ManagerEvent::EVENT_APP_DISABLE, $appId
 		));
@@ -305,8 +322,9 @@ class AppManager implements IAppManager {
 	 * Clear the cached list of apps when enabling/disabling an app
 	 */
 	public function clearAppsCache() {
-		$settingsMemCache = $this->memCacheFactory->create('settings');
+		$settingsMemCache = $this->memCacheFactory->createDistributed('settings');
 		$settingsMemCache->clear('listApps');
+		$this->appInfos = [];
 	}
 
 	/**
@@ -340,17 +358,45 @@ class AppManager implements IAppManager {
 	 *
 	 * @param string $appId app id
 	 *
-	 * @return array app info
-	 *
-	 * @internal
+	 * @param bool $path
+	 * @param null $lang
+	 * @return array|null app info
 	 */
-	public function getAppInfo($appId) {
-		$appInfo = \OC_App::getAppInfo($appId);
-		if (!isset($appInfo['version'])) {
-			// read version from separate file
-			$appInfo['version'] = \OC_App::getAppVersion($appId);
+	public function getAppInfo(string $appId, bool $path = false, $lang = null) {
+		if ($path) {
+			$file = $appId;
+		} else {
+			if ($lang === null && isset($this->appInfos[$appId])) {
+				return $this->appInfos[$appId];
+			}
+			try {
+				$appPath = $this->getAppPath($appId);
+			} catch (AppPathNotFoundException $e) {
+				return null;
+			}
+			$file = $appPath . '/appinfo/info.xml';
 		}
-		return $appInfo;
+
+		$parser = new InfoParser($this->memCacheFactory->createLocal('core.appinfo'));
+		$data = $parser->parse($file);
+
+		if (is_array($data)) {
+			$data = \OC_App::parseAppInfo($data, $lang);
+		}
+
+		if ($lang === null) {
+			$this->appInfos[$appId] = $data;
+		}
+
+		return $data;
+	}
+
+	public function getAppVersion(string $appId, bool $useCache = true): string {
+		if(!$useCache || !isset($this->appVersions[$appId])) {
+			$appInfo = \OC::$server->getAppManager()->getAppInfo($appId);
+			$this->appVersions[$appId] = ($appInfo !== null && isset($appInfo['version'])) ? $appInfo['version'] : '0';
+		}
+		return $this->appVersions[$appId];
 	}
 
 	/**
@@ -362,12 +408,14 @@ class AppManager implements IAppManager {
 	 *
 	 * @internal
 	 */
-	public function getIncompatibleApps($version) {
+	public function getIncompatibleApps(string $version): array {
 		$apps = $this->getInstalledApps();
 		$incompatibleApps = array();
 		foreach ($apps as $appId) {
 			$info = $this->getAppInfo($appId);
-			if (!\OC_App::isAppCompatible($version, $info)) {
+			if ($info === null) {
+				$incompatibleApps[] = ['id' => $appId];
+			} else if (!\OC_App::isAppCompatible($version, $info)) {
 				$incompatibleApps[] = $info;
 			}
 		}
@@ -376,6 +424,7 @@ class AppManager implements IAppManager {
 
 	/**
 	 * @inheritdoc
+	 * In case you change this method, also change \OC\App\CodeChecker\InfoChecker::isShipped()
 	 */
 	public function isShipped($appId) {
 		$this->loadShippedJson();
@@ -387,6 +436,10 @@ class AppManager implements IAppManager {
 		return in_array($appId, $alwaysEnabled, true);
 	}
 
+	/**
+	 * In case you change this method, also change \OC\App\CodeChecker\InfoChecker::loadShippedJson()
+	 * @throws \Exception
+	 */
 	private function loadShippedJson() {
 		if ($this->shippedApps === null) {
 			$shippedJson = \OC::$SERVERROOT . '/core/shipped.json';

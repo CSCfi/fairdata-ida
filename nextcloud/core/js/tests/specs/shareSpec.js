@@ -45,9 +45,10 @@ describe('OC.Share tests', function() {
 				var $action;
 
 				$file.attr('data-share-owner', input);
+				$file.attr('data-share-owner-id', input);
 				OC.Share.markFileAsShared($file);
 
-				$action = $file.find('.action-share>span');
+				$action = $file.find('.action-share>span').parent();
 				expect($action.text().trim()).toEqual(output);
 				if (_.isString(title)) {
 					expect($action.find('.remoteAddress').attr('title')).toEqual(title);
@@ -58,41 +59,41 @@ describe('OC.Share tests', function() {
 				tooltipStub.reset();
 			}
 
-			it('displays the local share owner as is', function() {
-				checkOwner('User One', 'User One', null);
+			it('displays the local share owner with "Shared by" prefix', function() {
+				checkOwner('User One', 'Shared by User One', null);
 			});
 			it('displays the user name part of a remote share owner', function() {
 				checkOwner(
 					'User One@someserver.com',
 					'User One@…',
-					'User One@someserver.com'
+					'Shared by User One@someserver.com'
 				);
 				checkOwner(
 					'User One@someserver.com/',
 					'User One@…',
-					'User One@someserver.com'
+					'Shared by User One@someserver.com'
 				);
 				checkOwner(
 					'User One@someserver.com/root/of/owncloud',
 					'User One@…',
-					'User One@someserver.com'
+					'Shared by User One@someserver.com'
 				);
 			});
 			it('displays the user name part with domain of a remote share owner', function() {
 				checkOwner(
 					'User One@example.com@someserver.com',
 					'User One@example.com',
-					'User One@example.com@someserver.com'
+					'Shared by User One@example.com@someserver.com'
 				);
 				checkOwner(
 					'User One@example.com@someserver.com/',
 					'User One@example.com',
-					'User One@example.com@someserver.com'
+					'Shared by User One@example.com@someserver.com'
 				);
 				checkOwner(
 					'User One@example.com@someserver.com/root/of/owncloud',
 					'User One@example.com',
-					'User One@example.com@someserver.com'
+					'Shared by User One@example.com@someserver.com'
 				);
 			});
 		});
@@ -119,6 +120,7 @@ describe('OC.Share tests', function() {
 			it('shows a shared folder icon for folders shared with the current user', function() {
 				$file.attr('data-type', 'dir');
 				$file.attr('data-share-owner', 'someoneelse');
+				$file.attr('data-share-owner-id', 'someoneelse');
 				OC.Share.markFileAsShared($file);
 
 				checkIcon('filetypes/folder-shared');
@@ -149,16 +151,23 @@ describe('OC.Share tests', function() {
 
 				checkIcon('filetypes/folder-external');
 			});
+			it('shows encrypted icon if encrypted folder', function() {
+				$file.attr('data-type', 'dir');
+				$file.attr('data-e2eencrypted', true);
+				OC.Share.markFileAsShared($file, false, false);
+
+				checkIcon('filetypes/folder-encrypted');
+			});
 		});
 
-		describe('displaying the recipoients', function() {
+		describe('displaying the recipients', function() {
 			function checkRecipients(input, output, title) {
 				var $action;
 
-				$file.attr('data-share-recipients', input);
+				$file.attr('data-share-recipient-data', JSON.stringify(input));
 				OC.Share.markFileAsShared($file, true);
 
-				$action = $file.find('.action-share>span');
+				$action = $file.find('.action-share>span').parent();
 				expect($action.text().trim()).toEqual(output);
 				if (_.isString(title)) {
 					expect($action.find('.remoteAddress').attr('title')).toEqual(title);
@@ -177,67 +186,187 @@ describe('OC.Share tests', function() {
 			}
 
 			it('displays the local share owner as is', function() {
-				checkRecipients('User One', 'Shared with User One', null);
+				var input = {
+					0: {
+						shareWith: 'User One',
+						shareWithDisplayName: 'User One'
+					}
+				};
+				checkRecipients(input, 'Shared with User One', null);
 			});
 			it('displays the user name part of a remote recipient', function() {
+				var input = {
+					0: {
+						shareWith: 'User One@someserver.com',
+						shareWithDisplayName: 'User One@someserver.com'
+					}
+				};
 				checkRecipients(
-					'User One@someserver.com',
-					'Shared with User One@…',
-					'User One@someserver.com'
+					input,
+					'User One@…',
+					'Shared with User One@someserver.com'
 				);
+
+				input = {
+					0: {
+						shareWith: 'User One@someserver.com/',
+						shareWithDisplayName: 'User One@someserver.com/'
+					}
+				};
 				checkRecipients(
-					'User One@someserver.com/',
-					'Shared with User One@…',
-					'User One@someserver.com'
+					input,
+					'User One@…',
+					'Shared with User One@someserver.com'
 				);
+
+				input = {
+					0: {
+						shareWith: 'User One@someserver.com/root/of/nextcloud',
+						shareWithDisplayName: 'User One@someserver.com/root/of/nextcloud'
+					}
+				};
 				checkRecipients(
-					'User One@someserver.com/root/of/owncloud',
-					'Shared with User One@…',
-					'User One@someserver.com'
+					input,
+					'User One@…',
+					'Shared with User One@someserver.com'
 				);
 			});
 			it('displays the user name part with domain of a remote share owner', function() {
+				var input = {
+					0: {
+						shareWith: 'User One@example.com@someserver.com',
+						shareWithDisplayName: 'User One@example.com@someserver.com'
+					}
+				};
 				checkRecipients(
-					'User One@example.com@someserver.com',
-					'Shared with User One@example.com',
-					'User One@example.com@someserver.com'
+					input,
+					'User One@example.com',
+					'Shared with User One@example.com@someserver.com'
 				);
+
+				input = {
+					0: {
+						shareWith: 'User One@example.com@someserver.com/',
+						shareWithDisplayName: 'User One@example.com@someserver.com/'
+					}
+				};
 				checkRecipients(
-					'User One@example.com@someserver.com/',
-					'Shared with User One@example.com',
-					'User One@example.com@someserver.com'
+					input,
+					'User One@example.com',
+					'Shared with User One@example.com@someserver.com'
 				);
+
+				input = {
+					0: {
+						shareWith: 'User One@example.com@someserver.com/root/of/nextcloud',
+						shareWithDisplayName: 'User One@example.com@someserver.com/root/of/nextcloud'
+					}
+				};
 				checkRecipients(
-					'User One@example.com@someserver.com/root/of/owncloud',
-					'Shared with User One@example.com',
-					'User One@example.com@someserver.com'
+					input,
+					'User One@example.com',
+					'Shared with User One@example.com@someserver.com'
 				);
 			});
 			it('display multiple remote recipients', function() {
+				var input = {
+					0: {
+						shareWith: 'One@someserver.com',
+						shareWithDisplayName: 'One@someserver.com'
+					},
+					1: {
+						shareWith: 'two@otherserver.com',
+						shareWithDisplayName: 'two@otherserver.com'
+					}
+				};
 				checkRecipients(
-					'One@someserver.com, two@otherserver.com',
-					'Shared with One@…, two@…',
-					['One@someserver.com', 'two@otherserver.com']
+					input,
+					'One@… two@…',
+					['Shared with One@someserver.com', 'Shared with two@otherserver.com']
 				);
+
+				input = {
+					0: {
+						shareWith: 'One@someserver.com/',
+						shareWithDisplayName: 'One@someserver.com/'
+					},
+					1: {
+						shareWith: 'two@someserver.com',
+						shareWithDisplayName: 'two@someserver.com'
+					}
+				};
 				checkRecipients(
-					'One@someserver.com/, two@otherserver.com',
-					'Shared with One@…, two@…',
-					['One@someserver.com', 'two@otherserver.com']
+					input,
+					'One@… two@…',
+					['Shared with One@someserver.com', 'Shared with two@otherserver.com']
 				);
+
+				input = {
+					0: {
+						shareWith: 'One@someserver.com/root/of/nextcloud',
+						shareWithDisplayName: 'One@someserver.com/root/of/nextcloud'
+					},
+					1: {
+						shareWith: 'two@someserver.com',
+						shareWithDisplayName: 'two@someserver.com'
+					}
+				};
 				checkRecipients(
-					'One@someserver.com/root/of/owncloud, two@otherserver.com',
-					'Shared with One@…, two@…',
-					['One@someserver.com', 'two@otherserver.com']
+					input,
+					'One@… two@…',
+					['Shared with One@someserver.com', 'Shared with two@otherserver.com']
 				);
 			});
 			it('display mixed recipients', function() {
 				checkRecipients(
-					'One, two@otherserver.com',
-					'Shared with One, two@…',
-					['two@otherserver.com']
+					{
+						0: {
+							shareWith: 'One',
+							shareWithDisplayName: 'One'
+						},
+						1: {
+							shareWith: 'two@otherserver.com',
+							shareWithDisplayName: 'two@otherserver.com'
+						}
+					},
+					'Shared with One two@…',
+					['Shared with two@otherserver.com']
+				);
+			});
+			it('display multiple with divergent displaynames', function() {
+				var recipients = {
+					0: {
+						shareWith: 'One',
+						shareWithDisplayName: 'Yoko Ono',
+						_output: 'Shared with Yoko Ono'
+					},
+					1: {
+						shareWith: 'two@otherserver.com',
+						shareWithDisplayName: 'two@othererver.com',
+						_output: 'two@…'
+					},
+					2: {
+						shareWith: 'Three',
+						shareWithDisplayName: 'Green, Mina',
+						_output: 'Shared with Green, Mina'
+					}
+				};
+
+				// we cannot assume the locale, also because PhantomJS has a bug.
+				var sortArray = _.toArray(recipients)
+					.sort(function(a, b) {
+						return a.shareWithDisplayName.localeCompare(b.shareWithDisplayName);
+					});
+				var sortedOutput = _.map(sortArray, function(recipient) {
+					return recipient._output;
+				}).join(' ');
+
+				checkRecipients(
+					recipients,
+					sortedOutput,
+					['Shared with two@otherserver.com']
 				);
 			});
 		});
 	});
 });
-

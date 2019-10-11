@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -31,15 +32,16 @@ namespace OCP;
  */
 interface ICacheFactory{
 	/**
-	 * Get a memory cache instance
+	 * Get a distributed memory cache instance
 	 *
 	 * All entries added trough the cache instance will be namespaced by $prefix to prevent collisions between apps
 	 *
 	 * @param string $prefix
-	 * @return \OCP\ICache
+	 * @return ICache
 	 * @since 7.0.0
+	 * @deprecated 13.0.0 Use either createLocking, createDistributed or createLocal
 	 */
-	public function create($prefix = '');
+	public function create(string $prefix = ''): ICache;
 
 	/**
 	 * Check if any memory cache backend is available
@@ -47,5 +49,40 @@ interface ICacheFactory{
 	 * @return bool
 	 * @since 7.0.0
 	 */
-	public function isAvailable();
+	public function isAvailable(): bool;
+
+	/**
+	 * Check if a local memory cache backend is available
+	 *
+	 * @return bool
+	 * @since 14.0.0
+	 */
+	public function isLocalCacheAvailable(): bool;
+
+	/**
+	 * create a cache instance for storing locks
+	 *
+	 * @param string $prefix
+	 * @return IMemcache
+	 * @since 13.0.0
+	 */
+	public function createLocking(string $prefix = ''): IMemcache;
+
+	/**
+	 * create a distributed cache instance
+	 *
+	 * @param string $prefix
+	 * @return ICache
+	 * @since 13.0.0
+	 */
+	public function createDistributed(string $prefix = ''): ICache;
+
+	/**
+	 * create a local cache instance
+	 *
+	 * @param string $prefix
+	 * @return ICache
+	 * @since 13.0.0
+	 */
+	public function createLocal(string $prefix = ''): ICache;
 }

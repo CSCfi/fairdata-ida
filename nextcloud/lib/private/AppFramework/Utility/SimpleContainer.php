@@ -7,6 +7,7 @@
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -45,6 +46,7 @@ class SimpleContainer extends Container implements IContainer {
 	/**
 	 * @param ReflectionClass $class the class to instantiate
 	 * @return \stdClass the created class
+	 * @suppress PhanUndeclaredClassInstanceof
 	 */
 	private function buildClass(ReflectionClass $class) {
 		$constructor = $class->getConstructor();
@@ -64,7 +66,7 @@ class SimpleContainer extends Container implements IContainer {
 
 				try {
 					$parameters[] = $this->query($resolveName);
-				} catch (\Exception $e) {
+				} catch (QueryException $e) {
 					// Service not found, use the default value when available
 					if ($parameter->isDefaultValueAvailable()) {
 						$parameters[] = $parameter->getDefaultValue();
@@ -174,5 +176,4 @@ class SimpleContainer extends Container implements IContainer {
 		}
 		return $name;
 	}
-
 }

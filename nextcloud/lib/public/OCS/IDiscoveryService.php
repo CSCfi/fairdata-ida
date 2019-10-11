@@ -1,6 +1,9 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2017 Bjoern Schiessle <bjoern@schiessle.org>
+ *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -41,8 +44,9 @@ interface IDiscoveryService {
 	 *
 	 * @param string $remote
 	 * @param string $service the service you want to discover
+	 * @param bool $skipCache We won't check if the data is in the cache. This is useful if a background job is updating the status - Added in 14.0.0
 	 * @return array
 	 */
-	public function discover($remote, $service);
+	public function discover(string $remote, string $service, bool $skipCache = false): array;
 
 }

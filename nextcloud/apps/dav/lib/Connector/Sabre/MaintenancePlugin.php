@@ -5,7 +5,6 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -28,6 +27,7 @@
 namespace OCA\DAV\Connector\Sabre;
 
 use OCP\IConfig;
+use OCP\Util;
 use Sabre\DAV\Exception\ServiceUnavailable;
 use Sabre\DAV\ServerPlugin;
 
@@ -78,10 +78,10 @@ class MaintenancePlugin extends ServerPlugin {
 	 * @return bool
 	 */
 	public function checkMaintenanceMode() {
-		if ($this->config->getSystemValue('maintenance', false)) {
+		if ($this->config->getSystemValueBool('maintenance')) {
 			throw new ServiceUnavailable('System in maintenance mode.');
 		}
-		if (\OC::checkUpgrade(false)) {
+		if (Util::needUpgrade()) {
 			throw new ServiceUnavailable('Upgrade needed');
 		}
 

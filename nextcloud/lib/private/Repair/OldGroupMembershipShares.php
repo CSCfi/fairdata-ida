@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -65,6 +66,7 @@ class OldGroupMembershipShares implements IRepairStep {
 	 * Must throw exception on error.
 	 *
 	 * @throws \Exception in case of failure
+	 * @suppress SqlInjectionChecker
 	 */
 	public function run(IOutput $output) {
 		$deletedEntries = 0;

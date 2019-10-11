@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -70,7 +72,7 @@ class Calendar implements IFilter {
 	 * @since 11.0.0
 	 */
 	public function getIcon() {
-		return $this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.svg'));
+		return $this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar.svg'));
 	}
 
 	/**

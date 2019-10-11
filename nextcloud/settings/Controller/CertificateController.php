@@ -5,6 +5,7 @@
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -72,7 +73,7 @@ class CertificateController extends Controller {
 	 *
 	 * @NoAdminRequired
 	 * @NoSubadminRequired
-	 * @return array
+	 * @return DataResponse
 	 */
 	public function addPersonalRootCertificate() {
 		return $this->addCertificate($this->userCertificateManager);
@@ -114,7 +115,7 @@ class CertificateController extends Controller {
 				$headers
 			);
 		} catch (\Exception $e) {
-			return new DataResponse('An error occurred.', Http::STATUS_UNPROCESSABLE_ENTITY, $headers);
+			return new DataResponse(['An error occurred.'], Http::STATUS_UNPROCESSABLE_ENTITY, $headers);
 		}
 	}
 
@@ -129,7 +130,7 @@ class CertificateController extends Controller {
 	public function removePersonalRootCertificate($certificateIdentifier) {
 
 		if ($this->isCertificateImportAllowed() === false) {
-			return new DataResponse('Individual certificate management disabled', Http::STATUS_FORBIDDEN);
+			return new DataResponse(['Individual certificate management disabled'], Http::STATUS_FORBIDDEN);
 		}
 
 		$this->userCertificateManager->removeCertificate($certificateIdentifier);
@@ -156,7 +157,7 @@ class CertificateController extends Controller {
 	/**
 	 * Add a new personal root certificate to the system's trust store
 	 *
-	 * @return array
+	 * @return DataResponse
 	 */
 	public function addSystemRootCertificate() {
 		return $this->addCertificate($this->systemCertificateManager);
@@ -171,7 +172,7 @@ class CertificateController extends Controller {
 	public function removeSystemRootCertificate($certificateIdentifier) {
 
 		if ($this->isCertificateImportAllowed() === false) {
-			return new DataResponse('Individual certificate management disabled', Http::STATUS_FORBIDDEN);
+			return new DataResponse(['Individual certificate management disabled'], Http::STATUS_FORBIDDEN);
 		}
 
 		$this->systemCertificateManager->removeCertificate($certificateIdentifier);

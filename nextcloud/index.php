@@ -1,11 +1,19 @@
 <?php
 /**
+ *
+ * Your webserver seems to be not configured to use PHP or PHP is not installed. 
+ * Please contact your administrator or follow our documentation: 
+ * https://docs.nextcloud.com/server/15/admin_manual/installation/source_installation.html 
+ *
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Sergio Bertolín <sbertolin@solidgear.es>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -25,21 +33,7 @@
  *
  */
 
-// Show warning if a PHP version below 5.6.0 is used, this has to happen here
-// because base.php will already use 5.6 syntax.
-if (version_compare(PHP_VERSION, '5.6.0') === -1) {
-	echo 'This version of Nextcloud requires at least PHP 5.6.0<br/>';
-	echo 'You are currently running ' . PHP_VERSION . '. Please update your PHP version.';
-	return;
-}
-
-// Show warning if PHP 7.2 is used as Nextcloud is not compatible with PHP 7.2 for now
-// @see https://github.com/nextcloud/server/pull/5791
-if (version_compare(PHP_VERSION, '7.2.0') !== -1) {
-	echo 'This version of Nextcloud is not compatible with PHP 7.2.<br/>';
-	echo 'You are currently running ' . PHP_VERSION . '.';
-	return;
-}
+require_once __DIR__ . '/lib/versioncheck.php';
 
 try {
 
@@ -51,22 +45,40 @@ try {
 	\OC::$server->getLogger()->logException($ex, array('app' => 'index'));
 
 	//show the user a detailed error page
-	OC_Response::setStatus(OC_Response::STATUS_SERVICE_UNAVAILABLE);
-	OC_Template::printExceptionErrorPage($ex);
+	OC_Template::printExceptionErrorPage($ex, 503);
 } catch (\OC\HintException $ex) {
-	OC_Response::setStatus(OC_Response::STATUS_SERVICE_UNAVAILABLE);
-	OC_Template::printErrorPage($ex->getMessage(), $ex->getHint());
+	try {
+		OC_Template::printErrorPage($ex->getMessage(), $ex->getHint(), 503);
+	} catch (Exception $ex2) {
+		try {
+			\OC::$server->getLogger()->logException($ex, array('app' => 'index'));
+			\OC::$server->getLogger()->logException($ex2, array('app' => 'index'));
+		} catch (Throwable $e) {
+			// no way to log it properly - but to avoid a white page of death we try harder and ignore this one here
+		}
+
+		//show the user a detailed error page
+		OC_Template::printExceptionErrorPage($ex, 500);
+	}
 } catch (\OC\User\LoginException $ex) {
-	OC_Response::setStatus(OC_Response::STATUS_FORBIDDEN);
-	OC_Template::printErrorPage($ex->getMessage(), $ex->getMessage());
+	OC_Template::printErrorPage($ex->getMessage(), $ex->getMessage(), 403);
 } catch (Exception $ex) {
 	\OC::$server->getLogger()->logException($ex, array('app' => 'index'));
 
 	//show the user a detailed error page
-	OC_Response::setStatus(OC_Response::STATUS_INTERNAL_SERVER_ERROR);
-	OC_Template::printExceptionErrorPage($ex);
+	OC_Template::printExceptionErrorPage($ex, 500);
 } catch (Error $ex) {
-	\OC::$server->getLogger()->logException($ex, array('app' => 'index'));
-	OC_Response::setStatus(OC_Response::STATUS_INTERNAL_SERVER_ERROR);
-	OC_Template::printExceptionErrorPage($ex);
+	try {
+		\OC::$server->getLogger()->logException($ex, array('app' => 'index'));
+	} catch (Error $e) {
+		http_response_code(500);
+		header('Content-Type: text/plain; charset=utf-8');
+		print("Internal Server Error\n\n");
+		print("The server encountered an internal error and was unable to complete your request.\n");
+		print("Please contact the server administrator if this error reappears multiple times, please include the technical details below in your report.\n");
+		print("More details can be found in the webserver log.\n");
+
+		throw $ex;
+	}
+	OC_Template::printExceptionErrorPage($ex, 500);
 }

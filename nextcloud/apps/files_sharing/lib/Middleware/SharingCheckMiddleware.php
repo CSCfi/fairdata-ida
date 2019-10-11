@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -28,6 +29,7 @@ namespace OCA\Files_Sharing\Middleware;
 use OCA\Files_Sharing\Controller\ExternalSharesController;
 use OCA\Files_Sharing\Controller\ShareController;
 use OCP\App\IAppManager;
+use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\NotFoundResponse;
 use OCP\AppFramework\Middleware;
 use OCP\Files\NotFoundException;
@@ -37,6 +39,7 @@ use OCA\Files_Sharing\Exceptions\S2SException;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\Share\IManager;
+use OCP\Share\Exceptions\ShareNotFound;
 
 /**
  * Checks whether the "sharing check" is enabled
@@ -84,10 +87,11 @@ class SharingCheckMiddleware extends Middleware {
 	/**
 	 * Check if sharing is enabled before the controllers is executed
 	 *
-	 * @param \OCP\AppFramework\Controller $controller
+	 * @param Controller $controller
 	 * @param string $methodName
 	 * @throws NotFoundException
 	 * @throws S2SException
+	 * @throws ShareNotFound
 	 */
 	public function beforeController($controller, $methodName) {
 		if(!$this->isSharingEnabled()) {
@@ -97,31 +101,24 @@ class SharingCheckMiddleware extends Middleware {
 		if ($controller instanceof ExternalSharesController &&
 			!$this->externalSharesChecks()) {
 			throw new S2SException('Federated sharing not allowed');
-		} else if ($controller instanceof ShareController) {
-			$token = $this->request->getParam('token');
-			$share = $this->shareManager->getShareByToken($token);
-			if ($share->getShareType() === \OCP\Share::SHARE_TYPE_LINK
-				&& !$this->isLinkSharingEnabled()) {
-				throw new NotFoundException('Link sharing is disabled');
-			}
 		}
 	}
 
 	/**
 	 * Return 404 page in case of a not found exception
 	 *
-	 * @param \OCP\AppFramework\Controller $controller
+	 * @param Controller $controller
 	 * @param string $methodName
 	 * @param \Exception $exception
 	 * @return NotFoundResponse
 	 * @throws \Exception
 	 */
 	public function afterException($controller, $methodName, \Exception $exception) {
-		if(is_a($exception, '\OCP\Files\NotFoundException')) {
+		if(is_a($exception, NotFoundException::class)) {
 			return new NotFoundResponse();
 		}
 
-		if (is_a($exception, '\OCA\Files_Sharing\Exceptions\S2SException')) {
+		if (is_a($exception, S2SException::class)) {
 			return new JSONResponse($exception->getMessage(), 405);
 		}
 
@@ -161,22 +158,6 @@ class SharingCheckMiddleware extends Middleware {
 		return true;
 	}
 
-	/**
-	 * Check if link sharing is allowed
-	 * @return bool
-	 */
-	private function isLinkSharingEnabled() {
-		// Check if the shareAPI is enabled
-		if ($this->config->getAppValue('core', 'shareapi_enabled', 'yes') !== 'yes') {
-			return false;
-		}
 
-		// Check whether public sharing is enabled
-		if($this->config->getAppValue('core', 'shareapi_allow_links', 'yes') !== 'yes') {
-			return false;
-		}
-
-		return true;
-	}
 
 }

@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,14 +28,14 @@ class EnterpriseBundle extends Bundle {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function getName() {
-		return (string)$this->l10n->t('Enterprise bundle');
+	public function getName(): string {
+		return $this->l10n->t('Enterprise bundle');
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public function getAppIdentifiers() {
+	public function getAppIdentifiers(): array {
 		return [
 			'admin_audit',
 			'user_ldap',
@@ -41,6 +43,7 @@ class EnterpriseBundle extends Bundle {
 			'files_automatedtagging',
 			'user_saml',
 			'files_accesscontrol',
+			'terms_of_service',
 		];
 	}
 

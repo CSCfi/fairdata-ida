@@ -1,7 +1,9 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Leon Klingele <git@leonklingele.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  *
  * @license AGPL-3.0
@@ -39,7 +41,7 @@ class CsrfToken {
 	/**
 	 * @param string $value Value of the token. Can be encrypted or not encrypted.
 	 */
-	public function __construct($value) {
+	public function __construct(string $value) {
 		$this->value = $value;
 	}
 
@@ -49,9 +51,9 @@ class CsrfToken {
 	 *
 	 * @return string
 	 */
-	public function getEncryptedValue() {
+	public function getEncryptedValue(): string {
 		if($this->encryptedValue === '') {
-			$sharedSecret = random_bytes(strlen($this->value));
+			$sharedSecret = random_bytes(\strlen($this->value));
 			$this->encryptedValue = base64_encode($this->value ^ $sharedSecret) . ':' . base64_encode($sharedSecret);
 		}
 
@@ -62,11 +64,11 @@ class CsrfToken {
 	 * The unencrypted value of the token. Used for decrypting an already
 	 * encrypted token.
 	 *
-	 * @return int
+	 * @return string
 	 */
-	public function getDecryptedValue() {
+	public function getDecryptedValue(): string {
 		$token = explode(':', $this->value);
-		if (count($token) !== 2) {
+		if (\count($token) !== 2) {
 			return '';
 		}
 		$obfuscatedToken = $token[0];

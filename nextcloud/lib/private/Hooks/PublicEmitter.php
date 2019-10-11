@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  *
@@ -28,6 +29,8 @@ class PublicEmitter extends BasicEmitter {
 	 * @param string $scope
 	 * @param string $method
 	 * @param array $arguments optional
+	 *
+	 * @suppress PhanAccessMethodProtected
 	 */
 	public function emit($scope, $method, array $arguments = array()) {
 		parent::emit($scope, $method, $arguments);

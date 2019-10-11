@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016 Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -30,7 +31,6 @@ use OCP\Files\NotPermittedException;
  *
  * @package OCP\Files\SimpleFS
  * @since 11.0.0
- * @internal This interface is experimental and might change for NC12
  */
 interface ISimpleRoot {
 	/**
@@ -42,7 +42,7 @@ interface ISimpleRoot {
 	 * @throws \RuntimeException
 	 * @since 11.0.0
 	 */
-	public function getFolder($name);
+	public function getFolder(string $name): ISimpleFolder;
 
 	/**
 	 * Get all the Folders
@@ -52,7 +52,7 @@ interface ISimpleRoot {
 	 * @throws \RuntimeException
 	 * @since 11.0.0
 	 */
-	public function getDirectoryListing();
+	public function getDirectoryListing(): array;
 
 	/**
 	 * Create a new folder named $name
@@ -63,5 +63,5 @@ interface ISimpleRoot {
 	 * @throws \RuntimeException
 	 * @since 11.0.0
 	 */
-	public function newFolder($name);
+	public function newFolder(string $name): ISimpleFolder;
 }

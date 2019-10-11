@@ -4,9 +4,12 @@
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Andreas Fischer <bantu@owncloud.com>
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -49,7 +52,7 @@ class InfoParser {
 			return null;
 		}
 
-		if(!is_null($this->cache)) {
+		if ($this->cache !== null) {
 			$fileCacheKey = $file . filemtime($file);
 			if ($cachedValue = $this->cache->get($fileCacheKey)) {
 				return json_decode($cachedValue, true);
@@ -122,6 +125,21 @@ class InfoParser {
 		if (!array_key_exists('providers', $array['activity'])) {
 			$array['activity']['providers'] = [];
 		}
+		if (!array_key_exists('settings', $array)) {
+			$array['settings'] = [];
+		}
+		if (!array_key_exists('admin', $array['settings'])) {
+			$array['settings']['admin'] = [];
+		}
+		if (!array_key_exists('admin-section', $array['settings'])) {
+			$array['settings']['admin-section'] = [];
+		}
+		if (!array_key_exists('personal', $array['settings'])) {
+			$array['settings']['personal'] = [];
+		}
+		if (!array_key_exists('personal-section', $array['settings'])) {
+			$array['settings']['personal-section'] = [];
+		}
 
 		if (array_key_exists('types', $array)) {
 			if (is_array($array['types'])) {
@@ -156,6 +174,9 @@ class InfoParser {
 		if (isset($array['commands']['command']) && is_array($array['commands']['command'])) {
 			$array['commands'] = $array['commands']['command'];
 		}
+		if (isset($array['two-factor-providers']['provider']) && is_array($array['two-factor-providers']['provider'])) {
+			$array['two-factor-providers'] = $array['two-factor-providers']['provider'];
+		}
 		if (isset($array['activity']['filters']['filter']) && is_array($array['activity']['filters']['filter'])) {
 			$array['activity']['filters'] = $array['activity']['filters']['filter'];
 		}
@@ -165,18 +186,48 @@ class InfoParser {
 		if (isset($array['activity']['providers']['provider']) && is_array($array['activity']['providers']['provider'])) {
 			$array['activity']['providers'] = $array['activity']['providers']['provider'];
 		}
+		if (isset($array['collaboration']['collaborators']['searchPlugins']['searchPlugin'])
+			&& is_array($array['collaboration']['collaborators']['searchPlugins']['searchPlugin'])
+			&& !isset($array['collaboration']['collaborators']['searchPlugins']['searchPlugin']['class'])
+		) {
+			$array['collaboration']['collaborators']['searchPlugins'] = $array['collaboration']['collaborators']['searchPlugins']['searchPlugin'];
+		}
+		if (isset($array['settings']['admin']) && !is_array($array['settings']['admin'])) {
+			$array['settings']['admin'] = [$array['settings']['admin']];
+		}
+		if (isset($array['settings']['admin-section']) && !is_array($array['settings']['admin-section'])) {
+			$array['settings']['admin-section'] = [$array['settings']['admin-section']];
+		}
+		if (isset($array['settings']['personal']) && !is_array($array['settings']['personal'])) {
+			$array['settings']['personal'] = [$array['settings']['personal']];
+		}
+		if (isset($array['settings']['personal-section']) && !is_array($array['settings']['personal-section'])) {
+			$array['settings']['personal-section'] = [$array['settings']['personal-section']];
+		}
 
-		if(!is_null($this->cache)) {
+		if (isset($array['navigations']['navigation']) && $this->isNavigationItem($array['navigations']['navigation'])) {
+			$array['navigations']['navigation'] = [$array['navigations']['navigation']];
+		}
+
+		if ($this->cache !== null) {
 			$this->cache->set($fileCacheKey, json_encode($array));
 		}
 		return $array;
 	}
 
 	/**
+	 * @param $data
+	 * @return bool
+	 */
+	private function isNavigationItem($data): bool {
+		return isset($data['name'], $data['route']);
+	}
+
+	/**
 	 * @param \SimpleXMLElement $xml
 	 * @return array
 	 */
-	function xmlToArray($xml) {
+	public function xmlToArray($xml) {
 		if (!$xml->children()) {
 			return (string)$xml;
 		}

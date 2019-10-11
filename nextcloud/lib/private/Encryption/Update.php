@@ -2,8 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
- * @author Joas Schilling <coding@schilljs.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -168,6 +168,14 @@ class Update {
 	 */
 	public function update($path) {
 
+		$encryptionModule = $this->encryptionManager->getEncryptionModule();
+
+		// if the encryption module doesn't encrypt the files on a per-user basis
+		// we have nothing to do here.
+		if ($encryptionModule->needDetailedAccessList() === false) {
+			return;
+		}
+
 		// if a folder was shared, get a list of all (sub-)folders
 		if ($this->view->is_dir($path)) {
 			$allFiles = $this->util->getAllFiles($path);
@@ -175,7 +183,7 @@ class Update {
 			$allFiles = array($path);
 		}
 
-		$encryptionModule = $this->encryptionManager->getEncryptionModule();
+
 
 		foreach ($allFiles as $file) {
 			$usersSharing = $this->file->getAccessList($file);

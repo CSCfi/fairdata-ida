@@ -1,6 +1,9 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
+ *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -56,12 +59,12 @@ class Limiter {
 	 * @param int $limit
 	 * @throws RateLimitExceededException
 	 */
-	private function register($methodIdentifier,
-							  $userIdentifier,
-							  $period,
-							  $limit) {
-		$existingAttempts = $this->backend->getAttempts($methodIdentifier, $userIdentifier, (int)$period);
-		if ($existingAttempts >= (int)$limit) {
+	private function register(string $methodIdentifier,
+							  string $userIdentifier,
+							  int $period,
+							  int $limit) {
+		$existingAttempts = $this->backend->getAttempts($methodIdentifier, $userIdentifier, $period);
+		if ($existingAttempts >= $limit) {
 			throw new RateLimitExceededException();
 		}
 
@@ -77,10 +80,10 @@ class Limiter {
 	 * @param string $ip
 	 * @throws RateLimitExceededException
 	 */
-	public function registerAnonRequest($identifier,
-										$anonLimit,
-										$anonPeriod,
-										$ip) {
+	public function registerAnonRequest(string $identifier,
+										int $anonLimit,
+										int $anonPeriod,
+										string $ip) {
 		$ipSubnet = (new IpAddress($ip))->getSubnet();
 
 		$anonHashIdentifier = hash('sha512', 'anon::' . $identifier . $ipSubnet);
@@ -96,9 +99,9 @@ class Limiter {
 	 * @param IUser $user
 	 * @throws RateLimitExceededException
 	 */
-	public function registerUserRequest($identifier,
-										$userLimit,
-										$userPeriod,
+	public function registerUserRequest(string $identifier,
+										int $userLimit,
+										int $userPeriod,
 										IUser $user) {
 		$userHashIdentifier = hash('sha512', 'user::' . $identifier . $user->getUID());
 		$this->register($identifier, $userHashIdentifier, $userPeriod, $userLimit);

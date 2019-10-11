@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -56,5 +58,22 @@ class FunctionBuilder implements IFunctionBuilder {
 
 	public function sum($field) {
 		return new QueryFunction('SUM(' . $this->helper->quoteColumnName($field) . ')');
+	}
+
+	public function lower($field) {
+		return new QueryFunction('LOWER(' . $this->helper->quoteColumnName($field) . ')');
+	}
+
+	public function add($x, $y) {
+		return new QueryFunction($this->helper->quoteColumnName($x) . ' + ' . $this->helper->quoteColumnName($y));
+	}
+
+	public function subtract($x, $y) {
+		return new QueryFunction($this->helper->quoteColumnName($x) . ' - ' . $this->helper->quoteColumnName($y));
+	}
+
+	public function count($count, $alias = '') {
+		$alias = $alias ? (' AS ' . $this->helper->quoteColumnName($alias)) : '';
+		return new QueryFunction('COUNT(' . $this->helper->quoteColumnName($count) . ')' . $alias);
 	}
 }

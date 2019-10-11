@@ -62,15 +62,24 @@
 		render: function() {
 			var self = this;
 			_.each(this._inputFields, function(field) {
-				var $heading = self.$('#' + field + 'form h2');
-				var $icon = self.$('#' + field + 'form h2 > span');
+				var $icon = self.$('#' + field + 'form h3 > .federation-menu');
 				var scopeMenu = new OC.Settings.FederationScopeMenu({field: field});
 
 				self.listenTo(scopeMenu, 'select:scope', function(scope) {
 					self._onScopeChanged(field, scope);
 				});
-				$heading.append(scopeMenu.$el);
+				$icon.append(scopeMenu.$el);
 				$icon.on('click', _.bind(scopeMenu.show, scopeMenu));
+				$icon.on('keydown', function(e) {
+					if (e.keyCode === 32) {
+						// Open the menu when the user presses the space bar
+						e.preventDefault();
+						scopeMenu.show(e);
+					} else if (e.keyCode === 27) {
+						// Close the menu again if opened
+						OC.hideMenus();
+					}
+				}.bind(this));
 
 				// Restore initial state
 				self._setFieldScopeIcon(field, self._config.get(field + 'Scope'));
@@ -190,19 +199,25 @@
 		},
 
 		_setFieldScopeIcon: function(field, scope) {
-			var $icon = this.$('#' + field + 'form > h2 > span');
+			var $icon = this.$('#' + field + 'form > h3 .icon-federation-menu');
+
 			$icon.removeClass('icon-password');
 			$icon.removeClass('icon-contacts-dark');
 			$icon.removeClass('icon-link');
+			$icon.addClass('hidden');
+
 			switch (scope) {
 				case 'private':
 					$icon.addClass('icon-password');
+					$icon.removeClass('hidden');
 					break;
 				case 'contacts':
 					$icon.addClass('icon-contacts-dark');
+					$icon.removeClass('hidden');
 					break;
 				case 'public':
 					$icon.addClass('icon-link');
+					$icon.removeClass('hidden');
 					break;
 			}
 		}

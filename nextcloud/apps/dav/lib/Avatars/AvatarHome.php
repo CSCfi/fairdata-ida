@@ -1,8 +1,11 @@
 <?php
 /**
+ * @copyright Copyright (c) 2016, ownCloud GmbH
+ *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
- * @copyright Copyright (c) 2016, ownCloud GmbH
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -67,7 +70,7 @@ class AvatarHome implements ICollection {
 			throw new MethodNotAllowed('Invalid image size');
 		}
 		$avatar = $this->avatarManager->getAvatar($this->getName());
-		if ($avatar === null || !$avatar->exists()) {
+		if (!$avatar->exists()) {
 			throw new NotFound();
 		}
 		return new AvatarNode($size, $ext, $avatar);

@@ -1,6 +1,5 @@
 <?php
 script('core', [
-	'jquery-showpassword',
 	'installation'
 ]);
 ?>
@@ -30,8 +29,8 @@ script('core', [
 		<legend><strong><?php p($l->t('Security warning'));?></strong></legend>
 		<p><?php p($l->t('Your data directory and files are probably accessible from the internet because the .htaccess file does not work.'));?><br>
 		<?php print_unescaped($l->t(
-			'For information how to properly configure your server, please see the <a href="%s" target="_blank" rel="noreferrer">documentation</a>.',
-			link_to_docs('admin-install')
+			'For information how to properly configure your server, please see the <a href="%s" target="_blank" rel="noreferrer noopener">documentation</a>.',
+			[link_to_docs('admin-install')]
 		)); ?></p>
 	</fieldset>
 	<?php endif; ?>
@@ -50,14 +49,14 @@ script('core', [
 				value="<?php p($_['adminpass']); ?>"
 				autocomplete="off" autocapitalize="none" autocorrect="off" required>
 			<label for="adminpass" class="infield"><?php p($l->t( 'Password' )); ?></label>
-			<input type="checkbox" id="show" name="show">
+			<input type="checkbox" id="show" class="hidden-visually" name="show">
 			<label for="show"></label>
 		</p>
 	</fieldset>
 
 	<?php if(!$_['directoryIsSet'] OR !$_['dbIsSet'] OR count($_['errors']) > 0): ?>
 	<fieldset id="advancedHeader">
-		<legend><a id="showAdvanced"><?php p($l->t( 'Storage & database' )); ?> <img src="<?php print_unescaped(image_path('', 'actions/caret.svg')); ?>" /></a></legend>
+		<legend><a id="showAdvanced" tabindex="0" href="#"><?php p($l->t( 'Storage & database' )); ?><img src="<?php print_unescaped(image_path('', 'actions/caret-white.svg')); ?>" /></a></legend>
 	</fieldset>
 	<?php endif; ?>
 
@@ -84,7 +83,7 @@ script('core', [
 		<p class="info">
 			<?php p($l->t( 'Only %s is available.', array($label) )); ?>
 			<?php p($l->t( 'Install and activate additional PHP modules to choose other database types.' )); ?><br>
-			<a href="<?php print_unescaped(link_to_docs('admin-source_install')); ?>" target="_blank" rel="noreferrer">
+			<a href="<?php print_unescaped(link_to_docs('admin-source_install')); ?>" target="_blank" rel="noreferrer noopener">
 				<?php p($l->t( 'For more details check out the documentation.' )); ?> ↗</a>
 		</p>
 		<input type="hidden" id="dbtype" name="dbtype" value="<?php p($type) ?>">
@@ -113,7 +112,7 @@ script('core', [
 					value="<?php p($_['dbpass']); ?>"
 					autocomplete="off" autocapitalize="none" autocorrect="off">
 				<label for="dbpass" class="infield"><?php p($l->t( 'Database password' )); ?></label>
-				<input type="checkbox" id="dbpassword-toggle" name="dbpassword-toggle">
+				<input type="checkbox" id="dbpassword-toggle" class="hidden-visually" name="dbpassword-toggle">
 				<label for="dbpassword-toggle"></label>
 			</p>
 			<p class="groupmiddle">
@@ -153,9 +152,9 @@ script('core', [
 	<?php if(!$_['dbIsSet'] OR count($_['errors']) > 0): ?>
 		<fieldset id="sqliteInformation" class="warning">
 			<legend><?php p($l->t('Performance warning'));?></legend>
-			<p><?php p($l->t('SQLite will be used as database.'));?></p>
-			<p><?php p($l->t('For larger installations we recommend to choose a different database backend.'));?></p>
-			<p><?php p($l->t('Especially when using the desktop client for file syncing the use of SQLite is discouraged.')); ?></p>
+			<p><?php p($l->t('You chose SQLite as database.'));?></p>
+			<p><?php p($l->t('SQLite should only be used for minimal and development instances. For production we recommend a different database backend.'));?></p>
+			<p><?php p($l->t('If you use clients for file syncing, the use of SQLite is highly discouraged.')); ?></p>
 		</fieldset>
 	<?php endif ?>
 
@@ -166,6 +165,6 @@ script('core', [
 	<p class="info">
 		<span class="icon-info-white"></span>
 		<?php p($l->t('Need help?'));?>
-		<a target="_blank" rel="noreferrer" href="<?php p(link_to_docs('admin-install')); ?>"><?php p($l->t('See the documentation'));?> ↗</a>
+		<a target="_blank" rel="noreferrer noopener" href="<?php p(link_to_docs('admin-install')); ?>"><?php p($l->t('See the documentation'));?> ↗</a>
 	</p>
 </form>

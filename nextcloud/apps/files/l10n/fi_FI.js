@@ -80,7 +80,6 @@ OC.L10N.register(
     "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">access your Files via WebDAV</a>" : "Käytä tätä osoitetta <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">päästäksesi tiedostoihisi WebDAV-liittymän kautta</a>",
     "No files in here" : "Täällä ei ole tiedostoja",
     "Upload some content or sync with your devices!" : "Lähetä tiedostoja tai synkronoi sisältö laitteidesi kanssa!",
-    "Upload some content!" : "Lähetä tiedostoja!",
     "No entries found in this folder" : "Ei kohteita tässä kansiossa",
     "Select all" : "Valitse kaikki",
     "Upload too large" : "Lähetettävä tiedosto on liian suuri",

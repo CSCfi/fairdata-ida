@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,9 +23,11 @@
 
 namespace OCA\DAV\CalDAV\Activity\Provider;
 
+use OCA\DAV\CalDAV\CalDavBackend;
 use OCP\Activity\IEvent;
 use OCP\Activity\IEventMerger;
 use OCP\Activity\IManager;
+use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUserManager;
@@ -55,10 +59,11 @@ class Event extends Base {
 	 * @param IURLGenerator $url
 	 * @param IManager $activityManager
 	 * @param IUserManager $userManager
+	 * @param IGroupManager $groupManager
 	 * @param IEventMerger $eventMerger
 	 */
-	public function __construct(IFactory $languageFactory, IURLGenerator $url, IManager $activityManager, IUserManager $userManager, IEventMerger $eventMerger) {
-		parent::__construct($userManager);
+	public function __construct(IFactory $languageFactory, IURLGenerator $url, IManager $activityManager, IUserManager $userManager, IGroupManager $groupManager, IEventMerger $eventMerger) {
+		parent::__construct($userManager, $groupManager);
 		$this->languageFactory = $languageFactory;
 		$this->url = $url;
 		$this->activityManager = $activityManager;
@@ -83,7 +88,7 @@ class Event extends Base {
 		if ($this->activityManager->getRequirePNG()) {
 			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.png')));
 		} else {
-			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.svg')));
+			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar.svg')));
 		}
 
 		if ($event->getSubject() === self::SUBJECT_OBJECT_ADD . '_event') {
@@ -118,24 +123,58 @@ class Event extends Base {
 		$subject = $event->getSubject();
 		$parameters = $event->getSubjectParameters();
 
+		// Nextcloud 13+
+		if (isset($parameters['calendar'])) {
+			switch ($subject) {
+				case self::SUBJECT_OBJECT_ADD . '_event':
+				case self::SUBJECT_OBJECT_DELETE . '_event':
+				case self::SUBJECT_OBJECT_UPDATE . '_event':
+					return [
+						'actor' => $this->generateUserParameter($parameters['actor']),
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+						'event' => $this->generateClassifiedObjectParameter($parameters['object']),
+					];
+				case self::SUBJECT_OBJECT_ADD . '_event_self':
+				case self::SUBJECT_OBJECT_DELETE . '_event_self':
+				case self::SUBJECT_OBJECT_UPDATE . '_event_self':
+					return [
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+						'event' => $this->generateClassifiedObjectParameter($parameters['object']),
+					];
+			}
+		}
+
+		// Legacy - Do NOT Remove unless necessary
+		// Removing this will break parsing of activities that were created on
+		// Nextcloud 12, so we should keep this as long as it's acceptable.
+		// Otherwise if people upgrade over multiple releases in a short period,
+		// they will get the dead entries in their stream.
 		switch ($subject) {
 			case self::SUBJECT_OBJECT_ADD . '_event':
 			case self::SUBJECT_OBJECT_DELETE . '_event':
 			case self::SUBJECT_OBJECT_UPDATE . '_event':
 				return [
 					'actor' => $this->generateUserParameter($parameters[0]),
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 					'event' => $this->generateObjectParameter($parameters[2]),
 				];
 			case self::SUBJECT_OBJECT_ADD . '_event_self':
 			case self::SUBJECT_OBJECT_DELETE . '_event_self':
 			case self::SUBJECT_OBJECT_UPDATE . '_event_self':
 				return [
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 					'event' => $this->generateObjectParameter($parameters[2]),
 				];
 		}
 
 		throw new \InvalidArgumentException();
+	}
+
+	private function generateClassifiedObjectParameter(array $eventData) {
+		$parameter = $this->generateObjectParameter($eventData);
+		if (!empty($eventData['classified'])) {
+			$parameter['name'] = $this->l->t('Busy');
+		}
+		return $parameter;
 	}
 }

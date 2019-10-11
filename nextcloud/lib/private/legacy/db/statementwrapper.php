@@ -5,9 +5,10 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Piotr Mrówczyński <mrow4a@yahoo.com>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -62,7 +63,7 @@ class OC_DB_StatementWrapper {
 	 * make execute return the result instead of a bool
 	 *
 	 * @param array $input
-	 * @return \OC_DB_StatementWrapper|int
+	 * @return \OC_DB_StatementWrapper|int|bool
 	 */
 	public function execute($input= []) {
 		$this->lastArguments = $input;
@@ -76,8 +77,7 @@ class OC_DB_StatementWrapper {
 			return false;
 		}
 		if ($this->isManipulation) {
-			$count = $this->statement->rowCount();
-			return $count;
+			return $this->statement->rowCount();
 		} else {
 			return $this;
 		}

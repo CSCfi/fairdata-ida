@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -104,6 +106,7 @@ class FavoriteProvider implements IProvider {
 				$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'actions/starred.svg')));
 			}
 		} else if ($event->getSubject() === self::SUBJECT_REMOVED) {
+			$event->setType('unfavorite');
 			$event->setParsedSubject($this->l->t('Removed from favorites'));
 			if ($this->activityManager->getRequirePNG()) {
 				$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'actions/star.png')));
@@ -134,6 +137,7 @@ class FavoriteProvider implements IProvider {
 				$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'actions/starred.svg')));
 			}
 		} else if ($event->getSubject() === self::SUBJECT_REMOVED) {
+			$event->setType('unfavorite');
 			$subject = $this->l->t('You removed {file} from your favorites');
 			if ($this->activityManager->getRequirePNG()) {
 				$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'actions/star.png')));

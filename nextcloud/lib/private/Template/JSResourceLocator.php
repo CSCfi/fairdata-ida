@@ -5,6 +5,7 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -54,6 +55,7 @@ class JSResourceLocator extends ResourceLocator {
 			$found += $this->appendIfExist($this->serverroot, $theme_dir.'core/'.$script.'.js');
 			$found += $this->appendIfExist($this->serverroot, $script.'.js');
 			$found += $this->appendIfExist($this->serverroot, $theme_dir.$script.'.js');
+			$found += $this->appendIfExist($this->serverroot, 'apps/'.$script.'.js');
 			$found += $this->appendIfExist($this->serverroot, $theme_dir.'apps/'.$script.'.js');
 
 			if ($found) {
@@ -74,6 +76,13 @@ class JSResourceLocator extends ResourceLocator {
 		$script = substr($script, strpos($script, '/')+1);
 		$app_path = \OC_App::getAppPath($app);
 		$app_url = \OC_App::getAppWebPath($app);
+
+		if ($app_path !== false) {
+			// Account for the possibility of having symlinks in app path. Only
+			// do this if $app_path is set, because an empty argument to realpath
+			// gets turned into cwd.
+			$app_path = realpath($app_path);
+		}
 
 		// missing translations files fill be ignored
 		if (strpos($script, 'l10n/') === 0) {

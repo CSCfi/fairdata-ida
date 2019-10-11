@@ -20,6 +20,7 @@
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -52,6 +53,9 @@ use OCP\Files\InvalidDirectoryException;
 use OCP\Files\InvalidPathException;
 use OCP\Files\ReservedWordException;
 use OCP\Files\Storage\ILockingStorage;
+use OCP\Files\Storage\IStorage;
+use OCP\Files\Storage\IWriteStreamStorage;
+use OCP\ILogger;
 use OCP\Lock\ILockingProvider;
 use OCP\Lock\LockedException;
 
@@ -66,7 +70,7 @@ use OCP\Lock\LockedException;
  * Some \OC\Files\Storage\Common methods call functions which are first defined
  * in classes which extend it, e.g. $this->stat() .
  */
-abstract class Common implements Storage, ILockingStorage {
+abstract class Common implements Storage, ILockingStorage, IWriteStreamStorage {
 
 	use LocalTempFileTrait;
 
@@ -227,6 +231,9 @@ abstract class Common implements Storage, ILockingStorage {
 			$source = $this->fopen($path1, 'r');
 			$target = $this->fopen($path2, 'w');
 			list(, $result) = \OC_Helper::streamCopy($source, $target);
+			if (!$result) {
+				\OC::$server->getLogger()->warning("Failed to write data while copying $path1 to $path2");
+			}
 			$this->removeCachedFile($path2);
 			return $result;
 		}
@@ -361,7 +368,8 @@ abstract class Common implements Storage, ILockingStorage {
 			$storage = $this;
 		}
 		if (!isset($storage->propagator)) {
-			$storage->propagator = new Propagator($storage, \OC::$server->getDatabaseConnection());
+			$config = \OC::$server->getSystemConfig();
+			$storage->propagator = new Propagator($storage, \OC::$server->getDatabaseConnection(), ['appdata_' . $config->getValue('instanceid')]);
 		}
 		return $storage->propagator;
 	}
@@ -444,8 +452,11 @@ abstract class Common implements Storage, ILockingStorage {
 			if ($this->stat('')) {
 				return true;
 			}
+			\OC::$server->getLogger()->info("External storage not available: stat() failed");
 			return false;
 		} catch (\Exception $e) {
+			\OC::$server->getLogger()->info("External storage not available: " . $e->getMessage());
+			\OC::$server->getLogger()->logException($e, ['level' => ILogger::DEBUG]);
 			return false;
 		}
 	}
@@ -578,13 +589,13 @@ abstract class Common implements Storage, ILockingStorage {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @param bool $preserveMtime
 	 * @return bool
 	 */
-	public function copyFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath, $preserveMtime = false) {
+	public function copyFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath, $preserveMtime = false) {
 		if ($sourceStorage === $this) {
 			return $this->copy($sourceInternalPath, $targetInternalPath);
 		}
@@ -625,12 +636,12 @@ abstract class Common implements Storage, ILockingStorage {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @return bool
 	 */
-	public function moveFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
+	public function moveFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
 		if ($sourceStorage === $this) {
 			return $this->rename($sourceInternalPath, $targetInternalPath);
 		}
@@ -767,9 +778,7 @@ abstract class Common implements Storage, ILockingStorage {
 		try {
 			$provider->changeLock('files/' . md5($this->getId() . '::' . trim($path, '/')), $type);
 		} catch (LockedException $e) {
-			if ($logger) {
-				$logger->logException($e);
-			}
+			\OC::$server->getLogger()->logException($e);
 			throw $e;
 		}
 	}
@@ -801,5 +810,24 @@ abstract class Common implements Storage, ILockingStorage {
 	 */
 	public function needsPartFile() {
 		return true;
+	}
+
+	/**
+	 * fallback implementation
+	 *
+	 * @param string $path
+	 * @param resource $stream
+	 * @param int $size
+	 * @return int
+	 */
+	public function writeStream(string $path, $stream, int $size = null): int {
+		$target = $this->fopen($path, 'w');
+		if (!$target) {
+			return 0;
+		}
+		list($count, $result) = \OC_Helper::streamCopy($stream, $target);
+		fclose($stream);
+		fclose($target);
+		return $count;
 	}
 }

@@ -47,8 +47,6 @@ class MailSettingsController extends Controller {
 	private $userSession;
 	/** @var IMailer */
 	private $mailer;
-	/** @var string */
-	private $defaultMailAddress;
 
 	/**
 	 * @param string $appName
@@ -57,21 +55,18 @@ class MailSettingsController extends Controller {
 	 * @param IConfig $config
 	 * @param IUserSession $userSession
 	 * @param IMailer $mailer
-	 * @param string $fromMailAddress
 	 */
 	public function __construct($appName,
 								IRequest $request,
 								IL10N $l10n,
 								IConfig $config,
 								IUserSession $userSession,
-								IMailer $mailer,
-								$fromMailAddress) {
+								IMailer $mailer) {
 		parent::__construct($appName, $request);
 		$this->l10n = $l10n;
 		$this->config = $config;
 		$this->userSession = $userSession;
 		$this->mailer = $mailer;
-		$this->defaultMailAddress = $fromMailAddress;
 	}
 
 	/**
@@ -96,12 +91,13 @@ class MailSettingsController extends Controller {
 									$mail_smtphost,
 									$mail_smtpauthtype,
 									$mail_smtpauth,
-									$mail_smtpport) {
+									$mail_smtpport,
+									$mail_sendmailmode) {
 
 		$params = get_defined_vars();
 		$configs = [];
 		foreach($params as $key => $value) {
-			$configs[$key] = (empty($value)) ? null : $value;
+			$configs[$key] = empty($value) ? null : $value;
 		}
 
 		// Delete passwords from config in case no auth is specified
@@ -151,6 +147,7 @@ class MailSettingsController extends Controller {
 					'displayname' => $displayName,
 				]);
 
+				$template->setSubject($this->l10n->t('Email setting test'));
 				$template->addHeader();
 				$template->addHeading($this->l10n->t('Well done, %s!', [$displayName]));
 				$template->addBodyText($this->l10n->t('If you received this email, the email configuration seems to be correct.'));
@@ -158,9 +155,7 @@ class MailSettingsController extends Controller {
 
 				$message = $this->mailer->createMessage();
 				$message->setTo([$email => $displayName]);
-				$message->setSubject($this->l10n->t('Email setting test'));
-				$message->setHtmlBody($template->renderHtml());
-				$message->setPlainBody($template->renderText());
+				$message->useTemplate($template);
 				$errors = $this->mailer->send($message);
 				if (!empty($errors)) {
 					throw new \RuntimeException($this->l10n->t('Email could not be sent. Check your mail server log'));

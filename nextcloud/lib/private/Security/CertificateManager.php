@@ -8,6 +8,7 @@
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -209,7 +210,7 @@ class CertificateManager implements ICertificateManager {
 	/**
 	 * Get the path to the certificate bundle for this user
 	 *
-	 * @param string $uid (optional) user to get the certificate bundle for, use `null` to get the system bundle
+	 * @param string|null $uid (optional) user to get the certificate bundle for, use `null` to get the system bundle
 	 * @return string
 	 */
 	public function getCertificateBundle($uid = '') {
@@ -241,16 +242,14 @@ class CertificateManager implements ICertificateManager {
 	}
 
 	/**
-	 * @param string $uid (optional) user to get the certificate path for, use `null` to get the system path
+	 * @param string|null $uid (optional) user to get the certificate path for, use `null` to get the system path
 	 * @return string
 	 */
 	private function getPathToCertificates($uid = '') {
 		if ($uid === '') {
 			$uid = $this->uid;
 		}
-		$path = is_null($uid) ? '/files_external/' : '/' . $uid . '/files_external/';
-
-		return $path;
+		return is_null($uid) ? '/files_external/' : '/' . $uid . '/files_external/';
 	}
 
 	/**

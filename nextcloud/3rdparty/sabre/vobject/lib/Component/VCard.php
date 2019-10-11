@@ -295,6 +295,11 @@ class VCard extends VObject\Document {
                 } elseif (isset($this->ORG)) {
                     $this->FN = (string)$this->ORG;
                     $repaired = true;
+
+                // Otherwise, the EMAIL property may work
+                } elseif (isset($this->EMAIL)) {
+                    $this->FN = (string)$this->EMAIL;
+                    $repaired = true;
                 }
 
             }
@@ -506,7 +511,7 @@ class VCard extends VObject\Document {
                 switch ($property->name) {
 
                     case 'VERSION':
-                        continue;
+                        break;
 
                     case 'XML':
                         $value = $property->getParts();

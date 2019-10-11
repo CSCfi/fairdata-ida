@@ -1,0 +1,78 @@
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+
+The implementation of the IDA service aims to modify the Nextcloud core as little as possible, but certain
+modifications are unavoidable, due to the fact that we are coercing Nextcloud to function as a group-centric
+tool rather than its intended use primarily as a personal tool, in order to achieve specific UX goals.
+
+Where possible, modifications are done using the Nextcloud theme machinery, by copying the original core file to
+the IDA theme directory space using the same relative pathname and modifying the copied file accordingly. This
+results in Nextcloud loading the version of the file from the theme rather than the original core file. 
+e.g. /nextcloud/core/templates/layout.guest.php -> /nextcloud/themes/ida/core/templates/layout.guest.php
+
+Note that when updating files within the IDA theme, it may be necessary to apply updates to the new original core
+file not present in the modified theme file.
+
+To review the changes made to the core files in their theme-specific variants, or to see what changes must be made
+after updating to a new version, simply perform a diff of the core file in its original location and the modified
+file in the theme directory space.
+
+If a core file cannot be copied into the IDA theme directory space and must be modified in-place, in its original
+location, the original file will be backed up as a copy with the filename suffix '.original'.
+
+To review the changes made to the core files in-place, simply perform a diff of the backed up '.original' file
+and the modified file with the same filename without the '.original' suffix. 
+
+General aspects of server configuration are not covered here. Only those aspects which require addition to or
+modification of the /nextcloud directory tree after updating Nextcloud.
+
+The list of modified Nextcloud files, either modified in-place or overridden in the IDA theme
+can be easily obtained with the provided script list-modified-files, located in the same
+directory as this README file.
+
+The list of essential Nextcloud apps which cannot be removed from the official distribution are listed in
+the file essential-nextcloud-apps, located in the same directory as this README file.
+
+
+-- INSTALLING A NEWER VERSION OF NEXTCLOUD INTO AN EXISTING IDA SERVICE
+
+>> Rename the existing /nextcloud directory to /nextcloud-old
+>> Download and unzip the latest Nextcloud package as /nextcloud
+>> Ensure the following are installed: php7*-intl php7*-pgsql php7*-zip php7*-gd
+>> Copy /nextcloud-old/themes/ida to /nextcloud/themes/ida
+>> Copy /nextcloud-old/apps/ida to /nextcloud/apps/ida
+>> Copy /nextcloud-old/apps/user_saml to /nextcloud/apps/user_saml
+>> Copy /nextcloud-old/.htaccess to /nextcloud/.htaccess
+>> Copy /nextcloud-old/config/config.php to /nextcloud/config/config.php
+>> Edit /nextcloud/config.php to update the Nextcloud version to the newly installed version (c.f. /nextcloud/version.php)
+>> Restart apache
+>> Open Nextcloud in browser, and approve the update process when prompted
+>> Log in as admin and disable all apps except Files sharing and First run wizard, and disable / do not enable IDA app
+>> Run 'occ db:add-missing-indices' to fix database
+>> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
+>> Create new '-original' copies within /nextcloud of all in-place modified files listed below 
+>> Copy all in-place modified files from /nextcloud-old to their equivalent locations in /nextcloud
+>> Restart apache
+>> Log in as admin and enable IDA app
+>> UPDATE ALL OF THE MODIFIED FILES AND ANY NEW FILES, AS REQUIRED
+

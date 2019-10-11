@@ -27,6 +27,7 @@
 namespace OC\Core\Command\Maintenance;
 
 use Exception;
+use OCP\App\IAppManager;
 use OCP\IConfig;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -47,15 +48,20 @@ class Repair extends Command {
 	private $progress;
 	/** @var OutputInterface */
 	private $output;
+	/** @var IAppManager */
+	private $appManager;
 
 	/**
 	 * @param \OC\Repair $repair
 	 * @param IConfig $config
+	 * @param EventDispatcherInterface $dispatcher
+	 * @param IAppManager $appManager
 	 */
-	public function __construct(\OC\Repair $repair, IConfig $config, EventDispatcherInterface $dispatcher) {
+	public function __construct(\OC\Repair $repair, IConfig $config, EventDispatcherInterface $dispatcher, IAppManager $appManager) {
 		$this->repair = $repair;
 		$this->config = $config;
 		$this->dispatcher = $dispatcher;
+		$this->appManager = $appManager;
 		parent::__construct();
 	}
 
@@ -71,22 +77,26 @@ class Repair extends Command {
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output) {
-		$includeExpensive = $input->getOption('include-expensive');
-		if ($includeExpensive) {
-			foreach ($this->repair->getExpensiveRepairSteps() as $step) {
-				$this->repair->addStep($step);
-			}
+		$repairSteps = $this->repair::getRepairSteps();
+
+		if ($input->getOption('include-expensive')) {
+			$repairSteps = array_merge($repairSteps, $this->repair::getExpensiveRepairSteps());
 		}
 
-		$apps = \OC::$server->getAppManager()->getInstalledApps();
+		foreach ($repairSteps as $step) {
+			$this->repair->addStep($step);
+		}
+
+		$apps = $this->appManager->getInstalledApps();
 		foreach ($apps as $app) {
-			if (!\OC_App::isEnabled($app)) {
+			if (!$this->appManager->isEnabledForUser($app)) {
 				continue;
 			}
 			$info = \OC_App::getAppInfo($app);
 			if (!is_array($info)) {
 				continue;
 			}
+			\OC_App::loadApp($app);
 			$steps = $info['repair-steps']['post-migration'];
 			foreach ($steps as $step) {
 				try {
@@ -97,7 +107,7 @@ class Repair extends Command {
 			}
 		}
 
-		$maintenanceMode = $this->config->getSystemValue('maintenance', false);
+		$maintenanceMode = $this->config->getSystemValueBool('maintenance');
 		$this->config->setSystemValue('maintenance', true);
 
 		$this->progress = new ProgressBar($output);

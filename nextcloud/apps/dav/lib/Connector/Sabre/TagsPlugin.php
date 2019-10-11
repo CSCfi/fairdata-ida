@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Sergio Bertolín <sbertolin@solidgear.es>
+ * @author Thomas Citharel <tcit@tcit.fr>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -110,7 +112,7 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 	public function initialize(\Sabre\DAV\Server $server) {
 
 		$server->xml->namespaceMap[self::NS_OWNCLOUD] = 'oc';
-		$server->xml->elementMap[self::TAGS_PROPERTYNAME] = 'OCA\\DAV\\Connector\\Sabre\\TagList';
+		$server->xml->elementMap[self::TAGS_PROPERTYNAME] = TagList::class;
 
 		$this->server = $server;
 		$this->server->on('propFind', array($this, 'handleGetProperties'));
@@ -238,10 +240,9 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 			}
 		}
 
-		$tags = null;
 		$isFav = null;
 
-		$propFind->handle(self::TAGS_PROPERTYNAME, function() use ($tags, &$isFav, $node) {
+		$propFind->handle(self::TAGS_PROPERTYNAME, function() use (&$isFav, $node) {
 			list($tags, $isFav) = $this->getTagsAndFav($node->getId());
 			return new TagList($tags);
 		});

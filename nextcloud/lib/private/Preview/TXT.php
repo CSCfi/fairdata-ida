@@ -2,7 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Nmz <nemesiz@nmz.lt>
@@ -46,6 +46,11 @@ class TXT extends Provider {
 	 */
 	public function getThumbnail($path, $maxX, $maxY, $scalingup, $fileview) {
 		$content = $fileview->fopen($path, 'r');
+
+		if ($content === false) {
+			return false;
+		}
+
 		$content = stream_get_contents($content,3000);
 
 		//don't create previews of empty text files
@@ -55,8 +60,9 @@ class TXT extends Provider {
 
 		$lines = preg_split("/\r\n|\n|\r/", $content);
 
-		$fontSize = ($maxX) ? (int) ((5 / 32) * $maxX) : 5; //5px
-		$lineSize = ceil($fontSize * 1.25);
+		// Define text size of text file preview
+		$fontSize = $maxX ? (int) ((2 / 32) * $maxX) : 5; //5px
+		$lineSize = ceil($fontSize * 1.5);
 
 		$image = imagecreate($maxX, $maxY);
 		imagecolorallocate($image, 255, 255, 255);
@@ -64,7 +70,7 @@ class TXT extends Provider {
 
 		$fontFile  = __DIR__;
 		$fontFile .= '/../../../core';
-		$fontFile .= '/fonts/OpenSans-Regular.ttf';
+		$fontFile .= '/fonts/Nunito-Regular.ttf';
 
 		$canUseTTF = function_exists('imagettftext');
 
@@ -86,8 +92,9 @@ class TXT extends Provider {
 			}
 		}
 
-		$image = new \OC_Image($image);
+		$imageObject = new \OC_Image();
+		$imageObject->setResource($image);
 
-		return $image->valid() ? $image : false;
+		return $imageObject->valid() ? $imageObject : false;
 	}
 }

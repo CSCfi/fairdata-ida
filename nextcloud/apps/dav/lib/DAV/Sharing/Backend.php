@@ -4,6 +4,7 @@
  *
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Thomas Citharel <tcit@tcit.fr>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -26,11 +27,17 @@ namespace OCA\DAV\DAV\Sharing;
 
 use OCA\DAV\Connector\Sabre\Principal;
 use OCP\IDBConnection;
+use OCP\IGroupManager;
+use OCP\IUserManager;
 
 class Backend {
 
 	/** @var IDBConnection */
 	private $db;
+	/** @var IUserManager */
+	private $userManager;
+	/** @var IGroupManager */
+	private $groupManager;
 	/** @var Principal */
 	private $principalBackend;
 	/** @var string */
@@ -42,11 +49,15 @@ class Backend {
 
 	/**
 	 * @param IDBConnection $db
+	 * @param IUserManager $userManager
+	 * @param IGroupManager $groupManager
 	 * @param Principal $principalBackend
 	 * @param string $resourceType
 	 */
-	public function __construct(IDBConnection $db, Principal $principalBackend, $resourceType) {
+	public function __construct(IDBConnection $db, IUserManager $userManager, IGroupManager $groupManager, Principal $principalBackend, $resourceType) {
 		$this->db = $db;
+		$this->userManager = $userManager;
+		$this->groupManager = $groupManager;
 		$this->principalBackend = $principalBackend;
 		$this->resourceType = $resourceType;
 	}
@@ -56,12 +67,18 @@ class Backend {
 	 * @param string[] $add
 	 * @param string[] $remove
 	 */
-	public function updateShares($shareable, $add, $remove) {
+	public function updateShares(IShareable $shareable, array $add, array $remove) {
 		foreach($add as $element) {
-			$this->shareWith($shareable, $element);
+			$principal = $this->principalBackend->findByUri($element['href'], '');
+			if ($principal !== '') {
+				$this->shareWith($shareable, $element);
+			}
 		}
 		foreach($remove as $element) {
-			$this->unshare($shareable, $element);
+			$principal = $this->principalBackend->findByUri($element, '');
+			if ($principal !== '') {
+				$this->unshare($shareable, $element);
+			}
 		}
 	}
 
@@ -78,6 +95,18 @@ class Backend {
 
 		// don't share with owner
 		if ($shareable->getOwner() === $parts[1]) {
+			return;
+		}
+
+		$principal = explode('/', $parts[1], 3);
+		if (count($principal) !== 3 || $principal[0] !== 'principals' || !in_array($principal[1], ['users', 'groups', 'circles'], true)) {
+			// Invalid principal
+			return;
+		}
+
+		if (($principal[1] === 'users' && !$this->userManager->userExists($principal[2])) ||
+			($principal[1] === 'groups' && !$this->groupManager->groupExists($principal[2]))) {
+			// User or group does not exist
 			return;
 		}
 
@@ -170,7 +199,7 @@ class Backend {
 				'href' => "principal:${row['principaluri']}",
 				'commonName' => isset($p['{DAV:}displayname']) ? $p['{DAV:}displayname'] : '',
 				'status' => 1,
-				'readOnly' => ($row['access'] == self::ACCESS_READ),
+				'readOnly' => (int) $row['access'] === self::ACCESS_READ,
 				'{http://owncloud.org/ns}principal' => $row['principaluri'],
 				'{http://owncloud.org/ns}group-share' => is_null($p)
 			];

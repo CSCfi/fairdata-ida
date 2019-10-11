@@ -1,14 +1,14 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Thomas Citharel <tcit@tcit.fr>
  *
  * @license AGPL-3.0
  *
@@ -46,14 +46,14 @@ interface IL10N {
 	/**
 	 * Translating
 	 * @param string $text The text we need a translation for
-	 * @param array $parameters default:array() Parameters for sprintf
-	 * @return \OC_L10N_String Translation or the same text
+	 * @param array|string $parameters default:array() Parameters for sprintf
+	 * @return string Translation or the same text
 	 *
 	 * Returns the translation. If no translation is found, $text will be
 	 * returned.
 	 * @since 6.0.0
 	 */
-	public function t($text, $parameters = array());
+	public function t(string $text, $parameters = []): string;
 
 	/**
 	 * Translating
@@ -61,7 +61,7 @@ interface IL10N {
 	 * @param string $text_plural the string to translate for n objects
 	 * @param integer $count Number of objects
 	 * @param array $parameters default:array() Parameters for sprintf
-	 * @return \OC_L10N_String Translation or the same text
+	 * @return string Translation or the same text
 	 *
 	 * Returns the translation. If no translation is found, $text will be
 	 * returned. %n will be replaced with the number of objects.
@@ -71,7 +71,7 @@ interface IL10N {
 	 * @since 6.0.0
 	 *
 	 */
-	public function n($text_singular, $text_plural, $count, $parameters = array());
+	public function n(string $text_singular, string $text_plural, int $count, array $parameters = []): string;
 
 	/**
 	 * Localization
@@ -98,7 +98,7 @@ interface IL10N {
 	 *    - params: timestamp (int/string)
 	 * @since 6.0.0 - parameter $options was added in 8.0.0
 	 */
-	public function l($type, $data, $options = array());
+	public function l(string $type, $data, array $options = []);
 
 
 	/**
@@ -107,5 +107,13 @@ interface IL10N {
 	 * @return string language
 	 * @since 7.0.0
 	 */
-	public function getLanguageCode();
+	public function getLanguageCode(): string ;
+
+	/**
+	 * * The code (en_US, fr_CA, ...) of the locale that is used for this IL10N object
+	 *
+	 * @return string locale
+	 * @since 14.0.0
+	 */
+	public function getLocaleCode(): string;
 }

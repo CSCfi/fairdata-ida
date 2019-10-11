@@ -3,7 +3,10 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -167,6 +170,7 @@ class CleanTags implements IRepairStep {
 	 * @param string $sourceId
 	 * @param string $sourceNullColumn	If this column is null in the source table,
 	 * 								the entry is deleted in the $deleteTable
+	 * @suppress SqlInjectionChecker
 	 */
 	protected function deleteOrphanEntries(IOutput $output, $repairInfo, $deleteTable, $deleteId, $sourceTable, $sourceId, $sourceNullColumn) {
 		$qb = $this->connection->getQueryBuilder();
@@ -201,7 +205,7 @@ class CleanTags implements IRepairStep {
 		}
 
 		if ($repairInfo) {
-			$output->info(sprintf($repairInfo, sizeof($orphanItems)));
+			$output->info(sprintf($repairInfo, count($orphanItems)));
 		}
 	}
 }

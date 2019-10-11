@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -26,7 +27,6 @@ use OCA\DAV\CardDAV\Xml\Groups;
 use Sabre\DAV\INode;
 use Sabre\DAV\PropFind;
 use Sabre\DAV\Server;
-use Sabre\HTTP\URLUtil;
 
 class Plugin extends \Sabre\CardDAV\Plugin {
 
@@ -39,24 +39,21 @@ class Plugin extends \Sabre\CardDAV\Plugin {
 	 * Returns the addressbook home for a given principal
 	 *
 	 * @param string $principal
-	 * @return string
+	 * @return string|null
 	 */
 	protected function getAddressbookHomeForPrincipal($principal) {
-
 		if (strrpos($principal, 'principals/users', -strlen($principal)) !== false) {
-			list(, $principalId) = URLUtil::splitPath($principal);
+			list(, $principalId) = \Sabre\Uri\split($principal);
 			return self::ADDRESSBOOK_ROOT . '/users/' . $principalId;
 		}
 		if (strrpos($principal, 'principals/groups', -strlen($principal)) !== false) {
-			list(, $principalId) = URLUtil::splitPath($principal);
+			list(, $principalId) = \Sabre\Uri\split($principal);
 			return self::ADDRESSBOOK_ROOT . '/groups/' . $principalId;
 		}
 		if (strrpos($principal, 'principals/system', -strlen($principal)) !== false) {
-			list(, $principalId) = URLUtil::splitPath($principal);
+			list(, $principalId) = \Sabre\Uri\split($principal);
 			return self::ADDRESSBOOK_ROOT . '/system/' . $principalId;
 		}
-
-		throw new \LogicException('This is not supposed to happen');
 	}
 
 	/**

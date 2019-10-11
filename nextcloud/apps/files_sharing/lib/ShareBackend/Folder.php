@@ -4,6 +4,7 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
@@ -40,6 +41,9 @@ class Folder extends File implements \OCP\Share_Backend_Collection {
 	public function getParents($itemSource, $shareWith = null, $owner = null) {
 		$result = array();
 		$parent = $this->getParentId($itemSource);
+
+		$userManager = \OC::$server->getUserManager();
+
 		while ($parent) {
 			$shares = \OCP\Share::getItemSharedWithUser('folder', $parent, $shareWith, $owner);
 			if ($shares) {
@@ -48,10 +52,13 @@ class Folder extends File implements \OCP\Share_Backend_Collection {
 					$share['collection']['path'] = $name;
 					$share['collection']['item_type'] = 'folder';
 					$share['file_path'] = $name;
-					$displayNameOwner = \OCP\User::getDisplayName($share['uid_owner']);
-					$displayNameShareWith = \OCP\User::getDisplayName($share['share_with']);
-					$share['displayname_owner'] = ($displayNameOwner) ? $displayNameOwner : $share['uid_owner'];
-					$share['share_with_displayname'] = ($displayNameShareWith) ? $displayNameShareWith : $share['uid_owner'];
+
+					$ownerUser = $userManager->get($share['uid_owner']);
+					$displayNameOwner = $ownerUser === null ? $share['uid_owner'] : $ownerUser->getDisplayName();
+					$shareWithUser = $userManager->get($share['share_with']);
+					$displayNameShareWith = $shareWithUser === null ? $share['share_with'] : $shareWithUser->getDisplayName();
+					$share['displayname_owner'] = $displayNameOwner ? $displayNameOwner : $share['uid_owner'];
+					$share['share_with_displayname'] = $displayNameShareWith ? $displayNameShareWith : $share['uid_owner'];
 
 					$result[] = $share;
 				}
@@ -69,37 +76,62 @@ class Folder extends File implements \OCP\Share_Backend_Collection {
 	 * @return mixed parent ID or null
 	 */
 	private function getParentId($child) {
-		$query = \OCP\DB::prepare('SELECT `parent` FROM `*PREFIX*filecache` WHERE `fileid` = ?');
-		$result = $query->execute(array($child));
-		$row = $result->fetchRow();
-		$parent = ($row) ? $row['parent'] : null;
-
-		return $parent;
+		$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$qb->select('parent')
+			->from('filecache')
+			->where(
+				$qb->expr()->eq('fileid', $qb->createNamedParameter($child))
+			);
+		$result = $qb->execute();
+		$row = $result->fetch();
+		$result->closeCursor();
+		return $row ? $row['parent'] : null;
 	}
 
 	public function getChildren($itemSource) {
 		$children = array();
 		$parents = array($itemSource);
-		$query = \OCP\DB::prepare('SELECT `id` FROM `*PREFIX*mimetypes` WHERE `mimetype` = ?');
-		$result = $query->execute(array('httpd/unix-directory'));
+
+		$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$qb->select('id')
+			->from('mimetypes')
+			->where(
+				$qb->expr()->eq('mimetype', $qb->createNamedParameter('httpd/unix-directory'))
+			);
+		$result = $qb->execute();
+		$row = $result->fetch();
+		$result->closeCursor();
+
 		if ($row = $result->fetchRow()) {
-			$mimetype = $row['id'];
+			$mimetype = (int) $row['id'];
 		} else {
 			$mimetype = -1;
 		}
 		while (!empty($parents)) {
-			$parents = "'".implode("','", $parents)."'";
-			$query = \OCP\DB::prepare('SELECT `fileid`, `name`, `mimetype` FROM `*PREFIX*filecache`'
-				.' WHERE `parent` IN ('.$parents.')');
-			$result = $query->execute();
+
+			$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+
+			$parents = array_map(function($parent) use ($qb) {
+				return $qb->createNamedParameter($parent);
+			}, $parents);
+
+			$qb->select('`fileid', 'name', '`mimetype')
+				->from('filecache')
+				->where(
+					$qb->expr()->in('parent', $parents)
+				);
+
+			$result = $qb->execute();
+
 			$parents = array();
-			while ($file = $result->fetchRow()) {
+			while ($file = $result->fetch()) {
 				$children[] = array('source' => $file['fileid'], 'file_path' => $file['name']);
 				// If a child folder is found look inside it
-				if ($file['mimetype'] == $mimetype) {
+				if ((int) $file['mimetype'] === $mimetype) {
 					$parents[] = $file['fileid'];
 				}
 			}
+			$result->closeCursor();
 		}
 		return $children;
 	}

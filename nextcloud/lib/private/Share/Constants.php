@@ -1,9 +1,19 @@
 <?php
+/*
+ * This file is part of the IDA research data storage service
+ *
+ * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @link     https://research.csc.fi/
+ */
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christopher Schäpers <kondou@ts.unde.re>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Maxence Lange <maxence@nextcloud.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license AGPL-3.0
@@ -28,12 +38,16 @@ class Constants {
 
 	const SHARE_TYPE_USER = 0;
 	const SHARE_TYPE_GROUP = 1;
+	// const SHARE_TYPE_USERGROUP = 2; // Internal type used by DefaultShareProvider
 	const SHARE_TYPE_LINK = 3;
 	const SHARE_TYPE_EMAIL = 4;
 	const SHARE_TYPE_CONTACT = 5; // ToDo Check if it is still in use otherwise remove it
 	const SHARE_TYPE_REMOTE = 6;
 	const SHARE_TYPE_CIRCLE = 7;
 	const SHARE_TYPE_GUEST = 8;
+	const SHARE_TYPE_REMOTE_GROUP = 9;
+	const SHARE_TYPE_ROOM = 10;
+	// const SHARE_TYPE_USERROOM = 11; // Internal type used by RoomShareProvider
 
 	const FORMAT_NONE = -1;
 	const FORMAT_STATUSES = -2;
@@ -41,14 +55,7 @@ class Constants {
 
 	const RESPONSE_FORMAT = 'json'; // default resonse format for ocs calls
 
-    // IDA MODIFICATION
-    // BEGIN ORIGINAL
-    /*
-	const TOKEN_LENGTH = 15; // old (oc7) length is 32, keep token length in db at least that for compatibility
-    */
-    // BEGIN MODIFICATION
-    const TOKEN_LENGTH = 12; // token field length in db is 32, and length of 'NOT_FOR_PUBLICATION_' + 12 = 32
-    // END MODIFICATION
+	const TOKEN_LENGTH = 12; // old (oc7) length is 32, keep token length in db at least that for compatibility
 
 	protected static $shareTypeUserAndGroups = -1;
 	protected static $shareTypeGroupUserUnique = 2;

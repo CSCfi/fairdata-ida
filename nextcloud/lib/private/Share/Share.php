@@ -2,17 +2,14 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Reiter <ockham@raz.or.at>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christopher Schäpers <kondou@ts.unde.re>
- * @author Christoph Wurst <christoph@owncloud.com>
- * @author Daniel Hansson <enoch85@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Michael Kuhn <suraia@ikkoku.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
@@ -42,13 +39,9 @@
 
 namespace OC\Share;
 
-use OC\Files\Filesystem;
 use OCP\DB\QueryBuilder\IQueryBuilder;
-use OCP\ILogger;
-use OCP\IUserManager;
-use OCP\IUserSession;
-use OCP\IDBConnection;
 use OCP\IConfig;
+use OCP\ILogger;
 use OCP\Util;
 
 /**
@@ -84,7 +77,7 @@ class Share extends Constants {
 	 * @return boolean true if backend is registered or false if error
 	 */
 	public static function registerBackend($itemType, $class, $collectionOf = null, $supportedFileExtensions = null) {
-		if (self::isEnabled()) {
+		if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_enabled', 'yes') == 'yes') {
 			if (!isset(self::$backendTypes[$itemType])) {
 				self::$backendTypes[$itemType] = array(
 					'class' => $class,
@@ -92,266 +85,16 @@ class Share extends Constants {
 					'supportedFileExtensions' => $supportedFileExtensions
 				);
 				if(count(self::$backendTypes) === 1) {
-					Util::addScript('core', 'merged-share-backend');
-					\OC_Util::addStyle('core', 'share');
+					Util::addScript('core', 'dist/share_backend');
 				}
 				return true;
 			}
 			\OCP\Util::writeLog('OCP\Share',
 				'Sharing backend '.$class.' not registered, '.self::$backendTypes[$itemType]['class']
 				.' is already registered for '.$itemType,
-				\OCP\Util::WARN);
+				ILogger::WARN);
 		}
 		return false;
-	}
-
-	/**
-	 * Check if the Share API is enabled
-	 * @return boolean true if enabled or false
-	 *
-	 * The Share API is enabled by default if not configured
-	 */
-	public static function isEnabled() {
-		if (\OC::$server->getAppConfig()->getValue('core', 'shareapi_enabled', 'yes') == 'yes') {
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Find which users can access a shared item
-	 * @param string $path to the file
-	 * @param string $ownerUser owner of the file
-	 * @param IUserManager $userManager
-	 * @param ILogger $logger
-	 * @param boolean $includeOwner include owner to the list of users with access to the file
-	 * @param boolean $returnUserPaths Return an array with the user => path map
-	 * @param boolean $recursive take all parent folders into account (default true)
-	 * @return array
-	 * @note $path needs to be relative to user data dir, e.g. 'file.txt'
-	 *       not '/admin/data/file.txt'
-	 * @throws \OC\User\NoUserException
-	 */
-	public static function getUsersSharingFile($path,
-											   $ownerUser,
-											   IUserManager $userManager,
-											   ILogger $logger,
-											   $includeOwner = false,
-											   $returnUserPaths = false,
-											   $recursive = true) {
-		$userObject = $userManager->get($ownerUser);
-
-		if (is_null($userObject)) {
-			$logger->error(
-				sprintf(
-					'Backends provided no user object for %s',
-					$ownerUser
-				),
-				[
-					'app' => 'files',
-				]
-			);
-			throw new \OC\User\NoUserException('Backends provided no user object');
-		}
-
-		$ownerUser = $userObject->getUID();
-
-		Filesystem::initMountPoints($ownerUser);
-		$shares = $sharePaths = $fileTargets = array();
-		$publicShare = false;
-		$remoteShare = false;
-		$source = -1;
-		$cache = $mountPath = false;
-
-		$view = new \OC\Files\View('/' . $ownerUser . '/files');
-		$meta = $view->getFileInfo($path);
-		if ($meta) {
-			$path = substr($meta->getPath(), strlen('/' . $ownerUser . '/files'));
-		} else {
-			// if the file doesn't exists yet we start with the parent folder
-			$meta = $view->getFileInfo(dirname($path));
-		}
-
-		if($meta !== false) {
-			$source = $meta['fileid'];
-			$cache = new \OC\Files\Cache\Cache($meta['storage']);
-
-			$mountPath = $meta->getMountPoint()->getMountPoint();
-			if ($mountPath !== false) {
-				$mountPath = substr($mountPath, strlen('/' . $ownerUser . '/files'));
-			}
-		}
-
-		$paths = [];
-		while ($source !== -1) {
-			// Fetch all shares with another user
-			if (!$returnUserPaths) {
-				$query = \OC_DB::prepare(
-					'SELECT `share_with`, `file_source`, `file_target`
-					FROM
-					`*PREFIX*share`
-					WHERE
-					`item_source` = ? AND `share_type` = ? AND `item_type` IN (\'file\', \'folder\')'
-				);
-				$result = $query->execute(array($source, self::SHARE_TYPE_USER));
-			} else {
-				$query = \OC_DB::prepare(
-					'SELECT `share_with`, `file_source`, `file_target`
-				FROM
-				`*PREFIX*share`
-				WHERE
-				`item_source` = ? AND `share_type` IN (?, ?) AND `item_type` IN (\'file\', \'folder\')'
-				);
-				$result = $query->execute(array($source, self::SHARE_TYPE_USER, self::$shareTypeGroupUserUnique));
-			}
-
-			if (\OCP\DB::isError($result)) {
-				\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage(), \OCP\Util::ERROR);
-			} else {
-				while ($row = $result->fetchRow()) {
-					$shares[] = $row['share_with'];
-					if ($returnUserPaths) {
-						$fileTargets[(int) $row['file_source']][$row['share_with']] = $row;
-					}
-				}
-			}
-
-			// We also need to take group shares into account
-			$query = \OC_DB::prepare(
-				'SELECT `share_with`, `file_source`, `file_target`
-				FROM
-				`*PREFIX*share`
-				WHERE
-				`item_source` = ? AND `share_type` = ? AND `item_type` IN (\'file\', \'folder\')'
-			);
-
-			$result = $query->execute(array($source, self::SHARE_TYPE_GROUP));
-
-			if (\OCP\DB::isError($result)) {
-				\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage(), \OCP\Util::ERROR);
-			} else {
-				$groupManager = \OC::$server->getGroupManager();
-				while ($row = $result->fetchRow()) {
-
-					$usersInGroup = [];
-					$group = $groupManager->get($row['share_with']);
-					if ($group) {
-						$users = $group->searchUsers('', -1, 0);
-						$userIds = array();
-						foreach ($users as $user) {
-							$userIds[] = $user->getUID();
-						}
-						$usersInGroup = $userIds;
-					}
-					$shares = array_merge($shares, $usersInGroup);
-					if ($returnUserPaths) {
-						foreach ($usersInGroup as $user) {
-							if (!isset($fileTargets[(int) $row['file_source']][$user])) {
-								// When the user already has an entry for this file source
-								// the file is either shared directly with him as well, or
-								// he has an exception entry (because of naming conflict).
-								$fileTargets[(int) $row['file_source']][$user] = $row;
-							}
-						}
-					}
-				}
-			}
-
-			//check for public link shares
-			if (!$publicShare) {
-				$query = \OC_DB::prepare('
-					SELECT `share_with`
-					FROM `*PREFIX*share`
-					WHERE `item_source` = ? AND `share_type` IN (?, ?) AND `item_type` IN (\'file\', \'folder\')', 1
-				);
-
-				$result = $query->execute(array($source, self::SHARE_TYPE_LINK, self::SHARE_TYPE_EMAIL));
-
-				if (\OCP\DB::isError($result)) {
-					\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage(), \OCP\Util::ERROR);
-				} else {
-					if ($result->fetchRow()) {
-						$publicShare = true;
-					}
-				}
-			}
-
-			//check for remote share
-			if (!$remoteShare) {
-				$query = \OC_DB::prepare('
-					SELECT `share_with`
-					FROM `*PREFIX*share`
-					WHERE `item_source` = ? AND `share_type` = ? AND `item_type` IN (\'file\', \'folder\')', 1
-				);
-
-				$result = $query->execute(array($source, self::SHARE_TYPE_REMOTE));
-
-				if (\OCP\DB::isError($result)) {
-					\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage(), \OCP\Util::ERROR);
-				} else {
-					if ($result->fetchRow()) {
-						$remoteShare = true;
-					}
-				}
-			}
-
-			// let's get the parent for the next round
-			$meta = $cache->get((int)$source);
-			if ($recursive === true && $meta !== false) {
-				$paths[$source] = $meta['path'];
-				$source = (int)$meta['parent'];
-			} else {
-				$source = -1;
-			}
-		}
-
-		// Include owner in list of users, if requested
-		if ($includeOwner) {
-			$shares[] = $ownerUser;
-		}
-
-		if ($returnUserPaths) {
-			$fileTargetIDs = array_keys($fileTargets);
-			$fileTargetIDs = array_unique($fileTargetIDs);
-
-			if (!empty($fileTargetIDs)) {
-				$query = \OC_DB::prepare(
-					'SELECT `fileid`, `path`
-					FROM `*PREFIX*filecache`
-					WHERE `fileid` IN (' . implode(',', $fileTargetIDs) . ')'
-				);
-				$result = $query->execute();
-
-				if (\OCP\DB::isError($result)) {
-					\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage(), \OCP\Util::ERROR);
-				} else {
-					while ($row = $result->fetchRow()) {
-						foreach ($fileTargets[$row['fileid']] as $uid => $shareData) {
-							if ($mountPath !== false) {
-								$sharedPath = $shareData['file_target'];
-								$sharedPath .= substr($path, strlen($mountPath) + strlen($paths[$row['fileid']]));
-								$sharePaths[$uid] = $sharedPath;
-							} else {
-								$sharedPath = $shareData['file_target'];
-								$sharedPath .= substr($path, strlen($row['path']) -5);
-								$sharePaths[$uid] = $sharedPath;
-							}
-						}
-					}
-					$result->closeCursor();
-				}
-			}
-
-			if ($includeOwner) {
-				$sharePaths[$ownerUser] = $path;
-			} else {
-				unset($sharePaths[$ownerUser]);
-			}
-
-			return $sharePaths;
-		}
-
-		return array('users' => array_unique($shares), 'public' => $publicShare, 'remote' => $remoteShare);
 	}
 
 	/**
@@ -383,21 +126,6 @@ class Share extends Constants {
 												  $parameters = null, $limit = -1, $includeCollections = false) {
 		return self::getItems($itemType, null, self::$shareTypeUserAndGroups, $user, null, $format,
 			$parameters, $limit, $includeCollections);
-	}
-
-	/**
-	 * Get the item of item type shared with the current user
-	 * @param string $itemType
-	 * @param string $itemTarget
-	 * @param int $format (optional) Format type must be defined by the backend
-	 * @param mixed $parameters (optional)
-	 * @param boolean $includeCollections (optional)
-	 * @return mixed Return depends on format
-	 */
-	public static function getItemSharedWith($itemType, $itemTarget, $format = self::FORMAT_NONE,
-											 $parameters = null, $includeCollections = false) {
-		return self::getItems($itemType, $itemTarget, self::$shareTypeUserAndGroups, \OC_User::getUser(), null, $format,
-			$parameters, 1, $includeCollections);
 	}
 
 	/**
@@ -527,18 +255,6 @@ class Share extends Constants {
 	}
 
 	/**
-	 * Get the item of item type shared by a link
-	 * @param string $itemType
-	 * @param string $itemSource
-	 * @param string $uidOwner Owner of link
-	 * @return array
-	 */
-	public static function getItemSharedWithByLink($itemType, $itemSource, $uidOwner) {
-		return self::getItems($itemType, $itemSource, self::SHARE_TYPE_LINK, null, $uidOwner, self::FORMAT_NONE,
-			null, 1);
-	}
-
-	/**
 	 * Based on the given token the share information will be returned - password protected shares will be verified
 	 * @param string $token
 	 * @param bool $checkPasswordProtection
@@ -548,7 +264,7 @@ class Share extends Constants {
 		$query = \OC_DB::prepare('SELECT * FROM `*PREFIX*share` WHERE `token` = ?', 1);
 		$result = $query->execute(array($token));
 		if ($result === false) {
-			\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage() . ', token=' . $token, \OCP\Util::ERROR);
+			\OCP\Util::writeLog('OCP\Share', \OC_DB::getErrorMessage() . ', token=' . $token, ILogger::ERROR);
 		}
 		$row = $result->fetchRow();
 		if ($row === false) {
@@ -559,35 +275,12 @@ class Share extends Constants {
 		}
 
 		// password protected shares need to be authenticated
-		if ($checkPasswordProtection && !\OCP\Share::checkPasswordProtectedShare($row)) {
+		if ($checkPasswordProtection && !\OC\Share\Share::checkPasswordProtectedShare($row)) {
 			return false;
 		}
 
 		return $row;
 	}
-
-	/**
-	 * resolves reshares down to the last real share
-	 * @param array $linkItem
-	 * @return array file owner
-	 */
-	public static function resolveReShare($linkItem)
-	{
-		if (isset($linkItem['parent'])) {
-			$parent = $linkItem['parent'];
-			while (isset($parent)) {
-				$query = \OC_DB::prepare('SELECT * FROM `*PREFIX*share` WHERE `id` = ?', 1);
-				$item = $query->execute(array($parent))->fetchRow();
-				if (isset($item['parent'])) {
-					$parent = $item['parent'];
-				} else {
-					return $item;
-				}
-			}
-		}
-		return $linkItem;
-	}
-
 
 	/**
 	 * Get the shared items of item type owned by the current user
@@ -620,42 +313,6 @@ class Share extends Constants {
 	}
 
 	/**
-	 * Get all users an item is shared with
-	 * @param string $itemType
-	 * @param string $itemSource
-	 * @param string $uidOwner
-	 * @param boolean $includeCollections
-	 * @param boolean $checkExpireDate
-	 * @return array Return array of users
-	 */
-	public static function getUsersItemShared($itemType, $itemSource, $uidOwner, $includeCollections = false, $checkExpireDate = true) {
-
-		$users = array();
-		$items = self::getItems($itemType, $itemSource, null, null, $uidOwner, self::FORMAT_NONE, null, -1, $includeCollections, false, $checkExpireDate);
-		if ($items) {
-			foreach ($items as $item) {
-				if ((int)$item['share_type'] === self::SHARE_TYPE_USER) {
-					$users[] = $item['share_with'];
-				} else if ((int)$item['share_type'] === self::SHARE_TYPE_GROUP) {
-
-					$group = \OC::$server->getGroupManager()->get($item['share_with']);
-					$userIds = [];
-					if ($group) {
-						$users = $group->searchUsers('', -1, 0);
-						foreach ($users as $user) {
-							$userIds[] = $user->getUID();
-						}
-						return $userIds;
-					}
-
-					$users = array_merge($users, $userIds);
-				}
-			}
-		}
-		return $users;
-	}
-
-	/**
 	 * Share an item with a user, group, or via private link
 	 * @param string $itemType
 	 * @param string $itemSource
@@ -663,11 +320,13 @@ class Share extends Constants {
 	 * @param string $shareWith User or group the item is being shared with
 	 * @param int $permissions CRUDS
 	 * @param string $itemSourceName
-	 * @param \DateTime $expirationDate
-	 * @param bool $passwordChanged
+	 * @param \DateTime|null $expirationDate
+	 * @param bool|null $passwordChanged
 	 * @return boolean|string Returns true on success or false on failure, Returns token on success for links
 	 * @throws \OC\HintException when the share type is remote and the shareWith is invalid
 	 * @throws \Exception
+	 * @since 5.0.0 - parameter $itemSourceName was added in 6.0.0, parameter $expirationDate was added in 7.0.0, parameter $passwordChanged added in 9.0.0
+	 * @deprecated 14.0.0 TESTS ONLY - this methods is as of 2018-06 only used by tests
 	 */
 	public static function shareItem($itemType, $itemSource, $shareType, $shareWith, $permissions, $itemSourceName = null, \DateTime $expirationDate = null, $passwordChanged = null) {
 
@@ -677,12 +336,12 @@ class Share extends Constants {
 		if ($backend->isShareTypeAllowed($shareType) === false) {
 			$message = 'Sharing %s failed, because the backend does not allow shares from type %i';
 			$message_t = $l->t('Sharing %s failed, because the backend does not allow shares from type %i', array($itemSourceName, $shareType));
-			\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareType), \OCP\Util::DEBUG);
+			\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareType), ILogger::DEBUG);
 			throw new \Exception($message_t);
 		}
 
 		$uidOwner = \OC_User::getUser();
-		$shareWithinGroupOnly = self::shareWithGroupMembersOnly();
+		$shareWithinGroupOnly = \OC::$server->getConfig()->getAppValue('core', 'shareapi_only_share_with_group_members', 'no') === 'yes';
 
 		if (is_null($itemSourceName)) {
 			$itemSourceName = $itemSource;
@@ -698,14 +357,14 @@ class Share extends Constants {
 			if (!$path) {
 				$message = 'Sharing %s failed, because the file does not exist';
 				$message_t = $l->t('Sharing %s failed, because the file does not exist', array($itemSourceName));
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), \OCP\Util::DEBUG);
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 			// verify that the user has share permission
 			if (!\OC\Files\Filesystem::isSharable($path) || \OCP\Util::isSharingDisabledForUser()) {
 				$message = 'You are not allowed to share %s';
 				$message_t = $l->t('You are not allowed to share %s', [$path]);
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $path), \OCP\Util::DEBUG);
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $path), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 		}
@@ -718,7 +377,7 @@ class Share extends Constants {
 			foreach ($mounts as $mount) {
 				if ($mount->getStorage()->instanceOfStorage('\OCA\Files_Sharing\ISharedStorage')) {
 					$message = 'Sharing "' . $itemSourceName . '" failed, because it contains files shared with you!';
-					\OCP\Util::writeLog('OCP\Share', $message, \OCP\Util::DEBUG);
+					\OCP\Util::writeLog('OCP\Share', $message, ILogger::DEBUG);
 					throw new \Exception($message);
 				}
 
@@ -750,13 +409,13 @@ class Share extends Constants {
 			if ($shareWith == $uidOwner) {
 				$message = 'Sharing %s failed, because you can not share with yourself';
 				$message_t = $l->t('Sharing %s failed, because you can not share with yourself', [$itemName]);
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), \OCP\Util::DEBUG);
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
-			if (!\OC_User::userExists($shareWith)) {
-				$message = 'Sharing %s failed, because the user %s does not exist';
-				$message_t = $l->t('Sharing %s failed, because the user %s does not exist', array($itemSourceName, $shareWith));
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::DEBUG);
+			if (!\OC::$server->getUserManager()->userExists($shareWith)) {
+				$message = 'Sharing %1$s failed, because the user %2$s does not exist';
+				$message_t = $l->t('Sharing %1$s failed, because the user %2$s does not exist', array($itemSourceName, $shareWith));
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 			if ($shareWithinGroupOnly) {
@@ -774,10 +433,10 @@ class Share extends Constants {
 				}
 				$inGroup = array_intersect($groupsOwner, $groupsShareWith);
 				if (empty($inGroup)) {
-					$message = 'Sharing %s failed, because the user '
-						.'%s is not a member of any groups that %s is a member of';
-					$message_t = $l->t('Sharing %s failed, because the user %s is not a member of any groups that %s is a member of', array($itemName, $shareWith, $uidOwner));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemName, $shareWith, $uidOwner), \OCP\Util::DEBUG);
+					$message = 'Sharing %1$s failed, because the user '
+						.'%2$s is not a member of any groups that %3$s is a member of';
+					$message_t = $l->t('Sharing %1$s failed, because the user %2$s is not a member of any groups that %3$s is a member of', array($itemName, $shareWith, $uidOwner));
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemName, $shareWith, $uidOwner), ILogger::DEBUG);
 					throw new \Exception($message_t);
 				}
 			}
@@ -788,9 +447,9 @@ class Share extends Constants {
 				// owner and is not a user share, this use case is for increasing
 				// permissions for a specific user
 				if ($checkExists['uid_owner'] != $uidOwner || $checkExists['share_type'] == $shareType) {
-					$message = 'Sharing %s failed, because this item is already shared with %s';
-					$message_t = $l->t('Sharing %s failed, because this item is already shared with %s', array($itemSourceName, $shareWith));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::DEBUG);
+					$message = 'Sharing %1$s failed, because this item is already shared with %2$s';
+					$message_t = $l->t('Sharing %1$s failed, because this item is already shared with %2$s', array($itemSourceName, $shareWith));
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::DEBUG);
 					throw new \Exception($message_t);
 				}
 			}
@@ -800,27 +459,27 @@ class Share extends Constants {
 				// owner and is not a user share, this use case is for increasing
 				// permissions for a specific user
 				if ($checkExists['uid_owner'] != $uidOwner || $checkExists['share_type'] == $shareType) {
-					$message = 'Sharing %s failed, because this item is already shared with user %s';
-					$message_t = $l->t('Sharing %s failed, because this item is already shared with user %s', array($itemSourceName, $shareWith));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::ERROR);
+					$message = 'Sharing %1$s failed, because this item is already shared with user %2$s';
+					$message_t = $l->t('Sharing %1$s failed, because this item is already shared with user %2$s', array($itemSourceName, $shareWith));
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::ERROR);
 					throw new \Exception($message_t);
 				}
 			}
 		} else if ($shareType === self::SHARE_TYPE_GROUP) {
 			if (!\OC::$server->getGroupManager()->groupExists($shareWith)) {
-				$message = 'Sharing %s failed, because the group %s does not exist';
-				$message_t = $l->t('Sharing %s failed, because the group %s does not exist', array($itemSourceName, $shareWith));
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::DEBUG);
+				$message = 'Sharing %1$s failed, because the group %2$s does not exist';
+				$message_t = $l->t('Sharing %1$s failed, because the group %2$s does not exist', array($itemSourceName, $shareWith));
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 			if ($shareWithinGroupOnly) {
 				$group = \OC::$server->getGroupManager()->get($shareWith);
 				$user = \OC::$server->getUserManager()->get($uidOwner);
 				if (!$group || !$user || !$group->inGroup($user)) {
-					$message = 'Sharing %s failed, because '
-						. '%s is not a member of the group %s';
-					$message_t = $l->t('Sharing %s failed, because %s is not a member of the group %s', array($itemSourceName, $uidOwner, $shareWith));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $uidOwner, $shareWith), \OCP\Util::DEBUG);
+					$message = 'Sharing %1$s failed, because '
+						. '%2$s is not a member of the group %3$s';
+					$message_t = $l->t('Sharing %1$s failed, because %2$s is not a member of the group %3$s', array($itemSourceName, $uidOwner, $shareWith));
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $uidOwner, $shareWith), ILogger::DEBUG);
 					throw new \Exception($message_t);
 				}
 			}
@@ -830,9 +489,9 @@ class Share extends Constants {
 				null, self::FORMAT_NONE, null, 1, true, true)) {
 
 				if ($checkExists['share_with'] === $shareWith && $checkExists['share_type'] === \OCP\Share::SHARE_TYPE_GROUP) {
-					$message = 'Sharing %s failed, because this item is already shared with %s';
-					$message_t = $l->t('Sharing %s failed, because this item is already shared with %s', array($itemSourceName, $shareWith));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::DEBUG);
+					$message = 'Sharing %1$s failed, because this item is already shared with %2$s';
+					$message_t = $l->t('Sharing %1$s failed, because this item is already shared with %2$s', array($itemSourceName, $shareWith));
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::DEBUG);
 					throw new \Exception($message_t);
 				}
 			}
@@ -854,7 +513,7 @@ class Share extends Constants {
 			$shareWith['users'] = array_diff($userIds, array($uidOwner));
 		} else if ($shareType === self::SHARE_TYPE_LINK) {
 			$updateExistingShare = false;
-			if (\OC::$server->getAppConfig()->getValue('core', 'shareapi_allow_links', 'yes') == 'yes') {
+			if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_allow_links', 'yes') == 'yes') {
 
 				// IF the password is changed via the old ajax endpoint verify it before deleting the old share
 				if ($passwordChanged === true) {
@@ -899,7 +558,7 @@ class Share extends Constants {
 				if (\OCP\Util::isPublicLinkPasswordRequired() && empty($shareWith)) {
 					$message = 'You need to provide a password to create a public link, only protected links are allowed';
 					$message_t = $l->t('You need to provide a password to create a public link, only protected links are allowed');
-					\OCP\Util::writeLog('OCP\Share', $message, \OCP\Util::DEBUG);
+					\OCP\Util::writeLog('OCP\Share', $message, ILogger::DEBUG);
 					throw new \Exception($message_t);
 				}
 
@@ -914,8 +573,7 @@ class Share extends Constants {
 					$token = $oldToken;
 				} else {
 					$token = \OC::$server->getSecureRandom()->generate(self::TOKEN_LENGTH,
-						\OCP\Security\ISecureRandom::CHAR_LOWER.\OCP\Security\ISecureRandom::CHAR_UPPER.
-						\OCP\Security\ISecureRandom::CHAR_DIGITS
+						\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE
 					);
 				}
 				$result = self::put($itemType, $itemSource, $shareType, $shareWith, $uidOwner, $permissions,
@@ -928,7 +586,7 @@ class Share extends Constants {
 			}
 			$message = 'Sharing %s failed, because sharing with links is not allowed';
 			$message_t = $l->t('Sharing %s failed, because sharing with links is not allowed', array($itemSourceName));
-			\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), \OCP\Util::DEBUG);
+			\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), ILogger::DEBUG);
 			throw new \Exception($message_t);
 		} else if ($shareType === self::SHARE_TYPE_REMOTE) {
 
@@ -937,9 +595,9 @@ class Share extends Constants {
 			 */
 			if ($checkExists = self::getItems($itemType, $itemSource, self::SHARE_TYPE_REMOTE,
 				$shareWith, $uidOwner, self::FORMAT_NONE, null, 1, true, true)) {
-					$message = 'Sharing %s failed, because this item is already shared with %s';
-					$message_t = $l->t('Sharing %s failed, because this item is already shared with %s', array($itemSourceName, $shareWith));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::DEBUG);
+					$message = 'Sharing %1$s failed, because this item is already shared with %2$s';
+					$message_t = $l->t('Sharing %1$s failed, because this item is already shared with %2$s', array($itemSourceName, $shareWith));
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::DEBUG);
 					throw new \Exception($message_t);
 			}
 
@@ -950,7 +608,7 @@ class Share extends Constants {
 			if (Helper::isSameUserOnSameServer($user, $remote, $currentUser, $currentServer)) {
 				$message = 'Not allowed to create a federated share with the same user.';
 				$message_t = $l->t('Not allowed to create a federated share with the same user');
-				\OCP\Util::writeLog('OCP\Share', $message, \OCP\Util::DEBUG);
+				\OCP\Util::writeLog('OCP\Share', $message, ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 
@@ -968,16 +626,16 @@ class Share extends Constants {
 			if ($send === false) {
 				$currentUser = \OC::$server->getUserSession()->getUser()->getUID();
 				self::unshare($itemType, $itemSource, $shareType, $shareWith, $currentUser);
-				$message_t = $l->t('Sharing %s failed, could not find %s, maybe the server is currently unreachable.', array($itemSourceName, $shareWith));
+				$message_t = $l->t('Sharing %1$s failed, could not find %2$s, maybe the server is currently unreachable.', array($itemSourceName, $shareWith));
 				throw new \Exception($message_t);
 			}
 
 			return $send;
 		} else {
 			// Future share types need to include their own conditions
-			$message = 'Share type %s is not valid for %s';
-			$message_t = $l->t('Share type %s is not valid for %s', array($shareType, $itemSource));
-			\OCP\Util::writeLog('OCP\Share', sprintf($message, $shareType, $itemSource), \OCP\Util::DEBUG);
+			$message = 'Share type %1$s is not valid for %2$s';
+			$message_t = $l->t('Share type %1$s is not valid for %2$s', array($shareType, $itemSource));
+			\OCP\Util::writeLog('OCP\Share', sprintf($message, $shareType, $itemSource), ILogger::DEBUG);
 			throw new \Exception($message_t);
 		}
 
@@ -1028,140 +686,6 @@ class Share extends Constants {
 	}
 
 	/**
-	 * Unshare an item from all users, groups, and remove all links
-	 * @param string $itemType
-	 * @param string $itemSource
-	 * @return boolean true on success or false on failure
-	 */
-	public static function unshareAll($itemType, $itemSource) {
-		// Get all of the owners of shares of this item.
-		$query = \OC_DB::prepare( 'SELECT `uid_owner` from `*PREFIX*share` WHERE `item_type`=? AND `item_source`=?' );
-		$result = $query->execute(array($itemType, $itemSource));
-		$shares = array();
-		// Add each owner's shares to the array of all shares for this item.
-		while ($row = $result->fetchRow()) {
-			$shares = array_merge($shares, self::getItems($itemType, $itemSource, null, null, $row['uid_owner']));
-		}
-		if (!empty($shares)) {
-			// Pass all the vars we have for now, they may be useful
-			$hookParams = array(
-				'itemType' => $itemType,
-				'itemSource' => $itemSource,
-				'shares' => $shares,
-			);
-			\OC_Hook::emit('OCP\Share', 'pre_unshareAll', $hookParams);
-			foreach ($shares as $share) {
-				self::unshareItem($share);
-			}
-			\OC_Hook::emit('OCP\Share', 'post_unshareAll', $hookParams);
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Unshare an item shared with the current user
-	 * @param string $itemType
-	 * @param string $itemOrigin Item target or source
-	 * @param boolean $originIsSource true if $itemOrigin is the source, false if $itemOrigin is the target (optional)
-	 * @return boolean true on success or false on failure
-	 *
-	 * Unsharing from self is not allowed for items inside collections
-	 */
-	public static function unshareFromSelf($itemType, $itemOrigin, $originIsSource = false) {
-		$originType = ($originIsSource) ? 'source' : 'target';
-		$uid = \OCP\User::getUser();
-
-		if ($itemType === 'file' || $itemType === 'folder') {
-			$statement = 'SELECT * FROM `*PREFIX*share` WHERE `item_type` = ? and `file_' . $originType . '` = ?';
-		} else {
-			$statement = 'SELECT * FROM `*PREFIX*share` WHERE `item_type` = ? and `item_' . $originType . '` = ?';
-		}
-
-		$query = \OCP\DB::prepare($statement);
-		$result = $query->execute(array($itemType, $itemOrigin));
-
-		$shares = $result->fetchAll();
-
-		$listOfUnsharedItems = array();
-
-		$itemUnshared = false;
-		foreach ($shares as $share) {
-			if ((int)$share['share_type'] === \OCP\Share::SHARE_TYPE_USER &&
-				$share['share_with'] === $uid) {
-				$deletedShares = Helper::delete($share['id']);
-				$shareTmp = array(
-					'id' => $share['id'],
-					'shareWith' => $share['share_with'],
-					'itemTarget' => $share['item_target'],
-					'itemType' => $share['item_type'],
-					'shareType' => (int)$share['share_type'],
-				);
-				if (isset($share['file_target'])) {
-					$shareTmp['fileTarget'] = $share['file_target'];
-				}
-				$listOfUnsharedItems = array_merge($listOfUnsharedItems, $deletedShares, array($shareTmp));
-				$itemUnshared = true;
-				break;
-			} elseif ((int)$share['share_type'] === \OCP\Share::SHARE_TYPE_GROUP) {
-				$group = \OC::$server->getGroupManager()->get($share['share_with']);
-				$user = \OC::$server->getUserManager()->get($uid);
-				if ($group && $user && $group->inGroup($user)) {
-					$groupShare = $share;
-				}
-			} elseif ((int)$share['share_type'] === self::$shareTypeGroupUserUnique &&
-				$share['share_with'] === $uid) {
-				$uniqueGroupShare = $share;
-			}
-		}
-
-		if (!$itemUnshared && isset($groupShare) && !isset($uniqueGroupShare)) {
-			$query = \OC_DB::prepare('INSERT INTO `*PREFIX*share`'
-				.' (`item_type`, `item_source`, `item_target`, `parent`, `share_type`,'
-				.' `share_with`, `uid_owner`, `permissions`, `stime`, `file_source`, `file_target`)'
-				.' VALUES (?,?,?,?,?,?,?,?,?,?,?)');
-			$query->execute(array($groupShare['item_type'], $groupShare['item_source'], $groupShare['item_target'],
-				$groupShare['id'], self::$shareTypeGroupUserUnique,
-				\OC_User::getUser(), $groupShare['uid_owner'], 0, $groupShare['stime'], $groupShare['file_source'],
-				$groupShare['file_target']));
-			$shareTmp = array(
-				'id' => $groupShare['id'],
-				'shareWith' => $groupShare['share_with'],
-				'itemTarget' => $groupShare['item_target'],
-				'itemType' => $groupShare['item_type'],
-				'shareType' => (int)$groupShare['share_type'],
-			);
-			if (isset($groupShare['file_target'])) {
-				$shareTmp['fileTarget'] = $groupShare['file_target'];
-			}
-			$listOfUnsharedItems = array_merge($listOfUnsharedItems, [$shareTmp]);
-			$itemUnshared = true;
-		} elseif (!$itemUnshared && isset($uniqueGroupShare)) {
-			$query = \OC_DB::prepare('UPDATE `*PREFIX*share` SET `permissions` = ? WHERE `id` = ?');
-			$query->execute(array(0, $uniqueGroupShare['id']));
-			$shareTmp = array(
-				'id' => $uniqueGroupShare['id'],
-				'shareWith' => $uniqueGroupShare['share_with'],
-				'itemTarget' => $uniqueGroupShare['item_target'],
-				'itemType' => $uniqueGroupShare['item_type'],
-				'shareType' => (int)$uniqueGroupShare['share_type'],
-			);
-			if (isset($uniqueGroupShare['file_target'])) {
-				$shareTmp['fileTarget'] = $uniqueGroupShare['file_target'];
-			}
-			$listOfUnsharedItems = array_merge($listOfUnsharedItems, [$shareTmp]);
-			$itemUnshared = true;
-		}
-
-		if ($itemUnshared) {
-			\OC_Hook::emit('OCP\Share', 'post_unshareFromSelf',
-				array('unsharedItems' => $listOfUnsharedItems, 'itemType' => $itemType));
-		}
-
-		return $itemUnshared;
-	}
-
-	/**
 	 * sent status if users got informed by mail about share
 	 * @param string $itemType
 	 * @param string $itemSource
@@ -1180,179 +704,8 @@ class Share extends Constants {
 		$result = $query->execute(array($status, $itemType, $itemSource, $shareType, $recipient));
 
 		if($result === false) {
-			\OCP\Util::writeLog('OCP\Share', 'Couldn\'t set send mail status', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('OCP\Share', 'Couldn\'t set send mail status', ILogger::ERROR);
 		}
-	}
-
-	/**
-	 * Set the permissions of an item for a specific user or group
-	 * @param string $itemType
-	 * @param string $itemSource
-	 * @param int $shareType SHARE_TYPE_USER, SHARE_TYPE_GROUP, or SHARE_TYPE_LINK
-	 * @param string $shareWith User or group the item is being shared with
-	 * @param int $permissions CRUDS permissions
-	 * @return boolean true on success or false on failure
-	 * @throws \Exception when trying to grant more permissions then the user has himself
-	 */
-	public static function setPermissions($itemType, $itemSource, $shareType, $shareWith, $permissions) {
-		$l = \OC::$server->getL10N('lib');
-		$connection = \OC::$server->getDatabaseConnection();
-
-		$intArrayToLiteralArray = function($intArray, $eb) {
-			return array_map(function($int) use ($eb) {
-				return $eb->literal((int)$int, 'integer');
-			}, $intArray);
-		};
-		$sanitizeItem = function($item) {
-			$item['id'] = (int)$item['id'];
-			$item['premissions'] = (int)$item['permissions'];
-			return $item;
-		};
-
-		if ($rootItem = self::getItems($itemType, $itemSource, $shareType, $shareWith,
-			\OC_User::getUser(), self::FORMAT_NONE, null, 1, false)) {
-			// Check if this item is a reshare and verify that the permissions
-			// granted don't exceed the parent shared item
-			if (isset($rootItem['parent'])) {
-				$qb = $connection->getQueryBuilder();
-				$qb->select('permissions')
-					->from('share')
-					->where($qb->expr()->eq('id', $qb->createParameter('id')))
-					->setParameter(':id', $rootItem['parent']);
-				$dbresult = $qb->execute();
-
-				$result = $dbresult->fetch();
-				$dbresult->closeCursor();
-				if (~(int)$result['permissions'] & $permissions) {
-					$message = 'Setting permissions for %s failed,'
-						.' because the permissions exceed permissions granted to %s';
-					$message_t = $l->t('Setting permissions for %s failed, because the permissions exceed permissions granted to %s', array($itemSource, \OC_User::getUser()));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSource, \OC_User::getUser()), \OCP\Util::DEBUG);
-					throw new \Exception($message_t);
-				}
-			}
-			$qb = $connection->getQueryBuilder();
-			$qb->update('share')
-				->set('permissions', $qb->createParameter('permissions'))
-				->where($qb->expr()->eq('id', $qb->createParameter('id')))
-				->setParameter(':id', $rootItem['id'])
-				->setParameter(':permissions', $permissions);
-			$qb->execute();
-			if ($itemType === 'file' || $itemType === 'folder') {
-				\OC_Hook::emit('OCP\Share', 'post_update_permissions', array(
-					'itemType' => $itemType,
-					'itemSource' => $itemSource,
-					'shareType' => $shareType,
-					'shareWith' => $shareWith,
-					'uidOwner' => \OC_User::getUser(),
-					'permissions' => $permissions,
-					'path' => $rootItem['path'],
-					'share' => $rootItem
-				));
-			}
-
-			// Share id's to update with the new permissions
-			$ids = [];
-			$items = [];
-
-			// Check if permissions were removed
-			if ((int)$rootItem['permissions'] & ~$permissions) {
-				// If share permission is removed all reshares must be deleted
-				if (($rootItem['permissions'] & \OCP\Constants::PERMISSION_SHARE) && (~$permissions & \OCP\Constants::PERMISSION_SHARE)) {
-					// delete all shares, keep parent and group children
-					Helper::delete($rootItem['id'], true, null, null, true);
-				}
-
-				// Remove permission from all children
-				$parents = [$rootItem['id']];
-				while (!empty($parents)) {
-					$parents = $intArrayToLiteralArray($parents, $qb->expr());
-					$qb = $connection->getQueryBuilder();
-					$qb->select('id', 'permissions', 'item_type')
-						->from('share')
-						->where($qb->expr()->in('parent', $parents));
-					$result = $qb->execute();
-					// Reset parents array, only go through loop again if
-					// items are found that need permissions removed
-					$parents = [];
-					while ($item = $result->fetch()) {
-						$item = $sanitizeItem($item);
-
-						$items[] = $item;
-						// Check if permissions need to be removed
-						if ($item['permissions'] & ~$permissions) {
-							// Add to list of items that need permissions removed
-							$ids[] = $item['id'];
-							$parents[] = $item['id'];
-						}
-					}
-					$result->closeCursor();
-				}
-
-				// Remove the permissions for all reshares of this item
-				if (!empty($ids)) {
-					$ids = "'".implode("','", $ids)."'";
-					// TODO this should be done with Doctrine platform objects
-					if (\OC::$server->getConfig()->getSystemValue("dbtype") === 'oci') {
-						$andOp = 'BITAND(`permissions`, ?)';
-					} else {
-						$andOp = '`permissions` & ?';
-					}
-					$query = \OC_DB::prepare('UPDATE `*PREFIX*share` SET `permissions` = '.$andOp
-						.' WHERE `id` IN ('.$ids.')');
-					$query->execute(array($permissions));
-				}
-
-			}
-
-			/*
-			 * Permissions were added
-			 * Update all USERGROUP shares. (So group shares where the user moved their mountpoint).
-			 */
-			if ($permissions & ~(int)$rootItem['permissions']) {
-				$qb = $connection->getQueryBuilder();
-				$qb->select('id', 'permissions', 'item_type')
-					->from('share')
-					->where($qb->expr()->eq('parent', $qb->createParameter('parent')))
-					->andWhere($qb->expr()->eq('share_type', $qb->createParameter('share_type')))
-					->andWhere($qb->expr()->neq('permissions', $qb->createParameter('shareDeleted')))
-					->setParameter(':parent', (int)$rootItem['id'])
-					->setParameter(':share_type', 2)
-					->setParameter(':shareDeleted', 0);
-				$result = $qb->execute();
-
-				$ids = [];
-				while ($item = $result->fetch()) {
-					$item = $sanitizeItem($item);
-					$items[] = $item;
-					$ids[] = $item['id'];
-				}
-				$result->closeCursor();
-
-				// Add permssions for all USERGROUP shares of this item
-				if (!empty($ids)) {
-					$ids = $intArrayToLiteralArray($ids, $qb->expr());
-
-					$qb = $connection->getQueryBuilder();
-					$qb->update('share')
-						->set('permissions', $qb->createParameter('permissions'))
-						->where($qb->expr()->in('id', $ids))
-						->setParameter(':permissions', $permissions);
-					$qb->execute();
-				}
-			}
-
-			foreach ($items as $item) {
-				\OC_Hook::emit('OCP\Share', 'post_update_permissions', ['share' => $item]);
-			}
-
-			return true;
-		}
-		$message = 'Setting permissions for %s failed, because the item was not found';
-		$message_t = $l->t('Setting permissions for %s failed, because the item was not found', array($itemSource));
-
-		\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSource), \OCP\Util::DEBUG);
-		throw new \Exception($message_t);
 	}
 
 	/**
@@ -1383,12 +736,12 @@ class Share extends Constants {
 			// initialize max date with share time
 			$maxDate = new \DateTime();
 			$maxDate->setTimestamp($shareTime);
-			$maxDays = \OCP\Config::getAppValue('core', 'shareapi_expire_after_n_days', '7');
+			$maxDays = \OC::$server->getConfig()->getAppValue('core', 'shareapi_expire_after_n_days', '7');
 			$maxDate->add(new \DateInterval('P' . $maxDays . 'D'));
 			if ($date > $maxDate) {
 				$warning = 'Cannot set expiration date. Shares cannot expire later than ' . $maxDays . ' after they have been shared';
 				$warning_t = $l->t('Cannot set expiration date. Shares cannot expire later than %s after they have been shared', array($maxDays));
-				\OCP\Util::writeLog('OCP\Share', $warning, \OCP\Util::WARN);
+				\OCP\Util::writeLog('OCP\Share', $warning, ILogger::WARN);
 				throw new \Exception($warning_t);
 			}
 		}
@@ -1396,130 +749,11 @@ class Share extends Constants {
 		if ($date < $today) {
 			$message = 'Cannot set expiration date. Expiration date is in the past';
 			$message_t = $l->t('Cannot set expiration date. Expiration date is in the past');
-			\OCP\Util::writeLog('OCP\Share', $message, \OCP\Util::WARN);
+			\OCP\Util::writeLog('OCP\Share', $message, ILogger::WARN);
 			throw new \Exception($message_t);
 		}
 
 		return $date;
-	}
-
-	/**
-	 * Set expiration date for a share
-	 * @param string $itemType
-	 * @param string $itemSource
-	 * @param string $date expiration date
-	 * @param int $shareTime timestamp from when the file was shared
-	 * @return boolean
-	 * @throws \Exception when the expire date is not set, in the past or further in the future then the enforced date
-	 */
-	public static function setExpirationDate($itemType, $itemSource, $date, $shareTime = null) {
-		$user = \OC_User::getUser();
-		$l = \OC::$server->getL10N('lib');
-
-		if ($date == '') {
-			if (\OCP\Util::isDefaultExpireDateEnforced()) {
-				$warning = 'Cannot clear expiration date. Shares are required to have an expiration date.';
-				$warning_t = $l->t('Cannot clear expiration date. Shares are required to have an expiration date.');
-				\OCP\Util::writeLog('OCP\Share', $warning, \OCP\Util::WARN);
-				throw new \Exception($warning_t);
-			} else {
-				$date = null;
-			}
-		} else {
-			$date = self::validateExpireDate($date, $shareTime, $itemType, $itemSource);
-		}
-		$query = \OC_DB::prepare('UPDATE `*PREFIX*share` SET `expiration` = ? WHERE `item_type` = ? AND `item_source` = ?  AND `uid_owner` = ? AND `share_type` = ?');
-		$query->bindValue(1, $date, 'datetime');
-		$query->bindValue(2, $itemType);
-		$query->bindValue(3, $itemSource);
-		$query->bindValue(4, $user);
-		$query->bindValue(5, \OCP\Share::SHARE_TYPE_LINK);
-
-		$query->execute();
-
-		\OC_Hook::emit('OCP\Share', 'post_set_expiration_date', array(
-			'itemType' => $itemType,
-			'itemSource' => $itemSource,
-			'date' => $date,
-			'uidOwner' => $user
-		));
-
-		return true;
-	}
-
-	/**
-	 * Retrieve the owner of a connection
-	 *
-	 * @param IDBConnection $connection
-	 * @param int $shareId
-	 * @throws \Exception
-	 * @return string uid of share owner
-	 */
-	private static function getShareOwner(IDBConnection $connection, $shareId) {
-		$qb = $connection->getQueryBuilder();
-
-		$qb->select('uid_owner')
-			->from('share')
-			->where($qb->expr()->eq('id', $qb->createParameter('shareId')))
-			->setParameter(':shareId', $shareId);
-		$dbResult = $qb->execute();
-		$result = $dbResult->fetch();
-		$dbResult->closeCursor();
-
-		if (empty($result)) {
-			throw new \Exception('Share not found');
-		}
-
-		return $result['uid_owner'];
-	}
-
-	/**
-	 * Set password for a public link share
-	 *
-	 * @param IUserSession $userSession
-	 * @param IDBConnection $connection
-	 * @param IConfig $config
-	 * @param int $shareId
-	 * @param string $password
-	 * @throws \Exception
-	 * @return boolean
-	 */
-	public static function setPassword(IUserSession $userSession,
-	                                   IDBConnection $connection,
-	                                   IConfig $config,
-	                                   $shareId, $password) {
-		$user = $userSession->getUser();
-		if (is_null($user)) {
-			throw new \Exception("User not logged in");
-		}
-
-		$uid = self::getShareOwner($connection, $shareId);
-
-		if ($uid !== $user->getUID()) {
-			throw new \Exception('Cannot update share of a different user');
-		}
-
-		if ($password === '') {
-			$password = null;
-		}
-
-		//If passwords are enforced the password can't be null
-		if (self::enforcePassword($config) && is_null($password)) {
-			throw new \Exception('Cannot remove password');
-		}
-
-		self::verifyPassword($password);
-
-		$qb = $connection->getQueryBuilder();
-		$qb->update('share')
-			->set('share_with', $qb->createParameter('pass'))
-			->where($qb->expr()->eq('id', $qb->createParameter('shareId')))
-			->setParameter(':pass', is_null($password) ? null : \OC::$server->getHasher()->hash($password))
-			->setParameter(':shareId', $shareId);
-
-		$qb->execute();
-
-		return true;
 	}
 
 	/**
@@ -1588,11 +822,11 @@ class Share extends Constants {
 			$hookParams['fileTarget'] = $item['file_target'];
 		}
 
-		\OC_Hook::emit('OCP\Share', 'pre_unshare', $hookParams);
+		\OC_Hook::emit(\OCP\Share::class, 'pre_unshare', $hookParams);
 		$deletedShares = Helper::delete($item['id'], false, null, $newParent);
 		$deletedShares[] = $hookParams;
 		$hookParams['deletedShares'] = $deletedShares;
-		\OC_Hook::emit('OCP\Share', 'post_unshare', $hookParams);
+		\OC_Hook::emit(\OCP\Share::class, 'post_unshare', $hookParams);
 		if ((int)$item['share_type'] === \OCP\Share::SHARE_TYPE_REMOTE && \OC::$server->getUserSession()->getUser()) {
 			list(, $remote) = Helper::splitUserRemote($item['share_with']);
 			self::sendRemoteUnshare($remote, $item['id'], $item['token']);
@@ -1616,20 +850,20 @@ class Share extends Constants {
 				if (!(self::$backends[$itemType] instanceof \OCP\Share_Backend)) {
 					$message = 'Sharing backend %s must implement the interface OCP\Share_Backend';
 					$message_t = $l->t('Sharing backend %s must implement the interface OCP\Share_Backend', array($class));
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $class), \OCP\Util::ERROR);
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $class), ILogger::ERROR);
 					throw new \Exception($message_t);
 				}
 				return self::$backends[$itemType];
 			} else {
 				$message = 'Sharing backend %s not found';
 				$message_t = $l->t('Sharing backend %s not found', array($class));
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $class), \OCP\Util::ERROR);
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $class), ILogger::ERROR);
 				throw new \Exception($message_t);
 			}
 		}
 		$message = 'Sharing backend for %s not found';
 		$message_t = $l->t('Sharing backend for %s not found', array($itemType));
-		\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemType), \OCP\Util::ERROR);
+		\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemType), ILogger::ERROR);
 		throw new \Exception($message_t);
 	}
 
@@ -1641,7 +875,7 @@ class Share extends Constants {
 	 */
 	public static function isResharingAllowed() {
 		if (!isset(self::$isResharingAllowed)) {
-			if (\OC::$server->getAppConfig()->getValue('core', 'shareapi_allow_resharing', 'yes') == 'yes') {
+			if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_allow_resharing', 'yes') == 'yes') {
 				self::$isResharingAllowed = true;
 			} else {
 				self::$isResharingAllowed = false;
@@ -1746,7 +980,7 @@ class Share extends Constants {
 	public static function getItems($itemType, $item = null, $shareType = null, $shareWith = null,
 									$uidOwner = null, $format = self::FORMAT_NONE, $parameters = null, $limit = -1,
 									$includeCollections = false, $itemShareWithBySource = false, $checkExpireDate  = true) {
-		if (!self::isEnabled()) {
+		if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_enabled', 'yes') != 'yes') {
 			return array();
 		}
 		$backend = self::getBackend($itemType);
@@ -1777,7 +1011,7 @@ class Share extends Constants {
 				} else {
 					$itemTypes = $collectionTypes;
 				}
-				$placeholders = join(',', array_fill(0, count($itemTypes), '?'));
+				$placeholders = implode(',', array_fill(0, count($itemTypes), '?'));
 				$where = ' WHERE `item_type` IN ('.$placeholders.'))';
 				$queryArgs = $itemTypes;
 			} else {
@@ -1785,7 +1019,7 @@ class Share extends Constants {
 				$queryArgs = array($itemType);
 			}
 		}
-		if (\OC::$server->getAppConfig()->getValue('core', 'shareapi_allow_links', 'yes') !== 'yes') {
+		if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_allow_links', 'yes') !== 'yes') {
 			$where .= ' AND `share_type` != ?';
 			$queryArgs[] = self::SHARE_TYPE_LINK;
 		}
@@ -1803,7 +1037,7 @@ class Share extends Constants {
 					$groups = \OC::$server->getGroupManager()->getUserGroupIds($user);
 				}
 				if (!empty($groups)) {
-					$placeholders = join(',', array_fill(0, count($groups), '?'));
+					$placeholders = implode(',', array_fill(0, count($groups), '?'));
 					$where .= ' OR (`share_type` = ? AND `share_with` IN ('.$placeholders.')) ';
 					$queryArgs[] = self::SHARE_TYPE_GROUP;
 					$queryArgs = array_merge($queryArgs, $groups);
@@ -1868,7 +1102,7 @@ class Share extends Constants {
 			}
 			$queryArgs[] = $item;
 			if ($includeCollections && $collectionTypes && !in_array('folder', $collectionTypes)) {
-				$placeholders = join(',', array_fill(0, count($collectionTypes), '?'));
+				$placeholders = implode(',', array_fill(0, count($collectionTypes), '?'));
 				$where .= ' OR `item_type` IN ('.$placeholders.'))';
 				$queryArgs = array_merge($queryArgs, $collectionTypes);
 			}
@@ -1900,7 +1134,7 @@ class Share extends Constants {
 		if ($result === false) {
 			\OCP\Util::writeLog('OCP\Share',
 				\OC_DB::getErrorMessage() . ', select=' . $select . ' where=',
-				\OCP\Util::ERROR);
+				ILogger::ERROR);
 		}
 		$items = array();
 		$targets = array();
@@ -1964,7 +1198,7 @@ class Share extends Constants {
 					if ($result === false) {
 						\OCP\Util::writeLog('OCP\Share', 'Can\'t select parent: ' .
 							\OC_DB::getErrorMessage() . ', select=' . $select . ' where=' . $where,
-							\OCP\Util::ERROR);
+							ILogger::ERROR);
 					} else {
 						$parentRow = $parentResult->fetchRow();
 						$tmpPath = $parentRow['file_target'];
@@ -2005,7 +1239,8 @@ class Share extends Constants {
 			$row['share_with_displayname'] = $row['share_with'];
 			if ( isset($row['share_with']) && $row['share_with'] != '' &&
 				$row['share_type'] === self::SHARE_TYPE_USER) {
-				$row['share_with_displayname'] = \OCP\User::getDisplayName($row['share_with']);
+				$shareWithUser = \OC::$server->getUserManager()->get($row['share_with']);
+				$row['share_with_displayname'] = $shareWithUser === null ? $row['share_with'] : $shareWithUser->getDisplayName();
 			} else if(isset($row['share_with']) && $row['share_with'] != '' &&
 				$row['share_type'] === self::SHARE_TYPE_REMOTE) {
 				$addressBookEntries = \OC::$server->getContactsManager()->search($row['share_with'], ['CLOUD']);
@@ -2018,7 +1253,8 @@ class Share extends Constants {
 				}
 			}
 			if ( isset($row['uid_owner']) && $row['uid_owner'] != '') {
-				$row['displayname_owner'] = \OCP\User::getDisplayName($row['uid_owner']);
+				$ownerUser = \OC::$server->getUserManager()->get($row['uid_owner']);
+				$row['displayname_owner'] = $ownerUser === null ? $row['uid_owner'] : $ownerUser->getDisplayName();
 			}
 
 			if ($row['permissions'] > 0) {
@@ -2155,7 +1391,7 @@ class Share extends Constants {
 	 */
 	protected static function groupItems($items, $itemType) {
 
-		$fileSharing = ($itemType === 'file' || $itemType === 'folder') ? true : false;
+		$fileSharing = $itemType === 'file' || $itemType === 'folder';
 
 		$result = array();
 
@@ -2285,10 +1521,10 @@ class Share extends Constants {
 			'error' => &$error
 		);
 
-		$preHookData['itemTarget'] = ($isGroupShare) ? $groupItemTarget : $itemTarget;
-		$preHookData['shareWith'] = ($isGroupShare) ? $shareWith['group'] : $shareWith;
+		$preHookData['itemTarget'] = $isGroupShare ? $groupItemTarget : $itemTarget;
+		$preHookData['shareWith'] = $isGroupShare ? $shareWith['group'] : $shareWith;
 
-		\OC_Hook::emit('OCP\Share', 'pre_shared', $preHookData);
+		\OC_Hook::emit(\OCP\Share::class, 'pre_shared', $preHookData);
 
 		if ($run === false) {
 			throw new \Exception($error);
@@ -2298,7 +1534,7 @@ class Share extends Constants {
 			$sourceId = ($itemType === 'file' || $itemType === 'folder') ? $fileSource : $itemSource;
 			$sourceExists = self::getItemSharedWithBySource($itemType, $sourceId, self::FORMAT_NONE, null, true, $user);
 
-			$userShareType = ($isGroupShare) ? self::$shareTypeGroupUserUnique : $shareType;
+			$userShareType = $isGroupShare ? self::$shareTypeGroupUserUnique : $shareType;
 
 			if ($sourceExists && $sourceExists['item_source'] === $itemSource) {
 				$fileTarget = $sourceExists['file_target'];
@@ -2398,11 +1634,11 @@ class Share extends Constants {
 			'expirationDate' => $expirationDate,
 		);
 
-		$postHookData['shareWith'] = ($isGroupShare) ? $shareWith['group'] : $shareWith;
-		$postHookData['itemTarget'] = ($isGroupShare) ? $groupItemTarget : $itemTarget;
-		$postHookData['fileTarget'] = ($isGroupShare) ? $groupFileTarget : $fileTarget;
+		$postHookData['shareWith'] = $isGroupShare ? $shareWith['group'] : $shareWith;
+		$postHookData['itemTarget'] = $isGroupShare ? $groupItemTarget : $itemTarget;
+		$postHookData['fileTarget'] = $isGroupShare ? $groupFileTarget : $fileTarget;
 
-		\OC_Hook::emit('OCP\Share', 'post_shared', $postHookData);
+		\OC_Hook::emit(\OCP\Share::class, 'post_shared', $postHookData);
 
 
 		return $id ? $id : false;
@@ -2430,10 +1666,10 @@ class Share extends Constants {
 		if ($checkReshare) {
 			// Check if attempting to share back to owner
 			if ($checkReshare['uid_owner'] == $shareWith && $shareType == self::SHARE_TYPE_USER) {
-				$message = 'Sharing %s failed, because the user %s is the original sharer';
+				$message = 'Sharing %1$s failed, because the user %2$s is the original sharer';
 				$message_t = $l->t('Sharing failed, because the user %s is the original sharer', [$shareWith]);
 
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), \OCP\Util::DEBUG);
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $shareWith), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 		}
@@ -2442,10 +1678,10 @@ class Share extends Constants {
 			// Check if share permissions is granted
 			if (self::isResharingAllowed() && (int)$checkReshare['permissions'] & \OCP\Constants::PERMISSION_SHARE) {
 				if (~(int)$checkReshare['permissions'] & $permissions) {
-					$message = 'Sharing %s failed, because the permissions exceed permissions granted to %s';
-					$message_t = $l->t('Sharing %s failed, because the permissions exceed permissions granted to %s', array($itemSourceName, $uidOwner));
+					$message = 'Sharing %1$s failed, because the permissions exceed permissions granted to %2$s';
+					$message_t = $l->t('Sharing %1$s failed, because the permissions exceed permissions granted to %2$s', array($itemSourceName, $uidOwner));
 
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $uidOwner), \OCP\Util::DEBUG);
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName, $uidOwner), ILogger::DEBUG);
 					throw new \Exception($message_t);
 				} else {
 					// TODO Don't check if inside folder
@@ -2477,7 +1713,7 @@ class Share extends Constants {
 				$message = 'Sharing %s failed, because resharing is not allowed';
 				$message_t = $l->t('Sharing %s failed, because resharing is not allowed', array($itemSourceName));
 
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), \OCP\Util::DEBUG);
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSourceName), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 		} else {
@@ -2487,10 +1723,10 @@ class Share extends Constants {
 			$result['itemSource'] = $itemSource;
 			$result['expirationDate'] = $expirationDate;
 			if (!$backend->isValidSource($itemSource, $uidOwner)) {
-				$message = 'Sharing %s failed, because the sharing backend for '
-					.'%s could not find its source';
-				$message_t = $l->t('Sharing %s failed, because the sharing backend for %s could not find its source', array($itemSource, $itemType));
-				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSource, $itemType), \OCP\Util::DEBUG);
+				$message = 'Sharing %1$s failed, because the sharing backend for '
+					.'%2$s could not find its source';
+				$message_t = $l->t('Sharing %1$s failed, because the sharing backend for %2$s could not find its source', array($itemSource, $itemType));
+				\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSource, $itemType), ILogger::DEBUG);
 				throw new \Exception($message_t);
 			}
 			if ($backend instanceof \OCP\Share_Backend_File_Dependent) {
@@ -2505,7 +1741,7 @@ class Share extends Constants {
 					$message = 'Sharing %s failed, because the file could not be found in the file cache';
 					$message_t = $l->t('Sharing %s failed, because the file could not be found in the file cache', array($itemSource));
 
-					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSource), \OCP\Util::DEBUG);
+					\OCP\Util::writeLog('OCP\Share', sprintf($message, $itemSource), ILogger::DEBUG);
 					throw new \Exception($message_t);
 				}
 			} else {
@@ -2550,18 +1786,6 @@ class Share extends Constants {
 
 		return $id;
 
-	}
-
-	/**
-	 * Delete all shares with type SHARE_TYPE_LINK
-	 */
-	public static function removeAllLinkShares() {
-		// Delete any link shares
-		$query = \OC_DB::prepare('SELECT `id` FROM `*PREFIX*share` WHERE `share_type` = ?');
-		$result = $query->execute(array(self::SHARE_TYPE_LINK));
-		while ($item = $result->fetchRow()) {
-			Helper::delete($item['id']);
-		}
 	}
 
 	/**
@@ -2747,7 +1971,22 @@ class Share extends Constants {
 		while ($result['success'] === false && $try < 2) {
 			$federationEndpoints = $discoveryService->discover($protocol . $remoteDomain, 'FEDERATED_SHARING');
 			$endpoint = isset($federationEndpoints['share']) ? $federationEndpoints['share'] : '/ocs/v2.php/cloud/shares';
-			$result = \OC::$server->getHTTPHelper()->post($protocol . $remoteDomain . $endpoint . $urlSuffix . '?format=' . self::RESPONSE_FORMAT, $fields);
+			$client = \OC::$server->getHTTPClientService()->newClient();
+
+			try {
+				$response = $client->post(
+					$protocol . $remoteDomain . $endpoint . $urlSuffix . '?format=' . self::RESPONSE_FORMAT,
+					[
+						'body' => $fields,
+						'connect_timeout' => 10,
+					]
+				);
+
+				$result = ['success' => true, 'result' => $response->getBody()];
+			} catch (\Exception $e) {
+				$result = ['success' => false, 'result' => $e->getMessage()];
+			}
+
 			$try++;
 			$protocol = 'http://';
 		}
@@ -2788,7 +2027,7 @@ class Share extends Constants {
 			$status = json_decode($result['result'], true);
 
 			if ($result['success'] && ($status['ocs']['meta']['statuscode'] === 100 || $status['ocs']['meta']['statuscode'] === 200)) {
-				\OC_Hook::emit('OCP\Share', 'federated_share_added', ['server' => $remote]);
+				\OC_Hook::emit(\OCP\Share::class, 'federated_share_added', ['server' => $remote]);
 				return true;
 			}
 
@@ -2816,35 +2055,18 @@ class Share extends Constants {
 	}
 
 	/**
-	 * check if user can only share with group members
-	 * @return bool
-	 */
-	public static function shareWithGroupMembersOnly() {
-		$value = \OC::$server->getAppConfig()->getValue('core', 'shareapi_only_share_with_group_members', 'no');
-		return ($value === 'yes') ? true : false;
-	}
-
-	/**
 	 * @return bool
 	 */
 	public static function isDefaultExpireDateEnabled() {
-		$defaultExpireDateEnabled = \OCP\Config::getAppValue('core', 'shareapi_default_expire_date', 'no');
-		return ($defaultExpireDateEnabled === "yes") ? true : false;
-	}
-
-	/**
-	 * @return bool
-	 */
-	public static function enforceDefaultExpireDate() {
-		$enforceDefaultExpireDate = \OCP\Config::getAppValue('core', 'shareapi_enforce_expire_date', 'no');
-		return ($enforceDefaultExpireDate === "yes") ? true : false;
+		$defaultExpireDateEnabled = \OC::$server->getConfig()->getAppValue('core', 'shareapi_default_expire_date', 'no');
+		return $defaultExpireDateEnabled === 'yes';
 	}
 
 	/**
 	 * @return int
 	 */
 	public static function getExpireInterval() {
-		return (int)\OCP\Config::getAppValue('core', 'shareapi_expire_after_n_days', '7');
+		return (int)\OC::$server->getConfig()->getAppValue('core', 'shareapi_expire_after_n_days', '7');
 	}
 
 	/**
@@ -2870,39 +2092,6 @@ class Share extends Constants {
 		}
 
 		return false;
-	}
-
-	/**
-	 * @param IConfig $config
-	 * @return bool
-	 */
-	public static function enforcePassword(IConfig $config) {
-		$enforcePassword = $config->getAppValue('core', 'shareapi_enforce_links_password', 'no');
-		return ($enforcePassword === "yes") ? true : false;
-	}
-
-	/**
-	 * Get all share entries, including non-unique group items
-	 *
-	 * @param string $owner
-	 * @return array
-	 */
-	public static function getAllSharesForOwner($owner) {
-		$query = 'SELECT * FROM `*PREFIX*share` WHERE `uid_owner` = ?';
-		$result = \OC::$server->getDatabaseConnection()->executeQuery($query, [$owner]);
-		return $result->fetchAll();
-	}
-
-	/**
-	 * Get all share entries, including non-unique group items for a file
-	 *
-	 * @param int $id
-	 * @return array
-	 */
-	public static function getAllSharesForFileId($id) {
-		$query = 'SELECT * FROM `*PREFIX*share` WHERE `file_source` = ?';
-		$result = \OC::$server->getDatabaseConnection()->executeQuery($query, [$id]);
-		return $result->fetchAll();
 	}
 
 	/**

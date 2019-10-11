@@ -278,7 +278,7 @@ class TestAgents(unittest.TestCase):
             response = requests.get("%s/files?fields=identifier&project_identifier=test_project_a" % (self.config["METAX_API_ROOT_URL"]), auth=metax_user, verify=False)
             self.assertEqual(response.status_code, 200)
             file_data = response.json()
-            self.assertEqual(file_data["count"], 9)
+            self.assertEqual(file_data["count"], 11)
 
         print("Retrieve file details from already frozen file 1")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/baseline/test01.dat"}
@@ -360,7 +360,7 @@ class TestAgents(unittest.TestCase):
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_5_data = response.json()
-        self.assertEqual(file_5_data.get('size', None), 0)
+        self.assertEqual(file_5_data.get('size', None), 446)
 
         print("Physically move folder from staging to frozen area")
         result = shutil.move("%s/2017-08/Experiment_2" % (staging_area_root), "%s/2017-08/Experiment_2" % (frozen_area_root))
@@ -382,7 +382,7 @@ class TestAgents(unittest.TestCase):
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
-        self.assertEqual(len(file_set_data), 19)
+        self.assertEqual(len(file_set_data), 23)
 
         print("Verify file details from post-repair frozen file 1 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/baseline/test01.dat"}
@@ -451,7 +451,7 @@ class TestAgents(unittest.TestCase):
             response = requests.get("%s/files?fields=identifier&project_identifier=test_project_a" % (self.config["METAX_API_ROOT_URL"]), auth=metax_user, verify=False)
             self.assertEqual(response.status_code, 200)
             file_data = response.json()
-            self.assertEqual(file_data["count"], 19)
+            self.assertEqual(file_data["count"], 23)
 
             print("Verify manually removed frozen file marked as removed in METAX")
             response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_4_data["pid"]), auth=metax_user, verify=False)
@@ -462,7 +462,7 @@ class TestAgents(unittest.TestCase):
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_5_data = response.json()
-        self.assertEqual(file_5_data.get('size', None), 0)
+        self.assertEqual(file_5_data.get('size', None), 446)
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

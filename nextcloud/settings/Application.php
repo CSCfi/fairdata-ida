@@ -2,15 +2,13 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@owncloud.com>
- * @author Georg Ehrke <georg@owncloud.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
  *
@@ -30,9 +28,13 @@
 
 namespace OC\Settings;
 
+use BadMethodCallException;
 use OC\AppFramework\Utility\TimeFactory;
 use OC\Authentication\Token\IProvider;
+use OC\Authentication\Token\IToken;
 use OC\Server;
+use OC\Settings\Activity\GroupProvider;
+use OC\Settings\Activity\GroupSetting;
 use OC\Settings\Activity\Provider;
 use OC\Settings\Activity\SecurityFilter;
 use OC\Settings\Activity\SecurityProvider;
@@ -40,11 +42,17 @@ use OC\Settings\Activity\SecuritySetting;
 use OC\Settings\Activity\Setting;
 use OC\Settings\Mailer\NewUserMailHelper;
 use OC\Settings\Middleware\SubadminMiddleware;
+use OCP\Activity\IManager as IActivityManager;
 use OCP\AppFramework\App;
 use OCP\Defaults;
 use OCP\IContainer;
+use OCP\IGroup;
+use OCP\ILogger;
+use OCP\IUser;
 use OCP\Settings\IManager;
 use OCP\Util;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
  * @package OC\Settings
@@ -102,7 +110,7 @@ class Application extends App {
 			return new NewUserMailHelper(
 				$defaults,
 				$server->getURLGenerator(),
-				$server->getL10N('settings'),
+				$server->getL10NFactory(),
 				$server->getMailer(),
 				$server->getSecureRandom(),
 				new TimeFactory(),
@@ -110,6 +118,31 @@ class Application extends App {
 				$server->getCrypto(),
 				Util::getDefaultEmailAddress('no-reply')
 			);
+		});
+
+		/** @var EventDispatcherInterface $eventDispatcher */
+		$eventDispatcher = $container->getServer()->getEventDispatcher();
+		$eventDispatcher->addListener('app_password_created', function (GenericEvent $event) use ($container) {
+			if (($token = $event->getSubject()) instanceof IToken) {
+				/** @var IActivityManager $activityManager */
+				$activityManager = $container->query(IActivityManager::class);
+				/** @var ILogger $logger */
+				$logger = $container->query(ILogger::class);
+
+				$activity = $activityManager->generateEvent();
+				$activity->setApp('settings')
+					->setType('security')
+					->setAffectedUser($token->getUID())
+					->setAuthor($token->getUID())
+					->setSubject(Provider::APP_TOKEN_CREATED, ['name' => $token->getName()])
+					->setObject('app_token', $token->getId());
+
+				try {
+					$activityManager->publish($activity);
+				} catch (BadMethodCallException $e) {
+					$logger->logException($e, ['message' => 'could not publish activity', 'level' => ILogger::WARN]);
+				}
+			}
 		});
 	}
 
@@ -120,9 +153,30 @@ class Application extends App {
 		$activityManager->registerFilter(SecurityFilter::class); // FIXME move to info.xml
 		$activityManager->registerSetting(SecuritySetting::class); // FIXME move to info.xml
 		$activityManager->registerProvider(SecurityProvider::class); // FIXME move to info.xml
+		$activityManager->registerSetting(GroupSetting::class); // FIXME move to info.xml
+		$activityManager->registerProvider(GroupProvider::class); // FIXME move to info.xml
 
 		Util::connectHook('OC_User', 'post_setPassword', $this, 'onChangePassword');
 		Util::connectHook('OC_User', 'changeUser', $this, 'onChangeInfo');
+
+		$groupManager = $this->getContainer()->getServer()->getGroupManager();
+		$groupManager->listen('\OC\Group', 'postRemoveUser',  [$this, 'removeUserFromGroup']);
+		$groupManager->listen('\OC\Group', 'postAddUser',  [$this, 'addUserToGroup']);
+
+		Util::connectHook('\OCP\Config', 'js', $this, 'extendJsConfig');
+	}
+
+	public function addUserToGroup(IGroup $group, IUser $user): void {
+		/** @var Hooks $hooks */
+		$hooks = $this->getContainer()->query(Hooks::class);
+		$hooks->addUserToGroup($group, $user);
+		
+	}
+
+	public function removeUserFromGroup(IGroup $group, IUser $user): void {
+		/** @var Hooks $hooks */
+		$hooks = $this->getContainer()->query(Hooks::class);
+		$hooks->removeUserFromGroup($group, $user);
 	}
 
 	/**
@@ -153,5 +207,19 @@ class Application extends App {
 		/** @var Hooks $hooks */
 		$hooks = $this->getContainer()->query(Hooks::class);
 		$hooks->onChangeEmail($parameters['user'], $parameters['old_value']);
+	}
+
+	/**
+	 * @param array $settings
+	 */
+	public function extendJsConfig(array $settings) {
+		$appConfig = json_decode($settings['array']['oc_appconfig'], true);
+
+		$publicWebFinger = \OC::$server->getConfig()->getAppValue('core', 'public_webfinger', '');
+		if (!empty($publicWebFinger)) {
+			$appConfig['core']['public_webfinger'] = $publicWebFinger;
+		}
+
+		$settings['array']['oc_appconfig'] = json_encode($appConfig);
 	}
 }

@@ -5,6 +5,7 @@
  * @author Joas Schilling <coding@schilljs.com>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Thomas Ebert <thomas.ebert@usability.de>
  *
  * @license AGPL-3.0
  *
@@ -113,7 +114,7 @@ class UpdateJS extends Command {
 *
 * You can update the list of MimeType Aliases in config/mimetypealiases.json
 * The list of files is fetched from core/img/filetypes
-* To regenerate this file run ./occ maintenance:mimetypesjs
+* To regenerate this file run ./occ maintenance:mimetype:update-js
 */
 OC.MimeTypeList={
 	aliases: ' . json_encode($aliases, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . ',

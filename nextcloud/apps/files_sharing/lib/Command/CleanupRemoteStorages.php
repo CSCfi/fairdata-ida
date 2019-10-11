@@ -1,8 +1,11 @@
 <?php
 /**
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
- *
  * @copyright Copyright (c) 2016, ownCloud GmbH.
+ *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -60,11 +63,11 @@ class CleanupRemoteStorages extends Command {
 
 		$remoteStorages = $this->getRemoteStorages();
 
-		$output->writeln(count($remoteStorages) . " remote storage(s) need(s) to be checked");
+		$output->writeln(count($remoteStorages) . ' remote storage(s) need(s) to be checked');
 
 		$remoteShareIds = $this->getRemoteShareIds();
 
-		$output->writeln(count($remoteShareIds) . " remote share(s) exist");
+		$output->writeln(count($remoteShareIds) . ' remote share(s) exist');
 
 		foreach ($remoteShareIds as $id => $remoteShareId) {
 			if (isset($remoteStorages[$remoteShareId])) {
@@ -79,7 +82,7 @@ class CleanupRemoteStorages extends Command {
 		}
 
 		if (empty($remoteStorages)) {
-			$output->writeln("<info>no storages deleted</info>");
+			$output->writeln('<info>no storages deleted</info>');
 		} else {
 			$dryRun = $input->getOption('dry-run');
 			foreach ($remoteStorages as $id => $numericId) {
@@ -95,7 +98,7 @@ class CleanupRemoteStorages extends Command {
 
 	public function countFiles($numericId, OutputInterface $output) {
 		$queryBuilder = $this->connection->getQueryBuilder();
-		$queryBuilder->select($queryBuilder->createFunction('count(fileid)'))
+		$queryBuilder->select($queryBuilder->func()->count('fileid'))
 			->from('filecache')
 			->where($queryBuilder->expr()->eq(
 				'storage',

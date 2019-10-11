@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  *
@@ -36,7 +37,7 @@ abstract class QueuedJob extends Job {
 	 * run the job, then remove it from the joblist
 	 *
 	 * @param JobList $jobList
-	 * @param ILogger $logger
+	 * @param ILogger|null $logger
 	 */
 	public function execute($jobList, ILogger $logger = null) {
 		$jobList->remove($this, $this->argument);

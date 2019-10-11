@@ -1,4 +1,11 @@
 /*
+ * This file is part of the IDA research data storage service
+ *
+ * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @link     https://research.csc.fi/
+ */
+
+/*
  * Copyright (c) 2015
  *
  * This file is licensed under the Affero General Public License version 3
@@ -9,32 +16,6 @@
  */
 
 (function() {
-	var TEMPLATE =
-		'<div class="thumbnailContainer"><a href="#" class="thumbnail action-default"><div class="stretcher"/></a></div>' +
-		'<div class="file-details-container">' +
-		'<div class="fileName">' +
-			'<h3 title="{{name}}" class="ellipsis">{{name}}</h3>' +
-            // IDA MODIFICATION
-		    // BEGIN ORIGINAL
-            /*
-			'<a class="permalink" href="{{permalink}}" title="{{permalinkTitle}}">' +
-				'<span class="icon icon-clippy"></span>' +
-				'<span class="hidden-visually">{{permalinkTitle}}</span>' +
-			'</a>' +
-			*/
-		    // END ORIGINAL
-		'</div>' +
-		'	<div class="file-details ellipsis">' +
-		'		<a href="#" class="action action-favorite favorite permanent">' +
-		'			<span class="icon {{starClass}}" title="{{starAltText}}"></span>' +
-		'		</a>' +
-		'		{{#if hasSize}}<span class="size" title="{{altSize}}">{{size}}</span>, {{/if}}<span class="date live-relative-timestamp" data-timestamp="{{timestamp}}" title="{{altDate}}">{{date}}</span>' +
-		'	</div>' +
-		'</div>' +
-		'<div class="hidden permalink-field">' +
-			'<input type="text" value="{{permalink}}" placeholder="{{permalinkTitle}}" readonly="readonly"/>' +
-		'</div>';
-
 	/**
 	 * @class OCA.Files.MainFileInfoDetailView
 	 * @classdesc
@@ -69,15 +50,12 @@
 		events: {
 			'click a.action-favorite': '_onClickFavorite',
 			'click a.action-default': '_onClickDefaultAction',
-			'click a.permalink': '_onClickPermalink',
-			'focus .permalink-field>input': '_onFocusPermalink'
+			//'click a.permalink': '_onClickPermalink',
+			//'focus .permalink-field>input': '_onFocusPermalink'
 		},
 
 		template: function(data) {
-			if (!this._template) {
-				this._template = Handlebars.compile(TEMPLATE);
-			}
-			return this._template(data);
+			return OCA.Files.Templates['mainfileinfodetailsview'](data);
 		},
 
 		initialize: function(options) {
@@ -91,19 +69,42 @@
 				throw 'Missing required parameter "fileActions"';
 			}
 			this._previewManager = new OCA.Files.SidebarPreviewManager(this._fileList);
+
+			this._setupClipboard();
 		},
 
-		_onClickPermalink: function() {
-			var $row = this.$('.permalink-field');
-			$row.toggleClass('hidden');
-			if (!$row.hasClass('hidden')) {
-				$row.find('>input').focus();
-			}
-			// cancel click, user must right-click + copy or middle click
-			return false;
+		_setupClipboard: function() {
+            return;
+			var clipboard = new Clipboard('.permalink');
+			clipboard.on('success', function(e) {
+				var $el = $(e.trigger);
+				$el.tooltip('hide')
+					.attr('data-original-title', t('core', 'Copied!'))
+					.tooltip('fixTitle')
+					.tooltip({placement: 'bottom', trigger: 'manual'})
+					.tooltip('show');
+				_.delay(function() {
+					$el.tooltip('hide');
+					$el.attr('data-original-title', t('files', 'Copy direct link (only works for users who have access to this file/folder)'))
+						.tooltip('fixTitle');
+				}, 3000);
+			});
+			clipboard.on('error', function(e) {
+				var $row = this.$('.permalink-field');
+				$row.toggleClass('hidden');
+				if (!$row.hasClass('hidden')) {
+					$row.find('>input').focus();
+				}
+			});
+		},
+
+		_onClickPermalink: function(e) {
+			//e.preventDefault();
+			return;
 		},
 
 		_onFocusPermalink: function() {
+            return;
 			this.$('.permalink-field>input').select();
 		},
 
@@ -159,6 +160,12 @@
 
 			if (this.model) {
 				var isFavorite = (this.model.get('tags') || []).indexOf(OC.TAG_FAVORITE) >= 0;
+				var availableActions = this._fileActions.get(
+					this.model.get('mimetype'),
+					this.model.get('type'),
+					this.model.get('permissions')
+				);
+				var hasFavoriteAction = 'Favorite' in availableActions;
 				this.$el.html(this.template({
 					type: this.model.isImage()? 'image': '',
 					nameLabel: t('files', 'Name'),
@@ -173,10 +180,11 @@
 					altDate: OC.Util.formatDate(this.model.get('mtime')),
 					timestamp: this.model.get('mtime'),
 					date: OC.Util.relativeModifiedDate(this.model.get('mtime')),
+					hasFavoriteAction: hasFavoriteAction,
 					starAltText: isFavorite ? t('files', 'Favorited') : t('files', 'Favorite'),
 					starClass: isFavorite ? 'icon-starred' : 'icon-star',
-					permalink: this._makePermalink(this.model.get('id')),
-					permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
+					//permalink: this._makePermalink(this.model.get('id')),
+					//permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
 				}));
 
 				// TODO: we really need OC.Previews
@@ -188,7 +196,6 @@
 				} else {
 					var iconUrl = this.model.get('icon') || OC.MimeType.getIconUrl('dir');
 					$iconDiv.css('background-image', 'url("' + iconUrl + '")');
-					OC.Util.scaleFixForIE8($iconDiv);
 				}
 				this.$el.find('[title]').tooltip({placement: 'bottom'});
 			} else {

@@ -36,8 +36,10 @@ class RetryJob extends Job {
 	private $jobList;
 	/** @var string */
 	private $lookupServer;
-	/** @var int how much time should be between two tries (10 minutes) */
-	private $interval = 600;
+	/** @var int how much time should be between two, will be increased for each retry */
+	private $interval = 100;
+	/** @var IConfig */
+	private $config;
 
 	/**
 	 * @param IClientService $clientService
@@ -49,17 +51,24 @@ class RetryJob extends Job {
 								IConfig $config) {
 		$this->clientService = $clientService;
 		$this->jobList = $jobList;
+		$this->config = $config;
+
+		if ($config->getSystemValue('has_internet_connection', true) === false) {
+			return;
+		}
 
 		$this->lookupServer = $config->getSystemValue('lookup_server', 'https://lookup.nextcloud.com');
-		$this->lookupServer = rtrim($this->lookupServer, '/');
-		$this->lookupServer .= '/users';
+		if (!empty($this->lookupServer)) {
+			$this->lookupServer = rtrim($this->lookupServer, '/');
+			$this->lookupServer .= '/users';
+		}
 	}
 
 	/**
 	 * run the job, then remove it from the jobList
 	 *
 	 * @param JobList $jobList
-	 * @param ILogger $logger
+	 * @param ILogger|null $logger
 	 */
 	public function execute($jobList, ILogger $logger = null) {
 		if ($this->shouldRun($this->argument)) {
@@ -69,7 +78,7 @@ class RetryJob extends Job {
 	}
 
 	protected function run($argument) {
-		if($argument['retryNo'] === 5) {
+		if ($this->killBackgroundJob((int)$argument['retryNo'])) {
 			return;
 		}
 
@@ -102,6 +111,27 @@ class RetryJob extends Job {
 	 * @return bool
 	 */
 	protected function shouldRun($argument) {
-		return !isset($argument['lastRun']) || ((time() - $argument['lastRun']) > $this->interval);
+		$retryNo = (int)$argument['retryNo'];
+		$delay = $this->interval * 6 ** $retryNo;
+		return !isset($argument['lastRun']) || ((time() - $argument['lastRun']) > $delay);
+	}
+
+	/**
+	 * check if we should kill the background job
+	 *
+	 * The lookup server should no longer be contacted if:
+	 *
+	 * - max retries are reached (set to 5)
+	 * - lookup server was disabled by the admin
+	 * - no valid lookup server URL given
+	 *
+	 * @param int $retryCount
+	 * @return bool
+	 */
+	protected function killBackgroundJob($retryCount) {
+		$maxTriesReached = $retryCount >= 5;
+		$lookupServerDisabled = $this->config->getAppValue('files_sharing', 'lookupServerUploadEnabled', 'yes') !== 'yes';
+
+		return $maxTriesReached || $lookupServerDisabled || empty($this->lookupServer);
 	}
 }

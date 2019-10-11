@@ -4,6 +4,7 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -187,17 +188,18 @@ class Comment implements IComment {
 	 * sets the message of the comment and returns itself
 	 *
 	 * @param string $message
+	 * @param int $maxLength
 	 * @return IComment
 	 * @throws MessageTooLongException
 	 * @since 9.0.0
 	 */
-	public function setMessage($message) {
+	public function setMessage($message, $maxLength = self::MAX_MESSAGE_LENGTH) {
 		if(!is_string($message)) {
 			throw new \InvalidArgumentException('String expected.');
 		}
 		$message = trim($message);
-		if(mb_strlen($message, 'UTF-8') > IComment::MAX_MESSAGE_LENGTH) {
-			throw new MessageTooLongException('Comment message must not exceed ' . IComment::MAX_MESSAGE_LENGTH . ' characters');
+		if ($maxLength && mb_strlen($message, 'UTF-8') > $maxLength) {
+			throw new MessageTooLongException('Comment message must not exceed ' . $maxLength. ' characters');
 		}
 		$this->data['message'] = $message;
 		return $this;
@@ -224,18 +226,14 @@ class Comment implements IComment {
 	 *
 	 */
 	public function getMentions() {
-		$ok = preg_match_all('/\B@[a-z0-9_\-@\.\']+/i', $this->getMessage(), $mentions);
+		$ok = preg_match_all("/\B(?<![^a-z0-9_\-@\.\'\s])@(\"[a-z0-9_\-@\.\' ]+\"|[a-z0-9_\-@\.\']+)/i", $this->getMessage(), $mentions);
 		if(!$ok || !isset($mentions[0]) || !is_array($mentions[0])) {
 			return [];
 		}
 		$uids = array_unique($mentions[0]);
 		$result = [];
 		foreach ($uids as $uid) {
-			// exclude author, no self-mentioning
-			if($uid === '@' . $this->getActorId()) {
-				continue;
-			}
-			$result[] = ['type' => 'user', 'id' => substr($uid, 1)];
+			$result[] = ['type' => 'user', 'id' => trim(substr($uid, 1), '"')];
 		}
 		return $result;
 	}

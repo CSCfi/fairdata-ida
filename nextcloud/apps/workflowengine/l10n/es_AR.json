@@ -1,6 +1,4 @@
 { "translations": {
-    "Saved" : "Guardado",
-    "Saving failed:" : "Falla al guardar:",
     "File MIME type" : "Tipo MIME del archivo",
     "is" : "es",
     "is not" : "no es",
@@ -38,6 +36,14 @@
     "User group membership" : "Membresia al grupo de usuarios",
     "is member of" : "es miembro de",
     "is not member of" : "no es miembro de",
+    "Short rule description" : "Descripción corta de regla",
+    "Add rule" : "Agregar regla",
+    "Reset" : "Restablecer",
+    "Save" : "Guardar",
+    "Saving…" : "Guardando...",
+    "Saved" : "Guardado",
+    "Saving failed:" : "Falla al guardar:",
+    "Add rule group" : "Agregar regla de grupo",
     "The given operator is invalid" : "El operador indicado es inválido",
     "The given regular expression is invalid" : "La expresión regular indicada es inválida",
     "The given file size is invalid" : "El tamaño de archivo indicado es inválido",
@@ -56,16 +62,8 @@
     "Check %s does not exist" : "La validación %s no existe",
     "Check %s is invalid" : "La validación %s no es inválida",
     "Check #%s does not exist" : "La validación #%s no existe",
-    "Workflow" : "Flujo de trabajo",
     "Open documentation" : "Abrir documentación",
-    "Add rule group" : "Agregar regla de grupo",
-    "Short rule description" : "Descripción corta de regla",
-    "Add rule" : "Agregar regla",
-    "Reset" : "Restablecer",
-    "Save" : "Guardar",
-    "Saving…" : "Guardando...",
     "Loading…" : "Cargando...",
-    "Successfully saved" : "Guardado exitosamente",
-    "File mime type" : "Tipo mime del archivo"
+    "Workflow" : "Flujo de trabajo"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

@@ -2,9 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
- * @author Pierre Jochem <pierrejochem@msn.com>
- * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -27,29 +26,52 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
+use OCA\DAV\Connector\Sabre\Exception\FileLocked;
+use OCA\DAV\Connector\Sabre\Exception\PasswordLoginForbidden;
+use OCP\Files\StorageNotAvailableException;
 use OCP\ILogger;
-use Sabre\DAV\Exception;
-use Sabre\HTTP\Response;
+use Sabre\DAV\Exception\Conflict;
+use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Exception\InvalidSyncToken;
+use Sabre\DAV\Exception\MethodNotAllowed;
+use Sabre\DAV\Exception\NotAuthenticated;
+use Sabre\DAV\Exception\NotFound;
+use Sabre\DAV\Exception\NotImplemented;
+use Sabre\DAV\Exception\PreconditionFailed;
+use Sabre\DAV\Exception\ServiceUnavailable;
 
 class ExceptionLoggerPlugin extends \Sabre\DAV\ServerPlugin {
 	protected $nonFatalExceptions = [
-		'Sabre\DAV\Exception\NotAuthenticated' => true,
+		NotAuthenticated::class => true,
 		// If tokenauth can throw this exception (which is basically as
 		// NotAuthenticated. So not fatal.
-		'OCA\DAV\Connector\Sabre\Exception\PasswordLoginForbidden' => true,
+		PasswordLoginForbidden::class => true,
+		// basically a NotAuthenticated
+		InvalidSyncToken::class => true,
 		// the sync client uses this to find out whether files exist,
 		// so it is not always an error, log it as debug
-		'Sabre\DAV\Exception\NotFound' => true,
+		NotFound::class => true,
 		// this one mostly happens when the same file is uploaded at
 		// exactly the same time from two clients, only one client
 		// wins, the second one gets "Precondition failed"
-		'Sabre\DAV\Exception\PreconditionFailed' => true,
+		PreconditionFailed::class => true,
 		// forbidden can be expected when trying to upload to
 		// read-only folders for example
-		'Sabre\DAV\Exception\Forbidden' => true,
+		Forbidden::class => true,
 		// Happens when an external storage or federated share is temporarily
 		// not available
-		'Sabre\DAV\Exception\StorageNotAvailableException' => true,
+		StorageNotAvailableException::class => true,
+		// happens if some a client uses the wrong method for a given URL
+		// the error message itself is visible on the client side anyways
+		NotImplemented::class => true,
+		// happens when the parent directory is not present (for example when a
+		// move is done to a non-existent directory)
+		Conflict::class => true,
+		// happens when a certain method is not allowed to be called
+		// for example creating a folder that already exists
+		MethodNotAllowed::class => true,
+		// A locked file is perfectly valid and can happen in various cases
+		FileLocked::class => true,
 	];
 
 	/** @var string */
@@ -89,9 +111,14 @@ class ExceptionLoggerPlugin extends \Sabre\DAV\ServerPlugin {
 	 */
 	public function logException(\Exception $ex) {
 		$exceptionClass = get_class($ex);
-		$level = \OCP\Util::FATAL;
-		if (isset($this->nonFatalExceptions[$exceptionClass])) {
-			$level = \OCP\Util::DEBUG;
+		$level = ILogger::FATAL;
+		if (isset($this->nonFatalExceptions[$exceptionClass]) ||
+			(
+				$exceptionClass === ServiceUnavailable::class &&
+				$ex->getMessage() === 'System in maintenance mode.'
+			)
+		) {
+			$level = ILogger::DEBUG;
 		}
 
 		$this->logger->logException($ex, [

@@ -2,6 +2,10 @@
 /**
  * @copyright Copyright (c) 2017 Bjoern Schiessle <bjoern@schiessle.org>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Patrik Kernstock <info@pkern.at>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -59,6 +63,9 @@ class VerifyUserData extends Job {
 	/** @var string */
 	private $lookupServerUrl;
 
+	/** @var IConfig */
+	private $config;
+
 	/**
 	 * VerifyUserData constructor.
 	 *
@@ -81,13 +88,14 @@ class VerifyUserData extends Job {
 
 		$lookupServerUrl = $config->getSystemValue('lookup_server', 'https://lookup.nextcloud.com');
 		$this->lookupServerUrl = rtrim($lookupServerUrl, '/');
+		$this->config = $config;
 	}
 
 	/**
 	 * run the job, then remove it from the jobList
 	 *
 	 * @param JobList $jobList
-	 * @param ILogger $logger
+	 * @param ILogger|null $logger
 	 */
 	public function execute($jobList, ILogger $logger = null) {
 
@@ -178,12 +186,17 @@ class VerifyUserData extends Job {
 	 * @return bool true if we could check the verification code, otherwise false
 	 */
 	protected function verifyViaLookupServer(array $argument, $dataType) {
+		if(empty($this->lookupServerUrl) ||
+			$this->config->getAppValue('files_sharing', 'lookupServerUploadEnabled', 'yes') !== 'yes' ||
+			$this->config->getSystemValue('has_internet_connection', true) === false) {
+			return false;
+		}
 
 		$user = $this->userManager->get($argument['uid']);
 
 		// we don't check a valid user -> give up
 		if ($user === null) {
-			$this->logger->error($argument['uid'] . ' doesn\'t exist, can\'t verify user data.');
+			$this->logger->info($argument['uid'] . ' doesn\'t exist, can\'t verify user data.');
 			return true;
 		}
 
@@ -194,7 +207,7 @@ class VerifyUserData extends Job {
 		$lookupServerData = $this->queryLookupServer($cloudId);
 
 		// for some reasons we couldn't read any data from the lookup server, try again later
-		if (empty($lookupServerData)) {
+		if (empty($lookupServerData) || empty($lookupServerData[$dataType])) {
 			return false;
 		}
 
@@ -249,7 +262,7 @@ class VerifyUserData extends Job {
 	 * @param array $argument
 	 */
 	protected function reAddJob(IJobList $jobList, array $argument) {
-		$jobList->add('OC\Settings\BackgroundJobs\VerifyUserData',
+		$jobList->add(VerifyUserData::class,
 			[
 				'verificationCode' => $argument['verificationCode'],
 				'data' => $argument['data'],

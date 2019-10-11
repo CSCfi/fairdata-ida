@@ -2,8 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud GmbH
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -91,32 +94,70 @@ class NavigationManager implements INavigationManager {
 		if(!isset($entry['icon'])) {
 			$entry['icon'] = '';
 		}
+		if(!isset($entry['classes'])) {
+			$entry['classes'] = '';
+		}
 		if(!isset($entry['type'])) {
 			$entry['type'] = 'link';
 		}
-		$this->entries[] = $entry;
+		$this->entries[$entry['id']] = $entry;
 	}
 
 	/**
-	 * returns all the added Menu entries
-	 * @param string $type
-	 * @return array an array of the added entries
+	 * Get a list of navigation entries
+	 *
+	 * @param string $type type of the navigation entries
+	 * @return array
 	 */
-	public function getAll($type = 'link') {
+	public function getAll(string $type = 'link'): array {
 		$this->init();
 		foreach ($this->closureEntries as $c) {
 			$this->add($c());
 		}
 		$this->closureEntries = array();
 
-		if ($type === 'all') {
-			return $this->entries;
+		$result = $this->entries;
+		if ($type !== 'all') {
+			$result = array_filter($this->entries, function($entry) use ($type) {
+				return $entry['type'] === $type;
+			});
 		}
 
-		return array_filter($this->entries, function($entry) use ($type) {
-			return $entry['type'] === $type;
-		});
+		return $this->proceedNavigation($result);
 	}
+
+	/**
+	 * Sort navigation entries by order, name and set active flag
+	 *
+	 * @param array $list
+	 * @return array
+	 */
+	private function proceedNavigation(array $list): array {
+		uasort($list, function($a, $b) {
+			if (isset($a['order']) && isset($b['order'])) {
+				return ($a['order'] < $b['order']) ? -1 : 1;
+			} else if (isset($a['order']) || isset($b['order'])) {
+				return isset($a['order']) ? -1 : 1;
+			} else {
+				return ($a['name'] < $b['name']) ? -1 : 1;
+			}
+		});
+
+		$activeApp = $this->getActiveEntry();
+		if ($activeApp !== null) {
+			foreach ($list as $index => &$navEntry) {
+				if ($navEntry['id'] == $activeApp) {
+					$navEntry['active'] = true;
+				} else {
+					$navEntry['active'] = false;
+				}
+			}
+			unset($navEntry);
+		}
+
+		return $list;
+	}
+
 
 	/**
 	 * removes all the entries
@@ -177,14 +218,14 @@ class NavigationManager implements INavigationManager {
 				]);
 			}
 
-			// Personal settings
+			// Personal and (if applicable) admin settings
 			$this->add([
 				'type' => 'settings',
-				'id' => 'personal',
+				'id' => 'settings',
 				'order' => 1,
-				'href' => $this->urlGenerator->linkToRoute('settings_personal'),
-				'name' => $l->t('Personal'),
-				'icon' => $this->urlGenerator->imagePath('settings', 'personal.svg'),
+				'href' => $this->urlGenerator->linkToRoute('settings.PersonalSettings.index'),
+				'name' => $l->t('Settings'),
+				'icon' => $this->urlGenerator->imagePath('settings', 'admin.svg'),
 			]);
 
 			$logoutUrl = \OC_User::getLogoutUrl($this->urlGenerator);
@@ -206,21 +247,9 @@ class NavigationManager implements INavigationManager {
 					'type' => 'settings',
 					'id' => 'core_users',
 					'order' => 4,
-					'href' => $this->urlGenerator->linkToRoute('settings_users'),
+					'href' => $this->urlGenerator->linkToRoute('settings.Users.usersList'),
 					'name' => $l->t('Users'),
 					'icon' => $this->urlGenerator->imagePath('settings', 'users.svg'),
-				]);
-			}
-
-			if ($this->isAdmin()) {
-				// Admin settings
-				$this->add([
-					'type' => 'settings',
-					'id' => 'admin',
-					'order' => 2,
-					'href' => $this->urlGenerator->linkToRoute('settings.AdminSettings.index'),
-					'name' => $l->t('Admin'),
-					'icon' => $this->urlGenerator->imagePath('settings', 'admin.svg'),
 				]);
 			}
 		}
@@ -242,10 +271,10 @@ class NavigationManager implements INavigationManager {
 
 			// load plugins and collections from info.xml
 			$info = $this->appManager->getAppInfo($app);
-			if (empty($info['navigations'])) {
+			if (!isset($info['navigations']['navigation'])) {
 				continue;
 			}
-			foreach ($info['navigations'] as $nav) {
+			foreach ($info['navigations']['navigation'] as $key => $nav) {
 				if (!isset($nav['name'])) {
 					continue;
 				}
@@ -257,10 +286,10 @@ class NavigationManager implements INavigationManager {
 					continue;
 				}
 				$l = $this->l10nFac->get($app);
-				$id = isset($nav['id']) ? $nav['id'] : $app;
+				$id = $nav['id'] ?? $app . ($key === 0 ? '' : $key);
 				$order = isset($nav['order']) ? $nav['order'] : 100;
 				$type = isset($nav['type']) ? $nav['type'] : 'link';
-				$route = $this->urlGenerator->linkToRoute($nav['route']);
+				$route = $nav['route'] !== '' ? $this->urlGenerator->linkToRoute($nav['route']) : '';
 				$icon = isset($nav['icon']) ? $nav['icon'] : 'app.svg';
 				foreach ([$icon, "$app.svg"] as $i) {
 					try {

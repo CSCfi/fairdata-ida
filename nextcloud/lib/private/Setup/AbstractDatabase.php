@@ -5,7 +5,9 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Manish Bisht <manish.bisht490@gmail.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Pulzer <t.pulzer@kniel.de>
  *
@@ -27,6 +29,7 @@
 namespace OC\Setup;
 
 use OC\DB\ConnectionFactory;
+use OC\DB\MigrationService;
 use OC\SystemConfig;
 use OCP\IL10N;
 use OCP\ILogger;
@@ -36,8 +39,6 @@ abstract class AbstractDatabase {
 
 	/** @var IL10N */
 	protected $trans;
-	/** @var string */
-	protected $dbDefinitionFile;
 	/** @var string */
 	protected $dbUser;
 	/** @var string */
@@ -57,9 +58,8 @@ abstract class AbstractDatabase {
 	/** @var ISecureRandom */
 	protected $random;
 
-	public function __construct(IL10N $trans, $dbDefinitionFile, SystemConfig $config, ILogger $logger, ISecureRandom $random) {
+	public function __construct(IL10N $trans, SystemConfig $config, ILogger $logger, ISecureRandom $random) {
 		$this->trans = $trans;
-		$this->dbDefinitionFile = $dbDefinitionFile;
 		$this->config = $config;
 		$this->logger = $logger;
 		$this->random = $random;
@@ -143,4 +143,12 @@ abstract class AbstractDatabase {
 	 * @param string $userName
 	 */
 	abstract public function setupDatabase($userName);
+
+	public function runMigrations() {
+		if (!is_dir(\OC::$SERVERROOT."/core/Migrations")) {
+			return;
+		}
+		$ms = new MigrationService('core', \OC::$server->getDatabaseConnection());
+		$ms->migrate();
+	}
 }

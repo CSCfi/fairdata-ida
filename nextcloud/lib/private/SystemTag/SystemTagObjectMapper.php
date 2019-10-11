@@ -1,8 +1,10 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -62,8 +64,8 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 	/**
 	 * {@inheritdoc}
 	 */
-	public function getTagIdsForObjects($objIds, $objectType) {
-		if (!is_array($objIds)) {
+	public function getTagIdsForObjects($objIds, string $objectType): array {
+		if (!\is_array($objIds)) {
 			$objIds = [$objIds];
 		} else if (empty($objIds)) {
 			return [];
@@ -98,8 +100,8 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 	/**
 	 * {@inheritdoc}
 	 */
-	public function getObjectIdsForTags($tagIds, $objectType, $limit = 0, $offset = '') {
-		if (!is_array($tagIds)) {
+	public function getObjectIdsForTags($tagIds, string $objectType, int $limit = 0, string $offset = ''): array {
+		if (!\is_array($tagIds)) {
 			$tagIds = [$tagIds];
 		}
 
@@ -112,7 +114,7 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 			->andWhere($query->expr()->eq('objecttype', $query->createNamedParameter($objectType)));
 
 		if ($limit) {
-			if (sizeof($tagIds) !== 1) {
+			if (\count($tagIds) !== 1) {
 				throw new \InvalidArgumentException('Limit is only allowed with a single tag');
 			}
 
@@ -137,8 +139,8 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 	/**
 	 * {@inheritdoc}
 	 */
-	public function assignTags($objId, $objectType, $tagIds) {
-		if (!is_array($tagIds)) {
+	public function assignTags(string $objId, string $objectType, $tagIds) {
+		if (!\is_array($tagIds)) {
 			$tagIds = [$tagIds];
 		}
 
@@ -172,8 +174,8 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 	/**
 	 * {@inheritdoc}
 	 */
-	public function unassignTags($objId, $objectType, $tagIds) {
-		if (!is_array($tagIds)) {
+	public function unassignTags(string $objId, string $objectType, $tagIds) {
+		if (!\is_array($tagIds)) {
 			$tagIds = [$tagIds];
 		}
 
@@ -200,10 +202,10 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 	/**
 	 * {@inheritdoc}
 	 */
-	public function haveTag($objIds, $objectType, $tagId, $all = true) {
+	public function haveTag($objIds, string $objectType, string $tagId, bool $all = true): bool {
 		$this->assertTagsExist([$tagId]);
 
-		if (!is_array($objIds)) {
+		if (!\is_array($objIds)) {
 			$objIds = [$objIds];
 		}
 
@@ -215,7 +217,7 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 			$query->select('*')
 				->setMaxResults(1);
 		} else {
-			$query->select($query->createFunction('COUNT(1)'));
+			$query->select($query->func()->count($query->expr()->literal(1)));
 		}
 
 		$query->from(self::RELATION_TABLE)
@@ -231,10 +233,10 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 		$result->closeCursor();
 
 		if ($all) {
-			return ((int)$row[0] === count($objIds));
-		} else {
-			return (bool) $row;
+			return ((int)$row[0] === \count($objIds));
 		}
+
+		return (bool) $row;
 	}
 
 	/**
@@ -246,7 +248,7 @@ class SystemTagObjectMapper implements ISystemTagObjectMapper {
 	 */
 	private function assertTagsExist($tagIds) {
 		$tags = $this->tagManager->getTagsByIds($tagIds);
-		if (count($tags) !== count($tagIds)) {
+		if (\count($tags) !== \count($tagIds)) {
 			// at least one tag missing, bail out
 			$foundTagIds = array_map(
 				function(ISystemTag $tag) {

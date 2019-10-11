@@ -11,6 +11,7 @@
  * @author Markus Goetz <markus@woboq.com>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -151,8 +152,7 @@ class Auth extends AbstractBasic {
 	 */
 	function check(RequestInterface $request, ResponseInterface $response) {
 		try {
-			$result = $this->auth($request, $response);
-			return $result;
+			return $this->auth($request, $response);
 		} catch (NotAuthenticated $e) {
 			throw $e;
 		} catch (Exception $e) {
@@ -228,11 +228,12 @@ class Auth extends AbstractBasic {
 			if($this->twoFactorManager->needsSecondFactor($this->userSession->getUser())) {
 				throw new \Sabre\DAV\Exception\NotAuthenticated('2FA challenge not passed.');
 			}
-			if (\OC_User::handleApacheAuth() ||
+			if (
 				//Fix for broken webdav clients
 				($this->userSession->isLoggedIn() && is_null($this->session->get(self::DAV_AUTHENTICATED))) ||
 				//Well behaved clients that only send the cookie are allowed
-				($this->userSession->isLoggedIn() && $this->session->get(self::DAV_AUTHENTICATED) === $this->userSession->getUser()->getUID() && $request->getHeader('Authorization') === null)
+				($this->userSession->isLoggedIn() && $this->session->get(self::DAV_AUTHENTICATED) === $this->userSession->getUser()->getUID() && $request->getHeader('Authorization') === null) ||
+				\OC_User::handleApacheAuth()
 			) {
 				$user = $this->userSession->getUser()->getUID();
 				\OC_Util::setupFS($user);

@@ -1,25 +1,29 @@
 <?php
 /**
- * @author Georg Ehrke <oc.list@georgehrke.com>
- *
  * @copyright Copyright (c) 2017 Georg Ehrke <oc.list@georgehrke.com>
+ *
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 namespace OCA\DAV\CalDAV\Search;
 
+use OCA\DAV\CalDAV\Search\Xml\Request\CalendarSearchReport;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use OCA\DAV\CalDAV\CalendarHome;
@@ -75,7 +79,7 @@ class SearchPlugin extends ServerPlugin {
 		$server->on('report', [$this, 'report']);
 
 		$server->xml->elementMap['{' . self::NS_Nextcloud . '}calendar-search'] =
-			'OCA\\DAV\\CalDAV\\Search\\Xml\\Request\\CalendarSearchReport';
+			CalendarSearchReport::class;
 	}
 
 	/**
@@ -134,7 +138,7 @@ class SearchPlugin extends ServerPlugin {
 
 		// If we're dealing with the calendar home, the calendar home itself is
 		// responsible for the calendar-query
-		if ($node instanceof CalendarHome && $depth == 2) {
+		if ($node instanceof CalendarHome && $depth === 2) {
 
 			$nodePaths = $node->calendarSearch($report->filters, $report->limit, $report->offset);
 

@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -37,7 +39,8 @@ class GroupwareBundle extends Bundle {
 		return [
 			'calendar',
 			'contacts',
-			'spreed',
+			'deck',
+			'mail'
 		];
 	}
 

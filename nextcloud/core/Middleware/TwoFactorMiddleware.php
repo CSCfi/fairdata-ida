@@ -4,6 +4,8 @@
  *
  * @author Christoph Wurst <christoph@owncloud.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -93,7 +95,8 @@ class TwoFactorMiddleware extends Middleware {
 		if ($this->userSession->isLoggedIn()) {
 			$user = $this->userSession->getUser();
 
-			if ($this->twoFactorManager->isTwoFactorAuthenticated($user)) {
+
+			if ($this->session->exists('app_password') || $this->twoFactorManager->isTwoFactorAuthenticated($user)) {
 				$this->checkTwoFactor($controller, $methodName, $user);
 			} else if ($controller instanceof TwoFactorChallengeController) {
 				// Allow access to the two-factor controllers only if two-factor authentication
@@ -104,7 +107,7 @@ class TwoFactorMiddleware extends Middleware {
 		// TODO: dont check/enforce 2FA if a auth token is used
 	}
 
-	private function checkTwoFactor($controller, $methodName, IUser $user) {
+	private function checkTwoFactor(Controller $controller, $methodName, IUser $user) {
 		// If two-factor auth is in progress disallow access to any controllers
 		// defined within "LoginController".
 		$needsSecondFactor = $this->twoFactorManager->needsSecondFactor($user);

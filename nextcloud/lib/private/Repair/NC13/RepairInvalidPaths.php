@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -51,6 +56,10 @@ class RepairInvalidPaths implements IRepairStep {
 		return 'Repair invalid paths in file cache';
 	}
 
+	/**
+	 * @return \Generator
+	 * @suppress SqlInjectionChecker
+	 */
 	private function getInvalidEntries() {
 		$builder = $this->connection->getQueryBuilder();
 
@@ -97,6 +106,12 @@ class RepairInvalidPaths implements IRepairStep {
 		return $this->getIdQuery->execute()->fetchColumn();
 	}
 
+	/**
+	 * @param string $fileid
+	 * @param string $newPath
+	 * @param string $newStorage
+	 * @suppress SqlInjectionChecker
+	 */
 	private function update($fileid, $newPath, $newStorage) {
 		if (!$this->updateQuery) {
 			$builder = $this->connection->getQueryBuilder();
@@ -162,10 +177,18 @@ class RepairInvalidPaths implements IRepairStep {
 		return $count;
 	}
 
-	public function run(IOutput $output) {
+	private function shouldRun() {
 		$versionFromBeforeUpdate = $this->config->getSystemValue('version', '0.0.0');
-		// was added to 12.0.0.30 and 13.0.0.1
-		if (version_compare($versionFromBeforeUpdate, '12.0.0.30', '<') || version_compare($versionFromBeforeUpdate, '13.0.0.0', '==')) {
+
+		// was added to 11.0.5.2, 12.0.0.30 and 13.0.0.1
+		$shouldRun = version_compare($versionFromBeforeUpdate, '11.0.5.2', '<');
+		$shouldRun |= version_compare($versionFromBeforeUpdate, '12.0.0.0', '>=') && version_compare($versionFromBeforeUpdate, '12.0.0.30', '<');
+		$shouldRun |= version_compare($versionFromBeforeUpdate, '13.0.0.0', '==');
+		return $shouldRun;
+	}
+
+	public function run(IOutput $output) {
+		if ($this->shouldRun()) {
 			$count = $this->repair();
 
 			$output->info('Repaired ' . $count . ' paths');

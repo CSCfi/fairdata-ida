@@ -2,13 +2,15 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Hemanth Kumar Veeranki <hems.india1997@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Michael Göhler <somebody.here@gmx.de>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -29,6 +31,7 @@ namespace OC\Setup;
 
 use OC\DB\MySqlTools;
 use OCP\IDBConnection;
+use OCP\ILogger;
 
 class MySQL extends AbstractDatabase {
 	public $dbprettyname = 'MySQL/MariaDB';
@@ -51,11 +54,7 @@ class MySQL extends AbstractDatabase {
 
 		//fill the database if needed
 		$query='select count(*) from information_schema.tables where table_schema=? AND table_name = ?';
-		$result = $connection->executeQuery($query, [$this->dbName, $this->tablePrefix.'users']);
-		$row = $result->fetch();
-		if (!$row or $row['count(*)'] === '0') {
-			\OC_DB::createDbFromStructure($this->dbDefinitionFile);
-		}
+		$connection->executeQuery($query, [$this->dbName, $this->tablePrefix.'users']);
 	}
 
 	/**
@@ -70,9 +69,10 @@ class MySQL extends AbstractDatabase {
 			$query = "CREATE DATABASE IF NOT EXISTS `$name` CHARACTER SET $characterSet COLLATE ${characterSet}_bin;";
 			$connection->executeUpdate($query);
 		} catch (\Exception $ex) {
-			$this->logger->error('Database creation failed: {error}', [
+			$this->logger->logException($ex, [
+				'message' => 'Database creation failed.',
+				'level' => ILogger::ERROR,
 				'app' => 'mysql.setup',
-				'error' => $ex->getMessage()
 			]);
 			return;
 		}
@@ -82,9 +82,10 @@ class MySQL extends AbstractDatabase {
 			$query="GRANT ALL PRIVILEGES ON `$name` . * TO '$user'";
 			$connection->executeUpdate($query);
 		} catch (\Exception $ex) {
-			$this->logger->debug('Could not automatically grant privileges, this can be ignored if database user already had privileges: {error}', [
+			$this->logger->logException($ex, [
+				'message' => 'Could not automatically grant privileges, this can be ignored if database user already had privileges.',
+				'level' => ILogger::DEBUG,
 				'app' => 'mysql.setup',
-				'error' => $ex->getMessage()
 			]);
 		}
 	}
@@ -105,10 +106,11 @@ class MySQL extends AbstractDatabase {
 			$connection->executeUpdate($query);
 		}
 		catch (\Exception $ex){
-			$this->logger->error('Database User creation failed: {error}', [
-                                'app' => 'mysql.setup',
-                                'error' => $ex->getMessage()
-                        ]);
+			$this->logger->logException($ex, [
+				'message' => 'Database user creation failed.',
+				'level' => ILogger::ERROR,
+				'app' => 'mysql.setup',
+			]);
 		}
 	}
 
@@ -156,12 +158,13 @@ class MySQL extends AbstractDatabase {
 					} else {
 						break;
 					}
-				};
+				}
 			}
 		} catch (\Exception $ex) {
-			$this->logger->info('Can not create a new MySQL user, will continue with the provided user: {error}', [
+			$this->logger->logException($ex, [
+				'message' => 'Can not create a new MySQL user, will continue with the provided user.',
+				'level' => ILogger::INFO,
 				'app' => 'mysql.setup',
-				'error' => $ex->getMessage()
 			]);
 		}
 

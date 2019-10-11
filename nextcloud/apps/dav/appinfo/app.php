@@ -4,6 +4,7 @@
  *
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -26,6 +27,8 @@ use OCA\DAV\AppInfo\Application;
 use OCA\DAV\CardDAV\CardDavBackend;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
+\OC_App::loadApps(['dav']);
+
 $app = new Application();
 $app->registerHooks();
 
@@ -47,16 +50,61 @@ $eventDispatcher->addListener('OCP\Federation\TrustedServerEvent::remove',
 	}
 );
 
+$eventDispatcher->addListener('\OCA\DAV\CalDAV\CalDavBackend::createSubscription',
+	function(GenericEvent $event) use ($app) {
+		$jobList = $app->getContainer()->getServer()->getJobList();
+		$subscriptionData = $event->getArgument('subscriptionData');
+
+		$jobList->add(\OCA\DAV\BackgroundJob\RefreshWebcalJob::class, [
+			'principaluri' => $subscriptionData['principaluri'],
+			'uri' => $subscriptionData['uri']
+		]);
+	}
+);
+
+$eventDispatcher->addListener('\OCA\DAV\CalDAV\CalDavBackend::deleteSubscription',
+	function(GenericEvent $event) use ($app) {
+		$jobList = $app->getContainer()->getServer()->getJobList();
+		$subscriptionData = $event->getArgument('subscriptionData');
+
+		$jobList->remove(\OCA\DAV\BackgroundJob\RefreshWebcalJob::class, [
+			'principaluri' => $subscriptionData['principaluri'],
+			'uri' => $subscriptionData['uri']
+		]);
+
+		/** @var \OCA\DAV\CalDAV\CalDavBackend $calDavBackend */
+		$calDavBackend = $app->getContainer()->query(\OCA\DAV\CalDAV\CalDavBackend::class);
+		$calDavBackend->purgeAllCachedEventsForSubscription($subscriptionData['id']);
+	}
+);
+
+$eventHandler = function() use ($app) {
+	try {
+		$job = $app->getContainer()->query(\OCA\DAV\BackgroundJob\UpdateCalendarResourcesRoomsBackgroundJob::class);
+		$job->run([]);
+		$app->getContainer()->getServer()->getJobList()->setLastRun($job);
+	} catch(\Exception $ex) {
+		$app->getContainer()->getServer()->getLogger()->logException($ex);
+	}
+};
+
+$eventDispatcher->addListener('\OCP\Calendar\Resource\ForceRefreshEvent', $eventHandler);
+$eventDispatcher->addListener('\OCP\Calendar\Room\ForceRefreshEvent', $eventHandler);
+
 $cm = \OC::$server->getContactsManager();
 $cm->register(function() use ($cm, $app) {
 	$user = \OC::$server->getUserSession()->getUser();
-	if (is_null($user)) {
-		return;
+	if (!is_null($user)) {
+		$app->setupContactsProvider($cm, $user->getUID());
+	} else {
+		$app->setupSystemContactsProvider($cm);
 	}
-	if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_allow_share_dialog_user_enumeration', 'yes') !== 'yes') {
-		// Don't include system users
-		// This prevents user enumeration in the contacts menu and the mail app
-		return;
+});
+
+$calendarManager = \OC::$server->getCalendarManager();
+$calendarManager->register(function() use ($calendarManager, $app) {
+	$user = \OC::$server->getUserSession()->getUser();
+	if ($user !== null) {
+		$app->setupCalendarProvider($calendarManager, $user->getUID());
 	}
-	$app->setupContactsProvider($cm, $user->getUID());
 });

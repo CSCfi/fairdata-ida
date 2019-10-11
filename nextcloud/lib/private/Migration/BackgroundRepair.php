@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -28,7 +29,7 @@ use OC\Repair;
 use OC_App;
 use OCP\BackgroundJob\IJobList;
 use OCP\ILogger;
-use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Class BackgroundRepair
@@ -43,17 +44,18 @@ class BackgroundRepair extends TimedJob {
 	/** @var ILogger */
 	private $logger;
 
-	/** @var EventDispatcher */
+	/** @var EventDispatcherInterface */
 	private $dispatcher;
 
-	public function setDispatcher(EventDispatcher $dispatcher) {
+	public function __construct(EventDispatcherInterface $dispatcher) {
 		$this->dispatcher = $dispatcher;
 	}
+
 	/**
 	 * run the job, then remove it from the job list
 	 *
 	 * @param JobList $jobList
-	 * @param ILogger $logger
+	 * @param ILogger|null $logger
 	 */
 	public function execute($jobList, ILogger $logger = null) {
 		// add an interval of 15 mins

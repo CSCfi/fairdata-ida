@@ -523,6 +523,11 @@ class Broker {
                 // Creating the new iCalendar body.
                 $icalMsg = new VCalendar();
                 $icalMsg->METHOD = $message->method;
+
+                foreach ($calendar->select('VTIMEZONE') as $timezone) {
+                    $icalMsg->add(clone $timezone);
+                }
+
                 $event = $icalMsg->add('VEVENT', [
                     'UID'      => $message->uid,
                     'SEQUENCE' => $message->sequence,
@@ -849,6 +854,7 @@ class Broker {
         $exdate = [];
 
         foreach ($calendar->VEVENT as $vevent) {
+            $rrule = [];
 
             if (is_null($uid)) {
                 $uid = $vevent->UID->getValue();
@@ -889,6 +895,21 @@ class Broker {
                 }
                 sort($exdate);
             }
+            if (isset($vevent->RRULE)) {
+                foreach ($vevent->select('RRULE') as $rr) {
+                    foreach ($rr->getParts() as $key => $val) {
+                        // ignore default values (https://github.com/sabre-io/vobject/issues/126)
+                        if ($key === 'INTERVAL' && $val == 1) {
+                            continue;
+                        }
+                        if (is_array($val)) {
+                            $val = implode(',', $val);
+                        }
+                        $rrule[] = "$key=$val";
+                    }
+                }
+                sort($rrule);
+            }
             if (isset($vevent->STATUS)) {
                 $status = strtoupper($vevent->STATUS->getValue());
             }
@@ -923,9 +944,9 @@ class Broker {
 
                     if (isset($attendees[$attendee->getNormalizedValue()])) {
                         $attendees[$attendee->getNormalizedValue()]['instances'][$recurId] = [
-                            'id'         => $recurId,
-                            'partstat'   => $partStat,
-                            'force-send' => $forceSend,
+                            'id'        => $recurId,
+                            'partstat'  => $partStat,
+                            'forceSend' => $forceSend,
                         ];
                     } else {
                         $attendees[$attendee->getNormalizedValue()] = [
@@ -953,19 +974,16 @@ class Broker {
                     $significantChangeHash .= $prop . ':';
 
                     if ($prop === 'EXDATE') {
-
                         $significantChangeHash .= implode(',', $exdate) . ';';
-
+                    } elseif ($prop === 'RRULE') {
+                        $significantChangeHash .= implode(',', $rrule) . ';';
                     } else {
-
                         foreach ($propertyValues as $val) {
                             $significantChangeHash .= $val->getValue() . ';';
                         }
-
                     }
                 }
             }
-
         }
         $significantChangeHash = md5($significantChangeHash);
 

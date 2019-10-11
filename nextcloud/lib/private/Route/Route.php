@@ -4,10 +4,10 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author David Prévot <taffit@debian.org>
- * @author Felix Moeller <mail@felixmoeller.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Tanghus <thomas@tanghus.net>
  *
  * @license AGPL-3.0
@@ -148,11 +148,12 @@ class Route extends SymfonyRoute implements IRoute {
 	 * @return void
 	 */
 	public function actionInclude($file) {
-		$function = create_function('$param',
-			'unset($param["_route"]);'
-			.'$_GET=array_merge($_GET, $param);'
-			.'unset($param);'
-			.'require_once "'.$file.'";');
+		$function = function($param) use ($file) {
+			unset($param["_route"]);
+			$_GET=array_merge($_GET, $param);
+			unset($param);
+			require_once "$file";
+		} ;
 		$this->action($function);
 	}
 }

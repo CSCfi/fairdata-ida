@@ -10,28 +10,32 @@
  * @author Birk Borkason <daniel.niccoli@gmail.com>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Brice Maron <brice@bmaron.net>
- * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Clark Tomlinson <fallen013@gmail.com>
  * @author cmeh <cmeh@users.noreply.github.com>
- * @author Felix Anand Epp <work@felixepp.de>
+ * @author Felix Epp <work@felixepp.de>
  * @author Florin Peter <github@florin-peter.de>
  * @author Frank Karlitschek <frank@karlitschek.de>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author helix84 <helix84@centrum.sk>
+ * @author Ilja Neumann <ineumann@owncloud.com>
  * @author Individual IT Services <info@individual-it.net>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Kawohl <john@owncloud.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Markus Goetz <markus@woboq.com>
  * @author Martin Mattel <martin.mattel@diemattels.at>
  * @author Marvin Thomas Rabe <mrabe@marvinrabe.de>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author rakekniven <mark.ziegler@rakekniven.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Wessalowski <sebastian@wessalowski.org>
  * @author Stefan Rado <owncloud@sradonia.net>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -39,6 +43,7 @@
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  * @author Vincent Petry <pvince81@owncloud.com>
  * @author Volkan Gezer <volkangezer@gmail.com>
+ * @author Robert Dailey <rcdailey@gmail.com>
  *
  * @license AGPL-3.0
  *
@@ -58,7 +63,9 @@
 
 use OCP\IConfig;
 use OCP\IGroupManager;
+use OCP\ILogger;
 use OCP\IUser;
+use OC\AppFramework\Http\Request;
 
 class OC_Util {
 	public static $scripts = array();
@@ -91,11 +98,12 @@ class OC_Util {
 	 * TODO make home storage aware of this and use the object storage instead of local disk access
 	 *
 	 * @param array $config containing 'class' and optional 'arguments'
+	 * @suppress PhanDeprecatedFunction
 	 */
 	private static function initObjectStoreRootFS($config) {
 		// check misconfiguration
 		if (empty($config['class'])) {
-			\OCP\Util::writeLog('files', 'No class given for objectstore', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('files', 'No class given for objectstore', ILogger::ERROR);
 		}
 		if (!isset($config['arguments'])) {
 			$config['arguments'] = array();
@@ -124,11 +132,12 @@ class OC_Util {
 	 * necessity of a data folder being present.
 	 *
 	 * @param array $config containing 'class' and optional 'arguments'
+	 * @suppress PhanDeprecatedFunction
 	 */
 	private static function initObjectStoreMultibucketRootFS($config) {
 		// check misconfiguration
 		if (empty($config['class'])) {
-			\OCP\Util::writeLog('files', 'No class given for objectstore', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('files', 'No class given for objectstore', ILogger::ERROR);
 		}
 		if (!isset($config['arguments'])) {
 			$config['arguments'] = array();
@@ -165,6 +174,8 @@ class OC_Util {
 	 * @param string $user
 	 * @return boolean
 	 * @description configure the initial filesystem based on the configuration
+	 * @suppress PhanDeprecatedFunction
+	 * @suppress PhanAccessMethodInternal
 	 */
 	public static function setupFS($user = '') {
 		//setting up the filesystem twice can only lead to trouble
@@ -193,7 +204,7 @@ class OC_Util {
 
 		\OC\Files\Filesystem::initMountManager();
 
-		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(false);
+		$prevLogging = \OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(false);
 		\OC\Files\Filesystem::addStorageWrapper('mount_options', function ($mountPoint, \OCP\Files\Storage $storage, \OCP\Files\Mount\IMountPoint $mount) {
 			if ($storage->instanceOfStorage('\OC\Files\Storage\Common')) {
 				/** @var \OC\Files\Storage\Common $storage */
@@ -202,7 +213,7 @@ class OC_Util {
 			return $storage;
 		});
 
-		\OC\Files\Filesystem::addStorageWrapper('enable_sharing', function ($mountPoint, \OCP\Files\Storage $storage, \OCP\Files\Mount\IMountPoint $mount) {
+		\OC\Files\Filesystem::addStorageWrapper('enable_sharing', function ($mountPoint, \OCP\Files\Storage\IStorage $storage, \OCP\Files\Mount\IMountPoint $mount) {
 			if (!$mount->getOption('enable_sharing', true)) {
 				return new \OC\Files\Storage\Wrapper\PermissionsMask([
 					'storage' => $storage,
@@ -213,7 +224,7 @@ class OC_Util {
 		});
 
 		// install storage availability wrapper, before most other wrappers
-		\OC\Files\Filesystem::addStorageWrapper('oc_availability', function ($mountPoint, $storage) {
+		\OC\Files\Filesystem::addStorageWrapper('oc_availability', function ($mountPoint, \OCP\Files\Storage\IStorage $storage) {
 			if (!$storage->instanceOfStorage('\OCA\Files_Sharing\SharedStorage') && !$storage->isLocal()) {
 				return new \OC\Files\Storage\Wrapper\Availability(['storage' => $storage]);
 			}
@@ -250,8 +261,26 @@ class OC_Util {
 			return $storage;
 		});
 
+		\OC\Files\Filesystem::addStorageWrapper('readonly', function ($mountPoint, \OCP\Files\Storage\IStorage $storage, \OCP\Files\Mount\IMountPoint $mount) {
+			/*
+			 * Do not allow any operations that modify the storage
+			 */
+			if ($mount->getOption('readonly', false)) {
+				return new \OC\Files\Storage\Wrapper\PermissionsMask([
+					'storage' => $storage,
+					'mask' => \OCP\Constants::PERMISSION_ALL & ~(
+						\OCP\Constants::PERMISSION_UPDATE |
+						\OCP\Constants::PERMISSION_CREATE |
+						\OCP\Constants::PERMISSION_DELETE
+					),
+				]);
+			}
+			return $storage;
+		});
+
 		OC_Hook::emit('OC_Filesystem', 'preSetup', array('user' => $user));
-		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(true);
+
+		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper($prevLogging);
 
 		//check if we are using an object storage
 		$objectStore = \OC::$server->getSystemConfig()->getValue('objectstore', null);
@@ -266,7 +295,7 @@ class OC_Util {
 			self::initLocalStorageRootFS();
 		}
 
-		if ($user != '' && !OCP\User::userExists($user)) {
+		if ($user != '' && !\OC::$server->getUserManager()->userExists($user)) {
 			\OC::$server->getEventLogger()->end('setup_fs');
 			return false;
 		}
@@ -289,11 +318,11 @@ class OC_Util {
 	 * check if a password is required for each public link
 	 *
 	 * @return boolean
+	 * @suppress PhanDeprecatedFunction
 	 */
 	public static function isPublicLinkPasswordRequired() {
-		$appConfig = \OC::$server->getAppConfig();
-		$enforcePassword = $appConfig->getValue('core', 'shareapi_enforce_links_password', 'no');
-		return ($enforcePassword === 'yes') ? true : false;
+		$enforcePassword = \OC::$server->getConfig()->getAppValue('core', 'shareapi_enforce_links_password', 'no');
+		return $enforcePassword === 'yes';
 	}
 
 	/**
@@ -329,13 +358,14 @@ class OC_Util {
 	 * check if share API enforces a default expire date
 	 *
 	 * @return boolean
+	 * @suppress PhanDeprecatedFunction
 	 */
 	public static function isDefaultExpireDateEnforced() {
-		$isDefaultExpireDateEnabled = \OCP\Config::getAppValue('core', 'shareapi_default_expire_date', 'no');
+		$isDefaultExpireDateEnabled = \OC::$server->getConfig()->getAppValue('core', 'shareapi_default_expire_date', 'no');
 		$enforceDefaultExpireDate = false;
 		if ($isDefaultExpireDateEnabled === 'yes') {
-			$value = \OCP\Config::getAppValue('core', 'shareapi_enforce_expire_date', 'no');
-			$enforceDefaultExpireDate = ($value === 'yes') ? true : false;
+			$value = \OC::$server->getConfig()->getAppValue('core', 'shareapi_enforce_expire_date', 'no');
+			$enforceDefaultExpireDate = $value === 'yes';
 		}
 
 		return $enforceDefaultExpireDate;
@@ -345,7 +375,7 @@ class OC_Util {
 	 * Get the quota of a user
 	 *
 	 * @param string $userId
-	 * @return int Quota bytes
+	 * @return float Quota bytes
 	 */
 	public static function getUserQuota($userId) {
 		$user = \OC::$server->getUserManager()->get($userId);
@@ -362,13 +392,31 @@ class OC_Util {
 	/**
 	 * copies the skeleton to the users /files
 	 *
-	 * @param String $userId
+	 * @param string $userId
 	 * @param \OCP\Files\Folder $userDirectory
-	 * @throws \RuntimeException
+	 * @throws \OCP\Files\NotFoundException
+	 * @throws \OCP\Files\NotPermittedException
+	 * @suppress PhanDeprecatedFunction
 	 */
 	public static function copySkeleton($userId, \OCP\Files\Folder $userDirectory) {
 
-		$skeletonDirectory = \OC::$server->getConfig()->getSystemValue('skeletondirectory', \OC::$SERVERROOT . '/core/skeleton');
+		$plainSkeletonDirectory = \OC::$server->getConfig()->getSystemValue('skeletondirectory', \OC::$SERVERROOT . '/core/skeleton');
+		$userLang = \OC::$server->getL10NFactory()->findLanguage();
+		$skeletonDirectory = str_replace('{lang}', $userLang, $plainSkeletonDirectory);
+
+		if (!file_exists($skeletonDirectory)) {
+			$dialectStart = strpos($userLang, '_');
+			if ($dialectStart !== false) {
+				$skeletonDirectory = str_replace('{lang}', substr($userLang, 0, $dialectStart), $plainSkeletonDirectory);
+			}
+			if ($dialectStart === false || !file_exists($skeletonDirectory)) {
+				$skeletonDirectory = str_replace('{lang}', 'default', $plainSkeletonDirectory);
+			}
+			if (!file_exists($skeletonDirectory)) {
+				$skeletonDirectory = '';
+			}
+		}
+
 		$instanceId = \OC::$server->getConfig()->getSystemValue('instanceid', '');
 
 		if ($instanceId === null) {
@@ -383,7 +431,7 @@ class OC_Util {
 			\OCP\Util::writeLog(
 				'files_skeleton',
 				'copying skeleton for '.$userId.' from '.$skeletonDirectory.' to '.$userDirectory->getFullPath('/'),
-				\OCP\Util::DEBUG
+				ILogger::DEBUG
 			);
 			self::copyr($skeletonDirectory, $userDirectory);
 			// update the file cache
@@ -431,6 +479,7 @@ class OC_Util {
 
 	/**
 	 * @return void
+	 * @suppress PhanUndeclaredMethod
 	 */
 	public static function tearDownFS() {
 		\OC\Files\Filesystem::tearDown();
@@ -487,6 +536,7 @@ class OC_Util {
 
 	/**
 	 * @description load the version.php into the session as cache
+	 * @suppress PhanUndeclaredVariable
 	 */
 	private static function loadVersion() {
 		if (self::$versionCache !== null) {
@@ -563,8 +613,8 @@ class OC_Util {
 	 * add a translation JS file
 	 *
 	 * @param string $application application id
-	 * @param string $languageCode language code, defaults to the current language
-	 * @param bool $prepend prepend the Script to the beginning of the list
+	 * @param string|null $languageCode language code, defaults to the current language
+	 * @param bool|null $prepend prepend the Script to the beginning of the list
 	 */
 	public static function addTranslations($application, $languageCode = null, $prepend = false) {
 		if (is_null($languageCode)) {
@@ -641,36 +691,20 @@ class OC_Util {
 	 * @param string $tag tag name of the element
 	 * @param array $attributes array of attributes for the element
 	 * @param string $text the text content for the element
+	 * @param bool $prepend prepend the header to the beginning of the list
 	 */
-	public static function addHeader($tag, $attributes, $text=null) {
-		self::$headers[] = array(
+	public static function addHeader($tag, $attributes, $text = null, $prepend = false) {
+		$header = array(
 			'tag' => $tag,
 			'attributes' => $attributes,
 			'text' => $text
 		);
-	}
+		if ($prepend === true) {
+			array_unshift (self::$headers, $header);
 
-	/**
-	 * formats a timestamp in the "right" way
-	 *
-	 * @param int $timestamp
-	 * @param bool $dateOnly option to omit time from the result
-	 * @param DateTimeZone|string $timeZone where the given timestamp shall be converted to
-	 * @return string timestamp
-	 *
-	 * @deprecated Use \OC::$server->query('DateTimeFormatter') instead
-	 */
-	public static function formatDate($timestamp, $dateOnly = false, $timeZone = null) {
-		if ($timeZone !== null && !$timeZone instanceof \DateTimeZone) {
-			$timeZone = new \DateTimeZone($timeZone);
+		} else {
+			self::$headers[] = $header;
 		}
-
-		/** @var \OC\DateTimeFormatter $formatter */
-		$formatter = \OC::$server->query('DateTimeFormatter');
-		if ($dateOnly) {
-			return $formatter->formatDate($timestamp, 'long', $timeZone);
-		}
-		return $formatter->formatDateTime($timestamp, 'long', 'long', $timeZone);
 	}
 
 	/**
@@ -695,8 +729,15 @@ class OC_Util {
 		}
 
 		$webServerRestart = false;
-		$setup = new \OC\Setup($config, \OC::$server->getIniWrapper(), \OC::$server->getL10N('lib'),
-			\OC::$server->query(\OCP\Defaults::class), \OC::$server->getLogger(), \OC::$server->getSecureRandom());
+		$setup = new \OC\Setup(
+			$config,
+			\OC::$server->getIniWrapper(),
+			\OC::$server->getL10N('lib'),
+			\OC::$server->query(\OCP\Defaults::class),
+			\OC::$server->getLogger(),
+			\OC::$server->getSecureRandom(),
+			\OC::$server->query(\OC\Installer::class)
+		);
 
 		$urlGenerator = \OC::$server->getURLGenerator();
 
@@ -715,7 +756,9 @@ class OC_Util {
 				$errors[] = array(
 					'error' => $l->t('Cannot write into "config" directory'),
 					'hint' => $l->t('This can usually be fixed by giving the webserver write access to the config directory. See %s',
-						[$urlGenerator->linkToDocs('admin-dir_permissions')])
+						[ $urlGenerator->linkToDocs('admin-dir_permissions') ]) . '. '
+						. $l->t('Or, if you prefer to keep config.php file read only, set the option "config_is_read_only" to true in it. See %s',
+						[ $urlGenerator->linkToDocs('admin-config') ] )
 				);
 			}
 		}
@@ -748,13 +791,20 @@ class OC_Util {
 					];
 				}
 			} else if (!is_writable($CONFIG_DATADIRECTORY) or !is_readable($CONFIG_DATADIRECTORY)) {
-				//common hint for all file permissions error messages
-				$permissionsHint = $l->t('Permissions can usually be fixed by giving the webserver write access to the root directory. See %s.',
-					[$urlGenerator->linkToDocs('admin-dir_permissions')]);
-				$errors[] = [
-					'error' => 'Your data directory is not writable',
-					'hint' => $permissionsHint
-				];
+				// is_writable doesn't work for NFS mounts, so try to write a file and check if it exists.
+				$testFile = sprintf('%s/%s.tmp', $CONFIG_DATADIRECTORY, uniqid('data_dir_writability_test_'));
+				$handle = fopen($testFile, 'w');
+				if (!$handle || fwrite($handle, 'Test write operation') === FALSE) {
+					$permissionsHint = $l->t('Permissions can usually be fixed by giving the webserver write access to the root directory. See %s.',
+						[$urlGenerator->linkToDocs('admin-dir_permissions')]);
+					$errors[] = [
+						'error' => 'Your data directory is not writable',
+						'hint' => $permissionsHint
+					];
+				} else {
+					fclose($handle);
+					unlink($testFile);
+				}
 			} else {
 				$errors = array_merge($errors, self::checkDataDirectoryPermissions($CONFIG_DATADIRECTORY));
 			}
@@ -786,7 +836,7 @@ class OC_Util {
 			),
 			'functions' => [
 				'xml_parser_create' => 'libxml',
-				'mb_strcut' => 'mb multibyte',
+				'mb_strcut' => 'mbstring',
 				'ctype_digit' => 'ctype',
 				'json_encode' => 'JSON',
 				'gd_info' => 'GD',
@@ -808,44 +858,36 @@ class OC_Util {
 		$invalidIniSettings = [];
 		$moduleHint = $l->t('Please ask your server administrator to install the module.');
 
-		/**
-		 * FIXME: The dependency check does not work properly on HHVM on the moment
-		 *        and prevents installation. Once HHVM is more compatible with our
-		 *        approach to check for these values we should re-enable those
-		 *        checks.
-		 */
 		$iniWrapper = \OC::$server->getIniWrapper();
-		if (!self::runningOnHhvm()) {
-			foreach ($dependencies['classes'] as $class => $module) {
-				if (!class_exists($class)) {
-					$missingDependencies[] = $module;
+		foreach ($dependencies['classes'] as $class => $module) {
+			if (!class_exists($class)) {
+				$missingDependencies[] = $module;
+			}
+		}
+		foreach ($dependencies['functions'] as $function => $module) {
+			if (!function_exists($function)) {
+				$missingDependencies[] = $module;
+			}
+		}
+		foreach ($dependencies['defined'] as $defined => $module) {
+			if (!defined($defined)) {
+				$missingDependencies[] = $module;
+			}
+		}
+		foreach ($dependencies['ini'] as $setting => $expected) {
+			if (is_bool($expected)) {
+				if ($iniWrapper->getBool($setting) !== $expected) {
+					$invalidIniSettings[] = [$setting, $expected];
 				}
 			}
-			foreach ($dependencies['functions'] as $function => $module) {
-				if (!function_exists($function)) {
-					$missingDependencies[] = $module;
+			if (is_int($expected)) {
+				if ($iniWrapper->getNumeric($setting) !== $expected) {
+					$invalidIniSettings[] = [$setting, $expected];
 				}
 			}
-			foreach ($dependencies['defined'] as $defined => $module) {
-				if (!defined($defined)) {
-					$missingDependencies[] = $module;
-				}
-			}
-			foreach ($dependencies['ini'] as $setting => $expected) {
-				if (is_bool($expected)) {
-					if ($iniWrapper->getBool($setting) !== $expected) {
-						$invalidIniSettings[] = [$setting, $expected];
-					}
-				}
-				if (is_int($expected)) {
-					if ($iniWrapper->getNumeric($setting) !== $expected) {
-						$invalidIniSettings[] = [$setting, $expected];
-					}
-				}
-				if (is_string($expected)) {
-					if (strtolower($iniWrapper->getString($setting)) !== strtolower($expected)) {
-						$invalidIniSettings[] = [$setting, $expected];
-					}
+			if (is_string($expected)) {
+				if (strtolower($iniWrapper->getString($setting)) !== strtolower($expected)) {
+					$invalidIniSettings[] = [$setting, $expected];
 				}
 			}
 		}
@@ -859,7 +901,7 @@ class OC_Util {
 		}
 		foreach($invalidIniSettings as $setting) {
 			if(is_bool($setting[1])) {
-				$setting[1] = ($setting[1]) ? 'on' : 'off';
+				$setting[1] = $setting[1] ? 'on' : 'off';
 			}
 			$errors[] = [
 				'error' => $l->t('PHP setting "%s" is not set to "%s".', [$setting[0], var_export($setting[1], true)]),
@@ -959,8 +1001,11 @@ class OC_Util {
 	 * @return array arrays with error messages and hints
 	 */
 	public static function checkDataDirectoryPermissions($dataDirectory) {
+		if(\OC::$server->getConfig()->getSystemValue('check_data_directory_permissions', true) === false) {
+			return  [];
+		}
 		$l = \OC::$server->getL10N('lib');
-		$errors = array();
+		$errors = [];
 		$permissionsModHint = $l->t('Please change the permissions to 0770 so that the directory'
 			. ' cannot be listed by other users.');
 		$perms = substr(decoct(@fileperms($dataDirectory)), -3);
@@ -1043,31 +1088,12 @@ class OC_Util {
 	}
 
 	/**
-	 * Check if the user is a subadmin, redirects to home if not
-	 *
-	 * @return null|boolean $groups where the current user is subadmin
-	 */
-	public static function checkSubAdminUser() {
-		OC_Util::checkLoggedIn();
-		$userObject = \OC::$server->getUserSession()->getUser();
-		$isSubAdmin = false;
-		if($userObject !== null) {
-			$isSubAdmin = \OC::$server->getGroupManager()->getSubAdmin()->isSubAdmin($userObject);
-		}
-
-		if (!$isSubAdmin) {
-			header('Location: ' . \OCP\Util::linkToAbsolute('', 'index.php'));
-			exit();
-		}
-		return true;
-	}
-
-	/**
 	 * Returns the URL of the default page
 	 * based on the system configuration and
 	 * the apps visible for the current user
 	 *
 	 * @return string URL
+	 * @suppress PhanDeprecatedFunction
 	 */
 	public static function getDefaultPageUrl() {
 		$urlGenerator = \OC::$server->getURLGenerator();
@@ -1076,12 +1102,13 @@ class OC_Util {
 		if (isset($_REQUEST['redirect_url']) && strpos($_REQUEST['redirect_url'], '@') === false) {
 			$location = $urlGenerator->getAbsoluteURL(urldecode($_REQUEST['redirect_url']));
 		} else {
-			$defaultPage = \OC::$server->getAppConfig()->getValue('core', 'defaultpage');
+			$defaultPage = \OC::$server->getConfig()->getAppValue('core', 'defaultpage');
 			if ($defaultPage) {
 				$location = $urlGenerator->getAbsoluteURL($defaultPage);
 			} else {
 				$appId = 'files';
-				$defaultApps = explode(',', \OCP\Config::getSystemValue('defaultapp', 'files'));
+				$config = \OC::$server->getConfig();
+				$defaultApps = explode(',', $config->getSystemValue('defaultapp', 'files'));
 				// find the first app that is enabled for the current user
 				foreach ($defaultApps as $defaultApp) {
 					$defaultApp = OC_App::cleanAppId(strip_tags($defaultApp));
@@ -1091,7 +1118,7 @@ class OC_Util {
 					}
 				}
 
-				if(\OC::$server->getConfig()->getSystemValue('htaccess.IgnoreFrontController', false) === true || getenv('front_controller_active') === 'true') {
+				if($config->getSystemValue('htaccess.IgnoreFrontController', false) === true || getenv('front_controller_active') === 'true') {
 					$location = $urlGenerator->getAbsoluteURL('/apps/' . $appId . '/');
 				} else {
 					$location = $urlGenerator->getAbsoluteURL('/index.php/apps/' . $appId . '/');
@@ -1288,15 +1315,6 @@ class OC_Util {
 	}
 
 	/**
-	 * Checks whether server is running on HHVM
-	 *
-	 * @return bool True if running on HHVM, false otherwise
-	 */
-	public static function runningOnHhvm() {
-		return defined('HHVM_VERSION');
-	}
-
-	/**
 	 * Handles the case that there may not be a theme, then check if a "default"
 	 * theme exists and take that one
 	 *
@@ -1312,62 +1330,6 @@ class OC_Util {
 		}
 
 		return $theme;
-	}
-
-	/**
-	 * Clear a single file from the opcode cache
-	 * This is useful for writing to the config file
-	 * in case the opcode cache does not re-validate files
-	 * Returns true if successful, false if unsuccessful:
-	 * caller should fall back on clearing the entire cache
-	 * with clearOpcodeCache() if unsuccessful
-	 *
-	 * @param string $path the path of the file to clear from the cache
-	 * @return bool true if underlying function returns true, otherwise false
-	 */
-	public static function deleteFromOpcodeCache($path) {
-		$ret = false;
-		if ($path) {
-			// APC >= 3.1.1
-			if (function_exists('apc_delete_file')) {
-				$ret = @apc_delete_file($path);
-			}
-			// Zend OpCache >= 7.0.0, PHP >= 5.5.0
-			if (function_exists('opcache_invalidate')) {
-				$ret = opcache_invalidate($path);
-			}
-		}
-		return $ret;
-	}
-
-	/**
-	 * Clear the opcode cache if one exists
-	 * This is necessary for writing to the config file
-	 * in case the opcode cache does not re-validate files
-	 *
-	 * @return void
-	 */
-	public static function clearOpcodeCache() {
-		// APC
-		if (function_exists('apc_clear_cache')) {
-			apc_clear_cache();
-		}
-		// Zend Opcache
-		if (function_exists('accelerator_reset')) {
-			accelerator_reset();
-		}
-		// XCache
-		if (function_exists('xcache_clear_cache')) {
-			if (\OC::$server->getIniWrapper()->getBool('xcache.admin.enable_auth')) {
-				\OCP\Util::writeLog('core', 'XCache opcode cache will not be cleared because "xcache.admin.enable_auth" is enabled.', \OCP\Util::WARN);
-			} else {
-				@xcache_clear_cache(XC_TYPE_PHP, 0);
-			}
-		}
-		// Opcache (PHP >= 5.5)
-		if (function_exists('opcache_reset')) {
-			opcache_reset();
-		}
 	}
 
 	/**
@@ -1388,16 +1350,6 @@ class OC_Util {
 		}
 
 		return $normalizedValue;
-	}
-
-	/**
-	 * @param boolean|string $file
-	 * @return string
-	 */
-	public static function basename($file) {
-		$file = rtrim($file, '/');
-		$t = explode('/', $file);
-		return array_pop($t);
 	}
 
 	/**
@@ -1490,6 +1442,19 @@ class OC_Util {
 		} else {
 			return false;
 		}
+	}
+
+	/**
+	 * is this Internet explorer ?
+	 *
+	 * @return boolean
+	 */
+	public static function isIe() {
+		if (!isset($_SERVER['HTTP_USER_AGENT'])) {
+			return false;
+		}
+
+		return preg_match(Request::USER_AGENT_IE, $_SERVER['HTTP_USER_AGENT']) === 1;
 	}
 
 }

@@ -468,23 +468,27 @@ class RSA
                     break;
                 case extension_loaded('openssl') && file_exists($this->configFile):
                     // some versions of XAMPP have mismatched versions of OpenSSL which causes it not to work
-                    ob_start();
-                    @phpinfo();
-                    $content = ob_get_contents();
-                    ob_end_clean();
-
-                    preg_match_all('#OpenSSL (Header|Library) Version(.*)#im', $content, $matches);
-
                     $versions = array();
-                    if (!empty($matches[1])) {
-                        for ($i = 0; $i < count($matches[1]); $i++) {
-                            $fullVersion = trim(str_replace('=>', '', strip_tags($matches[2][$i])));
 
-                            // Remove letter part in OpenSSL version
-                            if (!preg_match('/(\d+\.\d+\.\d+)/i', $fullVersion, $m)) {
-                                $versions[$matches[1][$i]] = $fullVersion;
-                            } else {
-                                $versions[$matches[1][$i]] = $m[0];
+                    // avoid generating errors (even with suppression) when phpinfo() is disabled (common in production systems)
+                    if (strpos(ini_get('disable_functions'), 'phpinfo') === false) {
+                        ob_start();
+                        @phpinfo();
+                        $content = ob_get_contents();
+                        ob_end_clean();
+
+                        preg_match_all('#OpenSSL (Header|Library) Version(.*)#im', $content, $matches);
+
+                        if (!empty($matches[1])) {
+                            for ($i = 0; $i < count($matches[1]); $i++) {
+                                $fullVersion = trim(str_replace('=>', '', strip_tags($matches[2][$i])));
+
+                                // Remove letter part in OpenSSL version
+                                if (!preg_match('/(\d+\.\d+\.\d+)/i', $fullVersion, $m)) {
+                                    $versions[$matches[1][$i]] = $fullVersion;
+                                } else {
+                                    $versions[$matches[1][$i]] = $m[0];
+                                }
                             }
                         }
                     }
@@ -1016,9 +1020,9 @@ class RSA
      * @access private
      * @see self::_convertPublicKey()
      * @see self::_convertPrivateKey()
-     * @param string $key
+     * @param string|array $key
      * @param int $type
-     * @return array
+     * @return array|bool
      */
     function _parseKey($key, $type)
     {
@@ -1501,8 +1505,9 @@ class RSA
      * Returns true on success and false on failure (ie. an incorrect password was provided or the key was malformed)
      *
      * @access public
-     * @param string $key
-     * @param int $type optional
+     * @param string|RSA|array $key
+     * @param bool $type optional
+     * @return bool
      */
     function loadKey($key, $type = false)
     {
@@ -1572,6 +1577,15 @@ class RSA
         }
 
         if ($components === false) {
+            $this->comment = null;
+            $this->modulus = null;
+            $this->k = null;
+            $this->exponent = null;
+            $this->primes = null;
+            $this->exponents = null;
+            $this->coefficients = null;
+            $this->publicExponent = null;
+
             return false;
         }
 
@@ -2414,7 +2428,7 @@ class RSA
         $db = $maskedDB ^ $dbMask;
         $lHash2 = substr($db, 0, $this->hLen);
         $m = substr($db, $this->hLen);
-        if ($lHash != $lHash2) {
+        if (!$this->_equals($lHash, $lHash2)) {
             user_error('Decryption error');
             return false;
         }

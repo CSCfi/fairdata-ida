@@ -21,6 +21,17 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
+
+SCRIPT=`basename $0`
+
+USAGE="
+Usage: $SCRIPT project [--silent]
+       $SCRIPT -h
+
+       project  = the project name
+       --silent = no email will be sent to project users
+"
+
 # Initialize script with common definitions
 
 INIT_FILE=`dirname $0`/lib/init_script.sh
@@ -92,13 +103,17 @@ if [ -e $PROJECT_LOCK ]; then
     errorExit "Error: Failed to unlock project ${PROJECT}!"
 fi
 
+rm $ERR 2>/dev/null
+
+echoAndLog "Project ${PROJECT} unsuspended."
+
 #--------------------------------------------------------------------------------
+
+if [ "$2" = "--silent" ]; then
+    exit
+fi
 
 $ROOT/utils/admin/email-project-users $PROJECT \
     "Project ${PROJECT} unsuspended." \
     "The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored."
-
-rm $ERR 2>/dev/null
-
-echoAndLog "Project ${PROJECT} unsuspended."
 

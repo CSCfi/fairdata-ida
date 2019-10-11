@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author scolebrook <scolebrook@mac.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -33,6 +34,7 @@ namespace OCA\DAV\Connector\Sabre;
  * @see \Sabre\DAV\Server
  */
 class Server extends \Sabre\DAV\Server {
+	/** @var CachingTree $tree */
 
 	/**
 	 * @see \Sabre\DAV\Server

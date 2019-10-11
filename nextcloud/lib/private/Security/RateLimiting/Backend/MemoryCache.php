@@ -1,6 +1,9 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
+ *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -43,7 +46,7 @@ class MemoryCache implements IBackend {
 	 */
 	public function __construct(ICacheFactory $cacheFactory,
 								ITimeFactory $timeFactory) {
-		$this->cache = $cacheFactory->create(__CLASS__);
+		$this->cache = $cacheFactory->createDistributed(__CLASS__);
 		$this->timeFactory = $timeFactory;
 	}
 
@@ -52,8 +55,8 @@ class MemoryCache implements IBackend {
 	 * @param string $userIdentifier
 	 * @return string
 	 */
-	private function hash($methodIdentifier,
-						  $userIdentifier) {
+	private function hash(string $methodIdentifier,
+						  string $userIdentifier): string {
 		return hash('sha512', $methodIdentifier . $userIdentifier);
 	}
 
@@ -61,9 +64,14 @@ class MemoryCache implements IBackend {
 	 * @param string $identifier
 	 * @return array
 	 */
-	private function getExistingAttempts($identifier) {
-		$cachedAttempts = json_decode($this->cache->get($identifier), true);
-		if(is_array($cachedAttempts)) {
+	private function getExistingAttempts(string $identifier): array {
+		$cachedAttempts = $this->cache->get($identifier);
+		if ($cachedAttempts === null) {
+			return [];
+		}
+
+		$cachedAttempts = json_decode($cachedAttempts, true);
+		if(\is_array($cachedAttempts)) {
 			return $cachedAttempts;
 		}
 
@@ -73,9 +81,9 @@ class MemoryCache implements IBackend {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function getAttempts($methodIdentifier,
-								$userIdentifier,
-								$seconds) {
+	public function getAttempts(string $methodIdentifier,
+								string $userIdentifier,
+								int $seconds): int {
 		$identifier = $this->hash($methodIdentifier, $userIdentifier);
 		$existingAttempts = $this->getExistingAttempts($identifier);
 
@@ -94,9 +102,9 @@ class MemoryCache implements IBackend {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function registerAttempt($methodIdentifier,
-									$userIdentifier,
-									$period) {
+	public function registerAttempt(string $methodIdentifier,
+									string $userIdentifier,
+									int $period) {
 		$identifier = $this->hash($methodIdentifier, $userIdentifier);
 		$existingAttempts = $this->getExistingAttempts($identifier);
 		$currentTime = $this->timeFactory->getTime();

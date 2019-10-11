@@ -2,10 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Olivier Paroz <github@oparoz.com>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -23,6 +23,8 @@
  *
  */
 namespace OC\Preview;
+
+use OCP\ILogger;
 
 class SVG extends Provider {
 	/**
@@ -53,7 +55,10 @@ class SVG extends Provider {
 			$svg->readImageBlob($content);
 			$svg->setImageFormat('png32');
 		} catch (\Exception $e) {
-			\OCP\Util::writeLog('core', $e->getmessage(), \OCP\Util::ERROR);
+			\OC::$server->getLogger()->logException($e, [
+				'level' => ILogger::ERROR,
+				'app' => 'core',
+			]);
 			return false;
 		}
 

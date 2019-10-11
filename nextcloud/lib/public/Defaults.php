@@ -143,9 +143,10 @@ class Defaults {
 	 * logo claim
 	 * @return string
 	 * @since 6.0.0
+	 * @deprecated 13.0.0
 	 */
 	public function getLogoClaim() {
-		return $this->defaults->getLogoClaim();
+		return '';
 	}
 
 	/**
@@ -211,5 +212,14 @@ class Defaults {
 	 */
 	public function getTitle() {
 		return $this->defaults->getTitle();
+	}
+
+	/**
+	 * Returns primary color
+	 * @return string
+	 * @since 13.0.0
+	 */
+	public function getTextColorPrimary() {
+		return $this->defaults->getTextColorPrimary();
 	}
 }

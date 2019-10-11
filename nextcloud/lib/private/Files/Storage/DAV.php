@@ -5,7 +5,6 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Carlos Cerrillo <ccerrillo@gmail.com>
- * @author Felix Moeller <mail@felixmoeller.de>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
@@ -14,6 +13,7 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author vkuimov "vkuimov@nextcloud"
  *
  * @license AGPL-3.0
  *
@@ -35,7 +35,8 @@ namespace OC\Files\Storage;
 
 use Exception;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Message\ResponseInterface;
+use OCP\ILogger;
+use Psr\Http\Message\ResponseInterface;
 use Icewind\Streams\CallbackWrapper;
 use OC\Files\Filesystem;
 use Icewind\Streams\IteratorDirectory;
@@ -118,13 +119,9 @@ class DAV extends Common {
 					$this->certPath = $certPath;
 				}
 			}
-			$this->root = isset($params['root']) ? $params['root'] : '/';
-			if (!$this->root || $this->root[0] != '/') {
-				$this->root = '/' . $this->root;
-			}
-			if (substr($this->root, -1, 1) != '/') {
-				$this->root .= '/';
-			}
+			$this->root = $params['root'] ?? '/';
+			$this->root = '/' . ltrim($this->root, '/');
+			$this->root = rtrim($this->root, '/') . '/';
 		} else {
 			throw new \Exception('Invalid webdav storage configuration');
 		}
@@ -146,7 +143,7 @@ class DAV extends Common {
 		}
 
 		$proxy = \OC::$server->getConfig()->getSystemValue('proxy', '');
-		if($proxy !== '') {
+		if ($proxy !== '') {
 			$settings['proxy'] = $proxy;
 		}
 
@@ -209,7 +206,7 @@ class DAV extends Common {
 		try {
 			$response = $this->client->propFind(
 				$this->encodePath($path),
-				['{DAV:}href'],
+				['{DAV:}getetag'],
 				1
 			);
 			if ($response === false) {
@@ -343,12 +340,12 @@ class DAV extends Common {
 			case 'rb':
 				try {
 					$response = $this->httpClientService
-							->newClient()
-							->get($this->createBaseUri() . $this->encodePath($path), [
-									'auth' => [$this->user, $this->password],
-									'stream' => true
-							]);
-				} catch (RequestException $e) {
+						->newClient()
+						->get($this->createBaseUri() . $this->encodePath($path), [
+							'auth' => [$this->user, $this->password],
+							'stream' => true
+						]);
+				} catch (\GuzzleHttp\Exception\ClientException $e) {
 					if ($e->getResponse() instanceof ResponseInterface
 						&& $e->getResponse()->getStatusCode() === 404) {
 						return false;
@@ -361,7 +358,7 @@ class DAV extends Common {
 					if ($response->getStatusCode() === Http::STATUS_LOCKED) {
 						throw new \OCP\Lock\LockedException($path);
 					} else {
-						Util::writeLog("webdav client", 'Guzzle get returned status code ' . $response->getStatusCode(), Util::ERROR);
+						Util::writeLog("webdav client", 'Guzzle get returned status code ' . $response->getStatusCode(), ILogger::ERROR);
 					}
 				}
 
@@ -590,6 +587,15 @@ class DAV extends Common {
 
 	/** {@inheritdoc} */
 	public function getMimeType($path) {
+		$remoteMimetype = $this->getMimeTypeFromRemote($path);
+		if ($remoteMimetype === 'application/octet-stream') {
+			return \OC::$server->getMimeTypeDetector()->detectPath($path);
+		} else {
+			return $remoteMimetype;
+		}
+	}
+
+	public function getMimeTypeFromRemote($path) {
 		try {
 			$response = $this->propfind($path);
 			if ($response === false) {
@@ -606,12 +612,11 @@ class DAV extends Common {
 			} elseif (isset($response['{DAV:}getcontenttype'])) {
 				return $response['{DAV:}getcontenttype'];
 			} else {
-				return false;
+				return 'application/octet-stream';
 			}
 		} catch (\Exception $e) {
-			$this->convertException($e, $path);
+			return false;
 		}
-		return false;
 	}
 
 	/**
@@ -721,7 +726,11 @@ class DAV extends Common {
 			return null;
 		}
 		if (isset($response['{DAV:}getetag'])) {
-			return trim($response['{DAV:}getetag'], '"');
+			$etag = trim($response['{DAV:}getetag'], '"');
+			if (strlen($etag) > 40) {
+				$etag = md5($etag);
+			}
+			return $etag;
 		}
 		return parent::getEtag($path);
 	}
@@ -766,7 +775,7 @@ class DAV extends Common {
 			if ($response === false) {
 				if ($path === '') {
 					// if root is gone it means the storage is not available
-					throw new StorageNotAvailableException(get_class($e) . ': ' . $e->getMessage());
+					throw new StorageNotAvailableException('root is gone');
 				}
 				return false;
 			}
@@ -822,8 +831,7 @@ class DAV extends Common {
 	 * which might be temporary
 	 */
 	protected function convertException(Exception $e, $path = '') {
-		\OC::$server->getLogger()->logException($e);
-		Util::writeLog('files_external', $e->getMessage(), Util::ERROR);
+		\OC::$server->getLogger()->logException($e, ['app' => 'files_external', 'level' => ILogger::DEBUG]);
 		if ($e instanceof ClientHttpException) {
 			if ($e->getHttpStatus() === Http::STATUS_LOCKED) {
 				throw new \OCP\Lock\LockedException($path);

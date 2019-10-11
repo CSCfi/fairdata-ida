@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  *
@@ -24,6 +25,13 @@
 namespace OC\Hooks;
 
 abstract class LegacyEmitter extends BasicEmitter {
+	/**
+	 * @param string $scope
+	 * @param string $method
+	 * @param array $arguments
+	 *
+	 * @suppress PhanAccessMethodProtected
+	 */
 	protected function emit($scope, $method, array $arguments = array()) {
 		\OC_Hook::emit($scope, $method, $arguments);
 		parent::emit($scope, $method, $arguments);

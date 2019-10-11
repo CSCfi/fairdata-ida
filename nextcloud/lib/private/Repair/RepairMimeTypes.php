@@ -2,12 +2,12 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Faruk Uzun <farukuzun@collabora.com>
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
- * @author Normal Ra <normalraw@gmail.com>
  * @author Olivier Paroz <github@oparoz.com>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Stefan Weil <sw@weilnetz.de>
+ * @author Thomas Ebert <thomas.ebert@usability.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -92,6 +92,7 @@ class RepairMimeTypes implements IRepairStep {
 			$this->folderMimeTypeId = (int)$result->fetchOne();
 		}
 
+		$count = 0;
 		foreach ($updatedMimetypes as $extension => $mimetype) {
 			$result = \OC_DB::executeAudited(self::existsStmt(), array($mimetype));
 			$exists = $result->fetchOne();
@@ -100,14 +101,16 @@ class RepairMimeTypes implements IRepairStep {
 				// insert mimetype
 				\OC_DB::executeAudited(self::insertStmt(), array($mimetype));
 			}
-			
+
 			// get target mimetype id
 			$result = \OC_DB::executeAudited(self::getIdStmt(), array($mimetype));
 			$mimetypeId = $result->fetchOne();
 
 			// change mimetype for files with x extension
-			\OC_DB::executeAudited(self::updateByNameStmt(), array($mimetypeId, $this->folderMimeTypeId, $mimetypeId, '%.' . $extension));
+			$count += \OC_DB::executeAudited(self::updateByNameStmt(), array($mimetypeId, $this->folderMimeTypeId, $mimetypeId, '%.' . $extension));
 		}
+
+		return $count;
 	}
 
 	private function introduceImageTypes() {
@@ -116,7 +119,7 @@ class RepairMimeTypes implements IRepairStep {
 			'webp' => 'image/webp',
 		);
 
-		$this->updateMimetypes($updatedMimetypes);
+		return $this->updateMimetypes($updatedMimetypes);
 	}
 
 	private function introduceWindowsProgramTypes() {
@@ -126,7 +129,63 @@ class RepairMimeTypes implements IRepairStep {
 			'cmd' => 'application/cmd',
 		);
 
-		$this->updateMimetypes($updatedMimetypes);
+		return $this->updateMimetypes($updatedMimetypes);
+	}
+
+	private function introduceLocationTypes() {
+		$updatedMimetypes = [
+			'gpx' => 'application/gpx+xml',
+			'kml' => 'application/vnd.google-earth.kml+xml',
+			'kmz' => 'application/vnd.google-earth.kmz',
+			'tcx' => 'application/vnd.garmin.tcx+xml',
+		];
+
+		return $this->updateMimetypes($updatedMimetypes);
+	}
+
+	private function introduceInternetShortcutTypes() {
+		$updatedMimetypes = [
+			'url' => 'application/internet-shortcut',
+			'webloc' => 'application/internet-shortcut'
+		];
+
+		return $this->updateMimetypes($updatedMimetypes);
+	}
+
+	private function introduceStreamingTypes() {
+		$updatedMimetypes = [
+			'm3u' => 'audio/mpegurl',
+			'm3u8' => 'audio/mpegurl',
+			'pls' => 'audio/x-scpls'
+		];
+
+		return $this->updateMimetypes($updatedMimetypes);
+	}
+
+	private function introduceVisioTypes() {
+		$updatedMimetypes = [
+			'vsdm' => 'application/vnd.visio',
+			'vsdx' => 'application/vnd.visio',
+			'vssm' => 'application/vnd.visio',
+			'vssx' => 'application/vnd.visio',
+			'vstm' => 'application/vnd.visio',
+			'vstx' => 'application/vnd.visio',
+		];
+
+		return $this->updateMimetypes($updatedMimetypes);
+	}
+
+	private function introduceComicbookTypes() {
+		$updatedMimetypes = [
+			'cb7' => 'application/comicbook+7z',
+			'cba' => 'application/comicbook+ace',
+			'cbr' => 'application/comicbook+rar',
+			'cbt' => 'application/comicbook+tar',
+			'cbtc' => 'application/comicbook+truecrypt',
+			'cbz' => 'application/comicbook+zip',
+		];
+
+		return $this->updateMimetypes($updatedMimetypes);
 	}
 
 	/**
@@ -145,6 +204,26 @@ class RepairMimeTypes implements IRepairStep {
 
 		if (version_compare($ocVersionFromBeforeUpdate, '12.0.0.13', '<') && $this->introduceWindowsProgramTypes()) {
 			$out->info('Fixed windows program mime types');
+		}
+
+		if (version_compare($ocVersionFromBeforeUpdate, '13.0.0.0', '<') && $this->introduceLocationTypes()) {
+			$out->info('Fixed geospatial mime types');
+		}
+
+		if (version_compare($ocVersionFromBeforeUpdate, '13.0.0.3', '<') && $this->introduceInternetShortcutTypes()) {
+			$out->info('Fixed internet-shortcut mime types');
+		}
+
+		if (version_compare($ocVersionFromBeforeUpdate, '13.0.0.6', '<') && $this->introduceStreamingTypes()) {
+			$out->info('Fixed streaming mime types');
+		}
+
+		if (version_compare($ocVersionFromBeforeUpdate, '14.0.0.8', '<') && $this->introduceVisioTypes()) {
+			$out->info('Fixed visio mime types');
+		}
+
+		if (version_compare($ocVersionFromBeforeUpdate, '14.0.0.10', '<') && $this->introduceComicbookTypes()) {
+			$out->info('Fixed comicbook mime types');
 		}
 	}
 }

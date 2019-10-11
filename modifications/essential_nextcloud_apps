@@ -1,0 +1,11 @@
+/var/ida/nextcloud/apps/files_sharing
+/var/ida/nextcloud/apps/oauth2
+/var/ida/nextcloud/apps/files
+/var/ida/nextcloud/apps/lookup_server_connector
+/var/ida/nextcloud/apps/provisioning_api
+/var/ida/nextcloud/apps/workflowengine
+/var/ida/nextcloud/apps/disabled
+/var/ida/nextcloud/apps/federatedfilesharing
+/var/ida/nextcloud/apps/cloud_federation_api
+/var/ida/nextcloud/apps/dav
+/var/ida/nextcloud/apps/twofactor_backupcodes

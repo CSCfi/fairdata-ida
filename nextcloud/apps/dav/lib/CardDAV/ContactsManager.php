@@ -2,7 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -54,6 +55,14 @@ class ContactsManager {
 	public function setupContactsProvider(IManager $cm, $userId, IURLGenerator $urlGenerator) {
 		$addressBooks = $this->backend->getAddressBooksForUser("principals/users/$userId");
 		$this->register($cm, $addressBooks, $urlGenerator);
+		$this->setupSystemContactsProvider($cm, $urlGenerator);
+	}
+
+	/**
+	 * @param IManager $cm
+	 * @param IURLGenerator $urlGenerator
+	 */
+	public function setupSystemContactsProvider(IManager $cm, IURLGenerator $urlGenerator) {
 		$addressBooks = $this->backend->getAddressBooksForUser("principals/system/system");
 		$this->register($cm, $addressBooks, $urlGenerator);
 	}

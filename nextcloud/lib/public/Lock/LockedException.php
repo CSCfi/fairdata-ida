@@ -1,7 +1,9 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -43,12 +45,16 @@ class LockedException extends \Exception {
 	 * LockedException constructor.
 	 *
 	 * @param string $path locked path
-	 * @param \Exception $previous previous exception for cascading
-	 *
+	 * @param \Exception|null $previous previous exception for cascading
+	 * @param string $existingLock since 14.0.0
 	 * @since 8.1.0
 	 */
-	public function __construct($path, \Exception $previous = null) {
-		parent::__construct('"' . $path . '" is locked', 0, $previous);
+	public function __construct(string $path, \Exception $previous = null, string $existingLock = null) {
+		$message = '"' . $path . '" is locked';
+		if ($existingLock) {
+			$message .= ', existing lock on file: ' . $existingLock;
+		}
+		parent::__construct($message, 0, $previous);
 		$this->path = $path;
 	}
 
@@ -56,7 +62,7 @@ class LockedException extends \Exception {
 	 * @return string
 	 * @since 8.1.0
 	 */
-	public function getPath() {
+	public function getPath(): string {
 		return $this->path;
 	}
 }

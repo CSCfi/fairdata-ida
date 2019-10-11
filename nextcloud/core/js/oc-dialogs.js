@@ -29,6 +29,12 @@ var OCdialogs = {
 	// dialog button types
 	YES_NO_BUTTONS:		70,
 	OK_BUTTONS:		71,
+
+	FILEPICKER_TYPE_CHOOSE: 1,
+	FILEPICKER_TYPE_MOVE: 2,
+	FILEPICKER_TYPE_COPY: 3,
+	FILEPICKER_TYPE_COPY_MOVE: 4,
+
 	// used to name each dialog
 	dialogsCounter: 0,
 	/**
@@ -116,7 +122,7 @@ var OCdialogs = {
 				type       : 'notice'
 			});
 			var input = $('<input/>');
-			input.attr('type', password ? 'password' : 'text').attr('id', dialogName + '-input');
+			input.attr('type', password ? 'password' : 'text').attr('id', dialogName + '-input').attr('placeholder', name);
 			var label = $('<label/>').attr('for', dialogName + '-input').text(name + ': ');
 			$dlg.append(label);
 			$dlg.append(input);
@@ -169,31 +175,71 @@ var OCdialogs = {
 	},
 	/**
 	 * show a file picker to pick a file from
+	 *
+	 * In order to pick several types of mime types they need to be passed as an
+	 * array of strings.
+	 *
+	 * When no mime type filter is given only files can be selected. In order to
+	 * be able to select both files and folders "['*', 'httpd/unix-directory']"
+	 * should be used instead.
+	 *
 	 * @param title dialog title
 	 * @param callback which will be triggered when user presses Choose
 	 * @param multiselect whether it should be possible to select multiple files
 	 * @param mimetypeFilter mimetype to filter by - directories will always be included
 	 * @param modal make the dialog modal
+	 * @param type Type of file picker : Choose, copy, move, copy and move
+	 * @param path path to the folder that the the file can be picket from
 	*/
-	filepicker:function(title, callback, multiselect, mimetypeFilter, modal) {
+	filepicker:function(title, callback, multiselect, mimetypeFilter, modal, type, path) {
 		var self = this;
+
+		this.filepicker.sortField = 'name';
+		this.filepicker.sortOrder = 'asc';
 		// avoid opening the picker twice
 		if (this.filepicker.loading) {
 			return;
 		}
+
+		if (type === undefined) {
+			type = this.FILEPICKER_TYPE_CHOOSE;
+		}
+
+		var emptyText = t('core', 'No files in here');
+		var newText = t('files', 'New folder');
+		if (type === this.FILEPICKER_TYPE_COPY || type === this.FILEPICKER_TYPE_MOVE || type === this.FILEPICKER_TYPE_COPY_MOVE) {
+			emptyText = t('core', 'No more subfolders in here');
+		}
+
 		this.filepicker.loading = true;
 		this.filepicker.filesClient = (OCA.Sharing && OCA.Sharing.PublicApp && OCA.Sharing.PublicApp.fileList)? OCA.Sharing.PublicApp.fileList.filesClient: OC.Files.getClient();
+
+		this.filelist = null;
+		path = path || '';
+
 		$.when(this._getFilePickerTemplate()).then(function($tmpl) {
 			self.filepicker.loading = false;
 			var dialogName = 'oc-dialog-filepicker-content';
 			if(self.$filePicker) {
 				self.$filePicker.ocdialog('close');
 			}
+
+			if (mimetypeFilter === undefined || mimetypeFilter === null) {
+				mimetypeFilter = [];
+			}
+			if (typeof(mimetypeFilter) === "string") {
+				mimetypeFilter = [mimetypeFilter];
+			}
+
 			self.$filePicker = $tmpl.octemplate({
 				dialog_name: dialogName,
 				title: title,
-				emptytext: t('core', 'No files in here')
-			}).data('path', '').data('multiselect', multiselect).data('mimetype', mimetypeFilter);
+				emptytext: emptyText,
+				newtext: newText,
+				nameCol: t('core', 'Name'),
+				sizeCol: t('core', 'Size'),
+				modifiedCol: t('core', 'Modified')
+			}).data('path', path).data('multiselect', multiselect).data('mimetype', mimetypeFilter);
 
 			if (modal === undefined) {
 				modal = false;
@@ -201,24 +247,132 @@ var OCdialogs = {
 			if (multiselect === undefined) {
 				multiselect = false;
 			}
-			if (mimetypeFilter === undefined) {
-				mimetypeFilter = '';
+
+			// No grid for IE!
+			if (OC.Util.isIE()) {
+				self.$filePicker.find('#picker-view-toggle').remove();
+				self.$filePicker.find('#picker-filestable').removeClass('view-grid');
 			}
 
 			$('body').append(self.$filePicker);
 
-			self.$filePicker.ready(function() {
-				self.$filelist = self.$filePicker.find('.filelist tbody');
-				self.$dirTree = self.$filePicker.find('.dirtree');
-				self.$dirTree.on('click', 'div:not(:last-child)', self, self._handleTreeListSelect.bind(self));
-				self.$filelist.on('click', 'tr', function(event) {
-					self._handlePickerClick(event, $(this));
+			self.$showGridView = $('input#picker-showgridview');
+			self.$showGridView.on('change', _.bind(self._onGridviewChange, self));
+
+			if (!OC.Util.isIE()) {
+				self._getGridSettings();
+			}
+
+			var newButton = self.$filePicker.find('.actions.creatable .button-add');
+			if (type === self.FILEPICKER_TYPE_CHOOSE) {
+				newButton.hide();
+			}
+			newButton.on('focus', function() {
+				self.$filePicker.ocdialog('setEnterCallback', function() {
+					event.stopImmediatePropagation();
+					event.preventDefault();
+					newButton.click();
 				});
-				self._fillFilePicker('');
+			});
+			newButton.on('blur', function() {
+				self.$filePicker.ocdialog('unsetEnterCallback');
+			});
+
+			OC.registerMenu(newButton,self.$filePicker.find('.menu'),function () {
+				$input.focus();
+				self.$filePicker.ocdialog('setEnterCallback', function() {
+					event.stopImmediatePropagation();
+					event.preventDefault();
+					self.$form.submit();
+				});
+				var newName = $input.val();
+				var lastPos = newName.lastIndexOf('.');
+				if (lastPos === -1) {
+					lastPos = newName.length;
+				}
+				$input.selectRange(0, lastPos);
+			});
+			var $form = self.$filePicker.find('.filenameform');
+			var $input = $form.find('input[type=\'text\']');
+			var $submit = $form.find('input[type=\'submit\']');
+			$submit.on('click',function(event) {
+				event.stopImmediatePropagation();
+				event.preventDefault();
+				$form.submit();
+			});
+
+			var checkInput = function () {
+				var filename = $input.val();
+				try {
+					if (!Files.isFileNameValid(filename)) {
+						// Files.isFileNameValid(filename) throws an exception itself
+					} else if (self.filelist.find(function(file){return file.name === this;},filename)) {
+						throw t('files', '{newName} already exists', {newName: filename}, undefined, {
+							escape: false
+						});
+					} else {
+						return true;
+					}
+				} catch (error) {
+					$input.attr('title', error);
+					$input.tooltip({placement: 'right', trigger: 'manual', 'container': '.newFolderMenu'});
+					$input.tooltip('fixTitle');
+					$input.tooltip('show');
+					$input.addClass('error');
+				}
+				return false;
+			};
+
+			$form.on('submit', function(event) {
+				event.stopPropagation();
+				event.preventDefault();
+
+				if (checkInput()) { 
+                    var newname = $input.val();
+                    var targetDir = self.$filePicker.data('path');
+                    if (targetDir == null || targetDir == '' || targetDir == '/' || OCA.IDA.Util.testIfFrozen(targetDir)) {
+                        OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+                        return;
+                    }
+					self.filepicker.filesClient.createDirectory(self.$filePicker.data('path') + '/' + newname).always(function (status) {
+						self._fillFilePicker(self.$filePicker.data('path') + '/' + newname );
+					});
+					OC.hideMenus();
+					self.$filePicker.ocdialog('unsetEnterCallback');
+					self.$filePicker.click();
+					$input.val(newText);
+				}
+			});
+			$input.keypress(function(event) {
+				if (event.keyCode === 13 || event.which === 13) {
+					event.stopImmediatePropagation();
+					event.preventDefault();
+					$form.submit();
+				}
+			});
+
+			self.$filePicker.ready(function() {
+				self.$fileListHeader = self.$filePicker.find('.filelist thead tr');
+				self.$filelist = self.$filePicker.find('.filelist tbody');
+				self.$filelistContainer = self.$filePicker.find('.filelist-container');
+				self.$dirTree = self.$filePicker.find('.dirtree');
+				self.$dirTree.on('click', 'div:not(:last-child)', self, function (event) {
+					self._handleTreeListSelect(event, type);
+				});
+				self.$filelist.on('click', 'tr', function(event) {
+					self._handlePickerClick(event, $(this), type);
+				});
+				self.$fileListHeader.on('click', 'a', function(event) {
+					var dir = self.$filePicker.data('path');
+					self.filepicker.sortField = $(event.currentTarget).data('sort');
+					self.filepicker.sortOrder = self.filepicker.sortOrder === 'asc' ? 'desc' : 'asc';
+					self._fillFilePicker(dir);
+				});
+				self._fillFilePicker(path);
 			});
 
 			// build buttons
-			var functionToCall = function() {
+			var functionToCall = function(returnType) {
 				if (callback !== undefined) {
 					var datapath;
 					if (multiselect === true) {
@@ -233,15 +387,46 @@ var OCdialogs = {
 							datapath += '/' + selectedName;
 						}
 					}
-					callback(datapath);
+					callback(datapath, returnType);
 					self.$filePicker.ocdialog('close');
 				}
 			};
-			var buttonlist = [{
-				text: t('core', 'Choose'),
-				click: functionToCall,
-				defaultButton: true
-			}];
+
+			var chooseCallback = function () {
+				functionToCall(OCdialogs.FILEPICKER_TYPE_CHOOSE);
+			};
+
+			var copyCallback = function () {
+				functionToCall(OCdialogs.FILEPICKER_TYPE_COPY);
+			};
+
+			var moveCallback = function () {
+				functionToCall(OCdialogs.FILEPICKER_TYPE_MOVE);
+			};
+
+			var buttonlist = [];
+			if (type === OCdialogs.FILEPICKER_TYPE_CHOOSE) {
+				buttonlist.push({
+					text: t('core', 'Choose'),
+					click: chooseCallback,
+					defaultButton: true
+				});
+			} else {
+				if (type === OCdialogs.FILEPICKER_TYPE_COPY || type === OCdialogs.FILEPICKER_TYPE_COPY_MOVE) {
+					buttonlist.push({
+						text: t('core', 'Copy'),
+						click: copyCallback,
+						defaultButton: false
+					});
+				}
+				if (type === OCdialogs.FILEPICKER_TYPE_MOVE || type === OCdialogs.FILEPICKER_TYPE_COPY_MOVE) {
+					buttonlist.push({
+						text: t('core', 'Move'),
+						click: moveCallback,
+						defaultButton: true
+					});
+				}
+			}
 
 			self.$filePicker.ocdialog({
 				closeOnEscape: true,
@@ -250,6 +435,9 @@ var OCdialogs = {
 				height: 500,
 				modal: modal,
 				buttons: buttonlist,
+				style: {
+					buttons: 'aside',
+				},
 				close: function() {
 					try {
 						$(this).ocdialog('destroy').remove();
@@ -262,7 +450,7 @@ var OCdialogs = {
 			// Hence this is one of the approach to get the choose button.
 			var getOcDialog = self.$filePicker.closest('.oc-dialog');
 			var buttonEnableDisable = getOcDialog.find('.primary');
-			if (self.$filePicker.data('mimetype') === "httpd/unix-directory") {
+			if (self.$filePicker.data('mimetype').indexOf("httpd/unix-directory") !== -1) {
 				buttonEnableDisable.prop("disabled", false);
 			} else {
 				buttonEnableDisable.prop("disabled", true);
@@ -504,7 +692,7 @@ var OCdialogs = {
 				$replacementDiv.find('.size').text(humanFileSize(replacement.size));
 				$replacementDiv.find('.mtime').text(formatDate(replacement.lastModifiedDate));
 			}
-			var path = original.directory + '/' +original.name;
+			var path = original.directory + '/' + original.name;
 			var urlSpec = {
 				file:		path,
 				x:		96,
@@ -713,13 +901,37 @@ var OCdialogs = {
 		//}
 		return dialogDeferred.promise();
 	},
+	// get the gridview setting and set the input accordingly
+	_getGridSettings: function() {
+		var self = this;
+		$.get(OC.generateUrl('/apps/files/api/v1/showgridview'), function(response) {
+			self.$showGridView.get(0).checked = response.gridview;
+			self.$showGridView.next('#picker-view-toggle')
+				.removeClass('icon-toggle-filelist icon-toggle-pictures')
+				.addClass(response.gridview ? 'icon-toggle-filelist' : 'icon-toggle-pictures')
+			$('.list-container').toggleClass('view-grid', response.gridview);
+		});
+	},
+	_onGridviewChange: function() {
+		var show = this.$showGridView.is(':checked');
+		// only save state if user is logged in
+		if (OC.currentUser) {
+			$.post(OC.generateUrl('/apps/files/api/v1/showgridview'), {
+				show: show
+			});
+		}
+		this.$showGridView.next('#picker-view-toggle')
+			.removeClass('icon-toggle-filelist icon-toggle-pictures')
+			.addClass(show ? 'icon-toggle-filelist' : 'icon-toggle-pictures')
+		$('.list-container').toggleClass('view-grid', show);
+	},
 	_getFilePickerTemplate: function() {
 		var defer = $.Deferred();
 		if(!this.$filePickerTemplate) {
 			var self = this;
 			$.get(OC.filePath('core', 'templates', 'filepicker.html'), function(tmpl) {
 				self.$filePickerTemplate = $(tmpl);
-				self.$listTmpl = self.$filePickerTemplate.find('.filelist tr:first-child').detach();
+				self.$listTmpl = self.$filePickerTemplate.find('.filelist tbody tr:first-child').detach();
 				defer.resolve(self.$filePickerTemplate);
 			})
 			.fail(function(jqXHR, textStatus, errorThrown) {
@@ -781,34 +993,69 @@ var OCdialogs = {
 	*/
 	_fillFilePicker:function(dir) {
 		var self = this;
-		this.$filelist.empty().addClass('icon-loading');
+		this.$filelist.empty();
+		this.$filePicker.find('.emptycontent').hide();
+		this.$filelistContainer.addClass('icon-loading');
 		this.$filePicker.data('path', dir);
 		var filter = this.$filePicker.data('mimetype');
 		if (typeof(filter) === "string") {
 			filter = [filter];
 		}
+		self.$fileListHeader.find('.sort-indicator').addClass('hidden').removeClass('icon-triangle-n').removeClass('icon-triangle-s');
+		self.$fileListHeader.find('[data-sort=' + self.filepicker.sortField + '] .sort-indicator').removeClass('hidden');
+		if (self.filepicker.sortOrder === 'asc') {
+			self.$fileListHeader.find('[data-sort=' + self.filepicker.sortField + '] .sort-indicator').addClass('icon-triangle-n');
+		} else {
+			self.$fileListHeader.find('[data-sort=' + self.filepicker.sortField + '] .sort-indicator').addClass('icon-triangle-s');
+		}
 		self.filepicker.filesClient.getFolderContents(dir).then(function(status, files) {
-			if (filter) {
+			self.filelist = files;
+			if (filter && filter.length > 0 && filter.indexOf('*') === -1) {
 				files = files.filter(function (file) {
-					return filter == [] || file.type === 'dir' || filter.indexOf(file.mimetype) !== -1;
+					return file.type === 'dir' || filter.indexOf(file.mimetype) !== -1;
 				});
 			}
-			files = files.sort(function(a, b) {
-				if (a.type === 'dir' && b.type !== 'dir') {
-					return -1;
-				} else if(a.type !== 'dir' && b.type === 'dir') {
-					return 1;
-				} else {
-					return 0;
+
+			var Comparators = {
+				name: function(fileInfo1, fileInfo2) {
+					if (fileInfo1.type === 'dir' && fileInfo2.type !== 'dir') {
+						return -1;
+					}
+					if (fileInfo1.type !== 'dir' && fileInfo2.type === 'dir') {
+						return 1;
+					}
+					return OC.Util.naturalSortCompare(fileInfo1.name, fileInfo2.name);
+				},
+				size: function(fileInfo1, fileInfo2) {
+					return fileInfo1.size - fileInfo2.size;
+				},
+				mtime: function(fileInfo1, fileInfo2) {
+					return fileInfo1.mtime - fileInfo2.mtime;
 				}
+			};
+			var comparator = Comparators[self.filepicker.sortField] || Comparators.name;
+			files = files.sort(function(file1, file2) {
+				var isFavorite = function(fileInfo) {
+					return fileInfo.tags && fileInfo.tags.indexOf(OC.TAG_FAVORITE) >= 0;
+				};
+
+				if (isFavorite(file1) && !isFavorite(file2)) {
+					return -1;
+				} else if (!isFavorite(file1) && isFavorite(file2)) {
+					return 1;
+				}
+
+				return self.filepicker.sortOrder === 'asc' ? comparator(file1, file2) : -comparator(file1, file2);
 			});
 
 			self._fillSlug();
 
 			if (files.length === 0) {
 				self.$filePicker.find('.emptycontent').show();
+				self.$fileListHeader.hide();
 			} else {
 				self.$filePicker.find('.emptycontent').hide();
+				self.$fileListHeader.show();
 			}
 
 			$.each(files, function(idx, entry) {
@@ -821,10 +1068,25 @@ var OCdialogs = {
 					simpleSize = t('files', 'Pending');
 					sizeColor = 80;
 				}
+
+				// split the filename in half if the size is bigger than 20 char
+				// for ellipsis
+				if (entry.name.length >= 10) {
+					// leave maximum 10 letters
+					var split = Math.min(Math.floor(entry.name.length / 2), 10)
+					var filename1 = entry.name.substr(0, entry.name.length - split)
+					var filename2 = entry.name.substr(entry.name.length - split)
+				} else {
+					var filename1 = entry.name
+					var filename2 = ''
+				}
+
 				var $row = self.$listTmpl.octemplate({
 					type: entry.type,
 					dir: dir,
 					filename: entry.name,
+					filename1: filename1,
+					filename2: filename2,
 					date: OC.Util.relativeModifiedDate(entry.mtime),
 					size: simpleSize,
 					sizeColor: sizeColor,
@@ -833,6 +1095,8 @@ var OCdialogs = {
 				if (entry.type === 'file') {
 					var urlSpec = {
 						file: dir + '/' + entry.name,
+						x: 100,
+						y: 100
 					};
 					var img = new Image();
 					var previewUrl = OC.generateUrl('/core/preview.png?') + $.param(urlSpec);
@@ -846,7 +1110,7 @@ var OCdialogs = {
 				self.$filelist.append($row);
 			});
 
-			self.$filelist.removeClass('icon-loading');
+			self.$filelistContainer.removeClass('icon-loading');
 		});
 	},
 	/**
@@ -879,13 +1143,14 @@ var OCdialogs = {
 	/**
 	 * handle selection made in the tree list
 	*/
-	_handleTreeListSelect:function(event) {
+	_handleTreeListSelect:function(event, type) {
 		var self = event.data;
-		var dir = $(event.target).parent().data('dir');
+		var dir = $(event.target).closest('.crumb').data('dir');
 		self._fillFilePicker(dir);
 		var getOcDialog = (event.target).closest('.oc-dialog');
 		var buttonEnableDisable = $('.primary', getOcDialog);
-		if (this.$filePicker.data('mimetype') === "httpd/unix-directory") {
+		this._changeButtonsText(type, dir.split(/[/]+/).pop());
+		if (this.$filePicker.data('mimetype').indexOf("httpd/unix-directory") !== -1) {
 			buttonEnableDisable.prop("disabled", false);
 		} else {
 			buttonEnableDisable.prop("disabled", true);
@@ -894,7 +1159,7 @@ var OCdialogs = {
 	/**
 	 * handle clicks made in the filepicker
 	*/
-	_handlePickerClick:function(event, $element) {
+	_handlePickerClick:function(event, $element, type) {
 		var getOcDialog = this.$filePicker.closest('.oc-dialog');
 		var buttonEnableDisable = getOcDialog.find('.primary');
 		if ($element.data('type') === 'file') {
@@ -905,11 +1170,38 @@ var OCdialogs = {
 			buttonEnableDisable.prop("disabled", false);
 		} else if ( $element.data('type') === 'dir' ) {
 			this._fillFilePicker(this.$filePicker.data('path') + '/' + $element.data('entryname'));
-			if (this.$filePicker.data('mimetype') === "httpd/unix-directory") {
+			this._changeButtonsText(type, $element.data('entryname'));
+			if (this.$filePicker.data('mimetype').indexOf("httpd/unix-directory") !== -1) {
 				buttonEnableDisable.prop("disabled", false);
 			} else {
 				buttonEnableDisable.prop("disabled", true);
 			}
+		}
+	},
+
+	/**
+	 * Handle
+	 * @param type of action
+	 * @param dir on which to change buttons text
+	 * @private
+	 */
+	_changeButtonsText: function(type, dir) {
+		var copyText = dir === '' ? t('core', 'Copy') : t('core', 'Copy to {folder}', {folder: dir});
+		var moveText = dir === '' ? t('core', 'Move') : t('core', 'Move to {folder}', {folder: dir});
+		var buttons = $('.oc-dialog-buttonrow button');
+		switch (type) {
+			case this.FILEPICKER_TYPE_CHOOSE:
+				break;
+			case this.FILEPICKER_TYPE_COPY:
+				buttons.text(copyText);
+				break;
+			case this.FILEPICKER_TYPE_MOVE:
+				buttons.text(moveText);
+				break;
+			case this.FILEPICKER_TYPE_COPY_MOVE:
+				buttons.eq(0).text(copyText);
+				buttons.eq(1).text(moveText);
+				break;
 		}
 	}
 };

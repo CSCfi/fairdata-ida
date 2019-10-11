@@ -7,6 +7,7 @@
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -37,7 +38,7 @@ class File extends \OCP\Search\Provider {
 	 * @param string $query
 	 * @return \OCP\Search\Result
 	 */
-	function search($query) {
+	public function search($query) {
 		$files = Filesystem::search($query);
 		$results = array();
 		// edit results

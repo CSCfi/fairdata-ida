@@ -5,8 +5,10 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Michael Letzgus <www@chronos.michael-letzgus.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -35,6 +37,71 @@
  */
 function p($string) {
 	print(\OCP\Util::sanitizeHTML($string));
+}
+
+
+/**
+ * Prints a <link> tag for loading css
+ * @param string $href the source URL, ignored when empty
+ * @param string $opts, additional optional options
+*/
+function emit_css_tag($href, $opts = '') {
+	$s='<link rel="stylesheet"';
+	if (!empty($href)) {
+		$s.=' href="' . $href .'"';
+	}
+	if (!empty($opts)) {
+		$s.=' '.$opts;
+	}
+	print_unescaped($s.">\n");
+}
+
+/**
+ * Prints all tags for CSS loading
+ * @param array $obj all the script information from template
+*/
+function emit_css_loading_tags($obj) {
+	foreach($obj['cssfiles'] as $css) {
+		emit_css_tag($css);
+	}
+	foreach($obj['printcssfiles'] as $css) {
+		emit_css_tag($css, 'media="print"');
+	}
+}
+
+/**
+ * Prints a <script> tag with nonce and defer depending on config
+ * @param string $src the source URL, ignored when empty
+ * @param string $script_content the inline script content, ignored when empty
+*/
+function emit_script_tag($src, $script_content='') {
+	$defer_str=' defer';
+	$s='<script nonce="' . \OC::$server->getContentSecurityPolicyNonceManager()->getNonce() . '"';
+	if (!empty($src)) {
+		 // emit script tag for deferred loading from $src
+		$s.=$defer_str.' src="' . $src .'">';
+	} else if (!empty($script_content)) {
+		// emit script tag for inline script from $script_content without defer (see MDN)
+		$s.=">\n".$script_content."\n";
+	} else {
+		// no $src nor $src_content, really useless empty tag
+		$s.='>';
+	}
+	$s.='</script>';
+	print_unescaped($s."\n");
+}
+
+/**
+ * Print all <script> tags for loading JS
+ * @param array $obj all the script information from template
+*/
+function emit_script_loading_tags($obj) {
+	foreach($obj['jsfiles'] as $jsfile) {
+		emit_script_tag($jsfile, '');
+	}
+	if (!empty($obj['inline_ocjs'])) {
+		emit_script_tag('', $obj['inline_ocjs']);
+	}
 }
 
 /**
@@ -183,7 +250,7 @@ function mimetype_icon( $mimetype ) {
  * make preview_icon available as a simple function
  * Returns the path to the preview of the image.
  * @param string $path path of file
- * @return link to the preview
+ * @return string link to the preview
  */
 function preview_icon( $path ) {
 	return \OC::$server->getURLGenerator()->linkToRoute('core.Preview.getPreview', ['x' => 32, 'y' => 32, 'file' => $path]);
@@ -191,9 +258,11 @@ function preview_icon( $path ) {
 
 /**
  * @param string $path
+ * @param string $token
+ * @return string
  */
 function publicPreview_icon ( $path, $token ) {
-	return \OC::$server->getURLGenerator()->linkToRoute('files_sharing.PublicPreview.getPreview', ['x' => 32, 'y' => 32, 'file' => $path, 't' => $token]);
+	return \OC::$server->getURLGenerator()->linkToRoute('files_sharing.PublicPreview.getPreview', ['x' => 32, 'y' => 32, 'file' => $path, 'token' => $token]);
 }
 
 /**
@@ -210,20 +279,20 @@ function human_file_size( $bytes ) {
 /**
  * Strips the timestamp of its time value
  * @param int $timestamp UNIX timestamp to strip
- * @return $timestamp without time value
+ * @return int timestamp without time value
  */
 function strip_time($timestamp){
 	$date = new \DateTime("@{$timestamp}");
 	$date->setTime(0, 0, 0);
-	return intval($date->format('U'));
+	return (int)$date->format('U');
 }
 
 /**
  * Formats timestamp relatively to the current time using
  * a human-friendly format like "x minutes ago" or "yesterday"
  * @param int $timestamp timestamp to format
- * @param int $fromTime timestamp to compare from, defaults to current time
- * @param bool $dateOnly whether to strip time information
+ * @param int|null $fromTime timestamp to compare from, defaults to current time
+ * @param bool|null $dateOnly whether to strip time information
  * @return string timestamp
  */
 function relative_modified_date($timestamp, $fromTime = null, $dateOnly = false) {

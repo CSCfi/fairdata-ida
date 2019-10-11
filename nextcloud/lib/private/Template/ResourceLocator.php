@@ -4,9 +4,12 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author tux-rampage <tux-rampage@users.noreply.github.com>
  *
  * @license AGPL-3.0
  *
@@ -107,6 +110,50 @@ abstract class ResourceLocator {
 	}
 
 	/**
+	 * Attempt to find the webRoot
+	 *
+	 * traverse the potential web roots upwards in the path
+	 *
+	 * example:
+	 *   - root: /srv/www/apps/myapp
+	 *   - available mappings: ['/srv/www']
+	 *
+	 * First we check if a mapping for /srv/www/apps/myapp is available,
+	 * then /srv/www/apps, /srv/www/apps, /srv/www, ... until we find a
+	 * valid web root
+	 *
+	 * @param string $root
+	 * @return string|null The web root or null on failure
+	 */
+	protected function findWebRoot($root) {
+		$webRoot = null;
+		$tmpRoot = $root;
+
+		while ($webRoot === null) {
+			if (isset($this->mapping[$tmpRoot])) {
+				$webRoot = $this->mapping[$tmpRoot];
+				break;
+			}
+
+			if ($tmpRoot === '/') {
+				break;
+			}
+
+			$tmpRoot = dirname($tmpRoot);
+		}
+
+		if ($webRoot === null) {
+			$realpath = realpath($root);
+
+			if ($realpath && ($realpath !== $root)) {
+				return $this->findWebRoot($realpath);
+			}
+		}
+
+		return $webRoot;
+	}
+
+	/**
 	 * append the $file resource at $root
 	 *
 	 * @param string $root path to check
@@ -125,38 +172,18 @@ abstract class ResourceLocator {
 		}
 
 		if (!$webRoot) {
-			$tmpRoot = realpath($root);
-			/*
-			 * traverse the potential web roots upwards in the path
-			 *
-			 * example:
-			 *   - root: /srv/www/apps/myapp
-			 *   - available mappings: ['/srv/www']
-			 *
-			 * First we check if a mapping for /srv/www/apps/myapp is available,
-			 * then /srv/www/apps, /srv/www/apps, /srv/www, ... until we find a
-			 * valid web root
-			 */
-			do {
-				if (isset($this->mapping[$tmpRoot])) {
-					$webRoot = $this->mapping[$tmpRoot];
-					break;
-				}
+			$webRoot = $this->findWebRoot($root);
 
-				if ($tmpRoot === '/') {
-					$webRoot = '';
-					$this->logger->error('ResourceLocator can not find a web root (root: {root}, file: {file}, webRoot: {webRoot}, throw: {throw})', [
-						'app' => 'lib',
-						'root' => $root,
-						'file' => $file,
-						'webRoot' => $webRoot,
-						'throw' => $throw ? 'true' : 'false'
-					]);
-					break;
-				}
-				$tmpRoot = dirname($tmpRoot);
-			} while(true);
-
+			if ($webRoot === null) {
+				$webRoot = '';
+				$this->logger->error('ResourceLocator can not find a web root (root: {root}, file: {file}, webRoot: {webRoot}, throw: {throw})', [
+					'app' => 'lib',
+					'root' => $root,
+					'file' => $file,
+					'webRoot' => $webRoot,
+					'throw' => $throw ? 'true' : 'false'
+				]);
+			}
 		}
 		$this->resources[] = array($root, $webRoot, $file);
 

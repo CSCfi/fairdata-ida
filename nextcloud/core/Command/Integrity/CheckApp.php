@@ -45,7 +45,7 @@ class CheckApp extends Base {
 		parent::__construct();
 		$this->checker = $checker;
 	}
-	
+
 	/**
 	 * {@inheritdoc }
 	 */
@@ -54,7 +54,7 @@ class CheckApp extends Base {
 		$this
 			->setName('integrity:check-app')
 			->setDescription('Check integrity of an app using a signature.')
-			->addArgument('appid', null, InputArgument::REQUIRED, 'Application to check')
+			->addArgument('appid', InputArgument::REQUIRED, 'Application to check')
 			->addOption('path', null, InputOption::VALUE_OPTIONAL, 'Path to application. If none is given it will be guessed.');
 	}
 
@@ -63,7 +63,7 @@ class CheckApp extends Base {
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$appid = $input->getArgument('appid');
-		$path = strval($input->getOption('path'));
+		$path = (string)$input->getOption('path');
 		$result = $this->checker->verifyAppSignature($appid, $path);
 		$this->writeArrayInOutputFormat($input, $output, $result);
 		if (count($result)>0){

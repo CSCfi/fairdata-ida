@@ -3,13 +3,17 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Felix A. Epp <work@felixepp.de>
  * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Julius Haertl <jus@bitgrid.net>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Pascal de Bruijn <pmjdebruijn@pcode.nl>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author scolebrook <scolebrook@mac.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Volkan Gezer <volkangezer@gmail.com>
@@ -32,7 +36,6 @@
 class OC_Defaults {
 
 	private $theme;
-	private $l;
 
 	private $defaultEntity;
 	private $defaultName;
@@ -45,25 +48,26 @@ class OC_Defaults {
 	private $defaultDocBaseUrl;
 	private $defaultDocVersion;
 	private $defaultSlogan;
-	private $defaultLogoClaim;
 	private $defaultColorPrimary;
+	private $defaultTextColorPrimary;
 
 	public function __construct() {
-		$this->l = \OC::$server->getL10N('lib');
+		$l10n = \OC::$server->getL10N('lib');
+		$config = \OC::$server->getConfig();
 
 		$this->defaultEntity = 'Nextcloud'; /* e.g. company name, used for footers and copyright notices */
 		$this->defaultName = 'Nextcloud'; /* short name, used when referring to the software */
 		$this->defaultTitle = 'Nextcloud'; /* can be a longer name, for titles */
 		$this->defaultBaseUrl = 'https://nextcloud.com';
-		$this->defaultSyncClientUrl = 'https://nextcloud.com/install/#install-clients';
-		$this->defaultiOSClientUrl = 'https://itunes.apple.com/us/app/nextcloud/id1125420102?mt=8';
-		$this->defaultiTunesAppId = '1125420102';
-		$this->defaultAndroidClientUrl = 'https://play.google.com/store/apps/details?id=com.nextcloud.client';
+		$this->defaultSyncClientUrl = $config->getSystemValue('customclient_desktop', 'https://nextcloud.com/install/#install-clients');
+		$this->defaultiOSClientUrl = $config->getSystemValue('customclient_ios', 'https://geo.itunes.apple.com/us/app/nextcloud/id1125420102?mt=8');
+		$this->defaultiTunesAppId = $config->getSystemValue('customclient_ios_appid', '1125420102');
+		$this->defaultAndroidClientUrl = $config->getSystemValue('customclient_android', 'https://play.google.com/store/apps/details?id=com.nextcloud.client');
 		$this->defaultDocBaseUrl = 'https://docs.nextcloud.com';
-		$this->defaultDocVersion = '12'; // used to generate doc links
-		$this->defaultSlogan = $this->l->t('a safe home for all your data');
-		$this->defaultLogoClaim = '';
+		$this->defaultDocVersion = \OC_Util::getVersion()[0]; // used to generate doc links
+		$this->defaultSlogan = $l10n->t('a safe home for all your data');
 		$this->defaultColorPrimary = '#0082c9';
+		$this->defaultTextColorPrimary = '#ffffff';
 
 		$themePath = OC::$SERVERROOT . '/themes/' . OC_Util::getTheme() . '/defaults.php';
 		if (file_exists($themePath)) {
@@ -222,13 +226,10 @@ class OC_Defaults {
 	/**
 	 * Returns logo claim
 	 * @return string logo claim
+	 * @deprecated 13.0.0
 	 */
 	public function getLogoClaim() {
-		if ($this->themeExist('getLogoClaim')) {
-			return $this->theme->getLogoClaim();
-		} else {
-			return $this->defaultLogoClaim;
-		}
+		return '';
 	}
 
 	/**
@@ -240,7 +241,7 @@ class OC_Defaults {
 			$footer = $this->theme->getShortFooter();
 		} else {
 			$footer = '<a href="'. $this->getBaseUrl() . '" target="_blank"' .
-				' rel="noreferrer">' .$this->getEntity() . '</a>'.
+				' rel="noreferrer noopener">' .$this->getEntity() . '</a>'.
 				' – ' . $this->getSlogan();
 		}
 
@@ -313,10 +314,17 @@ class OC_Defaults {
 		}
 
 		if($useSvg) {
-			$logo = \OC::$server->getURLGenerator()->imagePath('core', 'logo.svg');
+			$logo = \OC::$server->getURLGenerator()->imagePath('core', 'logo/logo.svg');
 		} else {
-			$logo = \OC::$server->getURLGenerator()->imagePath('core', 'logo.png');
+			$logo = \OC::$server->getURLGenerator()->imagePath('core', 'logo/logo.png');
 		}
 	    return $logo . '?v=' . hash('sha1', implode('.', \OCP\Util::getVersion()));
+	}
+
+	public function getTextColorPrimary() {
+		if ($this->themeExist('getTextColorPrimary')) {
+			return $this->theme->getTextColorPrimary();
+		}
+		return $this->defaultTextColorPrimary;
 	}
 }

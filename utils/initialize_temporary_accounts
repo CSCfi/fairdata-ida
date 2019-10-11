@@ -26,12 +26,12 @@
 # group memberships, and files) which are used for demos, training, usability
 # testing and general review of the IDA service.
 #
-# Project and user accounts will be created for 50 distinct projects, named
+# Project and user accounts will be created for 100 distinct projects, named
 #
 # Temporary_Project_1    temporary_user_1
 # Temporary_Project_2    temporary_user_2
 # ...
-# Temporary_Project_50   temporary_user_50
+# Temporary_Project_100  temporary_user_100
 #
 # The password for all temporary_user_# accounts is the sha256 hash of the username.
 # Username::Password pairs are output to standard output as the script executes, for
@@ -45,7 +45,7 @@
 #--------------------------------------------------------------------------------
 . `dirname $0`/../lib/init_script.sh
 
-PROJECT_MAX="50"
+PROJECT_MAX="100"
 
 #--------------------------------------------------------------------------------
 
@@ -62,6 +62,10 @@ function success {
     echo "OK"
 }
 
+function skipped {
+    echo "(skipped)"
+}
+
 #--------------------------------------------------------------------------------
 
 # flush all action and frozen node data from database for all projects
@@ -70,19 +74,24 @@ echo "Flushing all action and frozen node records from database..."
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
     PROJECT="Temporary_Project_$COUNT"
+    COUNT=$(( $COUNT + 1 ))
     # Use the PSO account when flushing the project data, NOT the admin account
     # This ensures we never accidentally flush any data other than belonging to
     # a temporary project!
     PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
     STEP="   Flushing $PROJECT"
     printf "%${PADDING}s" "$STEP"
+    # If there is no project user folder, skip 
+    if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}/" ]; then
+        skipped
+        continue
+    fi
     $CURL_POST $PROJECT_USER:$PROJECT_USER_PASS "$URL_BASE_IDA/api/flush?project=$PROJECT" 2>&1 >/dev/null
     if [ "$?" -ne 0 ]; then
         failure "Failed to flush records for $PROJECT. (ignored)."
     else
         success
     fi
-    COUNT=$(( $COUNT + 1 ))
 done
 
 #--------------------------------------------------------------------------------
@@ -171,12 +180,13 @@ HEADER="Temporary Account Credentials - Generated ${TIMESTAMP} on ${SERVER}"
 PWFILE="/tmp/temporary_users.${TIMESTAMP}.${SERVER}"
 
 if [ "${EMAIL_SENDER}${EMAIL_RECIPIENTS}" != "" ]; then
-    echo "$HEADER" > $PWFILE
+    cp /dev/null $PWFILE
 fi
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
     PROJECT="Temporary_Project_$COUNT"
-    export OC_PASS=`tr -cd '[:alnum:]' < /dev/urandom | head -c6`
+    TOKEN=`tr -cd '[:alnum:]' < /dev/urandom | head -c64 | sed -e 's/[^a-zA-Z0-9]//' | sed -e 's/[015oOiIlLsS]//g' | head -c4 | tr 'A-Z' 'a-z'`
+    export OC_PASS="Temporary_User_${COUNT}_${TOKEN}"
     USER="temporary_user_$COUNT"
     CREDENTIALS=$(printf "   %-20s%s" "$USER" "$OC_PASS")
     echo "$CREDENTIALS" >> $PWFILE
@@ -191,6 +201,5 @@ COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
 done
 
 if [ "${EMAIL_SENDER}${EMAIL_RECIPIENTS}" != "" ]; then
-    echo " " | mail -r $EMAIL_SENDER -s "$HEADER" -a $PWFILE $EMAIL_RECIPIENTS
+    cat $PWFILE | mail -r $EMAIL_SENDER -s "$HEADER" $EMAIL_RECIPIENTS
 fi
-

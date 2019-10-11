@@ -29,38 +29,6 @@ class OC_Theme {
 	}
 
 	/**
-	 * Returns the URL where the sync clients are listed
-	 * @return string URL
-	 */
-	public function getSyncClientUrl() {
-		return 'https://nextcloud.com/install/#install-clients';
-	}
-
-	/**
-	 * Returns the URL to the App Store for the iOS Client
-	 * @return string URL
-	 */
-	public function getiOSClientUrl() {
-		return 'https://itunes.apple.com/us/app/nextcloud/id1125420102?mt=8';
-	}
-
-	/**
-	 * Returns the AppId for the App Store for the iOS Client
-	 * @return string AppId
-	 */
-	public function getiTunesAppId() {
-		return '1125420102';
-	}
-
-	/**
-	 * Returns the URL to Google Play for the Android Client
-	 * @return string URL
-	 */
-	public function getAndroidClientUrl() {
-		return 'https://play.google.com/store/apps/details?id=com.nextcloud.client';
-	}
-
-	/**
 	 * Returns the documentation URL
 	 * @return string URL
 	 */
@@ -111,6 +79,7 @@ class OC_Theme {
 	/**
 	 * Returns logo claim
 	 * @return string logo claim
+	 * @deprecated 13.0.0 not used anymore
 	 */
 	public function getLogoClaim() {
 		return '';
@@ -121,7 +90,7 @@ class OC_Theme {
 	 * @return string short footer
 	 */
 	public function getShortFooter() {
-		$footer = '© 2017 <a href="'.$this->getBaseUrl().'" target="_blank\">'.$this->getEntity().'</a>'.
+		$footer = '© ' . date('Y') . ' <a href="' . $this->getBaseUrl() . '" target="_blank">' . $this->getEntity() . '</a>' .
 			'<br/>' . $this->getSlogan();
 
 		return $footer;
@@ -132,14 +101,18 @@ class OC_Theme {
 	 * @return string long footer
 	 */
 	public function getLongFooter() {
-		$footer = '© 2017 <a href="'.$this->getBaseUrl().'" target="_blank\">'.$this->getEntity().'</a>'.
+		$footer = '© ' . date('Y') . ' <a href="' . $this->getBaseUrl() . '" target="_blank">' . $this->getEntity() . '</a>' .
 			'<br/>' . $this->getSlogan();
 
 		return $footer;
 	}
 
+	/**
+	 * Generate a documentation link for a given key
+	 * @return string documentation link
+	 */
 	public function buildDocLinkToKey($key) {
-		return $this->getDocBaseUrl() . '/server/12/go.php?to=' . $key;
+		return $this->getDocBaseUrl() . '/server/16/go.php?to=' . $key;
 	}
 
 

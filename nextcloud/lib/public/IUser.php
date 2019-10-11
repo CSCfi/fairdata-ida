@@ -26,6 +26,8 @@
 
 namespace OCP;
 
+use OCP\UserInterface;
+
 /**
  * Interface IUser
  *
@@ -109,6 +111,14 @@ interface IUser {
 	public function getBackendClassName();
 
 	/**
+	 * Get the backend for the current user object
+	 *
+	 * @return UserInterface
+	 * @since 15.0.0
+	 */
+	public function getBackend();
+
+	/**
 	 * check if the backend allows the user to change his avatar on Personal page
 	 *
 	 * @return bool
@@ -146,7 +156,7 @@ interface IUser {
 	 * @param bool $enabled
 	 * @since 8.0.0
 	 */
-	public function setEnabled($enabled);
+	public function setEnabled(bool $enabled = true);
 
 	/**
 	 * get the users email address

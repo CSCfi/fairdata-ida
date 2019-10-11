@@ -6,6 +6,7 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -27,6 +28,8 @@
  *
  */
 
+use OCP\ILogger;
+
 /**
  * This class manages the access to the database. It basically is a wrapper for
  * Doctrine with some adaptions.
@@ -45,9 +48,9 @@ class OC_DB {
 	/**
 	 * Prepare a SQL query
 	 * @param string $query Query string
-	 * @param int $limit
-	 * @param int $offset
-	 * @param bool $isManipulation
+	 * @param int|null $limit
+	 * @param int|null $offset
+	 * @param bool|null $isManipulation
 	 * @throws \OC\DatabaseException
 	 * @return OC_DB_StatementWrapper prepared SQL query
 	 *
@@ -65,7 +68,7 @@ class OC_DB {
 		try {
 			$result =$connection->prepare($query, $limit, $offset);
 		} catch (\Doctrine\DBAL\DBALException $e) {
-			throw new \OC\DatabaseException($e->getMessage(), $query);
+			throw new \OC\DatabaseException($e->getMessage());
 		}
 		// differentiate between query and manipulation
 		$result = new OC_DB_StatementWrapper($result, $isManipulation);
@@ -108,7 +111,7 @@ class OC_DB {
 	 * @return OC_DB_StatementWrapper
 	 * @throws \OC\DatabaseException
 	 */
-	static public function executeAudited( $stmt, array $parameters = null) {
+	static public function executeAudited( $stmt, array $parameters = []) {
 		if (is_string($stmt)) {
 			// convert to an array with 'sql'
 			if (stripos($stmt, 'LIMIT') !== false) { //OFFSET requires LIMIT, so we only need to check for LIMIT
@@ -151,7 +154,6 @@ class OC_DB {
 	/**
 	 * saves database schema to xml file
 	 * @param string $file name of file
-	 * @param int $mode
 	 * @return bool
 	 *
 	 * TODO: write more documentation
@@ -170,8 +172,7 @@ class OC_DB {
 	 */
 	public static function createDbFromStructure( $file ) {
 		$schemaManager = self::getMDB2SchemaManager();
-		$result = $schemaManager->createDbFromStructure($file);
-		return $result;
+		return $schemaManager->createDbFromStructure($file);
 	}
 
 	/**
@@ -179,13 +180,14 @@ class OC_DB {
 	 * @param string $file file to read structure from
 	 * @throws Exception
 	 * @return string|boolean
+	 * @suppress PhanDeprecatedFunction
 	 */
 	public static function updateDbFromStructure($file) {
 		$schemaManager = self::getMDB2SchemaManager();
 		try {
 			$result = $schemaManager->updateDbFromStructure($file);
 		} catch (Exception $e) {
-			\OCP\Util::writeLog('core', 'Failed to update database structure ('.$e.')', \OCP\Util::FATAL);
+			\OCP\Util::writeLog('core', 'Failed to update database structure ('.$e.')', ILogger::FATAL);
 			throw $e;
 		}
 		return $result;
@@ -214,7 +216,7 @@ class OC_DB {
 			} else {
 				$message .= ', Root cause:' . self::getErrorMessage();
 			}
-			throw new \OC\DatabaseException($message, \OC::$server->getDatabaseConnection()->errorCode());
+			throw new \OC\DatabaseException($message);
 		}
 	}
 

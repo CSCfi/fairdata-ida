@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Ardinis <Ardinis@users.noreply.github.com>
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
@@ -9,7 +10,6 @@
  * @author Clark Tomlinson <fallen013@gmail.com>
  * @author Fabian Henze <flyser42@gmx.de>
  * @author Felix Moeller <mail@felixmoeller.de>
- * @author Georg Ehrke <georg@owncloud.com>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joas Schilling <coding@schilljs.com>
@@ -19,6 +19,7 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
  * @author Pellaeon Lin <nfsmwlin@gmail.com>
+ * @author RealRancor <fisch.666@gmx.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -49,23 +50,6 @@ use Symfony\Component\Process\ExecutableFinder;
  */
 class OC_Helper {
 	private static $templateManager;
-
-	/**
-	 * Creates an absolute url for public use
-	 * @param string $service id
-	 * @param bool $add_slash
-	 * @return string the url
-	 *
-	 * Returns a absolute url to the given service.
-	 */
-	public static function linkToPublic($service, $add_slash = false) {
-		if ($service === 'files') {
-			$url = OC::$server->getURLGenerator()->getAbsoluteURL('/s');
-		} else {
-			$url = OC::$server->getURLGenerator()->getAbsoluteURL(OC::$server->getURLGenerator()->linkTo('', 'public.php').'?service='.$service);
-		}
-		return $url . (($add_slash && $service[strlen($service) - 1] != '/') ? '/' : '');
-	}
 
 	/**
 	 * Make a human file size
@@ -103,35 +87,9 @@ class OC_Helper {
 	}
 
 	/**
-	 * Make a php file size
-	 * @param int $bytes file size in bytes
-	 * @return string a php parseable file size
-	 *
-	 * Makes 2048 to 2k and 2^41 to 2048G
-	 */
-	public static function phpFileSize($bytes) {
-		if ($bytes < 0) {
-			return "?";
-		}
-		if ($bytes < 1024) {
-			return $bytes . "B";
-		}
-		$bytes = round($bytes / 1024, 1);
-		if ($bytes < 1024) {
-			return $bytes . "K";
-		}
-		$bytes = round($bytes / 1024, 1);
-		if ($bytes < 1024) {
-			return $bytes . "M";
-		}
-		$bytes = round($bytes / 1024, 1);
-		return $bytes . "G";
-	}
-
-	/**
 	 * Make a computer file size
 	 * @param string $str file size in human readable format
-	 * @return float a file size in bytes
+	 * @return float|bool a file size in bytes
 	 *
 	 * Makes 2kB to 2048.
 	 *
@@ -140,7 +98,7 @@ class OC_Helper {
 	public static function computerFileSize($str) {
 		$str = strtolower($str);
 		if (is_numeric($str)) {
-			return floatval($str);
+			return (float)$str;
 		}
 
 		$bytes_array = array(
@@ -157,7 +115,7 @@ class OC_Helper {
 			'p' => 1024 * 1024 * 1024 * 1024 * 1024,
 		);
 
-		$bytes = floatval($str);
+		$bytes = (float)$str;
 
 		if (preg_match('#([kmgtp]?b?)$#si', $str, $matches) && !empty($bytes_array[$matches[1]])) {
 			$bytes *= $bytes_array[$matches[1]];
@@ -395,7 +353,7 @@ class OC_Helper {
 	 * performs a search in a nested array
 	 * @param array $haystack the array to be searched
 	 * @param string $needle the search string
-	 * @param string $index optional, only search this key name
+	 * @param mixed $index optional, only search this key name
 	 * @return mixed the key of the matching field, otherwise false
 	 *
 	 * performs a search in a nested array
@@ -407,7 +365,7 @@ class OC_Helper {
 		$it = new RecursiveIteratorIterator($aIt);
 
 		while ($it->valid()) {
-			if (((isset($index) AND ($it->key() == $index)) OR (!isset($index))) AND ($it->current() == $needle)) {
+			if (((isset($index) AND ($it->key() == $index)) OR !isset($index)) AND ($it->current() == $needle)) {
 				return $aIt->key();
 			}
 
@@ -476,12 +434,12 @@ class OC_Helper {
 			return false;
 		}
 		$ini = \OC::$server->getIniWrapper();
-		$disabled = explode(',', $ini->get('disable_functions'));
+		$disabled = explode(',', $ini->get('disable_functions') ?: '');
 		$disabled = array_map('trim', $disabled);
 		if (in_array($function_name, $disabled)) {
 			return false;
 		}
-		$disabled = explode(',', $ini->get('suhosin.executor.func.blacklist'));
+		$disabled = explode(',', $ini->get('suhosin.executor.func.blacklist') ?: '');
 		$disabled = array_map('trim', $disabled);
 		if (in_array($function_name, $disabled)) {
 			return false;
@@ -496,7 +454,7 @@ class OC_Helper {
 	 * @return null|string
 	 */
 	public static function findBinaryPath($program) {
-		$memcache = \OC::$server->getMemCacheFactory()->create('findBinaryPath');
+		$memcache = \OC::$server->getMemCacheFactory()->createDistributed('findBinaryPath');
 		if ($memcache->hasKey($program)) {
 			return $memcache->get($program);
 		}
@@ -504,20 +462,7 @@ class OC_Helper {
 		if (self::is_function_enabled('exec')) {
 			$exeSniffer = new ExecutableFinder();
 			// Returns null if nothing is found
-			$result = $exeSniffer->find($program);
-			if (empty($result)) {
-				$paths = getenv('PATH');
-				if (empty($paths)) {
-					$paths = '/usr/local/bin /usr/bin /opt/bin /bin';
-				} else {
-					$paths = str_replace(':',' ',getenv('PATH'));
-				}
-				$command = 'find ' . $paths . ' -name ' . escapeshellarg($program) . ' 2> /dev/null';
-				exec($command, $output, $returnCode);
-				if (count($output) > 0) {
-					$result = escapeshellcmd($output[0]);
-				}
-			}
+			$result = $exeSniffer->find($program, null, ['/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/opt/bin']);
 		}
 		// store the value for 5 minutes
 		$memcache->set($program, $result, 300);
@@ -558,7 +503,8 @@ class OC_Helper {
 				|| $storage->instanceOfStorage('\OC\Files\ObjectStore\HomeObjectStoreStorage')
 			) {
 				/** @var \OC\Files\Storage\Home $storage */
-				$user = $storage->getUser();
+				$userInstance = $storage->getUser();
+				$user = ($userInstance === null) ? null : $userInstance->getUID();
 			} else {
 				$user = \OC::$server->getUserSession()->getUser()->getUID();
 			}

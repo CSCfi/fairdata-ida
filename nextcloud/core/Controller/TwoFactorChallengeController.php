@@ -3,7 +3,10 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Cornelius Kölbel <cornelius.koelbel@netknights.it>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -28,7 +31,9 @@ use OC_User;
 use OC_Util;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\RedirectResponse;
-use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Http\StandaloneTemplateResponse;
+use OCP\Authentication\TwoFactorAuth\IProvider;
+use OCP\Authentication\TwoFactorAuth\IProvidesCustomCSP;
 use OCP\Authentication\TwoFactorAuth\TwoFactorException;
 use OCP\IRequest;
 use OCP\ISession;
@@ -72,26 +77,45 @@ class TwoFactorChallengeController extends Controller {
 	protected function getLogoutUrl() {
 		return OC_User::getLogoutUrl($this->urlGenerator);
 	}
+	
+	/**
+	 * @param IProvider[] $providers
+	 */
+	private function splitProvidersAndBackupCodes(array $providers): array {
+		$regular = [];
+		$backup = null;
+		foreach ($providers as $provider) {
+			if ($provider->getId() === 'backup_codes') {
+				$backup = $provider;
+			} else {
+				$regular[] = $provider;
+			}
+		}
+
+		return [$regular, $backup];
+	}
 
 	/**
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 *
 	 * @param string $redirect_url
-	 * @return TemplateResponse
+	 * @return StandaloneTemplateResponse
 	 */
 	public function selectChallenge($redirect_url) {
 		$user = $this->userSession->getUser();
-		$providers = $this->twoFactorManager->getProviders($user);
-		$backupProvider = $this->twoFactorManager->getBackupProvider($user);
+		$providerSet = $this->twoFactorManager->getProviderSet($user);
+		$allProviders = $providerSet->getProviders();
+		list($providers, $backupProvider) = $this->splitProvidersAndBackupCodes($allProviders);
 
 		$data = [
 			'providers' => $providers,
 			'backupProvider' => $backupProvider,
+			'providerMissing' => $providerSet->isProviderMissing(),
 			'redirect_url' => $redirect_url,
 			'logout_url' => $this->getLogoutUrl(),
 		];
-		return new TemplateResponse($this->appName, 'twofactorselectchallenge', $data, 'guest');
+		return new StandaloneTemplateResponse($this->appName, 'twofactorselectchallenge', $data, 'guest');
 	}
 
 	/**
@@ -101,16 +125,17 @@ class TwoFactorChallengeController extends Controller {
 	 *
 	 * @param string $challengeProviderId
 	 * @param string $redirect_url
-	 * @return TemplateResponse|RedirectResponse
+	 * @return StandaloneTemplateResponse|RedirectResponse
 	 */
 	public function showChallenge($challengeProviderId, $redirect_url) {
 		$user = $this->userSession->getUser();
-		$provider = $this->twoFactorManager->getProvider($user, $challengeProviderId);
+		$providerSet = $this->twoFactorManager->getProviderSet($user);
+		$provider = $providerSet->getProvider($challengeProviderId);
 		if (is_null($provider)) {
 			return new RedirectResponse($this->urlGenerator->linkToRoute('core.TwoFactorChallenge.selectChallenge'));
 		}
 
-		$backupProvider = $this->twoFactorManager->getBackupProvider($user);
+		$backupProvider = $providerSet->getProvider('backup_codes');
 		if (!is_null($backupProvider) && $backupProvider->getId() === $provider->getId()) {
 			// Don't show the backup provider link if we're already showing that provider's challenge
 			$backupProvider = null;
@@ -135,7 +160,11 @@ class TwoFactorChallengeController extends Controller {
 			'redirect_url' => $redirect_url,
 			'template' => $tmpl->fetchPage(),
 		];
-		return new TemplateResponse($this->appName, 'twofactorshowchallenge', $data, 'guest');
+		$response = new StandaloneTemplateResponse($this->appName, 'twofactorshowchallenge', $data, 'guest');
+		if ($provider instanceof IProvidesCustomCSP) {
+			$response->setContentSecurityPolicy($provider->getCSP());
+		}
+		return $response;
 	}
 
 	/**

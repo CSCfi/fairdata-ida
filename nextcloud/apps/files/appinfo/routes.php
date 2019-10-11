@@ -1,10 +1,12 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Christoph Wurst <christoph@owncloud.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Tobias Kaminsky <tobias@kaminsky.me>
  * @author Tom Needham <tom@owncloud.com>
@@ -30,59 +32,72 @@ namespace OCA\Files\AppInfo;
 $application = new Application();
 $application->registerRoutes(
 	$this,
-	array(
-		'routes' => array(
-			array(
+	[
+		'routes' => [
+			[
 				'name' => 'API#getThumbnail',
 				'url' => '/api/v1/thumbnail/{x}/{y}/{file}',
 				'verb' => 'GET',
-				'requirements' => array('file' => '.+')
-			),
-			array(
+				'requirements' => ['file' => '.+']
+			],
+			[
 				'name' => 'API#updateFileTags',
 				'url' => '/api/v1/files/{path}',
 				'verb' => 'POST',
-				'requirements' => array('path' => '.+'),
-			),
-			array(
+				'requirements' => ['path' => '.+'],
+			],
+			[
 				'name' => 'API#getRecentFiles',
 				'url' => '/api/v1/recent/',
 				'verb' => 'GET'
-			),
-			array(
+			],
+			[
 				'name' => 'API#updateFileSorting',
 				'url' => '/api/v1/sorting',
 				'verb' => 'POST'
-			),
-			array(
+			],
+			[
 				'name' => 'API#showHiddenFiles',
 				'url' => '/api/v1/showhidden',
 				'verb' => 'POST'
-			),
+			],
+			[
+				'name' => 'API#showGridView',
+				'url' => '/api/v1/showgridview',
+				'verb' => 'POST'
+			],
+			[
+				'name' => 'API#getGridView',
+				'url' => '/api/v1/showgridview',
+				'verb' => 'GET'
+			],
 			[
 				'name' => 'view#index',
 				'url' => '/',
 				'verb' => 'GET',
 			],
 			[
-				'name' => 'settings#setMaxUploadSize',
-				'url' => '/settings/maxUpload',
-				'verb' => 'POST',
-			]
-		)
-	)
+				'name' => 'ajax#getStorageStats',
+				'url' => '/ajax/getstoragestats.php',
+				'verb' => 'GET',
+			],
+			[
+				'name' => 'API#toggleShowFolder',
+				'url' => '/api/v1/toggleShowFolder/{key}',
+				'verb' => 'POST'
+			],
+			[
+				'name' => 'API#getNodeType',
+				'url' => '/api/v1/quickaccess/get/NodeType',
+				'verb' => 'GET',
+			],
+		]
+	]
 );
 
 /** @var $this \OC\Route\Router */
 
 $this->create('files_ajax_download', 'ajax/download.php')
 	->actionInclude('files/ajax/download.php');
-$this->create('files_ajax_getstoragestats', 'ajax/getstoragestats.php')
-	->actionInclude('files/ajax/getstoragestats.php');
 $this->create('files_ajax_list', 'ajax/list.php')
 	->actionInclude('files/ajax/list.php');
-
-$this->create('download', 'download{file}')
-	->requirements(array('file' => '.*'))
-	->actionInclude('files/download.php');
-

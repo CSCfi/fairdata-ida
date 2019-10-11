@@ -50,6 +50,8 @@ OCA.Sharing.PublicApp = {
 		this.initialDir = $('#dir').val();
 
 		var token = $('#sharingToken').val();
+		var hideDownload = $('#hideDownload').val();
+
 
 		// file list mode ?
 		if ($el.find('#filestable').length) {
@@ -67,15 +69,34 @@ OCA.Sharing.PublicApp = {
 				$el,
 				{
 					id: 'files.public',
-					scrollContainer: $('#content-wrapper'),
 					dragOptions: dragOptions,
 					folderDropOptions: folderDropOptions,
 					fileActions: fileActions,
 					detailsViewEnabled: false,
 					filesClient: filesClient,
-					enableUpload: true
+					enableUpload: true,
+					multiSelectMenu: [
+						{
+								name: 'copyMove',
+								displayName:  t('files', 'Move or copy'),
+								iconClass: 'icon-external',
+						},
+						{
+								name: 'download',
+								displayName:  t('files', 'Download'),
+								iconClass: 'icon-download',
+						},
+						{
+								name: 'delete',
+								displayName: t('files', 'Delete'),
+								iconClass: 'icon-delete',
+						}
+					]
 				}
 			);
+			if (hideDownload === 'true') {
+				this.fileList._allowSelection = false;
+			}
 			this.files = OCA.Files.Files;
 			this.files.initialize();
 			// TODO: move to PublicFileList.initialize() once
@@ -112,11 +133,14 @@ OCA.Sharing.PublicApp = {
 			y: Math.ceil(previewHeight * window.devicePixelRatio),
 			a: 'true',
 			file: encodeURIComponent(this.initialDir + $('#filename').val()),
-			t: token,
 			scalingup: 0
 		};
 
-		var img = $('<img class="publicpreview" alt="">');
+		var imgcontainer = $('<img class="publicpreview" alt="">');
+		if (hideDownload === 'false') {
+			imgcontainer = $('<a href="' + $('#previewURL').val() + '" target="_blank"></a>').append(imgcontainer);
+		}
+		var img = imgcontainer.hasClass('publicpreview')? imgcontainer: imgcontainer.find('.publicpreview');
 		img.css({
 			'max-width': previewWidth,
 			'max-height': previewHeight
@@ -128,8 +152,12 @@ OCA.Sharing.PublicApp = {
 		if (mimetype === 'image/gif' &&
 			(maxGifSize === -1 || fileSize <= (maxGifSize * 1024 * 1024))) {
 			img.attr('src', $('#downloadURL').val());
-			img.appendTo('#imgframe');
+			imgcontainer.appendTo('#imgframe');
 		} else if (mimetype.substr(0, mimetype.indexOf('/')) === 'text' && window.btoa) {
+			if (oc_appswebroots['files_texteditor'] !== undefined) {
+				// the text editor handles the previewing
+				return;
+			}
 			// Undocumented Url to public WebDAV endpoint
 			var url = parent.location.protocol + '//' + location.host + OC.linkTo('', 'public.php/webdav');
 			$.ajax({
@@ -144,15 +172,15 @@ OCA.Sharing.PublicApp = {
 		} else if ((previewSupported === 'true' && mimetype.substr(0, mimetype.indexOf('/')) !== 'video') ||
 			mimetype.substr(0, mimetype.indexOf('/')) === 'image' &&
 			mimetype !== 'image/svg+xml') {
-			img.attr('src', OC.filePath('files_sharing', 'ajax', 'publicpreview.php') + '?' + OC.buildQueryString(params));
-			img.appendTo('#imgframe');
+			img.attr('src', OC.generateUrl('/apps/files_sharing/publicpreview/' + token + '?' + OC.buildQueryString(params)));
+			imgcontainer.appendTo('#imgframe');
 		} else if (mimetype.substr(0, mimetype.indexOf('/')) !== 'video') {
-			img.attr('src', OC.Util.replaceSVGIcon(mimetypeIcon));
+			img.attr('src', mimetypeIcon);
 			img.attr('width', 128);
-			img.appendTo('#imgframe');
+			imgcontainer.appendTo('#imgframe');
 		}
 		else if (previewSupported === 'true') {
-			$('#imgframe > video').attr('poster', OC.filePath('files_sharing', 'ajax', 'publicpreview.php') + '?' + OC.buildQueryString(params));
+			$('#imgframe > video').attr('poster', OC.generateUrl('/apps/files_sharing/publicpreview/' + token + '?' + OC.buildQueryString(params)));
 		}
 
 		if (this.fileList) {
@@ -169,6 +197,27 @@ OCA.Sharing.PublicApp = {
 					params.files = filename;
 				}
 				return OC.generateUrl('/s/' + token + '/download') + '?' + OC.buildQueryString(params);
+			};
+
+			this.fileList._createRow = function(fileData) {
+				var $tr = OCA.Files.FileList.prototype._createRow.apply(this, arguments);
+				if (hideDownload === 'true') {
+					this.fileActions.currentFile = $tr.find('td');
+					var mime = this.fileActions.getCurrentMimeType();
+					var type = this.fileActions.getCurrentType();
+					var permissions = this.fileActions.getCurrentPermissions();
+					var action = this.fileActions.getDefault(mime, type, permissions);
+
+					// Remove the link. This means that files without a default action fail hard
+					$tr.find('a.name').attr('href', '#');
+
+					this.fileActions.actions.all = {};
+				}
+				return $tr;
+			};
+
+			this.fileList.isSelectedDownloadable = function () {
+				return hideDownload !== 'true';
 			};
 
 			this.fileList.getUploadUrl = function(fileName, dir) {
@@ -208,17 +257,17 @@ OCA.Sharing.PublicApp = {
 			this.fileList.generatePreviewUrl = function (urlSpec) {
 				urlSpec = urlSpec || {};
 				if (!urlSpec.x) {
-					urlSpec.x = 32;
+					urlSpec.x = this.$table.data('preview-x') || 250;
 				}
 				if (!urlSpec.y) {
-					urlSpec.y = 32;
+					urlSpec.y = this.$table.data('preview-y') || 250;
 				}
 				urlSpec.x *= window.devicePixelRatio;
 				urlSpec.y *= window.devicePixelRatio;
 				urlSpec.x = Math.ceil(urlSpec.x);
 				urlSpec.y = Math.ceil(urlSpec.y);
-				urlSpec.t = $('#dirToken').val();
-				return OC.generateUrl('/apps/files_sharing/ajax/publicpreview.php?') + $.param(urlSpec);
+				var token = $('#dirToken').val();
+				return OC.generateUrl('/apps/files_sharing/publicpreview/' + token + '?' + OC.buildQueryString(urlSpec));
 			};
 
 			this.fileList.updateEmptyContent = function() {
@@ -249,6 +298,11 @@ OCA.Sharing.PublicApp = {
 				e.preventDefault();
 				OC.redirect(FileList.getDownloadUrl());
 			});
+
+			if (hideDownload === 'true') {
+				this.fileList.$el.find('#headerSelection').remove();
+				this.fileList.$el.find('.summary').find('td:first-child').remove();
+			}
 		}
 
 		$(document).on('click', '#directLink', function () {
@@ -261,29 +315,37 @@ OCA.Sharing.PublicApp = {
 
 			var remote = $(this).find('#remote_address').val();
 			var token = $('#sharingToken').val();
-			var owner = $('#save').data('owner');
-			var ownerDisplayName = $('#save').data('owner-display-name');
-			var name = $('#save').data('name');
-			var isProtected = $('#save').data('protected') ? 1 : 0;
+			var owner = $('#save-external-share').data('owner');
+			var ownerDisplayName = $('#save-external-share').data('owner-display-name');
+			var name = $('#save-external-share').data('name');
+			var isProtected = $('#save-external-share').data('protected') ? 1 : 0;
 			OCA.Sharing.PublicApp._createFederatedShare(remote, token, owner, ownerDisplayName, name, isProtected);
 		});
 
 		$('#remote_address').on("keyup paste", function() {
-			if ($(this).val() === '') {
+			if ($(this).val() === '' || $('#save-external-share > .icon.icon-loading-small').length > 0) {
 				$('#save-button-confirm').prop('disabled', true);
 			} else {
 				$('#save-button-confirm').prop('disabled', false);
 			}
 		});
 
-		$('#save #save-button').click(function () {
-			$(this).hide();
-			$('.save-form').css('display', 'inline');
-			$('#remote_address').focus();
-		});
+		self._bindShowTermsAction();
 
 		// legacy
 		window.FileList = this.fileList;
+	},
+
+	/**
+	 * Binds the click action for the "terms of service" action.
+	 * Shows an OC info dialog on click.
+	 *
+	 * @private
+	 */
+	_bindShowTermsAction: function() {
+		$('#show-terms-dialog').on('click', function() {
+			OC.dialogs.info($('#disclaimerText').val(), t('files_sharing', 'Terms of service'));
+		});
 	},
 
 	_showTextPreview: function (data, previewHeight) {
@@ -327,7 +389,8 @@ OCA.Sharing.PublicApp = {
 	 */
 	_legacyCreateFederatedShare: function (remote, token, owner, ownerDisplayName, name, isProtected) {
 
-		var location = window.location.protocol + '//' + window.location.host + OC.webroot;
+		var self = this;
+		var location = window.location.protocol + '//' + window.location.host + OC.getRootPath();
 
 		if(remote.substr(-1) !== '/') {
 			remote += '/'
@@ -344,6 +407,7 @@ OCA.Sharing.PublicApp = {
 			// this check needs to happen on the server due to the Content Security Policy directive
 			$.get(OC.generateUrl('apps/files_sharing/testremote'), {remote: remote}).then(function (protocol) {
 				if (protocol !== 'http' && protocol !== 'https') {
+					self._toggleLoading();
 					OC.dialogs.alert(t('files_sharing', 'No compatible server found at {remote}', {remote: remote}),
 						t('files_sharing', 'Invalid server URL'));
 				} else {
@@ -353,30 +417,30 @@ OCA.Sharing.PublicApp = {
 		}
 	},
 
+	_toggleLoading: function() {
+		var loading = $('#save-external-share > .icon.icon-loading-small').length === 0;
+		if (loading) {
+			$('#save-external-share > .icon-external')
+				.removeClass("icon-external")
+				.addClass("icon-loading-small");
+			$('#save-external-share #save-button-confirm').prop("disabled", true);
+
+		} else {
+			$('#save-external-share > .icon-loading-small')
+				.addClass("icon-external")
+				.removeClass("icon-loading-small");
+			$('#save-external-share #save-button-confirm').prop("disabled", false);
+
+		}
+	},
+
 	_createFederatedShare: function (remote, token, owner, ownerDisplayName, name, isProtected) {
+		var self = this;
 
-		var toggleLoading = function() {
-			var iconClass = $('#save-button-confirm').attr('class');
-			var loading = iconClass.indexOf('icon-loading-small') !== -1;
-			if(loading) {
-				$('#save-button-confirm')
-					.removeClass("icon-loading-small")
-					.addClass("icon-confirm");
-
-			}
-			else {
-				$('#save-button-confirm')
-					.removeClass("icon-confirm")
-					.addClass("icon-loading-small");
-
-			}
-		};
-
-		toggleLoading();
+		this._toggleLoading();
 
 		if (remote.indexOf('@') === -1) {
 			this._legacyCreateFederatedShare(remote, token, owner, ownerDisplayName, name, isProtected);
-			toggleLoading();
 			return;
 		}
 
@@ -400,7 +464,7 @@ OCA.Sharing.PublicApp = {
 			function (jqXHR) {
 				OC.dialogs.alert(JSON.parse(jqXHR.responseText).message,
 					t('files_sharing', 'Failed to add the public link to your Nextcloud'));
-				toggleLoading();
+				self._toggleLoading();
 			}
 		);
 	}
@@ -424,4 +488,5 @@ $(document).ready(function () {
 			return App.fileList.generatePreviewUrl(urlSpec);
 		};
 	}
+
 });

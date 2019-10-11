@@ -1,10 +1,13 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright 2017, Morris Jobke <hey@morrisjobke.de>
  * @copyright 2017, Lukas Reschke <lukas@statuscode.ch>
  *
- * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -50,6 +53,8 @@ class EMailTemplate implements IEMailTemplate {
 	/** @var array */
 	protected $data;
 
+	/** @var string */
+	protected $subject = '';
 	/** @var string */
 	protected $htmlBody = '';
 	/** @var string */
@@ -180,12 +185,13 @@ EOF;
 </table>
 EOF;
 
+  // note: listBegin (like bodyBegin) is not processed through sprintf, so "%" is not escaped as "%%". (bug #12151)
 	protected $listBegin = <<<EOF
-<table class="row description" style="border-collapse:collapse;border-spacing:0;display:table;padding:0;position:relative;text-align:left;vertical-align:top;width:100%%">
+<table class="row description" style="border-collapse:collapse;border-spacing:0;display:table;padding:0;position:relative;text-align:left;vertical-align:top;width:100%">
 	<tbody>
 	<tr style="padding:0;text-align:left;vertical-align:top">
 		<th class="small-12 large-12 columns first last" style="Margin:0 auto;color:#0a0a0a;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0 auto;padding:0;padding-bottom:30px;padding-left:30px;padding-right:30px;text-align:left;width:550px">
-			<table style="border-collapse:collapse;border-spacing:0;padding:0;text-align:left;vertical-align:top;width:100%%">
+			<table style="border-collapse:collapse;border-spacing:0;padding:0;text-align:left;vertical-align:top;width:100%">
 EOF;
 
 	protected $listItem = <<<EOF
@@ -224,13 +230,13 @@ EOF;
 				<tr style="padding:0;text-align:left;vertical-align:top">
 					<th style="Margin:0;color:#0a0a0a;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0;padding:0;text-align:left">
 						<center data-parsed="" style="min-width:490px;width:100%%">
-							<table class="button btn default primary float-center" style="Margin:0 0 30px 0;border-collapse:collapse;border-spacing:0;display:inline-block;float:none;margin:0 0 30px 0;margin-right:15px;max-height:40px;max-width:200px;padding:0;text-align:center;vertical-align:top;width:auto">
+							<table class="button btn default primary float-center" style="Margin:0 0 30px 0;border-collapse:collapse;border-spacing:0;display:inline-block;float:none;margin:0 0 30px 0;margin-right:15px;max-height:40px;max-width:200px;padding:0;text-align:center;vertical-align:top;width:auto;background:%1\$s;background-color:%1\$s;color:#fefefe;">
 								<tr style="padding:0;text-align:left;vertical-align:top">
 									<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;border-collapse:collapse!important;color:#0a0a0a;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
 										<table style="border-collapse:collapse;border-spacing:0;padding:0;text-align:left;vertical-align:top;width:100%%">
 											<tr style="padding:0;text-align:left;vertical-align:top">
-												<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;background:%s;border:0 solid %s;border-collapse:collapse!important;color:#fefefe;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
-													<a href="%s" style="Margin:0;border:0 solid %s;border-radius:2px;color:#fefefe;display:inline-block;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:regular;line-height:1.3;margin:0;padding:10px 25px 10px 25px;text-align:left;text-decoration:none">%s</a>
+												<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;border:0 solid %2\$s;border-collapse:collapse!important;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
+													<a href="%3\$s" style="Margin:0;border:0 solid %4\$s;border-radius:2px;color:%5\$s;display:inline-block;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:regular;line-height:1.3;margin:0;padding:10px 25px 10px 25px;text-align:left;outline:1px solid %6\$s;text-decoration:none">%7\$s</a>
 												</td>
 											</tr>
 										</table>
@@ -243,7 +249,7 @@ EOF;
 										<table style="border-collapse:collapse;border-spacing:0;padding:0;text-align:left;vertical-align:top;width:100%%">
 											<tr style="padding:0;text-align:left;vertical-align:top">
 												<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;background:#777;border:0 solid #777;border-collapse:collapse!important;color:#fefefe;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
-													<a href="%s" style="Margin:0;background-color:#fff;border:0 solid #777;border-radius:2px;color:#6C6C6C!important;display:inline-block;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:regular;line-height:1.3;margin:0;outline:1px solid #CBCBCB;padding:10px 25px 10px 25px;text-align:left;text-decoration:none">%s</a>
+													<a href="%8\$s" style="Margin:0;background-color:#fff;border:0 solid #777;border-radius:2px;color:#6C6C6C!important;display:inline-block;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:regular;line-height:1.3;margin:0;outline:1px solid #CBCBCB;padding:10px 25px 10px 25px;text-align:left;text-decoration:none">%9\$s</a>
 												</td>
 											</tr>
 										</table>
@@ -277,13 +283,13 @@ EOF;
 				<tr style="padding:0;text-align:left;vertical-align:top">
 					<th style="Margin:0;color:#0a0a0a;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0;padding:0;text-align:left">
 						<center data-parsed="" style="min-width:490px;width:100%%">
-							<table class="button btn default primary float-center" style="Margin:0;border-collapse:collapse;border-spacing:0;display:inline-block;float:none;margin:0;max-height:40px;padding:0;text-align:center;vertical-align:top;width:auto">
+							<table class="button btn default primary float-center" style="Margin:0;border-collapse:collapse;border-spacing:0;display:inline-block;float:none;margin:0;max-height:40px;padding:0;text-align:center;vertical-align:top;width:auto;background:%1\$s;color:#fefefe;background-color:%1\$s;">
 								<tr style="padding:0;text-align:left;vertical-align:top">
 									<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;border-collapse:collapse!important;color:#0a0a0a;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
 										<table style="border-collapse:collapse;border-spacing:0;padding:0;text-align:left;vertical-align:top;width:100%%">
 											<tr style="padding:0;text-align:left;vertical-align:top">
-												<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;background:%s;border:0 solid %s;border-collapse:collapse!important;color:#fefefe;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
-													<a href="%s" style="Margin:0;border:0 solid %s;border-radius:2px;color:#fefefe;display:inline-block;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:regular;line-height:1.3;margin:0;padding:10px 25px 10px 25px;text-align:left;text-decoration:none">%s</a>
+												<td style="-moz-hyphens:auto;-webkit-hyphens:auto;Margin:0;border:0 solid %2\$;border-collapse:collapse!important;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:400;hyphens:auto;line-height:1.3;margin:0;padding:0;text-align:left;vertical-align:top;word-wrap:break-word">
+													<a href="%3\$s" style="Margin:0;border:0 solid %4\$s;border-radius:2px;color:%5\$s;display:inline-block;font-family:Lucida Grande,Geneva,Verdana,sans-serif;font-size:16px;font-weight:regular;line-height:1.3;margin:0;padding:10px 25px 10px 25px;text-align:left;outline:1px solid %5\$s;text-decoration:none">%7\$s</a>
 												</td>
 											</tr>
 										</table>
@@ -359,6 +365,15 @@ EOF;
 	}
 
 	/**
+	 * Sets the subject of the email
+	 *
+	 * @param string $subject
+	 */
+	public function setSubject(string $subject) {
+		$this->subject = $subject;
+	}
+
+	/**
 	 * Adds a header to the email
 	 */
 	public function addHeader() {
@@ -375,10 +390,10 @@ EOF;
 	 * Adds a heading to the email
 	 *
 	 * @param string $title
-	 * @param string $plainTitle|bool Title that is used in the plain text email
+	 * @param string|bool $plainTitle Title that is used in the plain text email
 	 *   if empty the $title is used, if false none will be used
 	 */
-	public function addHeading($title, $plainTitle = '') {
+	public function addHeading(string $title, $plainTitle = '') {
 		if ($this->footerAdded) {
 			return;
 		}
@@ -407,21 +422,23 @@ EOF;
 	/**
 	 * Adds a paragraph to the body of the email
 	 *
-	 * @param string $text
+	 * @param string $text Note: When $plainText falls back to this, HTML is automatically escaped in the HTML email
 	 * @param string|bool $plainText Text that is used in the plain text email
 	 *   if empty the $text is used, if false none will be used
 	 */
-	public function addBodyText($text, $plainText = '') {
+	public function addBodyText(string $text, $plainText = '') {
 		if ($this->footerAdded) {
 			return;
 		}
 		if ($plainText === '') {
 			$plainText = $text;
+			$text = htmlspecialchars($text);
 		}
 
+		$this->ensureBodyListClosed();
 		$this->ensureBodyIsOpened();
 
-		$this->htmlBody .= vsprintf($this->bodyText, [htmlspecialchars($text)]);
+		$this->htmlBody .= vsprintf($this->bodyText, [$text]);
 		if ($plainText !== false) {
 			$this->plainBody .= $plainText . PHP_EOL . PHP_EOL;
 		}
@@ -430,28 +447,30 @@ EOF;
 	/**
 	 * Adds a list item to the body of the email
 	 *
-	 * @param string $text
-	 * @param string $metaInfo
+	 * @param string $text Note: When $plainText falls back to this, HTML is automatically escaped in the HTML email
+	 * @param string $metaInfo Note: When $plainMetaInfo falls back to this, HTML is automatically escaped in the HTML email
 	 * @param string $icon Absolute path, must be 16*16 pixels
-	 * @param string $plainText Text that is used in the plain text email
+	 * @param string|bool $plainText Text that is used in the plain text email
 	 *   if empty the $text is used, if false none will be used
-	 * @param string $plainMetaInfo Meta info that is used in the plain text email
+	 * @param string|bool $plainMetaInfo Meta info that is used in the plain text email
 	 *   if empty the $metaInfo is used, if false none will be used
 	 * @since 12.0.0
 	 */
-	public function addBodyListItem($text, $metaInfo = '', $icon = '', $plainText = '', $plainMetaInfo = '') {
+	public function addBodyListItem(string $text, string $metaInfo = '', string $icon = '', $plainText = '', $plainMetaInfo = '') {
 		$this->ensureBodyListOpened();
 
 		if ($plainText === '') {
 			$plainText = $text;
+			$text = htmlspecialchars($text);
 		}
 		if ($plainMetaInfo === '') {
 			$plainMetaInfo = $metaInfo;
+			$metaInfo = htmlspecialchars($metaInfo);
 		}
 
-		$htmlText = htmlspecialchars($text);
+		$htmlText = $text;
 		if ($metaInfo) {
-			$htmlText = '<em style="color:#777;">' . htmlspecialchars($metaInfo) . '</em><br>' . $htmlText;
+			$htmlText = '<em style="color:#777;">' . $metaInfo . '</em><br>' . $htmlText;
 		}
 		if ($icon !== '') {
 			$icon = '<img src="' . htmlspecialchars($icon) . '" alt="&bull;">';
@@ -490,36 +509,39 @@ EOF;
 	/**
 	 * Adds a button group of two buttons to the body of the email
 	 *
-	 * @param string $textLeft Text of left button
+	 * @param string $textLeft Text of left button; Note: When $plainTextLeft falls back to this, HTML is automatically escaped in the HTML email
 	 * @param string $urlLeft URL of left button
-	 * @param string $textRight Text of right button
+	 * @param string $textRight Text of right button; Note: When $plainTextRight falls back to this, HTML is automatically escaped in the HTML email
 	 * @param string $urlRight URL of right button
 	 * @param string $plainTextLeft Text of left button that is used in the plain text version - if unset the $textLeft is used
 	 * @param string $plainTextRight Text of right button that is used in the plain text version - if unset the $textRight is used
 	 */
-	public function addBodyButtonGroup($textLeft,
-									   $urlLeft,
-									   $textRight,
-									   $urlRight,
-									   $plainTextLeft = '',
-									   $plainTextRight = '') {
+	public function addBodyButtonGroup(string $textLeft,
+									   string $urlLeft,
+									   string $textRight,
+									   string $urlRight,
+									   string $plainTextLeft = '',
+									   string $plainTextRight = '') {
 		if ($this->footerAdded) {
 			return;
 		}
 		if ($plainTextLeft === '') {
 			$plainTextLeft = $textLeft;
+			$textLeft = htmlspecialchars($textLeft);
 		}
 
 		if ($plainTextRight === '') {
 			$plainTextRight = $textRight;
+			$textRight = htmlspecialchars($textRight);
 		}
 
 		$this->ensureBodyIsOpened();
 		$this->ensureBodyListClosed();
 
 		$color = $this->themingDefaults->getColorPrimary();
+		$textColor = $this->themingDefaults->getTextColorPrimary();
 
-		$this->htmlBody .= vsprintf($this->buttonGroup, [$color, $color, $urlLeft, $color, htmlspecialchars($textLeft), $urlRight, htmlspecialchars($textRight)]);
+		$this->htmlBody .= vsprintf($this->buttonGroup, [$color, $color, $urlLeft, $color, $textColor, $textColor, $textLeft, $urlRight, $textRight]);
 		$this->plainBody .= $plainTextLeft . ': ' . $urlLeft . PHP_EOL;
 		$this->plainBody .= $plainTextRight . ': ' . $urlRight . PHP_EOL . PHP_EOL;
 
@@ -528,14 +550,14 @@ EOF;
 	/**
 	 * Adds a button to the body of the email
 	 *
-	 * @param string $text Text of button
+	 * @param string $text Text of button; Note: When $plainText falls back to this, HTML is automatically escaped in the HTML email
 	 * @param string $url URL of button
 	 * @param string $plainText Text of button in plain text version
 	 * 		if empty the $text is used, if false none will be used
 	 *
 	 * @since 12.0.0
 	 */
-	public function addBodyButton($text, $url, $plainText = '') {
+	public function addBodyButton(string $text, string $url, $plainText = '') {
 		if ($this->footerAdded) {
 			return;
 		}
@@ -545,10 +567,12 @@ EOF;
 
 		if ($plainText === '') {
 			$plainText = $text;
+			$text = htmlspecialchars($text);
 		}
 
 		$color = $this->themingDefaults->getColorPrimary();
-		$this->htmlBody .= vsprintf($this->button, [$color, $color, $url, $color, htmlspecialchars($text)]);
+		$textColor = $this->themingDefaults->getTextColorPrimary();
+		$this->htmlBody .= vsprintf($this->button, [$color, $color, $url, $color, $textColor, $textColor, $text]);
 
 		if ($plainText !== false) {
 			$this->plainBody .= $plainText . ': ';
@@ -577,7 +601,7 @@ EOF;
 	 *
 	 * @param string $text If the text is empty the default "Name - Slogan<br>This is an automatically sent email" will be used
 	 */
-	public function addFooter($text = '') {
+	public function addFooter(string $text = '') {
 		if($text === '') {
 			$text = $this->themingDefaults->getName() . ' - ' . $this->themingDefaults->getSlogan() . '<br>' . $this->l10n->t('This is an automatically sent email, please do not reply.');
 		}
@@ -596,11 +620,20 @@ EOF;
 	}
 
 	/**
+	 * Returns the rendered email subject as string
+	 *
+	 * @return string
+	 */
+	public function renderSubject(): string {
+		return $this->subject;
+	}
+
+	/**
 	 * Returns the rendered HTML email as string
 	 *
 	 * @return string
 	 */
-	public function renderHtml() {
+	public function renderHtml(): string {
 		if (!$this->footerAdded) {
 			$this->footerAdded = true;
 			$this->ensureBodyIsClosed();
@@ -614,7 +647,7 @@ EOF;
 	 *
 	 * @return string
 	 */
-	public function renderText() {
+	public function renderText(): string {
 		if (!$this->footerAdded) {
 			$this->footerAdded = true;
 			$this->ensureBodyIsClosed();

@@ -3,7 +3,8 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Björn Schießle <bjoern@schiessle.org>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -75,6 +76,15 @@ class AddressBookImpl implements IAddressBook {
 	}
 
 	/**
+	 * @return string defining the unique uri
+	 * @since 16.0.0
+	 * @return string
+	 */
+	public function getUri(): string {
+		return $this->addressBookInfo['uri'];
+	}
+
+	/**
 	 * In comparison to getKey() this function returns a human readable (maybe translated) name
 	 *
 	 * @return mixed
@@ -87,16 +97,26 @@ class AddressBookImpl implements IAddressBook {
 	/**
 	 * @param string $pattern which should match within the $searchProperties
 	 * @param array $searchProperties defines the properties within the query pattern should match
-	 * @param array $options - for future use. One should always have options!
+	 * @param array $options Options to define the output format
+	 * 	- types boolean (since 15.0.0) If set to true, fields that come with a TYPE property will be an array
+	 *    example: ['id' => 5, 'FN' => 'Thomas Tanghus', 'EMAIL' => ['type => 'HOME', 'value' => 'g@h.i']]
+	 * @return array an array of contacts which are arrays of key-value-pairs
+	 *  example result:
+	 *  [
+	 *		['id' => 0, 'FN' => 'Thomas Müller', 'EMAIL' => 'a@b.c', 'GEO' => '37.386013;-122.082932'],
+	 *		['id' => 5, 'FN' => 'Thomas Tanghus', 'EMAIL' => ['d@e.f', 'g@h.i']]
+	 *	]
 	 * @return array an array of contacts which are arrays of key-value-pairs
 	 * @since 5.0.0
 	 */
 	public function search($pattern, $searchProperties, $options) {
 		$results = $this->backend->search($this->getKey(), $pattern, $searchProperties);
 
+		$withTypes = \array_key_exists('types', $options) && $options['types'] === true;
+
 		$vCards = [];
 		foreach ($results as $result) {
-			$vCards[] = $this->vCard2Array($result['uri'], $this->readCard($result['carddata']));
+			$vCards[] = $this->vCard2Array($result['uri'], $this->readCard($result['carddata']), $withTypes);
 		}
 
 		return $vCards;
@@ -219,7 +239,7 @@ class AddressBookImpl implements IAddressBook {
 	 * @param VCard $vCard
 	 * @return array
 	 */
-	protected function vCard2Array($uri, VCard $vCard) {
+	protected function vCard2Array($uri, VCard $vCard, $withTypes = false) {
 		$result = [
 			'URI' => $uri,
 		];
@@ -254,15 +274,28 @@ class AddressBookImpl implements IAddressBook {
 					$result[$property->name] = [];
 				}
 
-				$result[$property->name][] = $property->getValue();
+				$type = $this->getTypeFromProperty($property);
+				if ($withTypes) {
+					$result[$property->name][] = [
+						'type' => $type,
+						'value' => $property->getValue()
+						];
+				} else {
+					$result[$property->name][] = $property->getValue();
+				}
+
 
 			} else {
 				$result[$property->name] = $property->getValue();
 			}
 		}
 
-		if ($this->addressBookInfo['principaluri'] === 'principals/system/system' &&
-			$this->addressBookInfo['uri'] === 'system') {
+		if (
+			$this->addressBookInfo['principaluri'] === 'principals/system/system' && (
+				$this->addressBookInfo['uri'] === 'system' ||
+				$this->addressBookInfo['{DAV:}displayname'] === $this->urlGenerator->getBaseUrl()
+			)
+		) {
 			$result['isLocalSystemBook'] = true;
 		}
 		return $result;

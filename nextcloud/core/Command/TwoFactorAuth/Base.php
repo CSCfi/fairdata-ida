@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,10 +25,9 @@ namespace OC\Core\Command\TwoFactorAuth;
 
 use OCP\IUserManager;
 use OCP\IUser;
-use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
 use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 
-class Base extends \OC\Core\Command\Base implements CompletionAwareInterface {
+class Base extends \OC\Core\Command\Base {
 
 	/** @var IUserManager */
 	protected $userManager;

@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -26,6 +27,7 @@ namespace OC\Files\Config;
 
 use OCA\Files_Sharing\SharedMount;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\Files\Config\ICachedMountFileInfo;
 use OCP\Files\Config\ICachedMountInfo;
 use OCP\Files\Config\IUserMountCache;
 use OCP\Files\Mount\IMountPoint;
@@ -99,17 +101,31 @@ class UserMountCache implements IUserMountCache {
 			}
 		}, $mounts);
 		$newMounts = array_values(array_filter($newMounts));
+		$newMountRootIds = array_map(function (ICachedMountInfo $mount) {
+			return $mount->getRootId();
+		}, $newMounts);
+		$newMounts = array_combine($newMountRootIds, $newMounts);
 
 		$cachedMounts = $this->getMountsForUser($user);
-		$mountDiff = function (ICachedMountInfo $mount1, ICachedMountInfo $mount2) {
-			// since we are only looking for mounts for a specific user comparing on root id is enough
-			return $mount1->getRootId() - $mount2->getRootId();
-		};
+		$cachedMountRootIds = array_map(function (ICachedMountInfo $mount) {
+			return $mount->getRootId();
+		}, $cachedMounts);
+		$cachedMounts = array_combine($cachedMountRootIds, $cachedMounts);
 
-		/** @var ICachedMountInfo[] $addedMounts */
-		$addedMounts = array_udiff($newMounts, $cachedMounts, $mountDiff);
-		/** @var ICachedMountInfo[] $removedMounts */
-		$removedMounts = array_udiff($cachedMounts, $newMounts, $mountDiff);
+		$addedMounts = [];
+		$removedMounts = [];
+
+		foreach ($newMounts as $rootId => $newMount) {
+			if (!isset($cachedMounts[$rootId])) {
+				$addedMounts[] = $newMount;
+			}
+		}
+
+		foreach ($cachedMounts as $rootId => $cachedMount) {
+			if (!isset($newMounts[$rootId])) {
+				$removedMounts[] = $cachedMount;
+			}
+		}
 
 		$changedMounts = $this->findChangedMounts($newMounts, $cachedMounts);
 
@@ -133,16 +149,19 @@ class UserMountCache implements IUserMountCache {
 	 * @return ICachedMountInfo[]
 	 */
 	private function findChangedMounts(array $newMounts, array $cachedMounts) {
+		$new = [];
+		foreach ($newMounts as $mount) {
+			$new[$mount->getRootId()] = $mount;
+		}
 		$changed = [];
-		foreach ($newMounts as $newMount) {
-			foreach ($cachedMounts as $cachedMount) {
+		foreach ($cachedMounts as $cachedMount) {
+			$rootId = $cachedMount->getRootId();
+			if (isset($new[$rootId])) {
+				$newMount = $new[$rootId];
 				if (
-					$newMount->getRootId() === $cachedMount->getRootId() &&
-					(
-						$newMount->getMountPoint() !== $cachedMount->getMountPoint() ||
-						$newMount->getStorageId() !== $cachedMount->getStorageId() ||
-						$newMount->getMountId() !== $cachedMount->getMountId()
-					)
+					$newMount->getMountPoint() !== $cachedMount->getMountPoint() ||
+					$newMount->getStorageId() !== $cachedMount->getStorageId() ||
+					$newMount->getMountId() !== $cachedMount->getMountId()
 				) {
 					$changed[] = $newMount;
 				}
@@ -193,7 +212,11 @@ class UserMountCache implements IUserMountCache {
 		if (is_null($user)) {
 			return null;
 		}
-		return new CachedMountInfo($user, (int)$row['storage_id'], (int)$row['root_id'], $row['mount_point'], $row['mount_id'], isset($row['path'])? $row['path']:'');
+		$mount_id = $row['mount_id'];
+		if (!is_null($mount_id)) {
+			$mount_id = (int)$mount_id;
+		}
+		return new CachedMountInfo($user, (int)$row['storage_id'], (int)$row['root_id'], $row['mount_point'], $mount_id, isset($row['path']) ? $row['path'] : '');
 	}
 
 	/**
@@ -224,7 +247,7 @@ class UserMountCache implements IUserMountCache {
 		$builder = $this->connection->getQueryBuilder();
 		$query = $builder->select('storage_id', 'root_id', 'user_id', 'mount_point', 'mount_id', 'f.path')
 			->from('mounts', 'm')
-			->innerJoin('m', 'filecache', 'f' , $builder->expr()->eq('m.root_id', 'f.fileid'))
+			->innerJoin('m', 'filecache', 'f', $builder->expr()->eq('m.root_id', 'f.fileid'))
 			->where($builder->expr()->eq('storage_id', $builder->createPositionalParameter($numericStorageId, IQueryBuilder::PARAM_INT)));
 
 		if ($user) {
@@ -281,7 +304,7 @@ class UserMountCache implements IUserMountCache {
 	/**
 	 * @param int $fileId
 	 * @param string|null $user optionally restrict the results to a single user
-	 * @return ICachedMountInfo[]
+	 * @return ICachedMountFileInfo[]
 	 * @since 9.0.0
 	 */
 	public function getMountsForFileId($fileId, $user = null) {
@@ -293,7 +316,7 @@ class UserMountCache implements IUserMountCache {
 		$mountsForStorage = $this->getMountsForStorageId($storageId, $user);
 
 		// filter mounts that are from the same storage but a different directory
-		return array_filter($mountsForStorage, function (ICachedMountInfo $mount) use ($internalPath, $fileId) {
+		$filteredMounts = array_filter($mountsForStorage, function (ICachedMountInfo $mount) use ($internalPath, $fileId) {
 			if ($fileId === $mount->getRootId()) {
 				return true;
 			}
@@ -301,6 +324,18 @@ class UserMountCache implements IUserMountCache {
 
 			return $internalMountPath === '' || substr($internalPath, 0, strlen($internalMountPath) + 1) === $internalMountPath . '/';
 		});
+
+		return array_map(function (ICachedMountInfo $mount) use ($internalPath) {
+			return new CachedMountFileInfo(
+				$mount->getUser(),
+				$mount->getStorageId(),
+				$mount->getRootId(),
+				$mount->getMountPoint(),
+				$mount->getMountId(),
+				$mount->getRootInternalPath(),
+				$internalPath
+			);
+		}, $filteredMounts);
 	}
 
 	/**
@@ -331,5 +366,44 @@ class UserMountCache implements IUserMountCache {
 		$query = $builder->delete('mounts')
 			->where($builder->expr()->eq('storage_id', $builder->createNamedParameter($storageId, IQueryBuilder::PARAM_INT)));
 		$query->execute();
+	}
+
+	/**
+	 * @param array $users
+	 * @return array
+	 * @suppress SqlInjectionChecker
+	 */
+	public function getUsedSpaceForUsers(array $users) {
+		$builder = $this->connection->getQueryBuilder();
+
+		$slash = $builder->createNamedParameter('/');
+
+		$mountPoint = $builder->func()->concat(
+			$builder->func()->concat($slash, 'user_id'),
+			$slash
+		);
+
+		$userIds = array_map(function (IUser $user) {
+			return $user->getUID();
+		}, $users);
+
+		$query = $builder->select('m.user_id', 'f.size')
+			->from('mounts', 'm')
+			->innerJoin('m', 'filecache', 'f',
+				$builder->expr()->andX(
+					$builder->expr()->eq('m.storage_id', 'f.storage'),
+					$builder->expr()->eq('f.path_hash', $builder->createNamedParameter(md5('files')))
+				))
+			->where($builder->expr()->eq('m.mount_point', $mountPoint))
+			->andWhere($builder->expr()->in('m.user_id', $builder->createNamedParameter($userIds, IQueryBuilder::PARAM_STR_ARRAY)));
+
+		$result = $query->execute();
+
+		$results = [];
+		while ($row = $result->fetch()) {
+			$results[$row['user_id']] = $row['size'];
+		}
+		$result->closeCursor();
+		return $results;
 	}
 }

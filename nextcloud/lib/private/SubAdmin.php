@@ -4,7 +4,8 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -28,13 +29,14 @@
 namespace OC;
 
 use OC\Hooks\PublicEmitter;
+use OCP\Group\ISubAdmin;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IGroup;
 use OCP\IGroupManager;
 use OCP\IDBConnection;
 
-class SubAdmin extends PublicEmitter {
+class SubAdmin extends PublicEmitter implements ISubAdmin {
 
 	/** @var IUserManager */
 	private $userManager;
@@ -61,7 +63,7 @@ class SubAdmin extends PublicEmitter {
 			$this->post_deleteUser($user);
 		});
 		$this->groupManager->listen('\OC\Group', 'postDelete', function($group) {
-			$this->post_deleteGroup($group);	
+			$this->post_deleteGroup($group);
 		});
 	}
 
@@ -69,9 +71,8 @@ class SubAdmin extends PublicEmitter {
 	 * add a SubAdmin
 	 * @param IUser $user user to be SubAdmin
 	 * @param IGroup $group group $user becomes subadmin of
-	 * @return bool
 	 */
-	public function createSubAdmin(IUser $user, IGroup $group) {
+	public function createSubAdmin(IUser $user, IGroup $group): void {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$qb->insert('group_admin')
@@ -83,16 +84,14 @@ class SubAdmin extends PublicEmitter {
 
 		$this->emit('\OC\SubAdmin', 'postCreateSubAdmin', [$user, $group]);
 		\OC_Hook::emit("OC_SubAdmin", "post_createSubAdmin", ["gid" => $group->getGID()]);
-		return true;
 	}
 
 	/**
 	 * delete a SubAdmin
 	 * @param IUser $user the user that is the SubAdmin
 	 * @param IGroup $group the group
-	 * @return bool
 	 */
-	public function deleteSubAdmin(IUser $user, IGroup $group) {
+	public function deleteSubAdmin(IUser $user, IGroup $group): void {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$qb->delete('group_admin')
@@ -102,7 +101,6 @@ class SubAdmin extends PublicEmitter {
 
 		$this->emit('\OC\SubAdmin', 'postDeleteSubAdmin', [$user, $group]);
 		\OC_Hook::emit("OC_SubAdmin", "post_deleteSubAdmin", ["gid" => $group->getGID()]);
-		return true;
 	}
 
 	/**
@@ -110,7 +108,7 @@ class SubAdmin extends PublicEmitter {
 	 * @param IUser $user the SubAdmin
 	 * @return IGroup[]
 	 */
-	public function getSubAdminsGroups(IUser $user) {
+	public function getSubAdminsGroups(IUser $user): array {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$result = $qb->select('gid')
@@ -122,7 +120,7 @@ class SubAdmin extends PublicEmitter {
 		while($row = $result->fetch()) {
 			$group = $this->groupManager->get($row['gid']);
 			if(!is_null($group)) {
-				$groups[] = $group;
+				$groups[$group->getGID()] = $group;
 			}
 		}
 		$result->closeCursor();
@@ -131,11 +129,22 @@ class SubAdmin extends PublicEmitter {
 	}
 
 	/**
+	 * get an array of groupid and displayName for a user
+	 * @param IUser $user
+	 * @return array ['displayName' => displayname]
+	 */
+	public function getSubAdminsGroupsName(IUser $user): array {
+		return array_map(function($group) {
+			return array('displayName' => $group->getDisplayName());
+		}, $this->getSubAdminsGroups($user));
+	}
+
+	/**
 	 * get SubAdmins of a group
 	 * @param IGroup $group the group
 	 * @return IUser[]
 	 */
-	public function getGroupsSubAdmins(IGroup $group) {
+	public function getGroupsSubAdmins(IGroup $group): array {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$result = $qb->select('uid')
@@ -159,7 +168,7 @@ class SubAdmin extends PublicEmitter {
 	 * get all SubAdmins
 	 * @return array
 	 */
-	public function getAllSubAdmins() {
+	public function getAllSubAdmins(): array {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$result = $qb->select('*')
@@ -184,11 +193,11 @@ class SubAdmin extends PublicEmitter {
 
 	/**
 	 * checks if a user is a SubAdmin of a group
-	 * @param IUser $user 
+	 * @param IUser $user
 	 * @param IGroup $group
 	 * @return bool
 	 */
-	public function isSubAdminOfGroup(IUser $user, IGroup $group) {
+	public function isSubAdminOfGroup(IUser $user, IGroup $group): bool {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		/*
@@ -209,10 +218,10 @@ class SubAdmin extends PublicEmitter {
 
 	/**
 	 * checks if a user is a SubAdmin
-	 * @param IUser $user 
+	 * @param IUser $user
 	 * @return bool
 	 */
-	public function isSubAdmin(IUser $user) {
+	public function isSubAdmin(IUser $user): bool {
 		// Check if the user is already an admin
 		if ($this->groupManager->isAdmin($user->getUID())) {
 			return true;
@@ -229,9 +238,7 @@ class SubAdmin extends PublicEmitter {
 		$isSubAdmin = $result->fetch();
 		$result->closeCursor();
 
-		$result = $isSubAdmin === false ? false : true;
-
-		return $result;
+		return $isSubAdmin !== false;
 	}
 
 	/**
@@ -240,7 +247,7 @@ class SubAdmin extends PublicEmitter {
 	 * @param IUser $user
 	 * @return bool
 	 */
-	public function isUserAccessible($subadmin, $user) {
+	public function isUserAccessible(IUser $subadmin, IUser $user): bool {
 		if(!$this->isSubAdmin($subadmin)) {
 			return false;
 		}
@@ -259,30 +266,24 @@ class SubAdmin extends PublicEmitter {
 	/**
 	 * delete all SubAdmins by $user
 	 * @param IUser $user
-	 * @return boolean
 	 */
-	private function post_deleteUser($user) {
+	private function post_deleteUser(IUser $user) {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$qb->delete('group_admin')
 			->where($qb->expr()->eq('uid', $qb->createNamedParameter($user->getUID())))
 			->execute();
-
-		return true;
 	}
 
 	/**
 	 * delete all SubAdmins by $group
 	 * @param IGroup $group
-	 * @return boolean
 	 */
-	private function post_deleteGroup($group) {
+	private function post_deleteGroup(IGroup $group) {
 		$qb = $this->dbConn->getQueryBuilder();
 
 		$qb->delete('group_admin')
 			->where($qb->expr()->eq('gid', $qb->createNamedParameter($group->getGID())))
 			->execute();
-
-		return true;
 	}
 }

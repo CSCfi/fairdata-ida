@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2016 Robin Appelman <robin@icewind.nl>
  *
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,8 +24,10 @@
 
 namespace OC\Files\ObjectStore;
 
+use Aws\ClientResolver;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
+use OCP\ILogger;
 
 trait S3ConnectionTrait {
 	/** @var array */
@@ -51,9 +56,9 @@ trait S3ConnectionTrait {
 
 		$this->test = isset($params['test']);
 		$this->bucket = $params['bucket'];
-		$this->timeout = (!isset($params['timeout'])) ? 15 : $params['timeout'];
+		$this->timeout = !isset($params['timeout']) ? 15 : $params['timeout'];
 		$params['region'] = empty($params['region']) ? 'eu-west-1' : $params['region'];
-		$params['hostname'] = empty($params['hostname']) ? 's3.amazonaws.com' : $params['hostname'];
+		$params['hostname'] = empty($params['hostname']) ? 's3.' . $params['region'] . '.amazonaws.com' : $params['hostname'];
 		if (!isset($params['port']) || $params['port'] === '') {
 			$params['port'] = (isset($params['use_ssl']) && $params['use_ssl'] === false) ? 80 : 443;
 		}
@@ -76,38 +81,52 @@ trait S3ConnectionTrait {
 		$base_url = $scheme . '://' . $this->params['hostname'] . ':' . $this->params['port'] . '/';
 
 		$options = [
-			'key' => $this->params['key'],
-			'secret' => $this->params['secret'],
-			'base_url' => $base_url,
+			'version' => isset($this->params['version']) ? $this->params['version'] : 'latest',
+			'credentials' => [
+				'key' => $this->params['key'],
+				'secret' => $this->params['secret'],
+			],
+			'endpoint' => $base_url,
 			'region' => $this->params['region'],
-			S3Client::COMMAND_PARAMS => [
-				'PathStyle' => isset($this->params['use_path_style']) ? $this->params['use_path_style'] : false,
-			]
+			'use_path_style_endpoint' => isset($this->params['use_path_style']) ? $this->params['use_path_style'] : false,
+			'signature_provider' => \Aws\or_chain([self::class, 'legacySignatureProvider'], ClientResolver::_default_signature_provider())
 		];
 		if (isset($this->params['proxy'])) {
-			$options[S3Client::REQUEST_OPTIONS] = ['proxy' => $this->params['proxy']];
+			$options['request.options'] = ['proxy' => $this->params['proxy']];
 		}
-		$this->connection = S3Client::factory($options);
+		if (isset($this->params['legacy_auth']) && $this->params['legacy_auth']) {
+			$options['signature_version'] = 'v2';
+		}
+		$this->connection = new S3Client($options);
 
-		if (!$this->connection->isValidBucketName($this->bucket)) {
-			throw new \Exception("The configured bucket name is invalid.");
+		if (!$this->connection->isBucketDnsCompatible($this->bucket)) {
+			$logger = \OC::$server->getLogger();
+			$logger->debug('Bucket "' . $this->bucket . '" This bucket name is not dns compatible, it may contain invalid characters.',
+					 ['app' => 'objectstore']);
 		}
 
 		if (!$this->connection->doesBucketExist($this->bucket)) {
+			$logger = \OC::$server->getLogger();
 			try {
-				$this->connection->createBucket(array(
-					'Bucket' => $this->bucket
-				));
-				$this->connection->waitUntilBucketExists(array(
-					'Bucket' => $this->bucket,
-					'waiter.interval' => 1,
-					'waiter.max_attempts' => 15
-				));
+				$logger->info('Bucket "' . $this->bucket . '" does not exist - creating it.', ['app' => 'objectstore']);
+				if (!$this->connection->isBucketDnsCompatible($this->bucket)) {
+					throw new \Exception("The bucket will not be created because the name is not dns compatible, please correct it: " . $this->bucket);
+				}
+				$this->connection->createBucket(array('Bucket' => $this->bucket));
 				$this->testTimeout();
 			} catch (S3Exception $e) {
-				\OCP\Util::logException('files_external', $e);
-				throw new \Exception('Creation of bucket failed. ' . $e->getMessage());
+				$logger->logException($e, [
+					'message' => 'Invalid remote storage.',
+					'level' => ILogger::DEBUG,
+					'app' => 'objectstore',
+				]);
+				throw new \Exception('Creation of bucket "' . $this->bucket . '" failed. ' . $e->getMessage());
 			}
+		}
+
+		// google cloud's s3 compatibility doesn't like the EncodingType parameter
+		if (strpos($base_url, 'storage.googleapis.com')) {
+			$this->connection->getHandlerList()->remove('s3.auto_encode');
 		}
 
 		return $this->connection;
@@ -119,6 +138,16 @@ trait S3ConnectionTrait {
 	private function testTimeout() {
 		if ($this->test) {
 			sleep($this->timeout);
+		}
+	}
+
+	public static function legacySignatureProvider($version, $service, $region) {
+		switch ($version) {
+			case 'v2':
+			case 's3':
+				return new S3Signature();
+			default:
+				return null;
 		}
 	}
 }

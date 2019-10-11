@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -95,16 +97,16 @@ class VersionCheck {
 				$tmp['versionstring'] = (string)$data->versionstring;
 				$tmp['url'] = (string)$data->url;
 				$tmp['web'] = (string)$data->web;
+				$tmp['changes'] = isset($data->changes) ? (string)$data->changes : '';
 				$tmp['autoupdater'] = (string)$data->autoupdater;
+				$tmp['eol'] = isset($data->eol) ? (string)$data->eol : '0';
 			} else {
 				libxml_clear_errors();
 			}
-		} else {
-			$data = [];
 		}
 
 		// Cache the result
-		$this->config->setAppValue('core', 'lastupdateResult', json_encode($data));
+		$this->config->setAppValue('core', 'lastupdateResult', json_encode($tmp));
 		return $tmp;
 	}
 

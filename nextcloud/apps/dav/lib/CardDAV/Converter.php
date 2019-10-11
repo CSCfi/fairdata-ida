@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -60,6 +61,10 @@ class Converter {
 
 		$publish = false;
 
+		if ($image !== null && isset($userData[AccountManager::PROPERTY_AVATAR])) {
+			$userData[AccountManager::PROPERTY_AVATAR]['value'] = true;
+		}
+
 		foreach ($userData as $property => $value) {
 
 			$shareWithTrustedServers =
@@ -67,9 +72,8 @@ class Converter {
 				$value['scope'] === AccountManager::VISIBILITY_PUBLIC;
 
 			$emptyValue = !isset($value['value']) || $value['value'] === '';
-			$noImage = $image === null;
 
-			if ($shareWithTrustedServers && (!$emptyValue || !$noImage)) {
+			if ($shareWithTrustedServers && !$emptyValue) {
 				$publish = true;
 				switch ($property) {
 					case AccountManager::PROPERTY_DISPLAYNAME:
@@ -139,8 +143,7 @@ class Converter {
 	 */
 	private function getAvatarImage(IUser $user) {
 		try {
-			$image = $user->getAvatarImage(-1);
-			return $image;
+			return $user->getAvatarImage(-1);
 		} catch (\Exception $ex) {
 			return null;
 		}

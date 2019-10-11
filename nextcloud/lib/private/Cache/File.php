@@ -5,6 +5,7 @@
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Wessalowski <sebastian@wessalowski.org>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -29,6 +30,7 @@ namespace OC\Cache;
 use OC\Files\Filesystem;
 use OC\Files\View;
 use OCP\ICache;
+use OCP\ILogger;
 use OCP\Security\ISecureRandom;
 
 class File implements ICache {
@@ -57,7 +59,7 @@ class File implements ICache {
 			$this->storage = new View('/' . $user->getUID() . '/cache');
 			return $this->storage;
 		} else {
-			\OCP\Util::writeLog('core', 'Can\'t get cache storage, user not logged in', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('core', 'Can\'t get cache storage, user not logged in', ILogger::ERROR);
 			throw new \OC\ForbiddenException('Can\t get cache storage, user not logged in');
 		}
 	}
@@ -172,7 +174,7 @@ class File implements ICache {
 	 */
 	public function gc() {
 		$storage = $this->getStorage();
-		if ($storage and $storage->is_dir('/')) {
+		if ($storage) {
 			// extra hour safety, in case of stray part chunks that take longer to write,
 			// because touch() is only called after the chunk was finished
 			$now = time() - 3600;

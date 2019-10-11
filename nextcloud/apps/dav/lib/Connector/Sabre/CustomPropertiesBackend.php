@@ -47,11 +47,11 @@ class CustomPropertiesBackend implements BackendInterface {
 		'{DAV:}getetag',
 		'{DAV:}quota-used-bytes',
 		'{DAV:}quota-available-bytes',
-		'{DAV:}quota-available-bytes',
 		'{http://owncloud.org/ns}permissions',
 		'{http://owncloud.org/ns}downloadURL',
 		'{http://owncloud.org/ns}dDC',
 		'{http://owncloud.org/ns}size',
+		'{http://nextcloud.org/ns}is-encrypted',
 	);
 
 	/**
@@ -127,13 +127,6 @@ class CustomPropertiesBackend implements BackendInterface {
 
 		if (empty($requestedProps)) {
 			return;
-		}
-
-		if ($node instanceof Directory
-			&& $propFind->getDepth() !== 0
-		) {
-			// note: pre-fetching only supported for depth <= 1
-			$this->loadChildrenProperties($node, $requestedProps);
 		}
 
 		$props = $this->getProperties($node, $requestedProps);

@@ -4,11 +4,13 @@
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Frank Karlitschek <frank@karlitschek.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Steffen Lindner <mail@steffen-lindner.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
@@ -32,6 +34,7 @@
 
 namespace OC;
 
+use OC\DB\MigrationService;
 use OC\Hooks\BasicEmitter;
 use OC\IntegrityCheck\Checker;
 use OC_App;
@@ -60,8 +63,8 @@ class Updater extends BasicEmitter {
 	/** @var Checker */
 	private $checker;
 
-	/** @var bool */
-	private $skip3rdPartyAppsDisable;
+	/** @var Installer */
+	private $installer;
 
 	private $logLevelNames = [
 		0 => 'Debug',
@@ -75,29 +78,16 @@ class Updater extends BasicEmitter {
 	 * @param IConfig $config
 	 * @param Checker $checker
 	 * @param ILogger $log
+	 * @param Installer $installer
 	 */
 	public function __construct(IConfig $config,
 								Checker $checker,
-								ILogger $log = null) {
+								ILogger $log = null,
+								Installer $installer) {
 		$this->log = $log;
 		$this->config = $config;
 		$this->checker = $checker;
-
-		// If at least PHP 7.0.0 is used we don't need to disable apps as we catch
-		// fatal errors and exceptions and disable the app just instead.
-		if(version_compare(phpversion(), '7.0.0', '>=')) {
-			$this->skip3rdPartyAppsDisable = true;
-		}
-	}
-
-	/**
-	 * Sets whether the update disables 3rd party apps.
-	 * This can be set to true to skip the disable.
-	 *
-	 * @param bool $flag false to not disable, true otherwise
-	 */
-	public function setSkip3rdPartyAppsDisable($flag) {
-		$this->skip3rdPartyAppsDisable = $flag;
+		$this->installer = $installer;
 	}
 
 	/**
@@ -110,19 +100,27 @@ class Updater extends BasicEmitter {
 		$this->emitRepairEvents();
 		$this->logAllEvents();
 
-		$logLevel = $this->config->getSystemValue('loglevel', Util::WARN);
+		$logLevel = $this->config->getSystemValue('loglevel', ILogger::WARN);
 		$this->emit('\OC\Updater', 'setDebugLogLevel', [ $logLevel, $this->logLevelNames[$logLevel] ]);
-		$this->config->setSystemValue('loglevel', Util::DEBUG);
+		$this->config->setSystemValue('loglevel', ILogger::DEBUG);
 
-		$wasMaintenanceModeEnabled = $this->config->getSystemValue('maintenance', false);
+		$wasMaintenanceModeEnabled = $this->config->getSystemValueBool('maintenance');
 
 		if(!$wasMaintenanceModeEnabled) {
 			$this->config->setSystemValue('maintenance', true);
 			$this->emit('\OC\Updater', 'maintenanceEnabled');
 		}
 
+		// Clear CAN_INSTALL file if not on git
+		if (\OC_Util::getChannel() !== 'git' && is_file(\OC::$configDir.'/CAN_INSTALL')) {
+			if (!unlink(\OC::$configDir . '/CAN_INSTALL')) {
+				$this->log->error('Could not cleanup CAN_INSTALL from your config folder. Please remove this file manually.');
+			}
+		}
+
 		$installedVersion = $this->config->getSystemValue('version', '0.0.0');
 		$currentVersion = implode('.', \OCP\Util::getVersion());
+
 		$this->log->debug('starting upgrade from ' . $installedVersion . ' to ' . $currentVersion, array('app' => 'core'));
 
 		$success = true;
@@ -192,16 +190,8 @@ class Updater extends BasicEmitter {
 		$currentVendor = $this->config->getAppValue('core', 'vendor', '');
 
 		// Vendor was not set correctly on install, so we have to white-list known versions
-		if ($currentVendor === '') {
-			if (in_array($oldVersion, [
-				'11.0.2.7',
-				'11.0.1.2',
-				'11.0.0.10',
-			], true)) {
-				$currentVendor = 'nextcloud';
-			} else if (isset($allowedPreviousVersions['owncloud'][$oldVersion])) {
-				$currentVendor = 'owncloud';
-			}
+		if ($currentVendor === '' && isset($allowedPreviousVersions['owncloud'][$oldVersion])) {
+			$currentVendor = 'owncloud';
 		}
 
 		if ($currentVendor === 'nextcloud') {
@@ -266,9 +256,10 @@ class Updater extends BasicEmitter {
 
 		// upgrade appstore apps
 		$this->upgradeAppStoreApps(\OC::$server->getAppManager()->getInstalledApps());
+		$this->upgradeAppStoreApps(\OC_App::$autoDisabledApps, true);
 
 		// install new shipped apps on upgrade
-		OC_App::loadApps('authentication');
+		OC_App::loadApps(['authentication']);
 		$errors = Installer::installShippedApps(true);
 		foreach ($errors as $appId => $exception) {
 			/** @var \Exception $exception */
@@ -298,8 +289,9 @@ class Updater extends BasicEmitter {
 	protected function doCoreUpgrade() {
 		$this->emit('\OC\Updater', 'dbUpgradeBefore');
 
-		// do the real upgrade
-		\OC_DB::updateDbFromStructure(\OC::$SERVERROOT . '/db_structure.xml');
+		// execute core migrations
+		$ms = new MigrationService('core', \OC::$server->getDatabaseConnection());
+		$ms->migrate();
 
 		$this->emit('\OC\Updater', 'dbUpgrade');
 	}
@@ -311,10 +303,11 @@ class Updater extends BasicEmitter {
 		$apps = \OC_App::getEnabledApps();
 		$this->emit('\OC\Updater', 'appUpgradeCheckBefore');
 
+		$appManager = \OC::$server->getAppManager();
 		foreach ($apps as $appId) {
 			$info = \OC_App::getAppInfo($appId);
 			$compatible = \OC_App::isAppCompatible($version, $info);
-			$isShipped = \OC_App::isShipped($appId);
+			$isShipped = $appManager->isShipped($appId);
 
 			if ($compatible && $isShipped && \OC_App::shouldUpgrade($appId)) {
 				/**
@@ -362,7 +355,7 @@ class Updater extends BasicEmitter {
 				if(!isset($stacks[$type])) {
 					$stacks[$type] = array();
 				}
-				if (\OC_App::isType($appId, $type)) {
+				if (\OC_App::isType($appId, [$type])) {
 					$stacks[$type][] = $appId;
 					$priorityType = true;
 					break;
@@ -401,16 +394,17 @@ class Updater extends BasicEmitter {
 	private function checkAppsRequirements() {
 		$isCoreUpgrade = $this->isCodeUpgrade();
 		$apps = OC_App::getEnabledApps();
-		$version = Util::getVersion();
+		$version = implode('.', Util::getVersion());
 		$disabledApps = [];
+		$appManager = \OC::$server->getAppManager();
 		foreach ($apps as $app) {
 			// check if the app is compatible with this version of ownCloud
 			$info = OC_App::getAppInfo($app);
-			if(!OC_App::isAppCompatible($version, $info)) {
-				if (OC_App::isShipped($app)) {
+			if($info === null || !OC_App::isAppCompatible($version, $info)) {
+				if ($appManager->isShipped($app)) {
 					throw new \UnexpectedValueException('The files of the app "' . $app . '" were not correctly replaced before running the update');
 				}
-				OC_App::disable($app);
+				\OC::$server->getAppManager()->disableApp($app);
 				$this->emit('\OC\Updater', 'incompatibleAppDisabled', array($app));
 			}
 			// no need to disable any app in case this is a non-core upgrade
@@ -418,20 +412,13 @@ class Updater extends BasicEmitter {
 				continue;
 			}
 			// shipped apps will remain enabled
-			if (OC_App::isShipped($app)) {
+			if ($appManager->isShipped($app)) {
 				continue;
 			}
 			// authentication and session apps will remain enabled as well
 			if (OC_App::isType($app, ['session', 'authentication'])) {
 				continue;
 			}
-
-			// disable any other 3rd party apps if not overriden
-			if(!$this->skip3rdPartyAppsDisable) {
-				\OC_App::disable($app);
-				$disabledApps[]= $app;
-				$this->emit('\OC\Updater', 'thirdPartyAppDisabled', array($app));
-			};
 		}
 		return $disabledApps;
 	}
@@ -450,24 +437,23 @@ class Updater extends BasicEmitter {
 
 	/**
 	 * @param array $disabledApps
+	 * @param bool $reenable
 	 * @throws \Exception
 	 */
-	private function upgradeAppStoreApps(array $disabledApps) {
+	private function upgradeAppStoreApps(array $disabledApps, $reenable = false) {
 		foreach($disabledApps as $app) {
 			try {
-				$installer = new Installer(
-					\OC::$server->getAppFetcher(),
-					\OC::$server->getHTTPClientService(),
-					\OC::$server->getTempManager(),
-					$this->log,
-					\OC::$server->getConfig()
-				);
 				$this->emit('\OC\Updater', 'checkAppStoreAppBefore', [$app]);
-				if (Installer::isUpdateAvailable($app, \OC::$server->getAppFetcher())) {
+				if ($this->installer->isUpdateAvailable($app)) {
 					$this->emit('\OC\Updater', 'upgradeAppStoreApp', [$app]);
-					$installer->updateAppstoreApp($app);
+					$this->installer->updateAppstoreApp($app);
 				}
 				$this->emit('\OC\Updater', 'checkAppStoreApp', [$app]);
+
+				if ($reenable) {
+					$ocApp = new \OC_App();
+					$ocApp->enable($app);
+				}
 			} catch (\Exception $ex) {
 				$this->log->logException($ex, ['app' => 'core']);
 			}
@@ -592,9 +578,6 @@ class Updater extends BasicEmitter {
 		$this->listen('\OC\Updater', 'incompatibleAppDisabled', function ($app) use($log) {
 			$log->info('\OC\Updater::incompatibleAppDisabled: Disabled incompatible app: ' . $app, ['app' => 'updater']);
 		});
-		$this->listen('\OC\Updater', 'thirdPartyAppDisabled', function ($app) use ($log) {
-			$log->info('\OC\Updater::thirdPartyAppDisabled: Disabled 3rd-party app: ' . $app, ['app' => 'updater']);
-		});
 		$this->listen('\OC\Updater', 'checkAppStoreAppBefore', function ($app) use($log) {
 			$log->info('\OC\Updater::checkAppStoreAppBefore: Checking for update of app "' . $app . '" in appstore', ['app' => 'updater']);
 		});
@@ -638,4 +621,3 @@ class Updater extends BasicEmitter {
 	}
 
 }
-

@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -146,7 +147,7 @@ class SystemTagsObjectMappingCollection implements ICollection {
 
 	function childExists($tagId) {
 		try {
-			$result = ($this->tagMapper->haveTag([$this->objectId], $this->objectType, $tagId, true));
+			$result = $this->tagMapper->haveTag([$this->objectId], $this->objectType, $tagId, true);
 
 			if ($result) {
 				$tags = $this->tagManager->getTagsByIds([$tagId]);

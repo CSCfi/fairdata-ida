@@ -3,6 +3,9 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Pierre Rudloff <contact@rudloff.pro>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Thomas Citharel <tcit@tcit.fr>
  *
  * @license AGPL-3.0
  *
@@ -68,6 +71,13 @@ class EmptyContentSecurityPolicy {
 	protected $allowedFontDomains = null;
 	/** @var array Domains from which web-workers and nested browsing content can load elements */
 	protected $allowedChildSrcDomains = null;
+	/** @var array Domains which can embed this Nextcloud instance */
+	protected $allowedFrameAncestors = null;
+	/** @var array Domains from which web-workers can be loaded */
+	protected $allowedWorkerSrcDomains = null;
+
+	/** @var array Locations to report violations to */
+	protected $reportTo = null;
 
 	/**
 	 * Whether inline JavaScript snippets are allowed or forbidden
@@ -308,6 +318,7 @@ class EmptyContentSecurityPolicy {
 	 * @param string $domain Domain to whitelist. Any passed value needs to be properly sanitized.
 	 * @return $this
 	 * @since 8.1.0
+	 * @deprecated 15.0.0 use addAllowedWorkerSrcDomains or addAllowedFrameDomain
 	 */
 	public function addAllowedChildSrcDomain($domain) {
 		$this->allowedChildSrcDomains[] = $domain;
@@ -320,9 +331,70 @@ class EmptyContentSecurityPolicy {
 	 * @param string $domain
 	 * @return $this
 	 * @since 8.1.0
+	 * @deprecated 15.0.0 use the WorkerSrcDomains or FrameDomain
 	 */
 	public function disallowChildSrcDomain($domain) {
 		$this->allowedChildSrcDomains = array_diff($this->allowedChildSrcDomains, [$domain]);
+		return $this;
+	}
+
+	/**
+	 * Domains which can embed an iFrame of the Nextcloud instance
+	 *
+	 * @param string $domain
+	 * @return $this
+	 * @since 13.0.0
+	 */
+	public function addAllowedFrameAncestorDomain($domain) {
+		$this->allowedFrameAncestors[] = $domain;
+		return $this;
+	}
+
+	/**
+	 * Domains which can embed an iFrame of the Nextcloud instance
+	 *
+	 * @param string $domain
+	 * @return $this
+	 * @since 13.0.0
+	 */
+	public function disallowFrameAncestorDomain($domain) {
+		$this->allowedFrameAncestors = array_diff($this->allowedFrameAncestors, [$domain]);
+		return $this;
+	}
+
+	/**
+	 * Domain from which workers can be loaded
+	 *
+	 * @param string $domain
+	 * @return $this
+	 * @since 15.0.0
+	 */
+	public function addAllowedWorkerSrcDomain(string $domain) {
+		$this->allowedWorkerSrcDomains[] = $domain;
+		return $this;
+	}
+
+	/**
+	 * Remove domain from which workers can be loaded
+	 *
+	 * @param string $domain
+	 * @return $this
+	 * @since 15.0.0
+	 */
+	public function disallowWorkerSrcDomain(string $domain) {
+		$this->allowedWorkerSrcDomains = array_diff($this->allowedWorkerSrcDomains, [$domain]);
+		return $this;
+	}
+
+	/**
+	 * Add location to report CSP violations to
+	 *
+	 * @param string $location
+	 * @return $this
+	 * @since 15.0.0
+	 */
+	public function addReportTo(string $location) {
+		$this->reportTo[] = $location;
 		return $this;
 	}
 
@@ -396,12 +468,31 @@ class EmptyContentSecurityPolicy {
 		}
 
 		if(!empty($this->allowedFrameDomains)) {
-			$policy .= 'frame-src ' . implode(' ', $this->allowedFrameDomains);
+			$policy .= 'frame-src ';
+			if(is_string($this->useJsNonce)) {
+				$policy .= '\'nonce-' . base64_encode($this->useJsNonce) . '\' ';
+			}
+			$policy .= implode(' ', $this->allowedFrameDomains);
 			$policy .= ';';
 		}
 
 		if(!empty($this->allowedChildSrcDomains)) {
 			$policy .= 'child-src ' . implode(' ', $this->allowedChildSrcDomains);
+			$policy .= ';';
+		}
+
+		if(!empty($this->allowedFrameAncestors)) {
+			$policy .= 'frame-ancestors ' . implode(' ', $this->allowedFrameAncestors);
+			$policy .= ';';
+		}
+
+		if (!empty($this->allowedWorkerSrcDomains)) {
+			$policy .= 'worker-src ' . implode(' ', $this->allowedWorkerSrcDomains);
+			$policy .= ';';
+		}
+
+		if (!empty($this->reportTo)) {
+			$policy .= 'report-uri ' . implode(' ', $this->reportTo);
 			$policy .= ';';
 		}
 

@@ -66,7 +66,6 @@ $(document).ready(function() {
 			},
 
 			reload: function() {
-				var tagName = OC.TAG_FAVORITE;
 				this.showMask();
 				if (this._reloadCall) {
 					this._reloadCall.abort();
@@ -95,12 +94,6 @@ $(document).ready(function() {
 
 				return OCA.Files.FileList.prototype.reloadCallback.call(this, status, result);
 			},
-
-			_onUrlChanged: function (e) {
-				if (e && _.isString(e.dir)) {
-					this.changeDirectory(e.dir, false, true);
-				}
-			}
 		});
 
 		OCA.Files.FavoritesFileList = FavoritesFileList;

@@ -5,9 +5,12 @@
  * @author Andreas Fischer <bantu@owncloud.com>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Jürgen Haas <juergen@paragon-es.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Owen Winkler <a_github@midnightcircus.com>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Sander Ruitenbeek <sander@grids.be>
  * @author Steffen Lindner <mail@steffen-lindner.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Pulzer <t.pulzer@kniel.de>
@@ -32,14 +35,15 @@
 namespace OC\Core\Command;
 
 use OC\Console\TimestampFormatter;
+use OC\Installer;
 use OC\Updater;
 use OCP\IConfig;
 use OCP\ILogger;
+use OCP\Util;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 class Upgrade extends Command {
@@ -60,23 +64,19 @@ class Upgrade extends Command {
 	/**
 	 * @param IConfig $config
 	 * @param ILogger $logger
+	 * @param Installer $installer
 	 */
-	public function __construct(IConfig $config, ILogger $logger) {
+	public function __construct(IConfig $config, ILogger $logger, Installer $installer) {
 		parent::__construct();
 		$this->config = $config;
 		$this->logger = $logger;
+		$this->installer = $installer;
 	}
 
 	protected function configure() {
 		$this
 			->setName('upgrade')
-			->setDescription('run upgrade routines after installation of a new release. The release has to be installed before.')
-			->addOption(
-				'--no-app-disable',
-				null,
-				InputOption::VALUE_NONE,
-				'skips the disable of third party apps'
-			);
+			->setDescription('run upgrade routines after installation of a new release. The release has to be installed before.');
 	}
 
 	/**
@@ -87,7 +87,7 @@ class Upgrade extends Command {
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output) {
 
-		if(\OC::checkUpgrade(false)) {
+		if(Util::needUpgrade()) {
 			if (OutputInterface::VERBOSITY_NORMAL < $output->getVerbosity()) {
 				// Prepend each line with a little timestamp
 				$timestampFormatter = new TimestampFormatter($this->config, $output->getFormatter());
@@ -98,12 +98,10 @@ class Upgrade extends Command {
 			$updater = new Updater(
 					$this->config,
 					\OC::$server->getIntegrityCodeChecker(),
-					$this->logger
+					$this->logger,
+					$this->installer
 			);
 
-			if ($input->getOption('no-app-disable')) {
-				$updater->setSkip3rdPartyAppsDisable(true);
-			}
 			$dispatcher = \OC::$server->getEventDispatcher();
 			$progress = new ProgressBar($output);
 			$progress->setFormat(" %message%\n %current%/%max% [%bar%] %percent:3s%%");
@@ -182,7 +180,7 @@ class Upgrade extends Command {
 			$dispatcher->addListener('\OC\Repair::info', $repairListener);
 			$dispatcher->addListener('\OC\Repair::warning', $repairListener);
 			$dispatcher->addListener('\OC\Repair::error', $repairListener);
-			
+
 
 			$updater->listen('\OC\Updater', 'maintenanceEnabled', function () use($output) {
 				$output->writeln('<info>Turned on maintenance mode</info>');
@@ -216,9 +214,6 @@ class Upgrade extends Command {
 			});
 			$updater->listen('\OC\Updater', 'incompatibleAppDisabled', function ($app) use($output) {
 				$output->writeln('<comment>Disabled incompatible app: ' . $app . '</comment>');
-			});
-			$updater->listen('\OC\Updater', 'thirdPartyAppDisabled', function ($app) use ($output) {
-				$output->writeln('<comment>Disabled 3rd-party app: ' . $app . '</comment>');
 			});
 			$updater->listen('\OC\Updater', 'checkAppStoreAppBefore', function ($app) use($output) {
 				$output->writeln('<info>Checking for update of app ' . $app . ' in appstore</info>');
@@ -269,7 +264,7 @@ class Upgrade extends Command {
 			}
 
 			return self::ERROR_SUCCESS;
-		} else if($this->config->getSystemValue('maintenance', false)) {
+		} else if($this->config->getSystemValueBool('maintenance')) {
 			//Possible scenario: Nextcloud core is updated but an app failed
 			$output->writeln('<warning>Nextcloud is in maintenance mode</warning>');
 			$output->write('<comment>Maybe an upgrade is already in process. Please check the '

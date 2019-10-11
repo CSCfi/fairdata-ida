@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -28,5 +30,9 @@ class SqliteExpressionBuilder extends ExpressionBuilder {
 	 */
 	public function like($x, $y, $type = null) {
 		return parent::like($x, $y, $type) . " ESCAPE '\\'";
+	}
+
+	public function iLike($x, $y, $type = null) {
+		return $this->like($this->functionBuilder->lower($x), $this->functionBuilder->lower($y), $type);
 	}
 }

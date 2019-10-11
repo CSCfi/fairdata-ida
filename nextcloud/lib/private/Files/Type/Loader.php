@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Rello <Rello@users.noreply.github.com>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  *
  * @license AGPL-3.0
@@ -111,16 +114,9 @@ class Loader implements IMimeTypeLoader {
 	 * @param int inserted ID
 	 */
 	protected function store($mimetype) {
-		try {
-			$qb = $this->dbConnection->getQueryBuilder();
-			$qb->insert('mimetypes')
-				->values([
-					'mimetype' => $qb->createNamedParameter($mimetype)
-				]);
-			$qb->execute();
-		} catch (UniqueConstraintViolationException $e) {
-			// something inserted it before us
-		}
+		$this->dbConnection->insertIfNotExist('*PREFIX*mimetypes', [
+			'mimetype' => $mimetype
+		]);
 
 		$fetch = $this->dbConnection->getQueryBuilder();
 		$fetch->select('id')
@@ -129,6 +125,10 @@ class Loader implements IMimeTypeLoader {
 				$fetch->expr()->eq('mimetype', $fetch->createNamedParameter($mimetype)
 			));
 		$row = $fetch->execute()->fetch();
+
+		if (!$row) {
+			throw new \Exception("Failed to get mimetype id for $mimetype after trying to store it");
+		}
 
 		$this->mimetypes[$row['id']] = $mimetype;
 		$this->mimetypeIds[$mimetype] = $row['id'];
@@ -169,7 +169,7 @@ class Loader implements IMimeTypeLoader {
 				'mimetype', $update->createNamedParameter($folderMimeTypeId)
 			))
 			->andWhere($update->expr()->like(
-				$update->createFunction('LOWER(' . $update->getColumnName('name') . ')'),
+				$update->func()->lower('name'),
 				$update->createNamedParameter('%' . $this->dbConnection->escapeLikeParameter('.' . $ext))
 			));
 		return $update->execute();

@@ -65,6 +65,11 @@ class BasicSearch implements XmlDeserializable {
 	 */
 	public $limit;
 
+	/**
+	 * @param Reader $reader
+	 * @return BasicSearch
+	 * @throws ParseException
+	 */
 	static function xmlDeserialize(Reader $reader) {
 		$search = new self();
 

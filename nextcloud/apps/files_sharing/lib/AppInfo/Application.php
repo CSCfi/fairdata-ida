@@ -6,8 +6,10 @@
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
  *
@@ -28,16 +30,20 @@
 namespace OCA\Files_Sharing\AppInfo;
 
 use OCA\Files_Sharing\Middleware\OCSShareAPIMiddleware;
+use OCA\Files_Sharing\Middleware\ShareInfoMiddleware;
 use OCA\Files_Sharing\MountProvider;
 use OCP\AppFramework\App;
 use OC\AppFramework\Utility\SimpleContainer;
 use OCA\Files_Sharing\Controller\ExternalSharesController;
 use OCA\Files_Sharing\Controller\ShareController;
 use OCA\Files_Sharing\Middleware\SharingCheckMiddleware;
+use OCP\AppFramework\Utility\IControllerMethodReflector;
 use OCP\Defaults;
 use OCP\Federation\ICloudIdManager;
 use \OCP\IContainer;
 use OCP\IServerContainer;
+use OCA\Files_Sharing\Capabilities;
+use OCA\Files_Sharing\External\Manager;
 
 class Application extends App {
 	public function __construct(array $urlParams = array()) {
@@ -98,10 +104,14 @@ class Application extends App {
 				$server->getHTTPClientService(),
 				$server->getNotificationManager(),
 				$server->query(\OCP\OCS\IDiscoveryService::class),
+				$server->getCloudFederationProviderManager(),
+				$server->getCloudFederationFactory(),
+				$server->getGroupManager(),
+				$server->getUserManager(),
 				$uid
 			);
 		});
-		$container->registerAlias('OCA\Files_Sharing\External\Manager', 'ExternalManager');
+		$container->registerAlias(Manager::class, 'ExternalManager');
 
 		/**
 		 * Middleware
@@ -111,7 +121,7 @@ class Application extends App {
 				$c->query('AppName'),
 				$server->getConfig(),
 				$server->getAppManager(),
-				$c['ControllerMethodReflector'],
+				$server->query(IControllerMethodReflector::class),
 				$server->getShareManager(),
 				$server->getRequest()
 			);
@@ -124,9 +134,16 @@ class Application extends App {
 			);
 		});
 
+		$container->registerService(ShareInfoMiddleware::class, function () use ($server) {
+			return new ShareInfoMiddleware(
+				$server->getShareManager()
+			);
+		});
+
 		// Execute middlewares
 		$container->registerMiddleWare('SharingCheckMiddleware');
 		$container->registerMiddleWare('OCSShareAPIMiddleware');
+		$container->registerMiddleWare(ShareInfoMiddleware::class);
 
 		$container->registerService('MountProvider', function (IContainer $c) {
 			/** @var \OCP\IServerContainer $server */
@@ -153,7 +170,7 @@ class Application extends App {
 		/*
 		 * Register capabilities
 		 */
-		$container->registerCapability('OCA\Files_Sharing\Capabilities');
+		$container->registerCapability(Capabilities::class);
 	}
 
 	public function registerMountProviders() {

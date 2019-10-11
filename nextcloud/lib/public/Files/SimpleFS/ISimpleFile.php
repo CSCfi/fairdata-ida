@@ -22,6 +22,7 @@
  */
 namespace OCP\Files\SimpleFS;
 
+use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 
 /**
@@ -29,7 +30,6 @@ use OCP\Files\NotPermittedException;
  *
  * @package OCP\Files\SimpleFS
  * @since 11.0.0
- * @internal This interface is experimental and might change for NC12
  */
 interface ISimpleFile {
 
@@ -68,6 +68,8 @@ interface ISimpleFile {
 	/**
 	 * Get the content
 	 *
+	 * @throws NotPermittedException
+	 * @throws NotFoundException
 	 * @return string
 	 * @since 11.0.0
 	 */
@@ -76,8 +78,9 @@ interface ISimpleFile {
 	/**
 	 * Overwrite the file
 	 *
-	 * @param string $data
+	 * @param string|resource $data
 	 * @throws NotPermittedException
+	 * @throws NotFoundException
 	 * @since 11.0.0
 	 */
 	public function putContent($data);
@@ -97,4 +100,22 @@ interface ISimpleFile {
 	 * @since 11.0.0
 	 */
 	public function getMimeType();
+
+	/**
+	 * Open the file as stream for reading, resulting resource can be operated as stream like the result from php's own fopen
+	 *
+	 * @return resource
+	 * @throws \OCP\Files\NotPermittedException
+	 * @since 14.0.0
+	 */
+	public function read();
+
+	/**
+	 * Open the file as stream for writing, resulting resource can be operated as stream like the result from php's own fopen
+	 *
+	 * @return resource
+	 * @throws \OCP\Files\NotPermittedException
+	 * @since 14.0.0
+	 */
+	public function write();
 }

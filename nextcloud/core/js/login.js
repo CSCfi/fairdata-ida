@@ -9,14 +9,23 @@
 /**
  * @namespace
  * @memberOf OC
+ * @private
  */
 OC.Login = _.extend(OC.Login || {}, {
 	onLogin: function () {
-		$('#submit')
-			.removeClass('icon-confirm-white')
-			.addClass('icon-loading-small')
-			.attr('value', t('core', 'Logging in …'));
-		return true;
+		// Only if password reset form is not active
+		if($('form[name=login][action]').length === 0) {
+			$('#submit-wrapper .submit-icon')
+				.removeClass('icon-confirm-white')
+				.addClass(OCA.Theming && OCA.Theming.inverted
+					? 'icon-loading-small'
+					: 'icon-loading-small-dark');
+			$('#submit')
+				.attr('value', t('core', 'Logging in …'));
+			$('.login-additional').fadeOut();
+			return true;
+		}
+		return false;
 	},
 
 	rememberLogin: function(){
@@ -32,6 +41,10 @@ $(document).ready(function() {
 	$('form[name=login]').submit(OC.Login.onLogin);
 
 	$('#remember_login').click(OC.Login.rememberLogin);
+
+	var clearParamRegex = new RegExp('clear=1');
+	if (clearParamRegex.test(window.location.href)) {
+		window.localStorage.clear();
+		window.sessionStorage.clear();
+	}
 });
-
-

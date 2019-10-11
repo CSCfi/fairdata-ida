@@ -1,8 +1,12 @@
 <?php
 /**
+ * @copyright Copyright (c) 2016, ownCloud, Inc.
+ *
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Thomas Citharel <tcit@tcit.fr>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
- * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -20,6 +24,8 @@
  */
 namespace OCA\DAV\CalDAV;
 
+use OCP\IConfig;
+use OCP\IL10N;
 use Sabre\DAV\Collection;
 
 class PublicCalendarRoot extends Collection {
@@ -30,9 +36,22 @@ class PublicCalendarRoot extends Collection {
 	/** @var \OCP\IL10N */
 	protected $l10n;
 
-	function __construct(CalDavBackend $caldavBackend) {
+	/** @var \OCP\IConfig */
+	protected $config;
+
+	/**
+	 * PublicCalendarRoot constructor.
+	 *
+	 * @param CalDavBackend $caldavBackend
+	 * @param IL10N $l10n
+	 * @param IConfig $config
+	 */
+	function __construct(CalDavBackend $caldavBackend, IL10N $l10n,
+						 IConfig $config) {
 		$this->caldavBackend = $caldavBackend;
-		$this->l10n = \OC::$server->getL10N('dav');
+		$this->l10n = $l10n;
+		$this->config = $config;
+
 	}
 
 	/**
@@ -47,7 +66,7 @@ class PublicCalendarRoot extends Collection {
 	 */
 	function getChild($name) {
 		$calendar = $this->caldavBackend->getPublicCalendar($name);
-		return new PublicCalendar($this->caldavBackend, $calendar, $this->l10n);
+		return new PublicCalendar($this->caldavBackend, $calendar, $this->l10n, $this->config);
 	}
 
 	/**

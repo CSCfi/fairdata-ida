@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,8 +23,12 @@
 
 namespace OCA\DAV\CalDAV\Activity\Provider;
 
+use OCA\DAV\CalDAV\CalDavBackend;
 use OCP\Activity\IEvent;
 use OCP\Activity\IProvider;
+use OCP\IGroup;
+use OCP\IGroupManager;
+use OCP\IL10N;
 use OCP\IUser;
 use OCP\IUserManager;
 
@@ -31,14 +37,22 @@ abstract class Base implements IProvider {
 	/** @var IUserManager */
 	protected $userManager;
 
-	/** @var string[] cached displayNames - key is the UID and value the displayname */
-	protected $displayNames = [];
+	/** @var string[]  */
+	protected $userDisplayNames = [];
+
+	/** @var IGroupManager */
+	protected $groupManager;
+
+	/** @var string[] */
+	protected $groupDisplayNames = [];
 
 	/**
 	 * @param IUserManager $userManager
+	 * @param IGroupManager $groupManager
 	 */
-	public function __construct(IUserManager $userManager) {
+	public function __construct(IUserManager $userManager, IGroupManager $groupManager) {
 		$this->userManager = $userManager;
+		$this->groupManager = $groupManager;
 	}
 
 	/**
@@ -64,7 +78,7 @@ abstract class Base implements IProvider {
 	protected function generateObjectParameter($eventData) {
 		if (!is_array($eventData) || !isset($eventData['id']) || !isset($eventData['name'])) {
 			throw new \InvalidArgumentException();
-		};
+		}
 
 		return [
 			'type' => 'calendar-event',
@@ -74,11 +88,33 @@ abstract class Base implements IProvider {
 	}
 
 	/**
+	 * @param array $data
+	 * @param IL10N $l
+	 * @return array
+	 */
+	protected function generateCalendarParameter($data, IL10N $l) {
+		if ($data['uri'] === CalDavBackend::PERSONAL_CALENDAR_URI &&
+			$data['name'] === CalDavBackend::PERSONAL_CALENDAR_NAME) {
+			return [
+				'type' => 'calendar',
+				'id' => $data['id'],
+				'name' => $l->t('Personal'),
+			];
+		}
+
+		return [
+			'type' => 'calendar',
+			'id' => $data['id'],
+			'name' => $data['name'],
+		];
+	}
+
+	/**
 	 * @param int $id
 	 * @param string $name
 	 * @return array
 	 */
-	protected function generateCalendarParameter($id, $name) {
+	protected function generateLegacyCalendarParameter($id, $name) {
 		return [
 			'type' => 'calendar',
 			'id' => $id,
@@ -87,30 +123,18 @@ abstract class Base implements IProvider {
 	}
 
 	/**
-	 * @param string $id
-	 * @return array
-	 */
-	protected function generateGroupParameter($id) {
-		return [
-			'type' => 'group',
-			'id' => $id,
-			'name' => $id,
-		];
-	}
-
-	/**
 	 * @param string $uid
 	 * @return array
 	 */
 	protected function generateUserParameter($uid) {
-		if (!isset($this->displayNames[$uid])) {
-			$this->displayNames[$uid] = $this->getDisplayName($uid);
+		if (!isset($this->userDisplayNames[$uid])) {
+			$this->userDisplayNames[$uid] = $this->getUserDisplayName($uid);
 		}
 
 		return [
 			'type' => 'user',
 			'id' => $uid,
-			'name' => $this->displayNames[$uid],
+			'name' => $this->userDisplayNames[$uid],
 		];
 	}
 
@@ -118,12 +142,39 @@ abstract class Base implements IProvider {
 	 * @param string $uid
 	 * @return string
 	 */
-	protected function getDisplayName($uid) {
+	protected function getUserDisplayName($uid) {
 		$user = $this->userManager->get($uid);
 		if ($user instanceof IUser) {
 			return $user->getDisplayName();
-		} else {
-			return $uid;
 		}
+		return $uid;
+	}
+
+	/**
+	 * @param string $gid
+	 * @return array
+	 */
+	protected function generateGroupParameter($gid) {
+		if (!isset($this->groupDisplayNames[$gid])) {
+			$this->groupDisplayNames[$gid] = $this->getGroupDisplayName($gid);
+		}
+
+		return [
+			'type' => 'user-group',
+			'id' => $gid,
+			'name' => $this->groupDisplayNames[$gid],
+		];
+	}
+
+	/**
+	 * @param string $gid
+	 * @return string
+	 */
+	protected function getGroupDisplayName($gid) {
+		$group = $this->groupManager->get($gid);
+		if ($group instanceof IGroup) {
+			return $group->getDisplayName();
+		}
+		return $gid;
 	}
 }

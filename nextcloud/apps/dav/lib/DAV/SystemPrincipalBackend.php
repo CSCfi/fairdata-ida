@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -23,7 +24,6 @@
 namespace OCA\DAV\DAV;
 
 use Sabre\DAVACL\PrincipalBackend\AbstractBackend;
-use Sabre\HTTP\URLUtil;
 
 class SystemPrincipalBackend extends AbstractBackend {
 
@@ -163,7 +163,7 @@ class SystemPrincipalBackend extends AbstractBackend {
 	 * @return array
 	 */
 	function getGroupMembership($principal) {
-		list($prefix, $name) = URLUtil::splitPath($principal);
+		list($prefix, ) = \Sabre\Uri\split($principal);
 
 		if ($prefix === 'principals/system') {
 			$principal = $this->getPrincipalByPath($principal);

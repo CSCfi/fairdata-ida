@@ -26,6 +26,7 @@ namespace OC\Files\Mount;
 use OCP\Files\Config\IHomeMountProvider;
 use OCP\Files\Storage\IStorageFactory;
 use OCP\IConfig;
+use OCP\ILogger;
 use OCP\IUser;
 
 /**
@@ -79,14 +80,15 @@ class ObjectHomeMountProvider implements IHomeMountProvider {
 
 		// sanity checks
 		if (empty($config['class'])) {
-			\OCP\Util::writeLog('files', 'No class given for objectstore', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('files', 'No class given for objectstore', ILogger::ERROR);
 		}
 		if (!isset($config['arguments'])) {
 			$config['arguments'] = [];
 		}
-		$config['arguments']['user'] = $user;
 		// instantiate object store implementation
 		$config['arguments']['objectstore'] = new $config['class']($config['arguments']);
+
+		$config['arguments']['user'] = $user;
 
 		return $config;
 	}
@@ -103,12 +105,11 @@ class ObjectHomeMountProvider implements IHomeMountProvider {
 
 		// sanity checks
 		if (empty($config['class'])) {
-			\OCP\Util::writeLog('files', 'No class given for objectstore', \OCP\Util::ERROR);
+			\OCP\Util::writeLog('files', 'No class given for objectstore', ILogger::ERROR);
 		}
 		if (!isset($config['arguments'])) {
 			$config['arguments'] = [];
 		}
-		$config['arguments']['user'] = $user;
 
 		$bucket = $this->config->getUserValue($user->getUID(), 'homeobjectstore', 'bucket', null);
 
@@ -131,6 +132,8 @@ class ObjectHomeMountProvider implements IHomeMountProvider {
 
 		// instantiate object store implementation
 		$config['arguments']['objectstore'] = new $config['class']($config['arguments']);
+
+		$config['arguments']['user'] = $user;
 
 		return $config;
 	}

@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
@@ -27,6 +28,7 @@
 namespace OC\Files\Storage\Wrapper;
 
 use OCP\Files\Cache\ICacheEntry;
+use OCP\Files\Storage\IStorage;
 
 class Quota extends Wrapper {
 
@@ -44,7 +46,7 @@ class Quota extends Wrapper {
 	 * @param array $parameters
 	 */
 	public function __construct($parameters) {
-		$this->storage = $parameters['storage'];
+		parent::__construct($parameters);
 		$this->quota = $parameters['quota'];
 		$this->sizeRoot = isset($parameters['root']) ? $parameters['root'] : '';
 	}
@@ -81,7 +83,7 @@ class Quota extends Wrapper {
 	 * @return int
 	 */
 	public function free_space($path) {
-		if ($this->quota < 0) {
+		if ($this->quota < 0 || strpos($path, 'cache') === 0 || strpos($path, 'uploads') === 0) {
 			return $this->storage->free_space($path);
 		} else {
 			$used = $this->getSize($this->sizeRoot);
@@ -109,7 +111,7 @@ class Quota extends Wrapper {
 	 * @return bool
 	 */
 	public function file_put_contents($path, $data) {
-		$free = $this->free_space('');
+		$free = $this->free_space($path);
 		if ($free < 0 or strlen($data) < $free) {
 			return $this->storage->file_put_contents($path, $data);
 		} else {
@@ -125,7 +127,7 @@ class Quota extends Wrapper {
 	 * @return bool
 	 */
 	public function copy($source, $target) {
-		$free = $this->free_space('');
+		$free = $this->free_space($target);
 		if ($free < 0 or $this->getSize($source) < $free) {
 			return $this->storage->copy($source, $target);
 		} else {
@@ -145,7 +147,7 @@ class Quota extends Wrapper {
 
 		// don't apply quota for part files
 		if (!$this->isPartFile($path)) {
-			$free = $this->free_space('');
+			$free = $this->free_space($path);
 			if ($source && $free >= 0 && $mode !== 'r' && $mode !== 'rb') {
 				// only apply quota for files, not metadata, trash or others
 				if (strpos(ltrim($path, '/'), 'files/') === 0) {
@@ -170,13 +172,13 @@ class Quota extends Wrapper {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @return bool
 	 */
-	public function copyFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
-		$free = $this->free_space('');
+	public function copyFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
+		$free = $this->free_space($targetInternalPath);
 		if ($free < 0 or $this->getSize($sourceInternalPath, $sourceStorage) < $free) {
 			return $this->storage->copyFromStorage($sourceStorage, $sourceInternalPath, $targetInternalPath);
 		} else {
@@ -185,17 +187,36 @@ class Quota extends Wrapper {
 	}
 
 	/**
-	 * @param \OCP\Files\Storage $sourceStorage
+	 * @param IStorage $sourceStorage
 	 * @param string $sourceInternalPath
 	 * @param string $targetInternalPath
 	 * @return bool
 	 */
-	public function moveFromStorage(\OCP\Files\Storage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
-		$free = $this->free_space('');
+	public function moveFromStorage(IStorage $sourceStorage, $sourceInternalPath, $targetInternalPath) {
+		$free = $this->free_space($targetInternalPath);
 		if ($free < 0 or $this->getSize($sourceInternalPath, $sourceStorage) < $free) {
 			return $this->storage->moveFromStorage($sourceStorage, $sourceInternalPath, $targetInternalPath);
 		} else {
 			return false;
 		}
 	}
+
+	public function mkdir($path) {
+		$free = $this->free_space($path);
+		if ($free === 0.0) {
+			return false;
+		}
+
+		return parent::mkdir($path);
+	}
+
+	public function touch($path, $mtime = null) {
+		$free = $this->free_space($path);
+		if ($free === 0.0) {
+			return false;
+		}
+
+		return parent::touch($path, $mtime);
+	}
+
 }

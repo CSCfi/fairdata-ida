@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "Хадгалсан",
-    "Saving failed:" : "Хадгалалт бүтэлгүйтэв:",
     "File MIME type" : "Файлын MIME төрөл",
     "is" : "бол",
     "is not" : "биш",
@@ -38,6 +36,14 @@ OC.L10N.register(
     "User group membership" : "хэрэглэгчийн бүлгийн гишүүнчлэл",
     "is member of" : "-ын гишүүн ",
     "is not member of" : "-ын гишүүн биш",
+    "Short rule description" : "Дүрмийн тайлбар товч",
+    "Add rule" : "Дүрэм нэмэх",
+    "Reset" : "тохируулах",
+    "Save" : "хадгалах",
+    "Saving…" : "хадгалж байна",
+    "Saved" : "Хадгалсан",
+    "Saving failed:" : "Хадгалалт бүтэлгүйтэв:",
+    "Add rule group" : "Бүлэгт дүрэм нэмэх",
     "The given operator is invalid" : "Өгөгдсөн оператор буруу байна",
     "The given regular expression is invalid" : "Өгөгдсөн тогтмол илэрхийлэл буруу байна",
     "The given file size is invalid" : "Өгөгдсөн файлын хэмжээ буруу байна",
@@ -51,16 +57,8 @@ OC.L10N.register(
     "The given group does not exist" : "Өгөгдсөн бүлэг байхгүй байна",
     "Check %s is invalid or does not exist" : "%sшалгахад хүчингүй эсвэл байхгүй байна",
     "Operation #%s does not exist" : "%s үйл ажиллагаа байхгүй",
-    "Workflow" : "ажлын үйл явц",
     "Open documentation" : "Нээлттэй баримт бичиг",
-    "Add rule group" : "Бүлэгт дүрэм нэмэх",
-    "Short rule description" : "Дүрмийн тайлбар товч",
-    "Add rule" : "Дүрэм нэмэх",
-    "Reset" : "тохируулах",
-    "Save" : "хадгалах",
-    "Saving…" : "хадгалж байна",
     "Loading…" : "уншиж байна",
-    "Successfully saved" : "амжилттай хадгалагдлаа",
-    "File mime type" : "файлын mime төрөл"
+    "Workflow" : "ажлын үйл явц"
 },
 "nplurals=2; plural=(n != 1);");

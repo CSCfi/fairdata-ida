@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -61,11 +63,10 @@ class VersionParser {
 				if(!$this->isValidVersionString($firstVersionNumber)) {
 					break;
 				}
-				if(substr($firstVersion, 0, 1) === '>') {
+				if(strpos($firstVersion, '>') === 0) {
 					return new Version($firstVersionNumber, '');
-				} else {
-					return new Version('', $firstVersionNumber);
 				}
+				return new Version('', $firstVersionNumber);
 			case 2:
 				if(!$this->isValidVersionString($firstVersionNumber) || !$this->isValidVersionString($secondVersionNumber)) {
 					break;

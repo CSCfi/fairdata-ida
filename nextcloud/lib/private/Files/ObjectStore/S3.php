@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2016 Robin Appelman <robin@icewind.nl>
  *
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,13 +26,9 @@ namespace OC\Files\ObjectStore;
 
 use OCP\Files\ObjectStore\IObjectStore;
 
-// TODO: proper composer
-set_include_path(get_include_path() . PATH_SEPARATOR .
-	\OC_App::getAppPath('files_external') . '/3rdparty/aws-sdk-php');
-require_once 'aws-autoloader.php';
-
 class S3 implements IObjectStore {
 	use S3ConnectionTrait;
+	use S3ObjectTrait;
 
 	public function __construct($parameters) {
 		$this->parseParams($parameters);
@@ -39,69 +38,7 @@ class S3 implements IObjectStore {
 	 * @return string the container or bucket name where objects are stored
 	 * @since 7.0.0
 	 */
-	function getStorageId() {
+	public function getStorageId() {
 		return $this->id;
 	}
-
-	/**
-	 * @param string $urn the unified resource name used to identify the object
-	 * @return resource stream with the read data
-	 * @throws \Exception when something goes wrong, message will be logged
-	 * @since 7.0.0
-	 */
-	function readObject($urn) {
-		// Create the command and serialize the request
-		$request = $this->getConnection()->getCommand('GetObject', [
-			'Bucket' => $this->bucket,
-			'Key' => $urn
-		])->prepare();
-
-		$request->dispatch('request.before_send', array(
-			'request' => $request
-		));
-
-		$headers = $request->getHeaderLines();
-		$headers[] = 'Connection: close';
-
-		$opts = [
-			'http' => [
-				'method' => "GET",
-				'header' => $headers
-			],
-			'ssl' => [
-				'verify_peer' => true
-			]
-		];
-
-		$context = stream_context_create($opts);
-		return fopen($request->getUrl(), 'r', false, $context);
-	}
-
-	/**
-	 * @param string $urn the unified resource name used to identify the object
-	 * @param resource $stream stream with the data to write
-	 * @throws \Exception when something goes wrong, message will be logged
-	 * @since 7.0.0
-	 */
-	function writeObject($urn, $stream) {
-		$this->getConnection()->putObject([
-			'Bucket' => $this->bucket,
-			'Key' => $urn,
-			'Body' => $stream
-		]);
-	}
-
-	/**
-	 * @param string $urn the unified resource name used to identify the object
-	 * @return void
-	 * @throws \Exception when something goes wrong, message will be logged
-	 * @since 7.0.0
-	 */
-	function deleteObject($urn) {
-		$this->getConnection()->deleteObject([
-			'Bucket' => $this->bucket,
-			'Key' => $urn
-		]);
-	}
-
 }

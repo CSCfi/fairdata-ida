@@ -3,9 +3,9 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Frank Karlitschek <frank@karlitschek.de>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
  *
@@ -23,6 +23,7 @@
  *
  */
 
+require_once __DIR__ . '/../lib/versioncheck.php';
 require_once __DIR__ . '/../lib/base.php';
 
 header('Content-type: application/xml');
@@ -34,7 +35,7 @@ $url = $request->getServerProtocol() . '://' . substr($request->getServerHost() 
 $writer = new XMLWriter();
 $writer->openURI('php://output');
 $writer->startDocument('1.0','UTF-8');
-$writer->setIndent(4);
+$writer->setIndent(true);
 $writer->startElement('providers');
 $writer->startElement('provider');
 $writer->writeElement('id', 'ownCloud');

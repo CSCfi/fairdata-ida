@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,6 +26,7 @@ namespace OCA\DAV\CalDAV\Activity\Provider;
 use OCP\Activity\IEvent;
 use OCP\Activity\IEventMerger;
 use OCP\Activity\IManager;
+use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUserManager;
@@ -34,6 +37,8 @@ class Calendar extends Base {
 	const SUBJECT_ADD = 'calendar_add';
 	const SUBJECT_UPDATE = 'calendar_update';
 	const SUBJECT_DELETE = 'calendar_delete';
+	const SUBJECT_PUBLISH = 'calendar_publish';
+	const SUBJECT_UNPUBLISH = 'calendar_unpublish';
 	const SUBJECT_SHARE_USER = 'calendar_user_share';
 	const SUBJECT_SHARE_GROUP = 'calendar_group_share';
 	const SUBJECT_UNSHARE_USER = 'calendar_user_unshare';
@@ -59,10 +64,11 @@ class Calendar extends Base {
 	 * @param IURLGenerator $url
 	 * @param IManager $activityManager
 	 * @param IUserManager $userManager
+	 * @param IGroupManager $groupManager
 	 * @param IEventMerger $eventMerger
 	 */
-	public function __construct(IFactory $languageFactory, IURLGenerator $url, IManager $activityManager, IUserManager $userManager, IEventMerger $eventMerger) {
-		parent::__construct($userManager);
+	public function __construct(IFactory $languageFactory, IURLGenerator $url, IManager $activityManager, IUserManager $userManager, IGroupManager $groupManager, IEventMerger $eventMerger) {
+		parent::__construct($userManager, $groupManager);
 		$this->languageFactory = $languageFactory;
 		$this->url = $url;
 		$this->activityManager = $activityManager;
@@ -87,7 +93,7 @@ class Calendar extends Base {
 		if ($this->activityManager->getRequirePNG()) {
 			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.png')));
 		} else {
-			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.svg')));
+			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar.svg')));
 		}
 
 		if ($event->getSubject() === self::SUBJECT_ADD) {
@@ -102,6 +108,11 @@ class Calendar extends Base {
 			$subject = $this->l->t('{actor} updated calendar {calendar}');
 		} else if ($event->getSubject() === self::SUBJECT_UPDATE . '_self') {
 			$subject = $this->l->t('You updated calendar {calendar}');
+
+		} else if ($event->getSubject() === self::SUBJECT_PUBLISH . '_self') {
+			$subject = $this->l->t('You shared calendar {calendar} as public link');
+		} else if ($event->getSubject() === self::SUBJECT_UNPUBLISH . '_self') {
+			$subject = $this->l->t('You removed public link for calendar {calendar}');
 
 		} else if ($event->getSubject() === self::SUBJECT_SHARE_USER) {
 			$subject = $this->l->t('{actor} shared calendar {calendar} with you');
@@ -156,6 +167,58 @@ class Calendar extends Base {
 		$subject = $event->getSubject();
 		$parameters = $event->getSubjectParameters();
 
+		// Nextcloud 13+
+		if (isset($parameters['calendar'])) {
+			switch ($subject) {
+				case self::SUBJECT_ADD:
+				case self::SUBJECT_ADD . '_self':
+				case self::SUBJECT_DELETE:
+				case self::SUBJECT_DELETE . '_self':
+				case self::SUBJECT_UPDATE:
+				case self::SUBJECT_UPDATE . '_self':
+				case self::SUBJECT_PUBLISH . '_self':
+				case self::SUBJECT_UNPUBLISH . '_self':
+				case self::SUBJECT_SHARE_USER:
+				case self::SUBJECT_UNSHARE_USER:
+				case self::SUBJECT_UNSHARE_USER . '_self':
+					return [
+						'actor' => $this->generateUserParameter($parameters['actor']),
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+					];
+				case self::SUBJECT_SHARE_USER . '_you':
+				case self::SUBJECT_UNSHARE_USER . '_you':
+					return [
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+						'user' => $this->generateUserParameter($parameters['user']),
+					];
+				case self::SUBJECT_SHARE_USER . '_by':
+				case self::SUBJECT_UNSHARE_USER . '_by':
+					return [
+						'actor' => $this->generateUserParameter($parameters['actor']),
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+						'user' => $this->generateUserParameter($parameters['user']),
+					];
+				case self::SUBJECT_SHARE_GROUP . '_you':
+				case self::SUBJECT_UNSHARE_GROUP . '_you':
+					return [
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+						'group' => $this->generateGroupParameter($parameters['group']),
+					];
+				case self::SUBJECT_SHARE_GROUP . '_by':
+				case self::SUBJECT_UNSHARE_GROUP . '_by':
+					return [
+						'actor' => $this->generateUserParameter($parameters['actor']),
+						'calendar' => $this->generateCalendarParameter($parameters['calendar'], $this->l),
+						'group' => $this->generateGroupParameter($parameters['group']),
+					];
+			}
+		}
+
+		// Legacy - Do NOT Remove unless necessary
+		// Removing this will break parsing of activities that were created on
+		// Nextcloud 12, so we should keep this as long as it's acceptable.
+		// Otherwise if people upgrade over multiple releases in a short period,
+		// they will get the dead entries in their stream.
 		switch ($subject) {
 			case self::SUBJECT_ADD:
 			case self::SUBJECT_ADD . '_self':
@@ -163,37 +226,39 @@ class Calendar extends Base {
 			case self::SUBJECT_DELETE . '_self':
 			case self::SUBJECT_UPDATE:
 			case self::SUBJECT_UPDATE . '_self':
+			case self::SUBJECT_PUBLISH . '_self':
+			case self::SUBJECT_UNPUBLISH . '_self':
 			case self::SUBJECT_SHARE_USER:
 			case self::SUBJECT_UNSHARE_USER:
 			case self::SUBJECT_UNSHARE_USER . '_self':
 				return [
 					'actor' => $this->generateUserParameter($parameters[0]),
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 				];
 			case self::SUBJECT_SHARE_USER . '_you':
 			case self::SUBJECT_UNSHARE_USER . '_you':
 				return [
 					'user' => $this->generateUserParameter($parameters[0]),
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 				];
 			case self::SUBJECT_SHARE_USER . '_by':
 			case self::SUBJECT_UNSHARE_USER . '_by':
 				return [
 					'user' => $this->generateUserParameter($parameters[0]),
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 					'actor' => $this->generateUserParameter($parameters[2]),
 				];
 			case self::SUBJECT_SHARE_GROUP . '_you':
 			case self::SUBJECT_UNSHARE_GROUP . '_you':
 				return [
 					'group' => $this->generateGroupParameter($parameters[0]),
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 				];
 			case self::SUBJECT_SHARE_GROUP . '_by':
 			case self::SUBJECT_UNSHARE_GROUP . '_by':
 				return [
 					'group' => $this->generateGroupParameter($parameters[0]),
-					'calendar' => $this->generateCalendarParameter($event->getObjectId(), $parameters[1]),
+					'calendar' => $this->generateLegacyCalendarParameter((int)$event->getObjectId(), $parameters[1]),
 					'actor' => $this->generateUserParameter($parameters[2]),
 				];
 		}

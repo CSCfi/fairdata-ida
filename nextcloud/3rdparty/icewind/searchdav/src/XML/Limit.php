@@ -28,22 +28,7 @@ use SearchDAV\DAV\SearchPlugin;
 /**
  * The limit and offset of a search query
  */
-class Limit implements XmlDeserializable {
-	/**
-	 * @var integer
-	 *
-	 * The maximum number of results to be returned
-	 *
-	 * If set to 0 then no limit should be imposed
-	 */
-	public $maxResults = 0;
-	/**
-	 * @var integer
-	 *
-	 * The index of the first result to be returned (offset)
-	 */
-	public $firstResult = 0;
-
+class Limit extends \SearchDAV\Query\Limit implements XmlDeserializable {
 	static function xmlDeserialize(Reader $reader) {
 		$limit = new self();
 

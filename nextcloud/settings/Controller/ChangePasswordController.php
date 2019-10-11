@@ -1,6 +1,14 @@
 <?php
+// FIXME: disabled for now to be able to inject IGroupManager and also use
+// getSubAdmin()
+//declare(strict_types=1);
 /**
  *
+ *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Matthew Setter <matthew@matthewsetter.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -22,6 +30,7 @@
 namespace OC\Settings\Controller;
 
 use OC\HintException;
+use OC\User\Session;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
@@ -46,27 +55,15 @@ class ChangePasswordController extends Controller {
 	/** @var IGroupManager */
 	private $groupManager;
 
-	/** @var IUserSession */
+	/** @var Session */
 	private $userSession;
 
 	/** @var IAppManager */
 	private $appManager;
 
-	/**
-	 * ChangePasswordController constructor.
-	 *
-	 * @param string $appName
-	 * @param IRequest $request
-	 * @param $userId
-	 * @param IUserManager $userManager
-	 * @param IUserSession $userSession
-	 * @param IGroupManager $groupManager
-	 * @param IAppManager $appManager
-	 * @param IL10N $l
-	 */
-	public function __construct($appName,
+	public function __construct(string $appName,
 								IRequest $request,
-								$userId,
+								string $userId,
 								IUserManager $userManager,
 								IUserSession $userSession,
 								IGroupManager $groupManager,
@@ -92,7 +89,7 @@ class ChangePasswordController extends Controller {
 	 *
 	 * @return JSONResponse
 	 */
-	public function changePersonalPassword($oldpassword = '', $newpassword = null) {
+	public function changePersonalPassword(string $oldpassword = '', string $newpassword = null): JSONResponse {
 		/** @var IUser $user */
 		$user = $this->userManager->checkPassword($this->userId, $oldpassword);
 		if ($user === false) {
@@ -142,7 +139,7 @@ class ChangePasswordController extends Controller {
 	 *
 	 * @return JSONResponse
 	 */
-	public function changeUserPassword($username = null, $password = null, $recoveryPassword = null) {
+	public function changeUserPassword(string $username = null, string $password = null, string $recoveryPassword = null): JSONResponse {
 		if ($username === null) {
 			return new JSONResponse([
 				'status' => 'error',

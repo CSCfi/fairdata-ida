@@ -3,7 +3,10 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Markus Goetz <markus@woboq.com>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -20,6 +23,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OCA\DAV\Upload;
 
 use Sabre\DAV\IFile;
@@ -44,14 +48,17 @@ class AssemblyStream implements \Icewind\Streams\File {
 	/** @var int */
 	private $pos = 0;
 
-	/** @var array */
-	private $sortedNodes;
-
 	/** @var int */
-	private $size;
+	private $size = 0;
 
 	/** @var resource */
 	private $currentStream = null;
+
+	/** @var int */
+	private $currentNode = 0;
+
+	/** @var int */
+	private $currentNodeRead = 0;
 
 	/**
 	 * @param string $path
@@ -63,34 +70,59 @@ class AssemblyStream implements \Icewind\Streams\File {
 	public function stream_open($path, $mode, $options, &$opened_path) {
 		$this->loadContext('assembly');
 
-		// sort the nodes
 		$nodes = $this->nodes;
 		// http://stackoverflow.com/a/10985500
-		@usort($nodes, function(IFile $a, IFile $b) {
+		@usort($nodes, function (IFile $a, IFile $b) {
 			return strnatcmp($a->getName(), $b->getName());
 		});
-		$this->nodes = $nodes;
-
-		// build additional information
-		$this->sortedNodes = [];
-		$start = 0;
-		foreach($this->nodes as $node) {
-			$size = $node->getSize();
-			$name = $node->getName();
-			$this->sortedNodes[$name] = ['node' => $node, 'start' => $start, 'end' => $start + $size];
-			$start += $size;
-			$this->size = $start;
-		}
+		$this->nodes = array_values($nodes);
+		$this->size = array_reduce($this->nodes, function ($size, IFile $file) {
+			return $size + $file->getSize();
+		}, 0);
 		return true;
 	}
 
 	/**
-	 * @param string $offset
+	 * @param int $offset
 	 * @param int $whence
 	 * @return bool
 	 */
 	public function stream_seek($offset, $whence = SEEK_SET) {
-		return false;
+		if ($whence === SEEK_CUR) {
+			$offset = $this->stream_tell() + $offset;
+		} else if ($whence === SEEK_END) {
+			$offset = $this->size + $offset;
+		}
+
+		if ($offset > $this->size) {
+			return false;
+		}
+
+		$nodeIndex = 0;
+		$nodeStart = 0;
+		while (true) {
+			if (!isset($this->nodes[$nodeIndex + 1])) {
+				break;
+			}
+			$node = $this->nodes[$nodeIndex];
+			if ($nodeStart + $node->getSize() > $offset) {
+				break;
+			}
+			$nodeIndex++;
+			$nodeStart += $node->getSize();
+		}
+
+		$stream = $this->getStream($this->nodes[$nodeIndex]);
+		$nodeOffset = $offset - $nodeStart;
+		if(fseek($stream, $nodeOffset) === -1) {
+			return false;
+		}
+		$this->currentNode = $nodeIndex;
+		$this->currentNodeRead = $nodeOffset;
+		$this->currentStream = $stream;
+		$this->pos = $offset;
+
+		return true;
 	}
 
 	/**
@@ -105,36 +137,37 @@ class AssemblyStream implements \Icewind\Streams\File {
 	 * @return string
 	 */
 	public function stream_read($count) {
-		do {
-			if ($this->currentStream === null) {
-				list($node, $posInNode) = $this->getNodeForPosition($this->pos);
-				if (is_null($node)) {
-					// reached last node, no more data
-					return '';
-				}
-				$this->currentStream = $this->getStream($node);
-				fseek($this->currentStream, $posInNode);
-			}
-
-			$data = fread($this->currentStream, $count);
-			// isset is faster than strlen
-			if (isset($data[$count - 1])) {
-				// we read the full count
-				$read = $count;
+		if (is_null($this->currentStream)) {
+			if ($this->currentNode < count($this->nodes)) {
+				$this->currentStream = $this->getStream($this->nodes[$this->currentNode]);
 			} else {
-				// reaching end of stream, which happens less often so strlen is ok
-				$read = strlen($data);
+				return '';
 			}
+		}
+
+		do {
+			$data = fread($this->currentStream, $count);
+			$read = strlen($data);
+			$this->currentNodeRead += $read;
 
 			if (feof($this->currentStream)) {
 				fclose($this->currentStream);
-				$this->currentNode = null;
-				$this->currentStream = null;
+				$currentNodeSize = $this->nodes[$this->currentNode]->getSize();
+				if ($this->currentNodeRead < $currentNodeSize) {
+					throw new \Exception('Stream from assembly node shorter than expected, got ' . $this->currentNodeRead . ' bytes, expected ' . $currentNodeSize);
+				}
+				$this->currentNode++;
+				$this->currentNodeRead = 0;
+				if ($this->currentNode < count($this->nodes)) {
+					$this->currentStream = $this->getStream($this->nodes[$this->currentNode]);
+				} else {
+					$this->currentStream = null;
+				}
 			}
 			// if no data read, try again with the next node because
 			// returning empty data can make the caller think there is no more
 			// data left to read
-		} while ($read === 0);
+		} while ($read === 0 && !is_null($this->currentStream));
 
 		// update position
 		$this->pos += $read;
@@ -171,7 +204,9 @@ class AssemblyStream implements \Icewind\Streams\File {
 	 * @return array
 	 */
 	public function stream_stat() {
-		return [];
+		return [
+			'size' => $this->size,
+		];
 	}
 
 	/**
@@ -193,7 +228,7 @@ class AssemblyStream implements \Icewind\Streams\File {
 	 * @return bool
 	 */
 	public function stream_eof() {
-		return $this->pos >= $this->size;
+		return $this->pos >= $this->size || ($this->currentNode >= count($this->nodes) && $this->currentNode === null);
 	}
 
 	/**
@@ -209,7 +244,7 @@ class AssemblyStream implements \Icewind\Streams\File {
 	 *
 	 * @param string $name
 	 * @return array
-	 * @throws \Exception
+	 * @throws \BadMethodCallException
 	 */
 	protected function loadContext($name) {
 		$context = stream_context_get_options($this->context);
@@ -235,9 +270,10 @@ class AssemblyStream implements \Icewind\Streams\File {
 	public static function wrap(array $nodes) {
 		$context = stream_context_create([
 			'assembly' => [
-				'nodes' => $nodes]
+				'nodes' => $nodes
+			]
 		]);
-		stream_wrapper_register('assembly', '\OCA\DAV\Upload\AssemblyStream');
+		stream_wrapper_register('assembly', self::class);
 		try {
 			$wrapped = fopen('assembly://', 'r', null, $context);
 		} catch (\BadMethodCallException $e) {
@@ -249,19 +285,6 @@ class AssemblyStream implements \Icewind\Streams\File {
 	}
 
 	/**
-	 * @param $pos
-	 * @return IFile | null
-	 */
-	private function getNodeForPosition($pos) {
-		foreach($this->sortedNodes as $node) {
-			if ($pos >= $node['start'] && $pos < $node['end']) {
-				return [$node['node'], $pos - $node['start']];
-			}
-		}
-		return null;
-	}
-
-	/**
 	 * @param IFile $node
 	 * @return resource
 	 */
@@ -269,9 +292,11 @@ class AssemblyStream implements \Icewind\Streams\File {
 		$data = $node->get();
 		if (is_resource($data)) {
 			return $data;
+		} else {
+			$tmp = fopen('php://temp', 'w+');
+			fwrite($tmp, $data);
+			rewind($tmp);
+			return $tmp;
 		}
-
-		return fopen('data://text/plain,' . $data,'r');
 	}
-
 }

@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -69,4 +71,38 @@ interface IFunctionBuilder {
 	 * @since 12.0.0
 	 */
 	public function sum($field);
+
+	/**
+	 * Transforms a string field or value to lower case
+	 *
+	 * @param mixed $field
+	 * @return IQueryFunction
+	 * @since 14.0.0
+	 */
+	public function lower($field);
+
+	/**
+	 * @param mixed $x The first input field or number
+	 * @param mixed $y The second input field or number
+	 * @return IQueryFunction
+	 * @since 14.0.0
+	 */
+	public function add($x, $y);
+
+	/**
+	 * @param mixed $x The first input field or number
+	 * @param mixed $y The second input field or number
+	 * @return IQueryFunction
+	 * @since 14.0.0
+	 */
+	public function subtract($x, $y);
+
+	/**
+	 * @param mixed $count The input to be counted
+	 * @param string $alias Alias for the counter
+	 *
+	 * @return IQueryFunction
+	 * @since 14.0.0
+	 */
+	public function count($count, $alias = '');
 }

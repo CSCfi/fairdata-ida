@@ -1,6 +1,10 @@
 <?php
 /**
  *
+ *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -80,7 +84,8 @@ class OCSController extends \OCP\AppFramework\OCSController {
 	}
 
 	/**
-	 * @NoAdminRequired
+	 * @PublicPage
+	 *
 	 * @return DataResponse
 	 */
 	public function getCapabilities() {
@@ -94,7 +99,11 @@ class OCSController extends \OCP\AppFramework\OCSController {
 			'edition' => '',
 		);
 
-		$result['capabilities'] = $this->capabilitiesManager->getCapabilities();
+		if($this->userSession->isLoggedIn()) {
+			$result['capabilities'] = $this->capabilitiesManager->getCapabilities();
+		} else {
+			$result['capabilities'] = $this->capabilitiesManager->getCapabilities(true);
+		}
 
 		return new DataResponse($result);
 	}
@@ -117,11 +126,11 @@ class OCSController extends \OCP\AppFramework\OCSController {
 				]);
 			}
 
-			$response = new DataResponse(null, 102);
+			$response = new DataResponse([], 102);
 			$response->throttle();
 			return $response;
 		}
-		return new DataResponse(null, 101);
+		return new DataResponse([], 101);
 	}
 
 	/**
@@ -141,6 +150,6 @@ class OCSController extends \OCP\AppFramework\OCSController {
 			return new DataResponse($data);
 		}
 
-		return new DataResponse('User not found', 404);
+		return new DataResponse(['User not found'], 404);
 	}
 }

@@ -9,22 +9,6 @@
  */
 
 (function() {
-	var TEMPLATE =
-		'	<div class="detailFileInfoContainer">' +
-		'	</div>' +
-		'	{{#if tabHeaders}}' +
-		'	<ul class="tabHeaders">' +
-		'		{{#each tabHeaders}}' +
-		'		<li class="tabHeader" data-tabid="{{tabId}}" data-tabindex="{{tabIndex}}">' +
-		'			<a href="#">{{label}}</a>' +
-		'		</li>' +
-		'		{{/each}}' +
-		'	</ul>' +
-		'	{{/if}}' +
-		'	<div class="tabsContainer">' +
-		'	</div>' +
-		'	<a class="close icon-close" href="#" alt="{{closeLabel}}"></a>';
-
 	/**
 	 * @class OCA.Files.DetailsView
 	 * @classdesc
@@ -36,8 +20,6 @@
 		id: 'app-sidebar',
 		tabName: 'div',
 		className: 'detailsView scroll-container',
-
-		_template: null,
 
 		/**
 		 * List of detail tab views
@@ -67,7 +49,8 @@
 
 		events: {
 			'click a.close': '_onClose',
-			'click .tabHeaders .tabHeader': '_onClickTab'
+			'click .tabHeaders .tabHeader': '_onClickTab',
+			'keyup .tabHeaders .tabHeader': '_onKeyboardActivateTab'
 		},
 
 		/**
@@ -78,9 +61,6 @@
 			this._detailFileInfoViews = [];
 
 			this._dirty = true;
-
-			// uncomment to add some dummy tabs for testing
-			//this._addTestTabs();
 		},
 
 		_onClose: function(event) {
@@ -102,26 +82,14 @@
 			this.selectTab(tabId);
 		},
 
-		_addTestTabs: function() {
-			for (var j = 0; j < 2; j++) {
-				var testView = new OCA.Files.DetailTabView({id: 'testtab' + j});
-				testView.index = j;
-				testView.getLabel = function() { return 'Test tab ' + this.index; };
-				testView.render = function() {
-					this.$el.empty();
-					for (var i = 0; i < 100; i++) {
-						this.$el.append('<div>Test tab ' + this.index + ' row ' + i + '</div>');
-					}
-				};
-				this._tabViews.push(testView);
+		_onKeyboardActivateTab: function (event) {
+			if (event.key === " " || event.key === "Enter") {
+				this._onClickTab(event);
 			}
 		},
 
 		template: function(vars) {
-			if (!this._template) {
-				this._template = Handlebars.compile(TEMPLATE);
-			}
-			return this._template(vars);
+			return OCA.Files.Templates['detailsview'](vars);
 		},
 
 		/**
@@ -144,8 +112,8 @@
 			templateVars.tabHeaders = _.map(this._tabViews, function(tabView, i) {
 				return {
 					tabId: tabView.id,
-					tabIndex: i,
-					label: tabView.getLabel()
+					label: tabView.getLabel(),
+					tabIcon: tabView.getIcon()
 				};
 			});
 
@@ -195,6 +163,9 @@
 
 			// hide other tabs
 			$tabsContainer.find('.tab').addClass('hidden');
+
+			$tabsContainer.attr('class', 'tabsContainer');
+			$tabsContainer.addClass(tabView.getTabsContainerExtraClasses());
 
 			// tab already rendered ?
 			if (!$tabEl.length) {

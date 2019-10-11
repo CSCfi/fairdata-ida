@@ -1,6 +1,10 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
+ *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -54,7 +58,7 @@ class Signer {
 	 * @param IUser $user
 	 * @return array ['message', 'signature']
 	 */
-	public function sign($type, array $data, IUser $user) {
+	public function sign(string $type, array $data, IUser $user): array {
 		$privateKey = $this->keyManager->getKey($user)->getPrivate();
 		$data = [
 			'data' => $data,
@@ -76,7 +80,7 @@ class Signer {
 	 * @param array $data
 	 * @return bool
 	 */
-	public function verify(array $data) {
+	public function verify(array $data): bool {
 		if(isset($data['message'])
 			&& isset($data['signature'])
 			&& isset($data['message']['signer'])

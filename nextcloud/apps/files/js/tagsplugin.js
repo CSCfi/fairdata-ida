@@ -10,19 +10,12 @@
 
 /* global Handlebars */
 
-(function(OCA) {
+(function (OCA) {
 
 	_.extend(OC.Files.Client, {
-		PROPERTY_TAGS:	'{' + OC.Files.Client.NS_OWNCLOUD + '}tags',
-		PROPERTY_FAVORITE:	'{' + OC.Files.Client.NS_OWNCLOUD + '}favorite'
+		PROPERTY_TAGS: '{' + OC.Files.Client.NS_OWNCLOUD + '}tags',
+		PROPERTY_FAVORITE: '{' + OC.Files.Client.NS_OWNCLOUD + '}favorite'
 	});
-
-	var TEMPLATE_FAVORITE_ACTION =
-		'<a href="#" ' +
-		'class="action action-favorite {{#isFavorite}}permanent{{/isFavorite}}">' +
-		'<span class="icon {{iconClass}}" />' +
-		'<span class="hidden-visually">{{altText}}</span>' +
-		'</a>';
 
 	/**
 	 * Returns the icon class for the matching state
@@ -30,7 +23,7 @@
 	 * @param {boolean} state true if starred, false otherwise
 	 * @return {string} icon class for star image
 	 */
-	function getStarIconClass(state) {
+	function getStarIconClass (state) {
 		return state ? 'icon-starred' : 'icon-star';
 	}
 
@@ -40,35 +33,110 @@
 	 * @param {boolean} state true if starred, false otherwise
 	 * @return {Object} jQuery object
 	 */
-	function renderStar(state) {
-		if (!this._template) {
-			this._template = Handlebars.compile(TEMPLATE_FAVORITE_ACTION);
-		}
-		return this._template({
+	function renderStar (state) {
+		return OCA.Files.Templates['favorite_mark']({
 			isFavorite: state,
-			altText: state ? t('files', 'Favorited') : t('files', 'Favorite'),
+			altText: state ? t('files', 'Favorited') : t('files', 'Not favorited'),
 			iconClass: getStarIconClass(state)
 		});
 	}
 
 	/**
-	 * Toggle star icon on action element
+	 * Toggle star icon on favorite mark element
 	 *
-	 * @param {Object} action element
+	 * @param {Object} $favoriteMarkEl favorite mark element
 	 * @param {boolean} state true if starred, false otherwise
 	 */
-	function toggleStar($actionEl, state) {
-		$actionEl.removeClass('icon-star icon-starred').addClass(getStarIconClass(state));
-		$actionEl.toggleClass('permanent', state);
+	function toggleStar ($favoriteMarkEl, state) {
+		$favoriteMarkEl.removeClass('icon-star icon-starred').addClass(getStarIconClass(state));
+		$favoriteMarkEl.toggleClass('permanent', state);
+	}
+
+	/**
+	 * Remove Item from Quickaccesslist
+	 *
+	 * @param {String} appfolder folder to be removed
+	 */
+	function removeFavoriteFromList (appfolder) {
+		var quickAccessList = 'sublist-favorites';
+		var listULElements = document.getElementById(quickAccessList);
+		if (!listULElements) {
+			return;
+		}
+
+		var apppath=appfolder;
+		if(appfolder.startsWith("//")){
+			apppath=appfolder.substring(1, appfolder.length);
+		}
+
+		$(listULElements).find('[data-dir="' + apppath + '"]').remove();
+
+		if (listULElements.childElementCount === 0) {
+			var collapsibleButton = $(listULElements).parent().find('button.collapse');
+			collapsibleButton.hide();
+			$("#button-collapse-parent-favorites").removeClass('collapsible');
+		}
+	}
+
+	/**
+	 * Add Item to Quickaccesslist
+	 *
+	 * @param {String} appfolder folder to be added
+	 */
+	function addFavoriteToList (appfolder) {
+		var quickAccessList = 'sublist-favorites';
+		var listULElements = document.getElementById(quickAccessList);
+		if (!listULElements) {
+			return;
+		}
+		var listLIElements = listULElements.getElementsByTagName('li');
+
+		var appName = appfolder.substring(appfolder.lastIndexOf("/") + 1, appfolder.length);
+		var apppath = appfolder;
+
+		if(appfolder.startsWith("//")){
+			apppath = appfolder.substring(1, appfolder.length);
+		}
+		var url = OC.generateUrl('/apps/files/?dir=' + apppath + '&view=files');
+		
+
+		var innerTagA = document.createElement('A');
+		innerTagA.setAttribute("href", url);
+		innerTagA.setAttribute("class", "nav-icon-files svg");
+		innerTagA.innerHTML = appName;
+
+		var length = listLIElements.length + 1;
+		var innerTagLI = document.createElement('li');
+		innerTagLI.setAttribute("data-id", apppath.replace('/', '-'));
+		innerTagLI.setAttribute("data-dir", apppath);
+		innerTagLI.setAttribute("data-view", 'files');
+		innerTagLI.setAttribute("class", "nav-" + appName);
+		innerTagLI.setAttribute("folderpos", length.toString());
+		innerTagLI.appendChild(innerTagA);
+
+		$.get(OC.generateUrl("/apps/files/api/v1/quickaccess/get/NodeType"),{folderpath: apppath}, function (data, status) {
+				if (data === "dir") {
+					if (listULElements.childElementCount <= 0) {
+						listULElements.appendChild(innerTagLI);
+						var collapsibleButton = $(listULElements).parent().find('button.collapse');
+						collapsibleButton.show();
+						$(listULElements).parent().addClass('collapsible');
+					} else {
+						listLIElements[listLIElements.length - 1].after(innerTagLI);
+					}
+				}
+			}
+		);
 	}
 
 	OCA.Files = OCA.Files || {};
 
 	/**
-	 * @namespace OCA.Files.TagsPlugin
+	 * Extends the file actions and file list to include a favorite mark icon
+	 * and a favorite action in the file actions menu; it also adds "data-tags"
+	 * and "data-favorite" attributes to file elements.
 	 *
-	 * Extends the file actions and file list to include a favorite action icon
-	 * and addition "data-tags" and "data-favorite" attributes.
+	 * @namespace OCA.Files.TagsPlugin
 	 */
 	OCA.Files.TagsPlugin = {
 		name: 'Tags',
@@ -82,28 +150,45 @@
 			'shares.link'
 		],
 
-		_extendFileActions: function(fileActions) {
+		_extendFileActions: function (fileActions) {
 			var self = this;
-			// register "star" action
+
 			fileActions.registerAction({
 				name: 'Favorite',
-				displayName: t('files', 'Favorite'),
-				mime: 'all',
-				permissions: OC.PERMISSION_READ,
-				type: OCA.Files.FileActions.TYPE_INLINE,
-				render: function(actionSpec, isDefault, context) {
+				displayName: function (context) {
 					var $file = context.$file;
 					var isFavorite = $file.data('favorite') === true;
-					var $icon = $(renderStar(isFavorite));
-					$file.find('td:first>.favorite').replaceWith($icon);
-					return $icon;
+
+					if (isFavorite) {
+						return t('files', 'Remove from favorites');
+					}
+
+					// As it is currently not possible to provide a context for
+					// the i18n strings "Add to favorites" was used instead of
+					// "Favorite" to remove the ambiguity between verb and noun
+					// when it is translated.
+					return t('files', 'Add to favorites');
 				},
-				actionHandler: function(fileName, context) {
-					var $actionEl = context.$file.find('.action-favorite');
+				mime: 'all',
+				order: -100,
+				permissions: OC.PERMISSION_NONE,
+				iconClass: function (fileName, context) {
+					var $file = context.$file;
+					var isFavorite = $file.data('favorite') === true;
+
+					if (isFavorite) {
+						return 'icon-star-dark';
+					}
+
+					return 'icon-starred';
+				},
+				actionHandler: function (fileName, context) {
+					var $favoriteMarkEl = context.$file.find('.favorite-mark');
 					var $file = context.$file;
 					var fileInfo = context.fileList.files[$file.index()];
 					var dir = context.dir || context.fileList.getCurrentDirectory();
 					var tags = $file.attr('data-tags');
+
 					if (_.isUndefined(tags)) {
 						tags = '';
 					}
@@ -113,21 +198,23 @@
 					if (isFavorite) {
 						// remove tag from list
 						tags = _.without(tags, OC.TAG_FAVORITE);
+						removeFavoriteFromList(dir + '/' + fileName);
 					} else {
 						tags.push(OC.TAG_FAVORITE);
+						addFavoriteToList(dir + '/' + fileName);
 					}
 
 					// pre-toggle the star
-					toggleStar($actionEl, !isFavorite);
+					toggleStar($favoriteMarkEl, !isFavorite);
 
 					context.fileInfoModel.trigger('busy', context.fileInfoModel, true);
 
 					self.applyFileTags(
 						dir + '/' + fileName,
 						tags,
-						$actionEl,
+						$favoriteMarkEl,
 						isFavorite
-					).then(function(result) {
+					).then(function (result) {
 						context.fileInfoModel.trigger('busy', context.fileInfoModel, false);
 						// response from server should contain updated tags
 						var newTags = result.tags;
@@ -143,23 +230,25 @@
 			});
 		},
 
-		_extendFileList: function(fileList) {
+		_extendFileList: function (fileList) {
 			// extend row prototype
-			fileList.$el.addClass('has-favorites');
 			var oldCreateRow = fileList._createRow;
-			fileList._createRow = function(fileData) {
+			fileList._createRow = function (fileData) {
 				var $tr = oldCreateRow.apply(this, arguments);
+				var isFavorite = false;
 				if (fileData.tags) {
 					$tr.attr('data-tags', fileData.tags.join('|'));
 					if (fileData.tags.indexOf(OC.TAG_FAVORITE) >= 0) {
 						$tr.attr('data-favorite', true);
+						isFavorite = true;
 					}
 				}
-				$tr.find('td:first').prepend('<div class="favorite"></div>');
+				var $icon = $(renderStar(isFavorite));
+				$tr.find('td.filename .thumbnail').append($icon);
 				return $tr;
 			};
 			var oldElementToFile = fileList.elementToFile;
-			fileList.elementToFile = function($el) {
+			fileList.elementToFile = function ($el) {
 				var fileInfo = oldElementToFile.apply(this, arguments);
 				var tags = $el.attr('data-tags');
 				if (_.isUndefined(tags)) {
@@ -172,22 +261,22 @@
 			};
 
 			var oldGetWebdavProperties = fileList._getWebdavProperties;
-			fileList._getWebdavProperties = function() {
+			fileList._getWebdavProperties = function () {
 				var props = oldGetWebdavProperties.apply(this, arguments);
 				props.push(OC.Files.Client.PROPERTY_TAGS);
 				props.push(OC.Files.Client.PROPERTY_FAVORITE);
 				return props;
 			};
 
-			fileList.filesClient.addFileInfoParser(function(response) {
+			fileList.filesClient.addFileInfoParser(function (response) {
 				var data = {};
 				var props = response.propStat[0].properties;
 				var tags = props[OC.Files.Client.PROPERTY_TAGS];
 				var favorite = props[OC.Files.Client.PROPERTY_FAVORITE];
 				if (tags && tags.length) {
-					tags = _.chain(tags).filter(function(xmlvalue) {
+					tags = _.chain(tags).filter(function (xmlvalue) {
 						return (xmlvalue.namespaceURI === OC.Files.Client.NS_OWNCLOUD && xmlvalue.nodeName.split(':')[1] === 'tag');
-					}).map(function(xmlvalue) {
+					}).map(function (xmlvalue) {
 						return xmlvalue.textContent || xmlvalue.text;
 					}).value();
 				}
@@ -202,7 +291,7 @@
 			});
 		},
 
-		attach: function(fileList) {
+		attach: function (fileList) {
 			if (this.allowedLists.indexOf(fileList.id) < 0) {
 				return;
 			}
@@ -215,10 +304,10 @@
 		 *
 		 * @param {String} fileName path to the file or folder to tag
 		 * @param {Array.<String>} tagNames array of tag names
-		 * @param {Object} $actionEl element
+		 * @param {Object} $favoriteMarkEl favorite mark element
 		 * @param {boolean} isFavorite Was the item favorited before
 		 */
-		applyFileTags: function(fileName, tagNames, $actionEl, isFavorite) {
+		applyFileTags: function (fileName, tagNames, $favoriteMarkEl, isFavorite) {
 			var encodedPath = OC.encodePath(fileName);
 			while (encodedPath[0] === '/') {
 				encodedPath = encodedPath.substr(1);
@@ -231,17 +320,18 @@
 				}),
 				dataType: 'json',
 				type: 'POST'
-			}).fail(function(response) {
+			}).fail(function (response) {
 				var message = '';
 				// show message if it is available
-				if(response.responseJSON && response.responseJSON.message) {
+				if (response.responseJSON && response.responseJSON.message) {
 					message = ': ' + response.responseJSON.message;
 				}
 				OC.Notification.show(t('files', 'An error occurred while trying to update the tags' + message), {type: 'error'});
-				toggleStar($actionEl, isFavorite);
+				toggleStar($favoriteMarkEl, isFavorite);
 			});
 		}
 	};
-})(OCA);
+})
+(OCA);
 
 OC.Plugins.register('OCA.Files.FileList', OCA.Files.TagsPlugin);
