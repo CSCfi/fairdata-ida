@@ -112,7 +112,7 @@ templates['sharedialoglinkshareview_popover_menu'] = template({"1":function(cont
 },"3":function(container,depth0,helpers,partials,data) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
-  return "			<li id=\"allowPublicEditingWrapper\" style=\"display: none;\">\n				<span class=\"menuitem\">\n					<span class=\"icon-loading-small hidden\"></span>\n					<input type=\"checkbox\" name=\"allowPublicEditing\" id=\"sharingDialogAllowPublicEditing-"
+  return "			<li id=\"allowPublicEditingWrapper\">\n				<span class=\"menuitem\">\n					<span class=\"icon-loading-small hidden\"></span>\n					<input type=\"checkbox\" name=\"allowPublicEditing\" id=\"sharingDialogAllowPublicEditing-"
     + alias4(((helper = (helper = helpers.cid || (depth0 != null ? depth0.cid : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"cid","hash":{},"data":data}) : helper)))
     + "\" class=\"checkbox publicEditingCheckbox\" "
     + ((stack1 = ((helper = (helper = helpers.publicEditingChecked || (depth0 != null ? depth0.publicEditingChecked : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"publicEditingChecked","hash":{},"data":data}) : helper))) != null ? stack1 : "")
