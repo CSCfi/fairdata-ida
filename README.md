@@ -23,7 +23,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # IDA Research Data Storage Service
  
-This repository contains the implementation of version 2 of the IDA service, based on Nextcloud version 12, and
+This repository contains the implementation of version 2 of the IDA service, based on Nextcloud, and
 is made available under the GNU Affero General Public License, version 3.
 
 Questions regarding the contents of this repository can be directed to [servicedesk@csc.fi](mailto:servicedesk@csc.fi).
