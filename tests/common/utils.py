@@ -100,14 +100,14 @@ def load_configuration():
     return config
 
 
-def init_test_user_account():
-    cmd = "sudo -u apache /var/ida/utils/initialize_test_accounts"
-    os.system(cmd)
+#def init_test_user_account():
+#    cmd = "sudo -u apache /var/ida/utils/initialize_test_accounts"
+#    os.system(cmd)
 
 
-def teardown_test_user_accounts():
-    cmd = "sudo -u apache /var/ida/utils/teardown_test_accounts"
-    os.system(cmd)
+#def teardown_test_user_accounts():
+#    cmd = "sudo -u apache /var/ida/utils/teardown_test_accounts"
+#    os.system(cmd)
 
 
 def restart_rabbitmq_server():

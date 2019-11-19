@@ -154,6 +154,8 @@ return [
             // Restricted to project access scope of user
             // Required parameters:
             //     pid = the PID of the action
+            // Optional parameters:
+            //     token = batch action token (only relevant if PSO user)
         ],
         [
             // Clear a specific failed action

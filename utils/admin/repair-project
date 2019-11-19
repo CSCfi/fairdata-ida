@@ -55,9 +55,9 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-echo "Suspending project..."
+echo "Suspending project... (silently)"
 
-$ROOT/utils/admin/suspend-project "$PROJECT" 2>$ERR
+$ROOT/utils/admin/suspend-project "$PROJECT" --silent 2>$ERR
 
 if [ -s $ERR ]; then
     cat $ERR | tee -a $LOG
@@ -100,9 +100,9 @@ if [ "$DEBUG" = "true" ]; then
 fi
 
 #--------------------------------------------------------------------------------
-echo "Unsuspending project..."
+echo "Unsuspending project... (silently)"
 
-$ROOT/utils/admin/unsuspend-project "$PROJECT" 2>$ERR
+$ROOT/utils/admin/unsuspend-project "$PROJECT" --silent 2>$ERR
 
 if [ -s $ERR ]; then
     cat $ERR | tee -a $LOG
@@ -113,5 +113,5 @@ fi
 
 rm $ERR 2>/dev/null
 
-echoAndLog "Project $PROJECT repair initiated successfully. Postprocessing ongoing..."
+echoAndLog "Initiated repair of project $PROJECT successfully. Postprocessing ongoing..."
 

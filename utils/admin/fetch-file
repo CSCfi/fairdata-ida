@@ -1,0 +1,90 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+
+SCRIPT=`basename $0`
+
+USAGE="
+Usage: $SCRIPT project pid [-i]
+       $SCRIPT -h
+
+       project = the project name
+       pid     = the pid of the frozen file
+       -i      = include inactive files
+"
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$1" = "-h" ]; then
+    echo "$USAGE"
+    exit 0
+fi
+
+if [ "$#" -lt 2 ]; then
+    echo "$USAGE"
+    exit 0
+fi
+
+PROJECT="$1"
+FILE="$2"
+INACTIVE="$3"
+
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+URL="${IDA_API_ROOT_URL}/files/${FILE}"
+
+if [ "$INACTIVE" = "-i" ]; then
+    URL="${URL}?includeInactive=true"
+fi
+
+DEBUG="true"
+
+if [ "$DEBUG" != "false" ]
+then
+    echo "PROJECT: $PROJECT"
+    echo "FILE:    $FILE"
+    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\""
+fi
+
+OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
+
+if [ -s $ERR ]; then
+    cat $ERR | tee -a $LOG
+    errorExit "Error: Failed to retrieve file details!"
+fi
+
+echo "$OUT" | python -m json.tool

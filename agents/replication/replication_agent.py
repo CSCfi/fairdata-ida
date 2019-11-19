@@ -134,9 +134,9 @@ class ReplicationAgent(GenericAgent):
         As an extra precaution, checksums are re-calculated for files after copy,
         and compared with the checksums of the initial checksum generation phase.
 
-        If the node is already reported as having been replicated, or if running in a
-        test environment, the file will not be re-copied if a replication already exists
-        and the file size is the same for both the frozen file and already replicated file.
+        If the node is already reported as having been replicated, the file will not be re-copied
+        if a replication already exists and the file size is the same for both the frozen file and
+        already replicated file.
         """
 
         src_path = construct_file_path(self._uida_conf_vars, node)
@@ -147,7 +147,7 @@ class ReplicationAgent(GenericAgent):
         except:
             replicated = None
 
-        if replicated != None or self._uida_conf_vars.get('IDA_ENVIRONMENT', False) == 'TEST':
+        if replicated != None:
             if os.path.exists(dest_path):
                 if os.stat(src_path).st_size == os.stat(dest_path).st_size:
                     self._logger.debug('Skipping already replicated file: %s' % dest_path)
@@ -165,10 +165,13 @@ class ReplicationAgent(GenericAgent):
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             shutil.copy(src_path, dest_path)
 
-        replicated_checksum = self._get_file_checksum(dest_path)
+        try:
+            replicated_checksum = self._get_file_checksum(dest_path)
+        except Exception as e:
+            raise Exception('Error generating checksum for file: %s, pathname: %s, error: %s' % (node['pid'], node['pathname'], str(e)))
 
         if node['checksum'] != replicated_checksum:
-            raise Exception('Checksum mismatch after replication for node: %s' % node['pid'])
+            raise Exception('Checksum mismatch after replication for file: %s, pathname: %s, frozen_checksum: %s, replicated_checksum: %s' % (node['pid'], node['pathname'], node['checksum'], replicated_checksum))
 
         node['replicated'] = timestamp
         node['_updated'] = True

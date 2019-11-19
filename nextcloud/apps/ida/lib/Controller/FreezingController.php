@@ -382,6 +382,13 @@ class FreezingController extends Controller
                 return API::badRequestErrorResponse($e->getMessage());
             }
 
+            // Verify RabbitMQ is accepting connections, if not, abandon action and inform the user to try again later...
+
+            if (! $this->verifyRabbitMQConnectionOK()) {
+                Util::writeLog('ida', 'freezeFiles: ERROR: Unable to open connection to RabbitMQ!', \OCP\Util::ERROR);
+                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -394,24 +401,9 @@ class FreezingController extends Controller
 
             $actionEntity = $this->registerAction($nextcloudNodeId, 'freeze', $project, $this->userId, $pathname);
 
-            // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
-            // before moving any content (an exception will be thrown if the connection cannot be opened)
-
-            try {
-                $rabbitMQconnection = $this->openRabbitMQConnection();
-            }
-            catch (Exception $e) {
-                Util::writeLog('ida', 'freezeFiles: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
-
-                $this->actionMapper->deleteAction($actionEntity->getPid());
-                Access::unlockProject($project);
-
-                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
-            }
+            // Ensure specified pathname identifies a node in the staging area
 
             $fullPathname = $this->buildFullPathname('freeze', $project, $pathname);
-
-            // Ensure specified pathname identifies a node in the staging area
 
             $fileInfo = $this->fsView->getFileInfo($fullPathname);
 
@@ -498,8 +490,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($rabbitMQconnection, $actionEntity);
-            $rabbitMQconnection->close();
+            $this->publishActionMessage($actionEntity);
 
             // Unlock project and return new action details
 
@@ -520,7 +511,6 @@ class FreezingController extends Controller
 
             // Cleanup and report error
 
-            $rabbitMQconnection->close();
             Access::unlockProject($project);
 
             return API::serverErrorResponse($e->getMessage());
@@ -585,6 +575,13 @@ class FreezingController extends Controller
                 return API::badRequestErrorResponse($e->getMessage());
             }
 
+            // Verify RabbitMQ is accepting connections, if not, abandon action and inform the user to try again later...
+
+            if (! $this->verifyRabbitMQConnectionOK()) {
+                Util::writeLog('ida', 'unfreezeFiles: ERROR: Unable to open connection to RabbitMQ!', \OCP\Util::ERROR);
+                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -596,20 +593,6 @@ class FreezingController extends Controller
             // intersecting scope will be blocked.
 
             $actionEntity = $this->registerAction($nextcloudNodeId, 'unfreeze', $project, $this->userId, $pathname);
-
-            // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
-            // before moving any content (an exception will be thrown if the connection cannot be opened)
-
-            try {
-                $rabbitMQconnection = $this->openRabbitMQConnection();
-            }
-            catch (Exception $e) {
-
-                $this->actionMapper->deleteAction($actionEntity->getPid());
-                Access::unlockProject($project);
-
-                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
-            }
 
             // Ensure specified pathname identifies a node in the frozen area
 
@@ -695,8 +678,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($rabbitMQconnection, $actionEntity);
-            $rabbitMQconnection->close();
+            $this->publishActionMessage($actionEntity);
 
             // Unlock project and return new action details
 
@@ -717,7 +699,6 @@ class FreezingController extends Controller
 
             // Cleanup and report error
 
-            $rabbitMQconnection->close();
             Access::unlockProject($project);
 
             return API::serverErrorResponse($e->getMessage());
@@ -782,6 +763,13 @@ class FreezingController extends Controller
                 return API::badRequestErrorResponse($e->getMessage());
             }
 
+            // Verify RabbitMQ is accepting connections, if not, abandon action and inform the user to try again later...
+
+            if (! $this->verifyRabbitMQConnectionOK()) {
+                Util::writeLog('ida', 'deleteFiles: ERROR: Unable to open connection to RabbitMQ!', \OCP\Util::ERROR);
+                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -793,20 +781,6 @@ class FreezingController extends Controller
             // intersecting scope will be blocked.
 
             $actionEntity = $this->registerAction($nextcloudNodeId, 'delete', $project, $this->userId, $pathname);
-
-            // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
-            // before moving any content (an exception will be thrown if the connection cannot be opened)
-
-            try {
-                $rabbitMQconnection = $this->openRabbitMQConnection();
-            }
-            catch (Exception $e) {
-
-                $this->actionMapper->deleteAction($actionEntity->getPid());
-                Access::unlockProject($project);
-
-                return API::serverErrorResponse('Service temporarily unavailable. Please try again later.');
-            }
 
             // Ensure specified pathname identifies a node in the frozen area
 
@@ -872,8 +846,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($rabbitMQconnection, $actionEntity);
-            $rabbitMQconnection->close();
+            $this->publishActionMessage($actionEntity);
 
             // Unlock project and return new action details
 
@@ -894,7 +867,6 @@ class FreezingController extends Controller
 
             // Cleanup and report error
 
-            $rabbitMQconnection->close();
             Access::unlockProject($project);
 
             return API::serverErrorResponse($e->getMessage());
@@ -904,24 +876,26 @@ class FreezingController extends Controller
     /**
      * Retry failed action
      *
-     * @param string $pid PID of the failed action to retry
+     * @param string $pid    PID of the failed action to retry
+     * @param string $token  batch action token (optional)
      *
      * @return DataResponse the new retry action
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function retryAction($pid) {
+    public function retryAction($pid, $token = null) {
 
         $retryActionEntity = null;
         $project = null;
 
         try {
 
-            Util::writeLog('ida', 'retryAction: pid=' . $pid . ' user=' . $this->userId, \OCP\Util::INFO);
+            Util::writeLog('ida', 'retryAction: pid=' . $pid . ' user=' . $this->userId . ' token=' . $token, \OCP\Util::INFO);
 
             try {
                 API::verifyRequiredStringParameter('pid', $pid);
+                API::validateStringParameter('token', $token);
             }
             catch (Exception $e) {
                 return API::badRequestErrorResponse($e->getMessage());
@@ -952,6 +926,13 @@ class FreezingController extends Controller
                 return API::badRequestErrorResponse('Specified action is not a failed action.');
             }
 
+            // Verify RabbitMQ is accepting connections, if not, abandon action and inform the user to try again later...
+
+            if (! $this->verifyRabbitMQConnectionOK()) {
+                Util::writeLog('ida', 'retryAction: ERROR: Unable to open connection to RabbitMQ!', \OCP\Util::ERROR);
+                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -969,19 +950,6 @@ class FreezingController extends Controller
                 $failedActionEntity->getUser(),
                 $failedActionEntity->getPathname()
             );
-
-            // Open a connection already now to RabbitMQ, to ensure publication of the action message is possible,
-            // before moving any content (an exception will be thrown if the connection cannot be opened)
-
-            try {
-                $rabbitMQconnection = $this->openRabbitMQConnection();
-            }
-            catch (Exception $e) {
-                $this->actionMapper->deleteAction($retryActionEntity->getPid());
-                Access::unlockProject($project);
-
-                return API::serverErrorResponse('Service temporarily unavailable. Please try again later.');
-            }
 
             // Set reference to failed action being retried
 
@@ -1005,12 +973,22 @@ class FreezingController extends Controller
 
                 // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
 
+                $action   = $retryActionEntity->getAction();
+                $pathname = $retryActionEntity->getPathname();
+
                 try {
-                    $nextcloudNodes = $this->getNextcloudNodes(
-                        $retryActionEntity->getAction(),
-                        $retryActionEntity->getProject(),
-                        $retryActionEntity->getPathname()
-                    );
+
+                    // If PSO user and batch action token valid, impose no file limit, else use default limit
+    
+                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                        ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+                        ($token == $this->config['BATCH_ACTION_TOKEN'])) {
+                        Util::writeLog('ida', 'retryAction: Batch Action Execution: action=' . $action . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::INFO);
+                        $nextcloudNodes = $this->getNextcloudNodes($action, $project, $pathname, 0);
+                    }
+                    else {
+                        $nextcloudNodes = $this->getNextcloudNodes($action, $project, $pathname);
+                    }
                 }
                 catch (Exception $e) {
 
@@ -1103,8 +1081,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($rabbitMQconnection, $retryActionEntity);
-            $rabbitMQconnection->close();
+            $this->publishActionMessage($retryActionEntity);
 
             // Unlock project and return new action details
 
@@ -1125,7 +1102,6 @@ class FreezingController extends Controller
 
             // Cleanup and report error
 
-            $rabbitMQconnection->close();
             Access::unlockProject($project);
 
             return API::serverErrorResponse($e->getMessage());
@@ -1230,7 +1206,7 @@ class FreezingController extends Controller
             . ' project=' . $project
             . ' user=' . $user
             . ' pathname=' . $pathname
-            , \OCP\Util::DEBUG);
+            , \OCP\Util::INFO);
 
         // Verify Nextcloud node ID per specified pathname
 
@@ -1258,7 +1234,7 @@ class FreezingController extends Controller
 
         $actionEntity = $this->actionMapper->insert($actionEntity);
 
-        Util::writeLog('ida', 'registerAction: id=' . $actionEntity->getId(), \OCP\Util::DEBUG);
+        Util::writeLog('ida', 'registerAction: id=' . $actionEntity->getId(), \OCP\Util::INFO);
 
         return $actionEntity;
     }
@@ -1441,7 +1417,7 @@ class FreezingController extends Controller
 
                 if ($fileInfo) {
                     $nextcloudNodeId = $fileInfo->getId();
-                    Util::writeLog('ida', 'resolveNextcloudNodeId: nextcloudNodeId=' . $nextcloudNodeId, \OCP\Util::INFO);
+                    Util::writeLog('ida', 'resolveNextcloudNodeId: nextcloudNodeId=' . $nextcloudNodeId, \OCP\Util::DEBUG);
                 }
             }
         }
@@ -1569,7 +1545,7 @@ class FreezingController extends Controller
                 $fileInfo = $this->fsView->getFileInfo($targetPathname);
 
                 if ($fileInfo != null) {
-                    Util::writeLog('ida', 'checkIntersectionWithExistingFiles:'
+                    Util::writeLog('ida', 'checkIntersectionWithExistingFiles: INTERSECTION EXISTS'
                         . ' project=' . $project
                         . ' action=' . $action
                         . ' pathname=' . $targetPathname, \OCP\Util::INFO);
@@ -1648,7 +1624,7 @@ class FreezingController extends Controller
                 if ($fileEntity) {
                     $actionPid = $fileEntity->getAction();
                     if ($actionPids[$actionPid]) {
-                        Util::writeLog('ida', 'checkIntersectionWithIncompleteActions:'
+                        Util::writeLog('ida', 'checkIntersectionWithIncompleteActions: INTERSECTION EXISTS'
                             . ' project=' . $project
                             . ' action=' . $actionPid
                             . ' pathname=' . $pathname
@@ -1980,7 +1956,7 @@ class FreezingController extends Controller
         Util::writeLog('ida', 'cloneFiles:'
             . ' failedActionPid=' . $failedActionPid
             . ' retryActionPid=' . $retryActionPid
-            , \OCP\Util::DEBUG);
+            , \OCP\Util::INFO);
 
         $timestamp = Generate::newTimestamp();
 
@@ -2133,8 +2109,12 @@ class FreezingController extends Controller
 
                 $response = curl_exec($ch);
 
-                if ($response === false || curl_errno($ch)) {
-                    Util::writeLog('ida', 'moveNextcloudNode:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::DEBUG);
+                if ($response === false) {
+                    Util::writeLog('ida', 'moveNextcloudNode: MOVE' 
+                        . ' sourceURI=' . $sourceURI 
+                        . ' targetURI=' . $targetURI
+                        . ' curl_errno=' . curl_errno($ch) 
+                        . ' response=' . $response, \OCP\Util::ERROR);
                     curl_close($ch);
                     throw new Exception('Failed to move node from "' . $sourcePathname . '" to "' . $targetPathname . '"');
                 }
@@ -2170,8 +2150,11 @@ class FreezingController extends Controller
 
                 $response = curl_exec($ch);
 
-                if ($response === false || curl_errno($ch)) {
-                    Util::writeLog('ida', 'moveNextcloudNode:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::DEBUG);
+                if ($response === false) {
+                    Util::writeLog('ida', 'moveNextcloudNode: DELETE'
+                        . ' sourceURI=' . $sourceURI 
+                        . ' curl_errno=' . curl_errno($ch) 
+                        . ' response=' . $response, \OCP\Util::ERROR);
                     curl_close($ch);
                     throw new Exception('Failed to delete now-empty folder "' . $sourcePathname . '"');
                 }
@@ -2220,7 +2203,7 @@ class FreezingController extends Controller
                 . ' sourceURI=' . $sourceURI
                 . ' username=' . $username
                 . ' password=' . $password
-                , \OCP\Util::INFO);
+                , \OCP\Util::DEBUG);
 
             $ch = curl_init($sourceURI);
 
@@ -2238,8 +2221,11 @@ class FreezingController extends Controller
 
             $response = curl_exec($ch);
 
-            if ($response === false || curl_errno($ch)) {
-                Util::writeLog('ida', 'deleteNextcloudNode:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::ERROR);
+            if ($response === false) {
+                Util::writeLog('ida', 'deleteNextcloudNode: DELETE'
+                    . ' sourceURI=' . $sourceURI 
+                    . ' curl_errno=' . curl_errno($ch) 
+                    . ' response=' . $response, \OCP\Util::ERROR);
                 curl_close($ch);
                 throw new Exception('Failed to delete node "' . $sourcePathname . '"');
             }
@@ -2315,8 +2301,11 @@ class FreezingController extends Controller
 
                     $response = curl_exec($ch);
 
-                    if ($response === false || curl_errno($ch)) {
-                        Util::writeLog('ida', 'createNextcloudPathFolders:' . ' http_code=' . curl_errno($ch) . ' response=' . $response, \OCP\Util::ERROR);
+                    if ($response === false) {
+                        Util::writeLog('ida', 'createNextcloudPathFolders: MKCOL'
+                            . ' folderURI=' . $folderURI 
+                            . ' curl_errno=' . curl_errno($ch) 
+                            . ' response=' . $response, \OCP\Util::ERROR);
                         curl_close($ch);
                         throw new Exception('Failed to create path folder "' . $folderPathname . '"');
                     }
@@ -2740,14 +2729,10 @@ class FreezingController extends Controller
 
             $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
 
-            // Open a connection to RabbitMQ
+            // Verify RabbitMQ is accepting connections, if not, abandon action and inform the user to try again later...
 
-            try {
-                $rabbitMQconnection = $this->openRabbitMQConnection();
-            }
-            catch (Exception $e) {
-                Util::writeLog('ida', 'repairProject: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
-
+            if (! $this->verifyRabbitMQConnectionOK()) {
+                Util::writeLog('ida', 'repairProject: ERROR: Unable to open connection to RabbitMQ!', \OCP\Util::ERROR);
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
 
@@ -2810,8 +2795,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($rabbitMQconnection, $repairActionEntity);
-            $rabbitMQconnection->close();
+            $this->publishActionMessage($repairActionEntity);
 
             // Unlock project
 
@@ -2829,11 +2813,35 @@ class FreezingController extends Controller
                 $this->actionMapper->deleteAction($repairActionEntity->getPid());
             }
 
-            $rabbitMQconnection->close();
             Access::unlockProject($project);
 
             return API::serverErrorResponse($e->getMessage());
         }
+    }
+
+    /**
+     * Test whether RabbitMQ connection can be opened for publication.
+     * 
+     * TODO: Once the health check endpoint service monitors RabbitMQ, we should be able to do away with
+     * all of these connection verifications prior to proceeding with each action...
+     *
+     * @return boolean
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function verifyRabbitMQConnectionOK() {
+
+        try {
+            $rabbitMQconnection = $this->openRabbitMQConnection();
+            $rabbitMQconnection->close();
+        }
+        catch (Exception $e) {
+            Util::writeLog('ida', 'verifyRabbitMQConnectionOK: ERROR: Unable to successfully connect with RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -2862,13 +2870,14 @@ class FreezingController extends Controller
      * variable SIMULATE_AGENTS. If agents are to be simulated, the action is simply marked as
      * completed and no action message is published to rabbitmq.
      *
-     * @param AMQPStreamConnection $connection   a connection to RabbitMQ
-     * @param Entity               $actionEntity database entity for the new action about which the message should be published
+     * @param Entity $actionEntity database entity for the new action about which the message should be published
      * 
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    protected function publishActionMessage($connection, $actionEntity) {
+    protected function publishActionMessage($actionEntity) {
+
+        $rabbitMQconnection = null;
 
         try {
 
@@ -2910,11 +2919,20 @@ class FreezingController extends Controller
                     Util::writeLog('ida', 'publishActionMessage: SIMULATED', \OCP\Util::DEBUG);
                 }
                 else {
-                    $channel = $connection->channel();
-                    $message = new AMQPMessage(json_encode($actionEntity));
 
+                    try {
+                        $rabbitMQconnection = $this->openRabbitMQConnection();
+                    }
+                    catch (Exception $e) {
+                        Util::writeLog('ida', 'publishActionMessage: ERROR: Unable to open connection to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
+                        throw $e;
+                    }
+
+                    $channel = $rabbitMQconnection->channel();
+                    $message = new AMQPMessage(json_encode($actionEntity));
                     $channel->basic_publish($message, 'actions', $actionEntity->getAction());
                     $channel->close();
+                    $rabbitMQconnection->close();
 
                     Util::writeLog('ida', 'publishActionMessage: message=' . $message->getBody(), \OCP\Util::DEBUG);
                 }
@@ -2922,6 +2940,12 @@ class FreezingController extends Controller
         }
         catch (Exception $e) {
             Util::writeLog('ida', 'publishActionMessage: ERROR: Unable to publish message to RabbitMQ: ' . $e->getMessage(), \OCP\Util::ERROR);
+            if ($rabbitMQconnection) {
+                try {
+                    $rabbitMQconnection->close();
+                }
+                catch (Exception $e) {}
+            }
             throw $e;
         }
     }
@@ -3062,7 +3086,7 @@ class FreezingController extends Controller
 
                 if ($actionScope === '/' || $inputScope === '/') {
 
-                    Util::writeLog('ida', 'scopeIntersectsAction: absolute scope intersection:'
+                    Util::writeLog('ida', 'scopeIntersectsAction: ABSOLUTE SCOPE INTERSECTION:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
@@ -3076,7 +3100,7 @@ class FreezingController extends Controller
 
                 if ($actionScope === $inputScope) {
 
-                    Util::writeLog('ida', 'scopeIntersectsAction: identical scope intersection:'
+                    Util::writeLog('ida', 'scopeIntersectsAction: IDENTICAL SCOPE INTERSECTION:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
@@ -3099,7 +3123,7 @@ class FreezingController extends Controller
 
                 if ($actionScopeLength < $inputScopeLength && substr($inputScope, 0, ($actionScopeLength + 1)) === ($actionScope . '/')) {
 
-                    Util::writeLog('ida', 'scopeIntersectsAction: action scope prefix intersection:'
+                    Util::writeLog('ida', 'scopeIntersectsAction: ACTION SCOPE PREFIX INTERSECTION:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope
@@ -3114,7 +3138,7 @@ class FreezingController extends Controller
 
                 if ($inputScopeLength < $actionScopeLength && substr($actionScope, 0, ($inputScopeLength + 1)) === ($inputScope . '/')) {
 
-                    Util::writeLog('ida', 'scopeIntersectsAction: input scope prefix intersection:'
+                    Util::writeLog('ida', 'scopeIntersectsAction: INPUT SCOPE PREFIX INTERSECTION:'
                         . ' project: ' . $actionEntity->getProject()
                         . ' action: ' . $actionEntity->getPid()
                         . ' inputScope: ' . $inputScope

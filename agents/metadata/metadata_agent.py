@@ -198,13 +198,19 @@ class MetadataAgent(GenericAgent):
             if node_size != file_size:
                 self._logger.debug('Recording both size and checksum for file %s' % node['pid'])
                 node_size = file_size
-                node_checksum = self._get_file_checksum(file_path)
+                try:
+                    node_checksum = self._get_file_checksum(file_path)
+                except Exception as e:
+                    raise Exception('Error generating checksum for file: %s, pathname: %s, error: %s' % (node['pid'], node['pathname'], str(e)))
                 node_updated = True
 
             # If still no checksum, generate and record new checksum
             if node_checksum == None:
                 self._logger.debug('Recording checksum for file %s' % node['pid'])
-                node_checksum = self._get_file_checksum(file_path)
+                try:
+                    node_checksum = self._get_file_checksum(file_path)
+                except Exception as e:
+                    raise Exception('Error generating checksum for file: %s, pathname: %s, error: %s' % (node['pid'], node['pathname'], str(e)))
                 node_updated = True
 
             # If either new file size or new checksum, update node values and flag node as updated

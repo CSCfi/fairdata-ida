@@ -90,6 +90,8 @@ class ActionController extends Controller
 
         try {
 
+            $queryProjects = null;
+
             if ($projects !== null) {
                 $queryProjects = Access::cleanProjectList($projects);
             }
@@ -649,6 +651,8 @@ class ActionController extends Controller
     public function deleteAction($pid)
     {
 
+        Util::writeLog('ida', 'deleteAction: pid=' . $pid , \OCP\Util::INFO);
+
         try {
             try {
                 API::verifyRequiredStringParameter('pid', $pid);
@@ -672,7 +676,7 @@ class ActionController extends Controller
 
             $this->actionMapper->deleteAction($pid);
 
-            return API::successResponse('Action deleted.');
+            return API::successResponse('Action ' . $pid . ' deleted.');
         } catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }

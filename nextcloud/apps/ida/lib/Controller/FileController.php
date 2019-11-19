@@ -347,7 +347,7 @@ class FileController extends Controller
     public function createFile($action, $project, $pathname, $node = null, $size = null, $checksum = null,
                                $metadata = null, $replicated = null, $removed = null, $cleared = null) {
 
-        Util::writeLog('ida', 'createAction:'
+        Util::writeLog('ida', 'createFile:'
             . ' action=' . $action
             . ' project=' . $project
             . ' pathname=' . $pathname
@@ -426,6 +426,9 @@ class FileController extends Controller
      * Restricted to admin and PSO users for the project specified for the action.
      *
      * @param string $pid        the PID of the file
+     * @param string $size       the size of a file
+     * @param string $modified   timestamp indicating when the file was last modified
+     * @param string $frozen     timestamp indicating when the file was frozen
      * @param string $checksum   the checksum of a file
      * @param string $metadata   timestamp indicating when metadata for file was successfully published or updated
      * @param string $replicated timestamp indicating when the file was successfully replicated
@@ -439,6 +442,18 @@ class FileController extends Controller
      */
     public function updateFile($pid, $size = null, $modified = null, $frozen = null, $checksum = null,
                                $metadata = null, $replicated = null, $removed = null, $cleared = null) {
+
+        Util::writeLog('ida', 'updateFile:'
+            . ' pid=' . $pid
+            . ' size=' . $size
+            . ' modified=' . $modified
+            . ' frozen=' . $frozen
+            . ' checksum=' . $checksum
+            . ' metadata=' . $metadata
+            . ' replicated=' . $replicated
+            . ' removed=' . $removed
+            . ' cleared=' . $cleared
+            , \OCP\Util::INFO);
 
         try {
             try {
@@ -545,6 +560,8 @@ class FileController extends Controller
      */
     public function deleteFile($pid) {
 
+        Util::writeLog('ida', 'deleteFile: pid=' . $pid , \OCP\Util::INFO);
+
         try {
             try {
                 API::verifyRequiredStringParameter('pid', $pid);
@@ -569,7 +586,7 @@ class FileController extends Controller
 
             $this->fileMapper->deleteFile($pid);
 
-            return API::successResponse('File deleted.');
+            return API::successResponse('File ' . $pid . ' deleted.');
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());

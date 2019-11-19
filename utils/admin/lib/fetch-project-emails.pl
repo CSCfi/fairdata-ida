@@ -73,8 +73,7 @@ my $mail;
 # --------------------------------------------------------------------------------
 
 if (@ARGV != 1 ) {
-    print "Usage:\t$0 <project_name>\n\nE.g.\t$0 2000142\n";    
-    exit;
+    die "Usage:\t$0 <project_name>\n\nE.g.\t$0 2000142\n";    
 }
 
 $project = $ARGV[0];

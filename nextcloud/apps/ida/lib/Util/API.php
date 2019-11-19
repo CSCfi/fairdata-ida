@@ -82,6 +82,7 @@ class API
      * @return DataResponse
      */
     public static function successResponse($message = 'OK') {
+        Util::writeLog('ida', $message, \OCP\Util::INFO);
         return self::loggedDataResponse($message);
     }
     

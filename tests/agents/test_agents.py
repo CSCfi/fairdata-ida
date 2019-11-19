@@ -51,7 +51,7 @@ class TestAgents(unittest.TestCase):
         self.success = False
 
         # timeout when waiting for actions to complete
-        self.timeout = 3600
+        self.timeout = 10800 # 3 hours
 
         print("(initializing)")
 

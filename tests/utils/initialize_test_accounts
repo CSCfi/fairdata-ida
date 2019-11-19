@@ -319,7 +319,6 @@ echo "Suspending project test_project_s..."
 
 echo "Creating pending action in project test_project_p..."
 
-
 $CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_p&pathname=/&action=freeze" >/dev/null
 
 #--------------------------------------------------------------------------------
