@@ -286,12 +286,14 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_1_data = response.json()
 
-        print("Update frozen file 1 record to set checksum to null in IDA")
-        data = {"checksum": "null"}
+        print("Update frozen file 1 record to remove replicated timestamp and set add legacy prefix to checksum in IDA")
+        new_checksum = "sha256:%s" % file_1_data["checksum"]
+        data = {"replicated": "null", "checksum": new_checksum}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_1_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        file_1_data = response.json()
-        self.assertIsNone(file_1_data.get("checksum", None))
+        file_data = response.json()
+        self.assertEqual(file_data["checksum"], new_checksum)
+        self.assertIsNone(file_data.get("replicated", None))
 
         print("Retrieve file details from already frozen file 2")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/baseline/test02.dat"}
@@ -356,11 +358,20 @@ class TestAgents(unittest.TestCase):
         self.assertFalse(os.path.exists(pathname))
 
         print("Retrieve file details from already frozen file 5")
-        data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/.hidden_file"}
+        data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/test05.dat"}
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_5_data = response.json()
-        self.assertEqual(file_5_data.get('size', None), 446)
+        self.assertEqual(file_5_data.get('size', None), 3728)
+
+        print("Physically modify replication of file 5")
+        pathname = "%s/projects/test_project_a/2017-08/Experiment_1/test05.dat" % (self.config["DATA_REPLICATION_ROOT"])
+        self.assertTrue(os.path.exists(pathname))
+        self.assertEqual(os.path.getsize(pathname), 3728)
+        cmd = "sudo -u %s /bin/echo x >> %s" % (self.config["HTTPD_USER"], pathname)
+        result = os.system(cmd)
+        self.assertEquals(result, 0)
+        self.assertEqual(os.path.getsize(pathname), 3730)
 
         print("Physically move folder from staging to frozen area")
         result = shutil.move("%s/2017-08/Experiment_2" % (staging_area_root), "%s/2017-08/Experiment_2" % (frozen_area_root))
@@ -394,7 +405,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(file_1_data['pid'], file_data['pid'])
         self.assertEqual(file_1_data['pathname'], file_data['pathname'])
         self.assertEqual(file_1_data['frozen'], file_data['frozen'])
-        self.assertEqual(file_1_data['replicated'], file_data['replicated'])
+        self.assertEqual(file_1_data['frozen'], file_data['replicated'])
 
         print("Verify file details from post-repair frozen file 2 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/baseline/test02.dat"}
@@ -458,11 +469,19 @@ class TestAgents(unittest.TestCase):
             self.assertEqual(response.status_code, 404)
 
         print("Verify file details from already frozen file 5 remain unchanged")
-        data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/.hidden_file"}
+        data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/test05.dat"}
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        file_5_data = response.json()
-        self.assertEqual(file_5_data.get('size', None), 446)
+        file_data = response.json()
+        self.assertEqual(file_5_data['pathname'], file_data['pathname'])
+        self.assertEqual(file_5_data['size'], file_data['size'])
+        self.assertEqual(file_5_data['checksum'], file_data['checksum'])
+        self.assertEqual(file_5_data['frozen'], file_data['frozen'])
+
+        print("Verify replication of frozen file 5 was repaired")
+        pathname = "%s/projects/test_project_a/2017-08/Experiment_1/test05.dat" % (self.config["DATA_REPLICATION_ROOT"])
+        self.assertTrue(os.path.exists(pathname))
+        self.assertEqual(os.path.getsize(pathname), 3728)
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

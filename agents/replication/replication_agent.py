@@ -134,7 +134,7 @@ class ReplicationAgent(GenericAgent):
         As an extra precaution, checksums are re-calculated for files after copy,
         and compared with the checksums of the initial checksum generation phase.
 
-        If the node is already reported as having been replicated, the file will not be re-copied
+        Note that for efficiencies sake, during repair of a project, the file will not be re-copied
         if a replication already exists and the file size is the same for both the frozen file and
         already replicated file.
         """
@@ -142,19 +142,15 @@ class ReplicationAgent(GenericAgent):
         src_path = construct_file_path(self._uida_conf_vars, node)
         dest_path = construct_file_path(self._uida_conf_vars, node, replication=True)
 
-        try:
-            replicated = node['replicated']
-        except:
-            replicated = None
-
-        if replicated != None:
-            if os.path.exists(dest_path):
-                if os.stat(src_path).st_size == os.stat(dest_path).st_size:
-                    self._logger.debug('Skipping already replicated file: %s' % dest_path)
-                    if replicated == None:
-                        node['replicated'] = timestamp
-                        node['_updated'] = True
-                    return
+        if os.path.exists(dest_path):
+            if os.stat(src_path).st_size == os.stat(dest_path).st_size:
+                self._logger.debug('Skipping already replicated file: %s' % dest_path)
+                # If the file has no replicated timestamp defined, set it to the frozen timestamp
+                if not node.get('replicated', None):
+                    self._logger.debug('Fixing missing replicated timestamp: %s' % node['frozen'])
+                    node['replicated'] = node['frozen']
+                    node['_updated'] = True
+                return
 
         try:
             shutil.copy(src_path, dest_path)
@@ -169,6 +165,12 @@ class ReplicationAgent(GenericAgent):
             replicated_checksum = self._get_file_checksum(dest_path)
         except Exception as e:
             raise Exception('Error generating checksum for file: %s, pathname: %s, error: %s' % (node['pid'], node['pathname'], str(e)))
+
+        # Check for and fix any legacy prefixed checksum
+        checksum = node['checksum']
+        if checksum.startswith('sha256:'):
+            node['checksum'] = checksum[7:]
+            self._logger.debug('Fixing legacy prefixed checksum %s -> %s' % (checksum, node['checksum']))
 
         if node['checksum'] != replicated_checksum:
             raise Exception('Checksum mismatch after replication for file: %s, pathname: %s, frozen_checksum: %s, replicated_checksum: %s' % (node['pid'], node['pathname'], node['checksum'], replicated_checksum))

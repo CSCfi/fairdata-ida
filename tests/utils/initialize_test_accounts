@@ -149,8 +149,20 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
             success
         fi
     done
-
 fi
+
+echo "Flushing all replicated files..."
+
+for PROJECT in $PROJECTS; do
+    STEP="   Flushing $PROJECT"
+    printf "%${PADDING}s" "$STEP"
+    OUT=`/bin/rm -fr $DATA_REPLICATION_ROOT/projects/$PROJECT 2>&1`
+    if [ "$?" -ne 0 ]; then
+        failure "$OUT (ignored)"
+    else
+        success
+    fi
+done
 
 #--------------------------------------------------------------------------------
 
