@@ -492,13 +492,21 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 404)
 
-        print("Update checksum")
-        data = {"checksum": "thisisatestdummychecksum"}
+        print("Update checksum as plain checksum value")
+        data = {"checksum": "thisisaplainchecksumvalue"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["pid"], file_pid)
-        self.assertEqual(file_data["checksum"], data["checksum"])
+        self.assertEqual(file_data["checksum"], "sha256:thisisaplainchecksumvalue")
+
+        print("Update checksum as sha256: checksum URI")
+        data = {"checksum": "sha256:thisisachecksumuri"}
+        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        file_data = response.json()
+        self.assertEqual(file_data["pid"], file_pid)
+        self.assertEqual(file_data["checksum"], "sha256:thisisachecksumuri")
 
         print("Update size")
         data = {"size": 1234}

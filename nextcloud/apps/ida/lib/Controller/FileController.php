@@ -397,8 +397,15 @@ class FileController extends Controller
             if ($size !== null) {
                 $fileEntity->setSize(0 + $size);
             }
-            if ($checksum !== null) {
-                $fileEntity->setChecksum((trim($checksum) === '') ? null : $checksum);
+            $checksum = trim($checksum);
+            if ($checksum != null) {
+                // Ensure only the checksum value portion is stored if the checksum was provided as a URI
+                if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
+                    $fileEntity->setChecksum(substr($checksum, 7));
+                }
+                else {
+                    $fileEntity->setChecksum($checksum);
+                }
             }
             if ($metadata !== null) {
                 $fileEntity->setMetadata($metadata);
@@ -517,8 +524,15 @@ class FileController extends Controller
             if ($size !== null) {
                 $fileEntity->setSize(0 + $size);
             }
-            if ($checksum !== null) {
-                $fileEntity->setChecksum((trim($checksum) === '') ? null : $checksum);
+            $checksum = trim($checksum);
+            if ($checksum != null) {
+                // Ensure only the checksum value portion is stored if the checksum was provided as a URI
+                if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
+                    $fileEntity->setChecksum(substr($checksum, 7));
+                }
+                else {
+                    $fileEntity->setChecksum($checksum);
+                }
             }
             if ($modified !== null) {
                 $fileEntity->setModified($modified);

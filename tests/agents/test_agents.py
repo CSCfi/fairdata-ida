@@ -172,7 +172,7 @@ class TestAgents(unittest.TestCase):
             self.assertEqual(file_data["pid"], metax_file_data["identifier"])
             self.assertEqual(file_data["project"], metax_file_data["project_identifier"])
             self.assertEqual(file_data["pathname"], metax_file_data["file_path"])
-            self.assertEqual(file_data["checksum"], metax_file_data["checksum"]["value"])
+            self.assertEqual(file_data["checksum"], 'sha256:%s' % metax_file_data["checksum"]["value"])
             self.assertEqual(file_data["size"], metax_file_data["byte_size"])
             self.assertIsNotNone(metax_file_data.get("file_frozen", None))
             self.assertIsNotNone(metax_file_data.get("file_modified", None))
@@ -286,13 +286,11 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_1_data = response.json()
 
-        print("Update frozen file 1 record to remove replicated timestamp and set add legacy prefix to checksum in IDA")
-        new_checksum = "sha256:%s" % file_1_data["checksum"]
-        data = {"replicated": "null", "checksum": new_checksum}
+        print("Update frozen file 1 record to remove replicated timestamp")
+        data = {"replicated": "null"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_1_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
-        self.assertEqual(file_data["checksum"], new_checksum)
         self.assertIsNone(file_data.get("replicated", None))
 
         print("Retrieve file details from already frozen file 2")
@@ -316,22 +314,23 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_3_data = response.json()
 
-        print("Update frozen file 3 record to set size to 999 and checksum to 'abcdef' in IDA")
-        data = {"size": 999, "checksum": "abcdef"}
+        print("Update frozen file 3 record to set size to 999 and checksum to 'sha256:abcdef' in IDA")
+        data = {"size": 999, "checksum": "sha256:abcdef"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_3_data = response.json()
         self.assertEqual(file_3_data["size"], 999)
-        self.assertEqual(file_3_data["checksum"], "abcdef")
+        self.assertEqual(file_3_data["checksum"], "sha256:abcdef")
 
         if self.config["METAX_AVAILABLE"] == 1:
 
-            print("Update frozen file 3 record to set size to 999 and checksum to 'abcdef' in METAX")
-            data = {"byte_size": 999, "checksum": { "value": "abcdef"} }
+            print("Update frozen file 3 record to set size to 999 and checksum to equivalent of 'sha256:abcdef' in METAX")
+            data = {"byte_size": 999, "checksum": { "algorithm": "SHA-256", "value": "abcdef"} }
             response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=metax_user, verify=False)
             self.assertEqual(response.status_code, 200)
             metax_file_data = response.json()
             self.assertEqual(metax_file_data["byte_size"], 999)
+            self.assertEqual(metax_file_data["checksum"]["algorithm"], "SHA-256")
             self.assertEqual(metax_file_data["checksum"]["value"], "abcdef")
 
             print("Update frozen file 3 record to simulate legacy metadata stored in METAX")
@@ -401,7 +400,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 446)
-        self.assertEqual(file_data["checksum"], "56293a80e0394d252e995f2debccea8223e4b5b2b150bee212729b3b39ac4d46")
+        self.assertEqual(file_data["checksum"], "sha256:56293a80e0394d252e995f2debccea8223e4b5b2b150bee212729b3b39ac4d46")
         self.assertEqual(file_1_data['pid'], file_data['pid'])
         self.assertEqual(file_1_data['pathname'], file_data['pathname'])
         self.assertEqual(file_1_data['frozen'], file_data['frozen'])
@@ -413,7 +412,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 1531)
-        self.assertEqual(file_data["checksum"], "c5a8e40a8afaebf3d8429266a6f54ef52eff14dcd22cb64a59a06e4d724eebb9")
+        self.assertEqual(file_data["checksum"], "sha256:c5a8e40a8afaebf3d8429266a6f54ef52eff14dcd22cb64a59a06e4d724eebb9")
         self.assertEqual(file_2_data['replicated'], file_data['replicated'])
 
         print("Verify file details from post-repair frozen file 3 are repaired in IDA")
@@ -422,7 +421,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 2263)
-        self.assertEqual(file_data["checksum"], "8950fc9b4292a82cfd1b5e6bbaec578ed00ac9a9c27bf891130f198fef2f0168")
+        self.assertEqual(file_data["checksum"], "sha256:8950fc9b4292a82cfd1b5e6bbaec578ed00ac9a9c27bf891130f198fef2f0168")
         pathname = "%s/projects/test_project_a/2017-08/Experiment_1/baseline/test03.dat" % (self.config["DATA_REPLICATION_ROOT"])
         self.assertTrue(os.path.exists(pathname))
         self.assertNotEqual(file_3_data['replicated'], file_data['replicated'])
@@ -434,6 +433,7 @@ class TestAgents(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             metax_file_data = response.json()
             self.assertEqual(metax_file_data["byte_size"], 2263)
+            self.assertEqual(metax_file_data["checksum"]["algorithm"], "SHA-256")
             self.assertEqual(metax_file_data["checksum"]["value"], "8950fc9b4292a82cfd1b5e6bbaec578ed00ac9a9c27bf891130f198fef2f0168")
 
             print("Verify simulated legacy metadata of post-repair frozen file 3 remains in METAX")
@@ -445,7 +445,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 446)
-        self.assertEqual(file_data["checksum"], "56293a80e0394d252e995f2debccea8223e4b5b2b150bee212729b3b39ac4d46")
+        self.assertEqual(file_data["checksum"], "sha256:56293a80e0394d252e995f2debccea8223e4b5b2b150bee212729b3b39ac4d46")
         pathname = "%s/projects/test_project_a/2017-08/Experiment_2/baseline/test01.dat" % (self.config["DATA_REPLICATION_ROOT"])
         self.assertTrue(os.path.exists(pathname))
 

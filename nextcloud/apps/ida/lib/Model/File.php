@@ -73,7 +73,13 @@ class File extends Entity implements JsonSerializable
             $values["size"] = (int)$this->size;
         }
         if ($this->checksum !== null) {
-            $values["checksum"] = $this->checksum;
+            // Ensure the checksum is returned as an sha256: checksum URI
+            if ($this->checksum[0] === 's' && substr($this->checksum, 0, 7) === "sha256:") {
+                $values["checksum"] = $this->checksum;
+            }
+            else {
+                $values["checksum"] = 'sha256:' . $this->checksum;
+            }
         }
         if ($this->modified !== null) {
             $values["modified"] = $this->modified;

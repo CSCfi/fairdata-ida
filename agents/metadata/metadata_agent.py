@@ -186,13 +186,6 @@ class MetadataAgent(GenericAgent):
             except:
                 node_checksum = None
 
-            # Check for and fix any legacy prefixed checksum
-            if node_checksum != None and node_checksum.startswith('sha256:'):
-                legacy_checksum = node_checksum
-                node_checksum = legacy_checksum[7:]
-                node_updated = True
-                self._logger.debug('Fixing legacy prefixed checksum %s -> %s' % (legacy_checksum, node_checksum))
-
             # If no file size is reported, or we have a repair action, get the actual size on disk
             # Else trust the reported size and avoid the cost of retrieving the size on disk
             if node_size == None or action['action'] == 'repair':
@@ -290,8 +283,8 @@ class MetadataAgent(GenericAgent):
         file_metadata = {
             'byte_size': node['size'],
             'checksum': {
-                'value': node['checksum'],
-                'algorithm': 'sha2',
+                'value': self._get_checksum_value(node['checksum']),
+                'algorithm': 'SHA-256',
                 'checked': action['checksums'],
             },
             'file_frozen': node['frozen'],

@@ -166,11 +166,8 @@ class ReplicationAgent(GenericAgent):
         except Exception as e:
             raise Exception('Error generating checksum for file: %s, pathname: %s, error: %s' % (node['pid'], node['pathname'], str(e)))
 
-        # Check for and fix any legacy prefixed checksum
-        checksum = node['checksum']
-        if checksum.startswith('sha256:'):
-            node['checksum'] = checksum[7:]
-            self._logger.debug('Fixing legacy prefixed checksum %s -> %s' % (checksum, node['checksum']))
+        # Remove any sha256: URI prefix
+        node['checksum'] = self._get_checksum_value(node['checksum'])
 
         if node['checksum'] != replicated_checksum:
             raise Exception('Checksum mismatch after replication for file: %s, pathname: %s, frozen_checksum: %s, replicated_checksum: %s' % (node['pid'], node['pathname'], node['checksum'], replicated_checksum))

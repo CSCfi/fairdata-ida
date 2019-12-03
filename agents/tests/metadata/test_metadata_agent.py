@@ -137,7 +137,7 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
             'checksum': {
                 'checked': '2017-10-10T12:00:00Z',
                 'value': self.TEST_FREEZE_NODE_CHECKSUM,
-                'algorithm': 'sha2'
+                'algorithm': 'SHA-256'
             },
             'project_identifier': 'Project_X',
             'file_storage': 1,

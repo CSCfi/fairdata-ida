@@ -577,11 +577,30 @@ class GenericAgent():
             % (url, self._current_http_request_retry))
 
     def _get_file_checksum(self, file_path, block_size=65536):
+        """
+        Generate an SHA-256 checksum for the specified file
+        """
         sha = sha256()
         with open(file_path, 'rb') as f:
             for block in iter(lambda: f.read(block_size), b''):
                 sha.update(block)
         return sha.hexdigest()
+
+    def _get_checksum_value(self, checksum):
+        """
+        Return a plain checksum value, given either a checksum URI or a plain checksum value
+        """
+        if checksum.startswith('sha256:'):
+            return checksum[7:]
+        return checksum
+
+    def _get_checksum_uri(self, checksum):
+        """
+        Return an sha256: checksum URI, given either a plain checksum value or a checksum URI
+        """
+        if checksum.startswith('sha256:'):
+            return checksum
+        return 'sha256:%s' % checksum
 
     def _set_sentinel_monitoring_file(self, action_pid):
         """
