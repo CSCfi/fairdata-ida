@@ -25,6 +25,7 @@ from copy import deepcopy
 from datetime import datetime
 import importlib.util
 import logging
+import logging.handlers
 import sys
 from base64 import b64encode
 
@@ -84,7 +85,7 @@ def get_logger(logger_name='logger', uida_conf_vars=None):
     logger = logging.getLogger(logger_name)
 
     formatter = logging.Formatter(fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
-    file_handler = logging.FileHandler(load_variables_from_uida_conf_files()['RABBIT_WORKER_LOG_FILE'])
+    file_handler = logging.handlers.WatchedFileHandler(load_variables_from_uida_conf_files()['RABBIT_WORKER_LOG_FILE'])
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
