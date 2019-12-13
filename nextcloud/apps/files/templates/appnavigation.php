@@ -64,7 +64,7 @@ This file is part of the IDA research data storage service
     </div>
 	<?php } ?>
 	
-	<div id="app-settings">
+	<div id="app-settings" style="visibility: hidden">
 		<div id="app-settings-header">
 			<button class="settings-button"
 					data-apps-slide-toggle="#app-settings-content">
@@ -74,7 +74,7 @@ This file is part of the IDA research data storage service
 		<div id="app-settings-content">
 			<div id="files-setting-showhidden">
 				<input class="checkbox" id="showhiddenfilesToggle"
-					   checked="checked" type="checkbox">
+					   checked="checked" type="checkbox" checked>
 				<label for="showhiddenfilesToggle"><?php p($l->t('Show hidden files')); ?></label>
 			</div>
 		</div>
