@@ -37,7 +37,14 @@
 
 .ida table {
     margin-top: 20px;
-    width: 100%;
+}
+
+.ida-alert {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+    padding: 2em;
+    border-radius: 1em;
 }
 
 .ida th {
