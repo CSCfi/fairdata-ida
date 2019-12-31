@@ -4,7 +4,7 @@
 
 style('core', ['styles', 'header']);
 ?>
-<div class="error error-wide">
+<div class="error">
 	<h2><?php p($l->t('Internal Server Error')) ?></h2>
 	<p><?php p($l->t('The server was unable to complete your request.')) ?></p>
 	<p><?php p($l->t('If this happens again, please send the technical details below to the server administrator.')) ?></p>
