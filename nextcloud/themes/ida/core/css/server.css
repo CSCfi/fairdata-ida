@@ -44,20 +44,22 @@
 	box-shadow: 0 6px 12px lightgrey;
 }
 
+.local-login-form #submit-wrapper {
+	margin-top: 1em
+}
+.login-field > input {
+	margin-bottom: 0 !important
+}
+
 #body-login .local-login-form {
     align-content: center;
 	width: 318px;
-	border: 1px;
-    border-style: solid;
-	border-color: #0000004d;
-	box-shadow: 0 6px 12px lightgrey;
 }
 
 #body-login #ida-local-login-form-header {
 	padding-top: 20px;
 	text-align: center;
-	font-size: 14px;
-	font-weight: bold;
+	font-size: 16pt;
 }
 
 #body-login #ida-local-login-form-footer {
@@ -255,12 +257,11 @@ input[type='checkbox'].checkbox--white:checked + label:before {
 }
 
 #body-login footer {
-	background-color: #dfe1e3;
-	position: fixed;
 	bottom: 0;
 	width: 100%;
 	padding: 0;
 	padding-top: 20px;
+	padding-bottom: 20px;
 	margin: 0;
 	vertical-align: middle;
 }

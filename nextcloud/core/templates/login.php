@@ -35,7 +35,7 @@ use OC\Core\Controller\LoginController;
 			<!-- the following div ensures that the spinner is always inside the #message div -->
 			<div style="clear: both;"></div>
 		</div>
-		<p class="grouptop<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
 			<input type="text" name="user" id="user"
 				placeholder="<?php p($l->t('Username or email')); ?>"
 				aria-label="<?php p($l->t('Username or email')); ?>"
@@ -45,7 +45,7 @@ use OC\Core\Controller\LoginController;
 			<label for="user" class="infield"><?php p($l->t('Username or email')); ?></label>
 		</p>
 
-		<p class="groupbottom<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
 			<input type="password" name="password" id="password" value=""
 				placeholder="<?php p($l->t('Password')); ?>"
 				aria-label="<?php p($l->t('Password')); ?>"
@@ -55,7 +55,7 @@ use OC\Core\Controller\LoginController;
 		</p>
 
 		<div id="submit-wrapper">
-			<input type="submit" id="submit" class="login primary" title="" value="<?php p($l->t('Log in')); ?>" disabled="disabled" />
+			<input type="submit" id="submit" class="login primary" title="" value="<?php p($l->t('Log in with CSC Account')); ?>" disabled="disabled" />
 			<div class="submit-icon icon-confirm-white"></div>
 		</div>
 
