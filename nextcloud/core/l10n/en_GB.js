@@ -160,7 +160,7 @@ OC.L10N.register(
     "Please contact your administrator." : "Please contact your administrator.",
     "An internal error occurred." : "An internal error occurred.",
     "Please try again or contact your administrator." : "Please try again or contact your administrator.",
-    "Username or email" : "Username or email",
+    "Username or email" : "Username",
     "Log in" : "Log in",
     "Logging in …" : "Logging in …",
     "We have detected multiple invalid login attempts from your IP. Therefore your next login is throttled up to 30 seconds." : "We have detected multiple invalid login attempts from your IP. Therefore your next login is throttled up to 30 seconds.",
