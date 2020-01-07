@@ -195,6 +195,13 @@ class TestIdaApp(unittest.TestCase):
         file_x_data = response.json()
         self.assertEqual(file_x_data.get('size', None), 446)
 
+        print("Attempt to freeze an empty folder")
+        data["pathname"] = "/empty_folder"
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data["message"], "The specified folder contains no files which can be frozen.")
+
         # --------------------------------------------------------------------------------
 
         print("--- Unfreeze Actions")
@@ -252,6 +259,13 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], "NO_SUCH_PID"), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 404)
 
+        print("Attempt to unfreeze an empty folder")
+        data["pathname"] = "/empty_folder"
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data["message"], "The specified folder contains no files which can be unfrozen.")
+
         # --------------------------------------------------------------------------------
 
         print("--- Delete Actions")
@@ -304,6 +318,16 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertEqual(len(file_set_data), original_freeze_folder_action_file_count)
+
+        print("Delete an empty folder and verify action is completed")
+        data["pathname"] = "/empty_folder"
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "delete")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+        self.assertIsNotNone(action_data.get("completed", None))
 
         # --------------------------------------------------------------------------------
 
@@ -374,7 +398,7 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/actions" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_set_data = response.json()
-        self.assertEqual(len(action_set_data), 11)
+        self.assertEqual(len(action_set_data), 12)
         action_data = action_set_data[0]
         action_pid = action_data["pid"]
         self.assertIsNotNone(action_data.get("completed", None))

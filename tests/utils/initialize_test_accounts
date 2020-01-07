@@ -261,6 +261,7 @@ for PROJECT in $PROJECTS; do
 
     USER="$PROJECT_USER_PREFIX""$PROJECT"
     PROJECT_STAGING_FOLDER="$PROJECT$STAGING_FOLDER_SUFFIX"
+    PROJECT_FROZEN_FOLDER="$PROJECT"
 
     OUT=`cp -r $ROOT/tests/testdata/* $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER`
 
@@ -271,6 +272,22 @@ for PROJECT in $PROJECTS; do
     fi
 
     rm -fr `find $STORAGE_OC_DATA_ROOT/$USER/files -name .DS_Store`
+
+    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER/empty_folder`
+
+    if [ "$?" -ne 0 ]; then
+        failure "$OUT"
+        exit 1
+        continue
+    fi
+
+    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_FROZEN_FOLDER/empty_folder`
+
+    if [ "$?" -ne 0 ]; then
+        failure "$OUT"
+        exit 1
+        continue
+    fi
 
     chmod -R u+w,g+rw,o-rwx "$STORAGE_OC_DATA_ROOT/$USER/files"
 
