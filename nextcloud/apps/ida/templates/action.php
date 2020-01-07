@@ -132,7 +132,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <?php if ($action->getCleared() != null) : ?>
                             <?php p((new \DateTime($action->getCleared()))->format('D, M j, Y, H:i') . ' UTC'); ?>
                         <?php endif; ?>
-                        <?php if ($action->getFailed() != null && substr(\OC::$server->getUserSession()->getUser()->getUID(), 0, 4) === "PSO_"): ?>
+                        <?php if ($action->getFailed() != null && $action->getCleared() == null && substr(\OC::$server->getUserSession()->getUser()->getUID(), 0, 4) === "PSO_"): ?>
                             <span style="font-family: 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;">
                                 <a href="/apps/ida/clear/<?php p($action->getPid()) ?>"><?php p($l->t('CLEAR')) ?></a>
                             </span>
