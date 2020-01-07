@@ -142,30 +142,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             </table>
             
             <?php if ($action->getError() != null) : ?>
-                <table id="action-error" class="idaTable">
-                    <tr>
-                        <td>
-                            <hr>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="errormsg"><?php p($l->t('Error:')) ?></th>
-                    </tr>
-                    <tr>
-                        <td class="errormsg">
-                            <pre><?php p($action->getError()) ?></pre>
-                        </td>
-                    </tr>
-                </table>
+                <div id="action-error" class="ida-alert">
+                    <b><?php p($l->t('Error:')) ?></b><br />
+                    <pre><?php p($action->getError()) ?></pre>
+                </div>
             <?php endif; ?>
             
             <?php if (sizeof($_['files']) > 0) : ?>
                 <table id="action-files" class="idaTable">
-                    <tr>
-                        <td colspan="2">
-                            <hr>
-                        </td>
-                    </tr>
                     <tr>
                         <th class="ida-pid"><?php p($l->t('File ID')) ?></th>
                         <th><?php p($l->t('File')) ?></th>
