@@ -80,9 +80,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                                     } ?>
                             </div>
                             <div class="local-login-form">
-                                <p id="ida-local-login-form-header">
-                                    <?php p($l->t('Login with CSC account:')) ?>
-                                </p>
                                 <?php print_unescaped($_['content']); ?>
                                 <p id="ida-local-login-form-footer">
                                     <?php p($l->t('Personal CSC accounts are created and managed in')) ?>
