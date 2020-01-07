@@ -92,22 +92,26 @@
 					scrollTo: urlParams.scrollto,
 					filesClient: OC.Files.getClient(),
 					multiSelectMenu: [
+						/*
 						{
 							name: 'copyMove',
 							displayName:  t('files', 'Move or copy'),
 							iconClass: 'icon-external',
 						},
+						*/
 						{
 							name: 'download',
 							displayName:  t('files', 'Download'),
 							iconClass: 'icon-download',
 						},
 						OCA.Files.FileList.MultiSelectMenuActions.ToggleSelectionModeAction,
+						/*
 						{
 							name: 'delete',
 							displayName: t('files', 'Delete'),
 							iconClass: 'icon-delete',
 						},
+						*/
 					],
 					sorting: {
 						mode: $('#defaultFileSorting').val(),
