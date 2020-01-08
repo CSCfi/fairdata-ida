@@ -83,7 +83,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                                 <?php print_unescaped($_['content']); ?>
                                 <p id="ida-local-login-form-footer">
                                     <?php p($l->t('Personal CSC accounts are created and managed in')) ?>
-                                    <br><a href="https://sui.csc.fi/" target="_blank">
+                                    <br><a href="https://my.csc.fi/" target="_blank">
                                         <?php p($l->t('CSC Customer Portal')) ?>
                                     </a>
                                 </p>
