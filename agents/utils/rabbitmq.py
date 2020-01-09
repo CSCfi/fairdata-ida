@@ -179,7 +179,7 @@ def _create_vhost():
     # admin must be assigned to the vhost, otherwise we wont be able to edit the vhost later
     _rabbitmq_api_call(
         'put',
-        '/permissions/%s/%s' % (VHOST_NAME, 'admin'),
+        '/permissions/%s/%s' % (VHOST_NAME, uida_conf_vars['RABBIT_ADMIN_USER']),
         data=json_dumps({"configure": ".*", "write": ".*", "read": ".*"}),
         error_msg='Admin user was not added to vhost'
     )
