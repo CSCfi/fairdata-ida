@@ -12,6 +12,8 @@
 TODO
 tags
 project.sublime-project
+/housekeeping
+/data
 /log
 /config
 /snapshots
