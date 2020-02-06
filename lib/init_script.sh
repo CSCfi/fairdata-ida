@@ -35,8 +35,15 @@ done
 #--------------------------------------------------------------------------------
 # Load service constants and configuration settings
 
-PARENT_FOLDER=`dirname "$(realpath $0)"`
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
 PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+if [ "$SCRIPT" == "" ]; then
+    SCRIPT=`basename $SCRIPT_PATHNAME`
+else
+    SCRIPT=`basename $SCRIPT`
+fi
 
 while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
     PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
@@ -68,7 +75,7 @@ fi
 
 ID=`id -u -n`
 if [ "$ID" != "$HTTPD_USER" ]; then
-    echo "You need to be $HTTPD_USER"
+    echo "You must execute this script as $HTTPD_USER"
     exit 1
 fi
 
@@ -81,12 +88,7 @@ CURL_DELETE='curl --fail -k --raw -s -S -X DELETE -u'
 CURL_MKCOL='curl --fail -k --raw -s -S -X MKCOL -u'
 
 TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
-
-if [ "$SCRIPT" == "" ]; then
-    SCRIPT=`basename $0`
-else
-    SCRIPT=`basename $SCRIPT`
-fi
+PROCESSID="$$"
 
 #--------------------------------------------------------------------------------
 # Initialize log and tmp folders, if necessary...
@@ -127,7 +129,7 @@ if [ ! -e $LOG ]; then
     fi
 fi
 
-OUT=`echo "$TIMESTAMP $SCRIPT START $@" 2>/dev/null >>"$LOG"`
+OUT=`echo "$TIMESTAMP $SCRIPT ($PROCESSID) START $@" 2>/dev/null >>"$LOG"`
 if [ "$?" -ne 0 ]; then
     echo "Can't write to log file \"$LOG\"" >&2
     exit 1
@@ -170,19 +172,19 @@ function urlEncode () {
 
 function addToLog {
     MSG=`echo "$@" | tr '\n' ' '`
-    echo "$TIMESTAMP $SCRIPT $MSG" 2>/dev/null >>"$LOG"
+    echo "$TIMESTAMP $SCRIPT ($PROCESSID) $MSG" 2>/dev/null >>"$LOG"
 }
 
 function echoAndLog {
     MSG=`echo "$@" | tr '\n' ' '`
     echo "$MSG"
-    echo "$TIMESTAMP $SCRIPT $MSG" 2>/dev/null >>"$LOG"
+    echo "$TIMESTAMP $SCRIPT ($PROCESSID) $MSG" 2>/dev/null >>"$LOG"
 }
 
 function errorExit {
     MSG=`echo "$@" | tr '\n' ' '`
     echo "$MSG" >&2
-    echo "$TIMESTAMP $SCRIPT ERROR $MSG" >>"$LOG"
+    echo "$TIMESTAMP $SCRIPT ($PROCESSID) FATAL ERROR $MSG" >>"$LOG"
     exit 1
 }
 

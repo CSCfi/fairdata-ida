@@ -36,7 +36,7 @@ Usage: $SCRIPT project [--delete | --silent]
 #--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -47,18 +47,10 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-# Output script usage if requested
-
-if [ "$1" = "" -o "$1" = "-h" ]; then
-    echo "$USAGE"
-    exit 0
-fi
-
-#--------------------------------------------------------------------------------
 echo "Verifying project ${PROJECT} exists..."
 
 if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "Error: The specified project ${PROJECT} does not exist!"
+    errorExit "The specified project ${PROJECT} does not exist"
 fi
 
 #--------------------------------------------------------------------------------
@@ -69,33 +61,33 @@ PIDS=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 
       sed -e 's/^.*"pid":"//' | sed -e 's/".*$//'`
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to retrieve pending actions for project!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to retrieve pending actions for project"
 fi
 
 if [ "$PIDS" != "" ]; then
-    echo "The specified project ${PROJECT} is already suspended."
-    exit 0
+    errorExit "The specified project ${PROJECT} is already suspended"
 fi
 
 #--------------------------------------------------------------------------------
 echo "Locking project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"${IDA_API_ROOT_URL}/lock/${PROJECT}\""
+    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"${IDA_API_ROOT_URL}/lock/${PROJECT}\"" >&2
 fi
 
 OUT=`$CURL_POST "$PROJECT_USER_CREDENTIALS" "${IDA_API_ROOT_URL}/lock/${PROJECT}" 2>&1`
 
 if [ ! -e $PROJECT_LOCK ]; then
-    errorExit "Error: Failed to lock project ${PROJECT}!"
+    errorExit "Failed to lock project ${PROJECT}"
 fi
 
 #--------------------------------------------------------------------------------
 echo "Creating suspend action for project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/\""
+     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/\"" >&2
 fi
 
 OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/"`
@@ -103,7 +95,7 @@ OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "${IDA_API_ROOT_URL}/actions?project=$P
 SUCCESS=`echo "$OUT" | grep '"pid":'`
 
 if [ "$SUCCESS" = "" ]; then
-    errorExit "Error: Failed to create suspend action for project ${PROJECT}!"
+    errorExit "Failed to create suspend action for project ${PROJECT}"
 fi
 
 rm $ERR 2>/dev/null
@@ -113,6 +105,7 @@ echoAndLog "Project ${PROJECT} suspended."
 #--------------------------------------------------------------------------------
 
 if [ "$2" = "--silent" ]; then
+    addToLog "DONE"
     exit
 fi
 
@@ -136,3 +129,4 @@ fi
 
 $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
 
+addToLog "DONE"

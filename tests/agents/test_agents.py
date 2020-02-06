@@ -120,8 +120,11 @@ class TestAgents(unittest.TestCase):
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
 
-        # Override (disable) simulation of agents, no matter what might be defined in configuration
-        headers = { 'X-SIMULATE-AGENTS': 'false' }
+        # If Metax is available, disable simulation of agents, no matter what might be defined in configuration
+        if self.config["METAX_AVAILABLE"] == 1:
+            headers = { 'X-SIMULATE-AGENTS': 'false' }
+        else:
+            headers = { 'X-SIMULATE-AGENTS': 'true' }
 
         print("--- Freeze Action Postprocessing")
 

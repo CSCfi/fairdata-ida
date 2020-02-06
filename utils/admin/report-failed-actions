@@ -27,7 +27,7 @@ SCRIPT=`basename $0`
 USAGE="Usage: $SCRIPT"
 PROJECT="null"
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -50,8 +50,11 @@ if [ "$COUNT" -gt 1 ]; then
     sendEmail "${SUBJECT}" "${MESSAGE}" "${EMAIL_RECIPIENTS}" 2>$ERR
 
     if [ -s $ERR ]; then
-        cat $ERR | tee -a $LOG
-        errorExit "Error: Failed to send failed action report email!"
+        MSG=`cat $ERR`
+        addToLog "$MSG"
+        errorExit "Failed to send failed action report email"
     fi
 
 fi
+
+addToLog "DONE"

@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,16 +21,42 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-#
-# This script will mark all project records as deleted in METAX, but can only be
-# used for legacy projects which do not still exist in IDA. If the project still
-# exists in IDA, then the delete-project script should be used, which employs all
-# of the relevant safety checks.
-#
+
+# This script audits all projects in the IDA service which have had any activity
+# since the specified date(time), if given, or during the past 24 hours if no
+# date(time) is specified. If only a date is specified, the time T00:00:00Z is
+# used. Auditing is also limited to nodes which have been created or modified
+# since that same datetime.
+
+# --------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT [ts] [ ( --report | --report-errors ) [email] ]
+       $SCRIPT -h
+
+       ts     an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
+       email  the email address where audit reports should be sent (defaults to dev team)
+"
+
+PROJECT="null"
+
+case "$1" in
+    "--report" | "--report-errors")
+        SINCE=""
+        REPORT_REQ="$1 $2"
+        ;;
+    *)
+        SINCE="$1"
+        REPORT_REQ="$2 $3"
+        ;;
+esac
+
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -40,17 +66,17 @@ else
     exit 1
 fi
 
-#--------------------------------------------------------------------------------
-echo "Verifying project ${PROJECT} does not still exist in IDA..."
-
-if [ -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "The specified project ${PROJECT} still exists"
+if [ "$DEBUG" = "true" ]; then
+    echo "SINCE:         $SINCE" >&2
+    echo "REPORT_REQ:    $REPORT_REQ" >&2
 fi
 
 #--------------------------------------------------------------------------------
 
-echo "Marking all project files as deleted in METAX..."
+PROJECTS=`$ROOT/utils/admin/list-active-projects $SINCE`
 
-$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 
+for PROJECT in $PROJECTS; do
+    $ROOT/utils/admin/audit-project $PROJECT $REPORT_REQ
+done
 
 addToLog "DONE"

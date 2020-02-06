@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,36 +21,43 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-#
-# This script will mark all project records as deleted in METAX, but can only be
-# used for legacy projects which do not still exist in IDA. If the project still
-# exists in IDA, then the delete-project script should be used, which employs all
-# of the relevant safety checks.
-#
-# --------------------------------------------------------------------------------
-# Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+# Setup a python virtual environment in the same directory where this script is
+# located, and install all required packages
 
-if [ -e $INIT_FILE ]
+#--------------------------------------------------------------------------------
+# Load service constants and configuration settings
+
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
 then
-    . $INIT_FILE
+    . $CONFIG_FILE
 else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
     exit 1
 fi
 
 #--------------------------------------------------------------------------------
-echo "Verifying project ${PROJECT} does not still exist in IDA..."
+# Ensure script is run as root
 
-if [ -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "The specified project ${PROJECT} still exists"
+ID=`id -u -n`
+if [ "$ID" != "root" ]; then
+    echo "You must execute this script as root"
+    exit 1
 fi
 
-#--------------------------------------------------------------------------------
-
-echo "Marking all project files as deleted in METAX..."
-
-$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 
-
-addToLog "DONE"
+python3 -m venv $VENV_AUDIT
+source $VENV_AUDIT/bin/activate
+pip install -r $ROOT/utils/admin/lib/audit-requirements.txt
+chown -R root:$HTTPD_USER $VENV_AUDIT
+chmod -R g+rwX $VENV_AUDIT

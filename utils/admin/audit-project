@@ -1,0 +1,129 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+
+# This script audits the specified project in the IDA service, limited to nodes
+# created or modified before the start of the auditing process.
+
+USAGE="
+Usage: $SCRIPT project [ ( --report | --report-errors ) [email] ]
+       $SCRIPT -h
+
+       project  the project to be audited
+       email    the email address where audit reports should be sent (defaults to dev team)
+"
+
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+REPORT_REQ="$2"
+RECIPIENTS="$3"
+
+if [ "$REPORT_REQ" != "" ]; then
+    if [ "$RECIPIENTS" = "" ]; then
+        RECIPIENTS="$EMAIL_RECIPIENTS"
+    fi
+    if [ "$RECIPIENTS" = "" ]; then
+        RECIPIENTS="$EMAIL_RECIPIENTS"
+    fi
+fi
+
+if [ "$DEBUG" = "true" ]; then
+    echo "PROJECT:       $PROJECT" >&2
+    echo "REPORT_REQ:    $REPORT_REQ $RECIPIENTS" >&2
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT_STORAGE_OC_DATA_ROOT="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files"
+if [ ! -d "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
+fi
+
+LOG_ROOT=`dirname "$(realpath $LOG)"`
+REPORT_ROOT="${LOG_ROOT}/audits"
+REPORT_BASE="${LOG_ROOT}/audits/${START}_${PROJECT}"
+
+mkdir -p $REPORT_ROOT 2>/dev/null
+
+source $VENV_AUDIT/bin/activate
+
+python $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START | python -m json.tool > $REPORT_BASE
+
+if [ $? -ne 0 ]; then
+    if [ -f $REPORT_BASE ]; then
+        if [ -s $REPORT_BASE ]; then
+            rm $REPORT_BASE
+        else
+            mv $REPORT_BASE $REPORT_BASE.err
+        fi
+    fi
+    errorExit "Auditing of project $PROJECT failed"
+fi
+
+REPORT="$REPORT_BASE.ok"
+
+SEND_REPORT="false"
+
+if [ "$REPORT_REQ" = "--report" ]; then
+    SEND_REPORT="true"
+fi
+
+OK=`head $REPORT_BASE | grep "\"invalidNodeCount\" *: *0\b"`
+
+if [ "$OK" = "" ]; then
+    REPORT="$REPORT_BASE.err"
+    if [ "$REPORT_REQ" = "--report-errors" ]; then
+        SEND_REPORT="true"
+    fi
+fi
+
+mv $REPORT_BASE $REPORT
+
+if [ "$DEBUG" = "true" ]; then
+    echo "--- $SCRIPT ---" >&2
+    echo "REPORT:        $REPORT" >&2
+    echo "SEND_REPORT:   $SEND_REPORT" >&2
+fi
+
+if [ "$SEND_REPORT" = "true" ]; then
+    if [ "$RECIPIENTS" != "" ]; then
+        mail -s "$REPORT" -r $EMAIL_SENDER $RECIPIENTS < $REPORT
+    fi
+fi
+
+cat $REPORT
+
+addToLog "DONE"

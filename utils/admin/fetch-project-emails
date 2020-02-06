@@ -23,7 +23,7 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -36,11 +36,14 @@ fi
 #--------------------------------------------------------------------------------
 
 if [ "$LDAP_HOST_URL" = "" ]; then
-    echo "Error: No LDAP connection configured!" >&2
-    exit 1
+    errorExit "No LDAP connection configured!"
 fi
 
 #--------------------------------------------------------------------------------
+
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
+fi
 
 export LDAP_HOST_URL
 export LDAP_BIND_USER
@@ -49,3 +52,4 @@ export LDAP_SEARCH_BASE
 
 $ROOT/utils/admin/lib/fetch-project-emails.pl $PROJECT | tr '\n' ',' | sed -e 's/,$//'
 
+addToLog "DONE"

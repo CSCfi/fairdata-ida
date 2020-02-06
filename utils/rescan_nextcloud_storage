@@ -45,3 +45,4 @@ PROJECT_USER="$PROJECT_USER_PREFIX""$PROJECT_NAME"
 $OCC files:scan -q $PROJECT_USER
 $OCC files:cleanup 
 
+addToLog "DONE"

@@ -27,7 +27,7 @@ SCRIPT=`basename $0`
 USAGE="Usage: $SCRIPT"
 PROJECT="null"
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -44,9 +44,11 @@ OUT=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2
     sed -e 's/^.*"project":"//' | sed -e 's/".*$//' | sort -u`
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to retrieve pending actions for project!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to retrieve pending actions for project"
 fi
 
 echo "$OUT"
 
+addToLog "DONE"

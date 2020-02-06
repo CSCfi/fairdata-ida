@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,36 +21,58 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-#
-# This script will mark all project records as deleted in METAX, but can only be
-# used for legacy projects which do not still exist in IDA. If the project still
-# exists in IDA, then the delete-project script should be used, which employs all
-# of the relevant safety checks.
-#
-# --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
     . $INIT_FILE
 else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
-    exit 1
+    errorExit "The initialization file $INIT_FILE cannot be found"
 fi
 
 #--------------------------------------------------------------------------------
-echo "Verifying project ${PROJECT} does not still exist in IDA..."
+# Verify required variables are defined
 
-if [ -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "The specified project ${PROJECT} still exists"
+if [ "$VENV_AUDIT" = "" ]; then
+    errorExit "The variable VENV_AUDIT must be defined."
+fi
+
+if [ "$DBNAME" = "" ]; then
+    errorExit "The variable DBNAME must be defined."
+fi
+
+if [ "$DBHOST" = "" ]; then
+    errorExit "The variable DBHOST must be defined."
+fi
+
+if [ "$DBPORT" = "" ]; then
+    errorExit "The variable DBPORT must be defined."
+fi
+
+if [ "$DBTABLEPREFIX" = "" ]; then
+    errorExit "The variable DBTABLEPREFIX must be defined."
+fi
+
+if [ "$DBUSER" = "" ]; then
+    errorExit "The variable DBUSER must be defined."
+fi
+
+if [ "$DBPASSWORD" = "" ]; then
+    errorExit "The variable DBPASSWORD must be defined."
 fi
 
 #--------------------------------------------------------------------------------
+# Verify python virtual environment has been configured
 
-echo "Marking all project files as deleted in METAX..."
+if [ ! -f "$VENV_AUDIT/bin/activate" ]; then
+    errorExit "The python virtual environment $VENV_AUDIT not yet been configured"
+fi
 
-$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 
+START="$TIMESTAMP"
 
-addToLog "DONE"
+if [ "$DEBUG" = "true" ]; then
+    echo "--- $SCRIPT ---" >&2
+    echo "START:         $START" >&2
+fi

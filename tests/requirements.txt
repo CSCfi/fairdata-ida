@@ -1,0 +1,6 @@
+pika==1.0.0
+psutil==5.4.8
+psycopg2-binary==2.8.4
+python-dateutil==2.8.1
+requests==2.20.0
+responses==0.8.1

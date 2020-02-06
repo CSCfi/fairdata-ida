@@ -82,6 +82,14 @@ def load_configuration():
         'STORAGE_OC_DATA_ROOT':   server_configuration.STORAGE_OC_DATA_ROOT,
         'DATA_REPLICATION_ROOT':  server_configuration.DATA_REPLICATION_ROOT,
         'MAX_FILE_COUNT':         service_constants.MAX_FILE_COUNT,
+        'DBNAME':                 server_configuration.DBNAME,
+        'DBUSER':                 server_configuration.DBUSER,
+        'DBPASSWORD':             server_configuration.DBPASSWORD,
+        'DBROUSER':               server_configuration.DBROUSER,
+        'DBROPASSWORD':           server_configuration.DBROPASSWORD,
+        'DBHOST':                 server_configuration.DBHOST,
+        'DBPORT':                 server_configuration.DBPORT,
+        'DBTABLEPREFIX':          server_configuration.DBTABLEPREFIX,      
         'RABBIT_HOST':            server_configuration.RABBIT_HOST,
         'RABBIT_PORT':            server_configuration.RABBIT_PORT,
         'RABBIT_WEB_API_PORT':    server_configuration.RABBIT_WEB_API_PORT,
@@ -97,17 +105,10 @@ def load_configuration():
         'METAX_API_USER':         server_configuration.METAX_API_USER,
         'METAX_API_PASS':         server_configuration.METAX_API_PASS
     }
+
+    config['LOG_ROOT'] = os.path.dirname(server_configuration.LOG)
+
     return config
-
-
-#def init_test_user_account():
-#    cmd = "sudo -u apache /var/ida/utils/initialize_test_accounts"
-#    os.system(cmd)
-
-
-#def teardown_test_user_accounts():
-#    cmd = "sudo -u apache /var/ida/utils/teardown_test_accounts"
-#    os.system(cmd)
 
 
 def restart_rabbitmq_server():

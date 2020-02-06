@@ -26,7 +26,7 @@
 SCRIPT=`basename $0`
 USAGE="Usage: $SCRIPT project"
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -39,8 +39,7 @@ fi
 #--------------------------------------------------------------------------------
 
 if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
-    echo "The project '${PROJECT}' does not exist!" >&2
-    exit 1
+    errorExit "The project '${PROJECT}' does not exist"
 fi
 
 DATA=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${PROJECT_USER_PREFIX}${PROJECT}" -H "OCS-APIRequest: true"`
@@ -63,3 +62,5 @@ $CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups/${PROJ
 echo "Status: "
 
 $CURL_GET $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/status" | python -m json.tool | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
+
+addToLog "DONE"

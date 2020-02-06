@@ -35,7 +35,7 @@ Usage: $SCRIPT project action
 #--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -46,20 +46,11 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-# Output script usage if requested
-
-if [ "$1" = "" -o "$1" = "-h" ]; then
-    echo "$USAGE"
-    exit 0
-fi
-
-#--------------------------------------------------------------------------------
 # Process command line arguments
 
 if [ "$#" -ne 2 ]; then
-    echo "Error: Invalid number of arguments." >&2
-    echo "$USAGE"
-    exit 1;
+    echo "$USAGE" >&2
+    errorExit "Invalid number of arguments"
 fi
 
 ACTION="$2"
@@ -73,24 +64,26 @@ REQUEST_URL="${IDA_API_ROOT_URL}/retry/${ACTION}?token=${BATCH_ACTION_TOKEN}"
 echo "Retrying action ${ACTION} in project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\""
+    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
 fi
 
 OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Retry of action $ACTION failed in project $PROJECT"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Retry of action $ACTION failed in project $PROJECT"
 fi
 
 PID=`echo $OUT | grep '"pid":'`
 
 if [ "$PID" = "" ]; then
     echoAndLog "$OUT"
-    errorExit "Error: Retry of action $ACTION failed in project $PROJECT"
+    errorExit "Retry of action $ACTION failed in project $PROJECT"
 fi
 
 rm $ERR 2>/dev/null
 
 echoAndLog "Initiated retry of action $ACTION successfully in project $PROJECT. Postprocessing ongoing..."
 
+addToLog "DONE"

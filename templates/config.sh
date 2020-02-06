@@ -47,6 +47,9 @@ URL_BASE_IDA="http://localhost/apps/ida"
 IDA_API_ROOT_URL="http://localhost/apps/ida/api"
 
 LOG="/mnt/storage_vol01/log/ida.log"
+ADMIN_AUDIT_LOG="/var/log/ida/admin_audit.log"
+
+VENV_AUDIT="/srv/venv-audit"
 
 RABBIT_HOST="localhost"
 RABBIT_PORT=5672

@@ -22,21 +22,33 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/../../lib/init_script.sh
+INIT_FILE=`dirname "$(realpath $0)"`/../../lib/init_script.sh
 
 if [ -e $INIT_FILE ]
 then
     . $INIT_FILE
 else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
-    exit 1
+    errorExit "The initialization file $INIT_FILE cannot be found"
 fi
 
 #--------------------------------------------------------------------------------
-# Process input and get project name, per default script behavior
+# Process input and get project name, per default admin script behavior
+
+if [ "$SCRIPT" = "" ]; then
+    SCRIPT=`basename "$(realpath $0)"`
+fi
 
 if [ "$USAGE" = "" ]; then
-    USAGE="Usage: $SCRIPT project_name"
+    USAGE="
+Usage: $SCRIPT project
+       $SCRIPT -h
+"
+fi
+
+if [ "$1" = "-h" ]; then
+    echo "$USAGE" >&2
+    addToLog "DONE"
+    exit
 fi
 
 if [ "$PROJECT" = "" ]; then
@@ -45,7 +57,7 @@ fi
 
 if [ "$PROJECT" = "" ]; then
     echo "$USAGE" >&2
-    exit 1
+    errorExit "Required project name missing"
 fi
 
 #--------------------------------------------------------------------------------
@@ -63,93 +75,75 @@ fi
 # Verify required variables are defined
 
 if [ "$NC_ADMIN_USER" = "" ]; then
-    echo "Error: The variable NC_ADMIN_USER must be defined." >&2
-    exit 1
+    errorExit "The variable NC_ADMIN_USER must be defined"
 fi
 
 if [ "$NC_ADMIN_PASS" = "" ]; then
-    echo "Error: The variable NC_ADMIN_PASS must be defined." >&2
-    exit 1
+    errorExit "The variable NC_ADMIN_PASS must be defined"
 fi
 
 if [ "$METAX_API_USER" = "" ]; then
-    echo "Error: The variable METAX_API_USER must be defined." >&2
-    exit 1
+    errorExit "The variable METAX_API_USER must be defined"
 fi
 
 if [ "$METAX_API_PASS" = "" ]; then
-    echo "Error: The variable METAX_API_PASS must be defined." >&2
-    exit 1
+    errorExit "The variable METAX_API_PASS must be defined"
 fi
 
 if [ "$HTTPD_USER" = "" ]; then
-    echo "Error: The variable HTTPD_USER must be defined." >&2
-    exit 1
+    errorExit "The variable HTTPD_USER must be defined"
 fi
 
 if [ "$PROJECT_USER_PASS" = "" ]; then
-    echo "Error: The variable PROJECT_USER_PASS must be defined." >&2
-    exit 1
+    errorExit "The variable PROJECT_USER_PASS must be defined"
 fi
 
 if [ "$PROJECT_USER_PREFIX" = "" ]; then
-    echo "Error: The variable PROJECT_USER_PREFIX must be defined." >&2
-    exit 1
+    errorExit "The variable PROJECT_USER_PREFIX must be defined"
 fi
 
 if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
-    echo "Error: The variable PROJECT_USER_PREFIX must be defined." >&2
-    exit 1
+    errorExit "The variable PROJECT_USER_PREFIX must be defined"
 fi
 
 if [ "$METAX_API_ROOT_URL" = "" ]; then
-    echo "Error: The variable METAX_API_ROOT_URL must be defined." >&2
-    exit 1
+    errorExit "The variable METAX_API_ROOT_URL must be defined"
 fi
 
 if [ "$IDA_API_ROOT_URL" = "" ]; then
-    echo "Error: The variable IDA_API_ROOT_URL must be defined." >&2
-    exit 1
+    errorExit "The variable IDA_API_ROOT_URL must be defined"
 fi
 
 if [ "$ROOT" = "" ]; then
-    echo "Error: The variable ROOT must be defined." >&2
-    exit 1
+    errorExit "The variable ROOT must be defined"
 fi
 
 if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
-    echo "Error: The variable STORAGE_OC_DATA_ROOT must be defined." >&2
-    exit 1
+    errorExit "The variable STORAGE_OC_DATA_ROOT must be defined"
 fi
 
 if [ "$DATA_REPLICATION_ROOT" = "" ]; then
-    echo "Error: The variable DATA_REPLICATION_ROOT must be defined." >&2
-    exit 1
+    errorExit "The variable DATA_REPLICATION_ROOT must be defined"
 fi
 
 if [ "$OCC" = "" ]; then
-    echo "Error: The variable OCC must be defined." >&2
-    exit 1
+    errorExit "The variable OCC must be defined"
 fi
 
 if [ "$LOG" = "" ]; then
-    echo "Error: The variable LOG must be defined." >&2
-    exit 1
+    errorExit "The variable LOG must be defined"
 fi
 
 if [ "$TRASH_DATA_ROOT" = "" ]; then
-    echo "Error: The variable TRASH_DATA_ROOT must be defined." >&2
-    exit 1
+    errorExit "The variable TRASH_DATA_ROOT must be defined"
 fi
 
 if [ "$QUARANTINE_PERIOD" = "" ]; then
-    echo "Error: The variable QUARANTINE_PERIOD must be defined." >&2
-    exit 1
+    errorExit "The variable QUARANTINE_PERIOD must be defined"
 fi
 
 if [ "$TIMESTAMP" = "" ]; then
-    echo "Error: The variable TIMESTAMP must be defined." >&2
-    exit 1
+    errorExit "The variable TIMESTAMP must be defined"
 fi
 
 PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
@@ -170,36 +164,36 @@ else
 fi
 
 if [ "$DEBUG" = "true" ]; then
-    echo ""
-    echo "NC_ADMIN_USER                $NC_ADMIN_USER"
-    echo "NC_ADMIN_PASS                $NC_ADMIN_PASS"
-    echo "METAX_API_USER               $METAX_API_USER"
-    echo "METAX_API_PASS               $METAX_API_PASS"
-    echo "HTTPD_USER                   $HTTPD_USER"
-    echo "PROJECT_USER_PASS            $PROJECT_USER_PASS"
-    echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX"
-    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
-    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
-    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
-    echo "ROOT                         $ROOT"
-    echo "STORAGE_OC_DATA_ROOT         $STORAGE_OC_DATA_ROOT"
-    echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT"
-    echo "OCC                          $OCC"
-    echo "EMAIL_SENDER                 $EMAIL_SENDER"
-    echo "EMAIL_RECIPIENTS             $EMAIL_RECIPIENTS"
-    echo "TRASH_DATA_ROOT              $TRASH_DATA_ROOT"
-    echo "QUARANTINE_PERIOD            $QUARANTINE_PERIOD"
-    echo "PROJECT_USER                 $PROJECT_USER"
-    echo "PROJECT_STORAGE_OC_DATA_ROOT $PROJECT_STORAGE_OC_DATA_ROOT"
-    echo "PROJECT_LOCK                 $PROJECT_LOCK"
-    echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT"
-    echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT"
-    echo "PROJECT_USER_CREDENTIALS     $PROJECT_USER_CREDENTIALS"
-    echo "ADMIN_CREDENTIALS            $ADMIN_CREDENTIALS"
-    echo "LOG                          $LOG"
-    echo "ERR                          $ERR"
-    echo "REQUEST_URL_ROOT             $REQUEST_URL_ROOT"
-    echo ""
+    echo "" >&2
+    echo "NC_ADMIN_USER                $NC_ADMIN_USER" >&2
+    echo "NC_ADMIN_PASS                $NC_ADMIN_PASS" >&2
+    echo "METAX_API_USER               $METAX_API_USER" >&2
+    echo "METAX_API_PASS               $METAX_API_PASS" >&2
+    echo "HTTPD_USER                   $HTTPD_USER" >&2
+    echo "PROJECT_USER_PASS            $PROJECT_USER_PASS" >&2
+    echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX" >&2
+    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN" >&2
+    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL" >&2
+    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL" >&2
+    echo "ROOT                         $ROOT" >&2
+    echo "STORAGE_OC_DATA_ROOT         $STORAGE_OC_DATA_ROOT" >&2
+    echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT" >&2
+    echo "OCC                          $OCC" >&2
+    echo "EMAIL_SENDER                 $EMAIL_SENDER" >&2
+    echo "EMAIL_RECIPIENTS             $EMAIL_RECIPIENTS" >&2
+    echo "TRASH_DATA_ROOT              $TRASH_DATA_ROOT" >&2
+    echo "QUARANTINE_PERIOD            $QUARANTINE_PERIOD" >&2
+    echo "PROJECT_USER                 $PROJECT_USER" >&2
+    echo "PROJECT_STORAGE_OC_DATA_ROOT $PROJECT_STORAGE_OC_DATA_ROOT" >&2
+    echo "PROJECT_LOCK                 $PROJECT_LOCK" >&2
+    echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT" >&2
+    echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT" >&2
+    echo "PROJECT_USER_CREDENTIALS     $PROJECT_USER_CREDENTIALS" >&2
+    echo "ADMIN_CREDENTIALS            $ADMIN_CREDENTIALS" >&2
+    echo "LOG                          $LOG" >&2
+    echo "ERR                          $ERR" >&2
+    echo "REQUEST_URL_ROOT             $REQUEST_URL_ROOT" >&2
+    echo "" >&2
 fi
 
 function bytesToHR()

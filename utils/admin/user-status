@@ -27,7 +27,7 @@ SCRIPT=`basename $0`
 USAGE="Usage: $SCRIPT username"
 PROJECT="null"
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -43,7 +43,7 @@ USER="$1"
 
 if [ "$USER" = "" ]; then
     echo "$USAGE" >&2
-    exit 1
+    errorExit "Required username is missing"
 fi
 
 #--------------------------------------------------------------------------------
@@ -51,8 +51,7 @@ fi
 EXISTS=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" | grep "<statuscode>100<"`
 
 if [ "$EXISTS" = "" ]; then
-    echo "The user '${USER}' does not exist!" >&2
-    exit 1
+    errorExit "The user '${USER}' does not exist"
 fi
 
 LASTLOGIN=`$OCC user:setting $USER 2>&1 | grep "lastLogin:" | sed -e 's/.*: *//'`
@@ -78,3 +77,5 @@ echo "Enabled:"
 
 $CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" |
     grep "<enabled>" | sed -e 's/^.*<enabled>/  /' | sed -e 's/<.*$//' 
+
+addToLog "DONE"

@@ -28,13 +28,39 @@
 # change during update, even if rarely).
 #
 #--------------------------------------------------------------------------------
+# Load service constants and configuration settings
 
-wwwroot='/var/ida'
-ocroot='/var/ida/nextcloud'
-htuser='apache'
-htgroup='apache'
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
 
-chown -R ${htuser}:${htgroup} ${wwwroot}
-chmod -R g+rwX,o+rX-w ${wwwroot}
-chmod +x ${ocroot}/occ
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Ensure script is run as root
+
+ID=`id -u -n`
+if [ "$ID" != "root" ]; then
+    echo "You must execute this script as root"
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+chown -R $HTTPD_USER:$HTTPD_USER $ROOT
+chmod -R g+rwX,o+rX-w $ROOT
+chmod +x $ROOT/nextcloud/occ
 

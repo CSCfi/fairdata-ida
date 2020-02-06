@@ -206,3 +206,5 @@ done
 if [ "${EMAIL_SENDER}${EMAIL_RECIPIENTS}" != "" ]; then
     cat $PWFILE | mail -r $EMAIL_SENDER -s "$HEADER" $EMAIL_RECIPIENTS
 fi
+
+addToLog "DONE"

@@ -22,7 +22,7 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 
-SCRIPT=`basename $0`
+SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
 Usage: $SCRIPT project pathname [-i]
@@ -34,26 +34,9 @@ Usage: $SCRIPT project pathname [-i]
 "
 
 #--------------------------------------------------------------------------------
-# Process command line arguments
-
-if [ "$1" = "-h" ]; then
-    echo "$USAGE"
-    exit 0
-fi
-
-if [ "$#" -lt 2 ]; then
-    echo "$USAGE"
-    exit 0
-fi
-
-PROJECT="$1"
-PATHNAME="$2"
-INACTIVE="$3"
-
-#--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -62,6 +45,18 @@ else
     echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
     exit 1
 fi
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$#" -lt 2 ]; then
+    echo "$USAGE" >&2
+    errorExit "Invalid number of arguments"
+fi
+
+PROJECT="$1"
+PATHNAME="$2"
+INACTIVE="$3"
 
 #--------------------------------------------------------------------------------
 
@@ -73,20 +68,25 @@ if [ "$INACTIVE" = "-i" ]; then
     URL="${URL}&includeInactive=true"
 fi
 
-DEBUG="true"
-
-if [ "$DEBUG" != "false" ]
+if [ "$DEBUG" = "true" ]
 then
-    echo "PROJECT:  $PROJECT"
-    echo "PATHNAME: $PATHNAME"
-    echo "REQUEST:  $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\""
+    echo "PROJECT:  $PROJECT" >&2
+    echo "PATHNAME: $PATHNAME" >&2
+    echo "REQUEST:  $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\"" >&2
+fi
+
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
 fi
 
 OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to retrieve file details!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to retrieve file details"
 fi
 
 echo "$OUT" | python -m json.tool
+
+addToLog "DONE"

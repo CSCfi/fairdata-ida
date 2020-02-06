@@ -23,7 +23,7 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -37,7 +37,7 @@ fi
 echo "Verifying project ${PROJECT} exists..."
 
 if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "Error: The specified project ${PROJECT} does not exist!"
+    errorExit "The specified project ${PROJECT} does not exist"
 fi
 
 #--------------------------------------------------------------------------------
@@ -48,12 +48,13 @@ SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pend
       sed -e 's/^.*"initiated":"//' | sed -e 's/".*$//' | sort -u | tail -1`
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to retrieve pending actions for project!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to retrieve pending actions for project!"
 fi
 
 if [ "$SUSPENDED" = "" ]; then
-    errorExit "Error: The specified project ${PROJECT} is not suspended."
+    errorExit "The specified project ${PROJECT} is not suspended"
 fi
 
 NOW=`date -u +"%s"`
@@ -61,17 +62,17 @@ SECONDS=`date -u -d "$SUSPENDED" +"%s"`
 ELAPSED=`expr $NOW - $SECONDS`
 
 if [ "$DEBUG" = "true" ]; then
-    echo ""
-    echo "Project suspended: $SUSPENDED"
-    echo "Project suspended: $SECONDS seconds"
-    echo "Current time:      $NOW seconds"
-    echo "Elapsed time:      $ELAPSED seconds"
-    echo "Quarantine period: $QUARANTINE_PERIOD seconds"
-    echo ""
+    echo "" >&2
+    echo "Project suspended: $SUSPENDED" >&2
+    echo "Project suspended: $SECONDS seconds" >&2
+    echo "Current time:      $NOW seconds" >&2
+    echo "Elapsed time:      $ELAPSED seconds" >&2
+    echo "Quarantine period: $QUARANTINE_PERIOD seconds" >&2
+    echo "" >&2
 fi
 
 if [ $ELAPSED -lt $QUARANTINE_PERIOD ]; then
-    errorExit "Error: The specified project ${PROJECT} is still within the quarantine period and cannot be removed."
+    errorExit "The specified project ${PROJECT} is still within the quarantine period and cannot be removed"
 fi
 
 #--------------------------------------------------------------------------------
@@ -81,7 +82,7 @@ echo "Creating project trash subfolder..."
 mkdir -p $PROJECT_TRASH_DATA_ROOT 2>&1 >/dev/null
 
 if [ ! -d $PROJECT_TRASH_DATA_ROOT ]; then
-    errorExit "Error: Failed to create project trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
+    errorExit "Failed to create project trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
 fi
 
 #--------------------------------------------------------------------------------
@@ -94,15 +95,17 @@ STAGING_FOLDER="${PROJECT_STORAGE_OC_DATA_ROOT}/${PROJECT}${STAGING_FOLDER_SUFFI
 mv "${FROZEN_FOLDER}" "${PROJECT_TRASH_DATA_ROOT}/" 2>$ERR >/dev/null
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to move frozen area folder to trash!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to move frozen area folder to trash!"
 fi
 
 mv "${STAGING_FOLDER}" "${PROJECT_TRASH_DATA_ROOT}/" 2>$ERR >/dev/null
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to move staging area folder to trash!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to move staging area folder to trash!"
 fi
 
 #--------------------------------------------------------------------------------
@@ -112,8 +115,9 @@ echo "Updating Nextcloud filesystem records..."
 $OCC files:scan -q $PROJECT_USER 2>$ERR >/dev/null
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to update Nextcloud filesystem records!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to update Nextcloud filesystem records!"
 fi
 
 #--------------------------------------------------------------------------------
@@ -124,16 +128,18 @@ $CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?projects=${PROJECT}" 2
     python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to export action records!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to export action records!"
 fi
 
 $CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/files/action/all?projects=${PROJECT}" 2>$ERR | \
     python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/files.json"
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to export file records!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to export file records!"
 fi
 
 echo "Flushing project action and file records from the database..."
@@ -141,8 +147,9 @@ echo "Flushing project action and file records from the database..."
 $CURL_POST $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/flush?project=${PROJECT}" 2>$ERR >/dev/null
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to flush project action and file records from database!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to flush project action and file records from database!"
 fi
 
 echo "Deleting project share owner account from Nextcloud..."
@@ -150,8 +157,9 @@ echo "Deleting project share owner account from Nextcloud..."
 $OCC user:delete $PROJECT_USER 2>$ERR
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to delete project share owner!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to delete project share owner!"
 fi
 
 #--------------------------------------------------------------------------------
@@ -163,8 +171,9 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
     $CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 2>$ERR >/dev/null
 
     if [ -s $ERR ]; then
-        cat $ERR | tee -a $LOG
-        echoAndLog "Error: Failed to update file metadata in METAX!"
+        MSG=`cat $ERR`
+        addToLog "$MSG"
+        echoAndLog "Failed to update file metadata in METAX!"
     fi
 fi
 
@@ -177,8 +186,9 @@ if [ -d "$PROJECT_REPLICATION_ROOT" ]; then
     rm -fr "$PROJECT_REPLICATION_ROOT" 2>$ERR
 
     if [ -s $ERR ]; then
-        cat $ERR | tee -a $LOG
-        errorExit "Error: Failed to delete project files from tape replication cache!"
+        MSG=`cat $ERR`
+        addToLog "$MSG"
+        errorExit "Failed to delete project files from tape replication cache!"
     fi
 fi
 
@@ -192,3 +202,4 @@ rm $ERR 2>/dev/null
 
 echoAndLog "Project ${PROJECT} removed. Project data moved to trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
 
+addToLog "DONE"

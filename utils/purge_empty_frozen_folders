@@ -84,4 +84,4 @@ for PROJECT in "$PROJECTS"; do
 
 done
 
-
+addToLog "DONE"

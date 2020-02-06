@@ -97,10 +97,16 @@ fi
 #--------------------------------------------------------------------------------
 # Ensure test python environment is properly configured and active
 
-cd $ROOT/tests
+python3 -m venv /srv/venv-tests
 
-source /srv/venv-agents/bin/activate
-pip -q install -r $ROOT/agents/requirements.txt
+if [ ! -d /srv/venv-tests ]; then
+    echo "Error: The test python environment does not exist and could not be created"
+    exit 1
+fi
+
+source /srv/venv-tests/bin/activate
+pip -q install -r $ROOT/tests/requirements.txt
+PYTHON=/srv/venv-tests/bin/python
 
 #--------------------------------------------------------------------------------
 # Execute tests per the provided command line arguments
@@ -109,7 +115,7 @@ cd $ROOT
 
 if [ $# -ge 1 ]; then
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q $*
+    $PYTHON -W ignore -m unittest discover -f -q $*
 
     if [ $? -ne 0 ]; then
         exit 1
@@ -125,7 +131,7 @@ else
 
     echo "UNIT TESTS:"
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q agents
+    $PYTHON -W ignore -m unittest discover -f -q agents
 
     if [ $? -ne 0 ]; then
         exit 1
@@ -133,30 +139,35 @@ else
 
     echo "BEHAVIORAL TESTS:"
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.admin
+    $PYTHON -W ignore -m unittest discover -f -q tests.admin
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
+    $PYTHON -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.cli
+    $PYTHON -W ignore -m unittest discover -f -q tests.cli
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    /srv/venv-agents/bin/python -W ignore -m unittest discover -f -q tests.agents
+    $PYTHON -W ignore -m unittest discover -f -q tests.agents
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
+    $PYTHON -W ignore -m unittest discover -f -q tests.auditing
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 
     echo ""
     echo "======================================"

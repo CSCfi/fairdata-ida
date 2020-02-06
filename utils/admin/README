@@ -26,6 +26,10 @@ important operations on projects, such as repair a project which has ended up in
 unstable state, suspend/unsuspend a project, and safely delete projects and their
 data from the service.
 
+#---------------------------------------------------------------------------------
+
+Project deletion:
+
 The safe deletion process consists of three steps, which aim to minimize the impact
 by human errors of removing a project by mistake.
 
@@ -105,10 +109,9 @@ project trash subfolders, in case anything needs to be restored.
 Once this third step is executed for a project, it is gone, gone, gone (except what
 remains on tape in the DMF service).
  
- 
----
+#---------------------------------------------------------------------------------
 
-CONFIGURATION:
+Common admin script configuration:
 
 Configuration for these scripts is controlled by the following variables which must
 be defined in, and are taken from, the $ROOT/config/config.sh file and the
@@ -134,3 +137,33 @@ EMAIL_RECIPIENTS         (optional, but used if defined)
 TRASH_DATA_ROOT          (will be created if does not exist)
 QUARANTINE_PERIOD        (defined in seconds, e.g. 30 days = 2592000 seconds)
 
+These common variables, along with validation of configuration variables and
+default processing of parameters is handled by the initialization script
+$ROOT/utils/admin/lib/init_admin_script.sh which is loaded by all admin scripts, 
+and which itself loads $ROOT/lib/init_script.sh
+
+#---------------------------------------------------------------------------------
+
+Auditing utilities:
+
+Auditing utilities have an additional common initialization handled by the
+script $ROOT/utils/admin/lib/init_audit_script.sh which is loaded by all audit
+scripts, and itself loads $ROOT/utils/admin/lib/init_admin_script.sh
+
+In addition to the environment variables specified above, configuration for
+auditing scripts is controlled by the following variables which must
+be defined in, and are taken from, the $ROOT/config/config.sh:
+
+VENV_AUDIT
+DBNAME
+DBHOST
+DBPORT
+DBTABLEPREFIX
+DBUSER
+DBPASSWORD
+
+Additionally, the python virtual environment utilized by the core python
+script must first be configured manually before running any of the auditing
+utilities by executing the script $ROOT/utils/admin/lib/initialize_audit_venv
+root to configure or update the virtual environment on each server instance
+where the auditing utilities are executed.

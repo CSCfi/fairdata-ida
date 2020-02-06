@@ -21,12 +21,18 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT project subject message
+       $SCRIPT -h
+"
+
+#--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT project subject message"
-
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -81,10 +87,13 @@ echo "Message: ${MESSAGE}"
     sendEmail "${SUBJECT}" "${MESSAGE}" "${RECIPIENTS}" 2>$ERR
 
     if [ -s $ERR ]; then
-        cat $ERR | tee -a $LOG
-        errorExit "Error: Failed to send email to project users!"
+        MSG=`cat $ERR`
+        addToLog "$MSG"
+        errorExit "Failed to send email to project users!"
     fi
 
     echo "Email sent to all project ${PROJECT} users and default internal recipients."
 
 fi
+
+addToLog "DONE"

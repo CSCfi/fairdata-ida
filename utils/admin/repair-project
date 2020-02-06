@@ -44,7 +44,7 @@
 #--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -60,8 +60,9 @@ echo "Suspending project... (silently)"
 $ROOT/utils/admin/suspend-project "$PROJECT" --silent 2>$ERR
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to suspend project!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to suspend project"
 fi
 
 #--------------------------------------------------------------------------------
@@ -70,8 +71,9 @@ echo "Rescanning project files in Nextcloud..."
 $OCC files:scan "$PROJECT_USER" 2>$ERR
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to rescan project files in Nextcloud!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to rescan project files in Nextcloud"
 fi
 
 #--------------------------------------------------------------------------------
@@ -81,8 +83,9 @@ ACTION_PID=`$CURL_POST $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: applic
             grep '"pid":' | sed -e 's/^.*"pid":"//' | sed -e 's/".*$//'`
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to repair project data in IDA!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to repair project data in IDA"
 fi
 
 echo "Action PID: ${ACTION_PID}"
@@ -105,8 +108,9 @@ echo "Unsuspending project... (silently)"
 $ROOT/utils/admin/unsuspend-project "$PROJECT" --silent 2>$ERR
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to unsuspend project!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to unsuspend project"
 fi
 
 #--------------------------------------------------------------------------------
@@ -115,3 +119,4 @@ rm $ERR 2>/dev/null
 
 echoAndLog "Initiated repair of project $PROJECT successfully. Postprocessing ongoing..."
 
+addToLog "DONE"

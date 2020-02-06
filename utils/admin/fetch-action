@@ -22,7 +22,7 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 
-SCRIPT=`basename $0`
+SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
 Usage: $SCRIPT project pid
@@ -33,25 +33,9 @@ Usage: $SCRIPT project pid
 "
 
 #--------------------------------------------------------------------------------
-# Process command line arguments
-
-if [ "$1" = "-h" ]; then
-    echo "$USAGE"
-    exit 0
-fi
-
-if [ "$#" -ne 2 ]; then
-    echo "$USAGE"
-    exit 0
-fi
-
-PROJECT="$1"
-ACTION="$2"
-
-#--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -62,23 +46,39 @@ else
 fi
 
 #--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$#" -ne 2 ]; then
+    echo "$USAGE" >&2
+    errorExit "Invalid number of arguments"
+fi
+
+PROJECT="$1"
+ACTION="$2"
+
+#--------------------------------------------------------------------------------
 
 URL="${IDA_API_ROOT_URL}/actions/${ACTION}"
 
-DEBUG="true"
-
-if [ "$DEBUG" != "false" ]
+if [ "$DEBUG" = "true" ]
 then
-    echo "PROJECT: $PROJECT"
-    echo "ACTION:  $ACTION"
-    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\""
+    echo "PROJECT: $PROJECT" >&2
+    echo "ACTION:  $ACTION" >&2
+    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\"" >&2
+fi
+
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
 fi
 
 OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
 
 if [ -s $ERR ]; then
-    cat $ERR | tee -a $LOG
-    errorExit "Error: Failed to retrieve action details!"
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to retrieve action details"
 fi
 
 echo "$OUT" | python -m json.tool
+
+addToLog "DONE"

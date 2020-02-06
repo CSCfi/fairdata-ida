@@ -23,10 +23,14 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT project [max_file_count]"
+SCRIPT=`basename "$(realpath $0)"`
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+USAGE="
+Usage: $SCRIPT project [max_file_count]
+       $SCRIPT -h
+"
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -38,9 +42,15 @@ fi
 
 #--------------------------------------------------------------------------------
 
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
+fi
+
 if [ "$2" != "" ]; then
     find "$PROJECT_STORAGE_OC_DATA_ROOT" -type f | head -${2}
     echo "(a maximum of ${2} files are shown)" >&2
 else
     find "$PROJECT_STORAGE_OC_DATA_ROOT" -type f 
 fi
+
+addToLog "DONE"

@@ -23,11 +23,16 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT"
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT
+       $SCRIPT -h
+"
+
 PROJECT="null"
 
-INIT_FILE=`dirname $0`/lib/init_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -42,4 +47,4 @@ fi
 $CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups" -H "OCS-APIRequest: true" | \
     grep "<element>" | grep -v "<element>admin<" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u 
 
-
+addToLog "DONE"
