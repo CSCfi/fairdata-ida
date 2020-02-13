@@ -81,6 +81,7 @@ mkdir -p $REPORT_ROOT 2>/dev/null
 source $VENV_AUDIT/bin/activate
 
 python $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START | python -m json.tool > $REPORT_BASE
+#python $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START > $REPORT_BASE
 
 if [ $? -ne 0 ]; then
     if [ -f $REPORT_BASE ]; then

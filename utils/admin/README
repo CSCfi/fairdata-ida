@@ -165,5 +165,5 @@ DBPASSWORD
 Additionally, the python virtual environment utilized by the core python
 script must first be configured manually before running any of the auditing
 utilities by executing the script $ROOT/utils/admin/lib/initialize_audit_venv
-root to configure or update the virtual environment on each server instance
+as root to configure or update the virtual environment on each server instance
 where the auditing utilities are executed.

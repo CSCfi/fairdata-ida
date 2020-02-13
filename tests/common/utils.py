@@ -78,6 +78,8 @@ def load_configuration():
         'PROJECT_USER_PREFIX':    service_constants.PROJECT_USER_PREFIX,
         'TEST_USER_PASS':         server_configuration.TEST_USER_PASS,
         'BATCH_ACTION_TOKEN':     server_configuration.BATCH_ACTION_TOKEN,
+        'LOG':                    server_configuration.LOG,
+        'LOG_ROOT':               os.path.dirname(server_configuration.LOG),
         'STAGING_FOLDER_SUFFIX':  service_constants.STAGING_FOLDER_SUFFIX,
         'STORAGE_OC_DATA_ROOT':   server_configuration.STORAGE_OC_DATA_ROOT,
         'DATA_REPLICATION_ROOT':  server_configuration.DATA_REPLICATION_ROOT,
@@ -105,8 +107,6 @@ def load_configuration():
         'METAX_API_USER':         server_configuration.METAX_API_USER,
         'METAX_API_PASS':         server_configuration.METAX_API_PASS
     }
-
-    config['LOG_ROOT'] = os.path.dirname(server_configuration.LOG)
 
     return config
 

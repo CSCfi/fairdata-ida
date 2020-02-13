@@ -81,15 +81,27 @@ REQUEST_URL="${IDA_API_ROOT_URL}/${ACTION}?project=${PROJECT}&pathname=${ENCODED
 
 echo "Executing ${ACTION} action for pathname ${PATHNAME} in project ${PROJECT}..."
 
+# NOTE: The X-SIMULATE-AGENTS header is only used by automated testing, to skip
+# postprocessing for test cases that do not need them, so that the tests run most
+# efficiently.
+
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+    if [ "$SIMULATE_AGENTS" = "true" ]; then
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+    else
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+    fi
 fi
 
-OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+if [ "$SIMULATE_AGENTS" = "true" ]; then
+    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+else
+    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+fi
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
-    addToLog "$MSG"
+    echoAndLog "$MSG"
     errorExit "Action $ACTION failed for pathname $PATHNAME in project $PROJECT"
 fi
 

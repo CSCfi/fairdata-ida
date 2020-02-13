@@ -55,7 +55,7 @@ def main():
         config.SINCE = sys.argv[2]
         config.START = sys.argv[3]
 
-        if [ config.DEBUG == 'true' ]:
+        if config.DEBUG == 'true':
             config.LOG_LEVEL = logging.DEBUG
         else:
             config.LOG_LEVEL = logging.INFO

@@ -73,17 +73,20 @@ class TestAuditing(unittest.TestCase):
         if self.success:
             print("(cleaning)")
             cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
-            os.system(cmd)
+            result = os.system(cmd)
+            self.assertEquals(result, 0)
 
-            # TODO: uncomment when testing of IDA::Metax auditing is implemented
-            """
+            # delete all test project related audit reports, so they don't build up
+            cmd = "rm -f %s/audits/*_test_project_[a-e].*" % self.config["LOG_ROOT"]
+            result = os.system(cmd)
+            self.assertEquals(result, 0)
+
             if self.config["METAX_AVAILABLE"] != 1:
                 print('')
                 print("***********************************")
                 print("*** METAX AUDITING NOT TESTED!! ***")
                 print("***********************************")
                 print('')
-            """
 
 
     def waitForPendingActions(self, project, user):
@@ -117,19 +120,43 @@ class TestAuditing(unittest.TestCase):
         the specified suffix, and load and return the audit report as a JSON object.
         """
 
-        print ("(auditing project)")
+        print ("(auditing project %s)" % project)
         cmd = "sudo -u %s %s/utils/admin/audit-project %s | \
                grep '\"start\":' | head -1 | \
                sed -e 's/^[^\"]*\"start\": *\"//' | \
                sed -e 's/\".*$//'" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
         try:
-            start = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding).strip()
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
         self.assertNotEqual(start, None, start)
         self.assertNotEqual(start, "", start)
 
         print("Verify audit report exists and has the correct suffix")
+        report_pathname = "%s/audits/%s_%s.%s" % (self.config["LOG_ROOT"], start, project, suffix)
+        path = Path(report_pathname)
+        self.assertTrue(path.exists(), report_pathname)
+        self.assertTrue(path.is_file(), report_pathname)
+
+        print("(loading audit report)")
+        try:
+            report_data = json.load(open(report_pathname))
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertEquals(report_data.get("project", None), project)
+        self.assertEquals(report_data.get("start", None), start)
+
+        return report_data
+
+
+    def repairProject(self, project):
+        """
+        Repair the specified project.
+        """
+
+        print ("(repairing project %s)" % project)
+
+        print("Verify repair was successful")
         report_pathname = "%s/audits/%s_%s.%s" % (self.config["LOG_ROOT"], start, project, suffix)
         path = Path(report_pathname)
         self.assertTrue(path.exists(), report_pathname)
@@ -170,32 +197,41 @@ class TestAuditing(unittest.TestCase):
            same exact pathnames, covering errors where Nextcloud and the filesystem disagree about
            the type of nodes.
         
-        d. Project D will have no modifications of any kind, and therefore should not have any log
+        d. Project D will have a folder frozen, and will have changes to files in IDA, Metax, and
+           replication, removing a file from IDA, removing a file from Metax, removing a file
+           from replication, and changing file details for a file in IDA such that it disagrees
+           with both Metax and replication.
+
+        e. Project E will have no modifications of any kind, and therefore should not have any log
            entries, and the audit will be expected to find no errors of any kind..
 
         3. The script list-active-projects will be run and the script output verified to include the
-           three projects A, B, and C but not D.
+           three projects A, B, C, and D but not E.
             
-        4. The script audit-project will be run on all four of the projects A, B, C, and D and the
+        4. The script audit-project will be run on all of the projects A, B, C, D, and E and the
            audit report logs checked for correctness, that they exist and have the correct suffix,
            and that all expected errors are reported correctly and no other errors are reported.
            
         Note: no testing of the emailing functionality will be done, only the correctness of the 
         auditing process and reported results.
-
-        TODO: incorporate tests for IDA-Metax-Replication agreement for frozen files
         """
 
         admin_user = (self.config["NC_ADMIN_USER"], self.config["NC_ADMIN_PASS"])
+
         pso_user_a = (self.config["PROJECT_USER_PREFIX"] + "test_project_a", self.config["PROJECT_USER_PASS"])
         pso_user_b = (self.config["PROJECT_USER_PREFIX"] + "test_project_b", self.config["PROJECT_USER_PASS"])
         pso_user_c = (self.config["PROJECT_USER_PREFIX"] + "test_project_c", self.config["PROJECT_USER_PASS"])
         pso_user_d = (self.config["PROJECT_USER_PREFIX"] + "test_project_d", self.config["PROJECT_USER_PASS"])
+        pso_user_e = (self.config["PROJECT_USER_PREFIX"] + "test_project_e", self.config["PROJECT_USER_PASS"])
+
         test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
         test_user_b = ("test_user_b", self.config["TEST_USER_PASS"])
         test_user_c = ("test_user_c", self.config["TEST_USER_PASS"])
         test_user_d = ("test_user_d", self.config["TEST_USER_PASS"])
+        test_user_e = ("test_user_e", self.config["TEST_USER_PASS"])
         test_user_x = ("test_user_x", self.config["TEST_USER_PASS"])
+
+        metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
 
         frozen_area_root_a = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root_a = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
@@ -209,15 +245,14 @@ class TestAuditing(unittest.TestCase):
         frozen_area_root_d = "%s/PSO_test_project_d/files/test_project_d" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root_d = "%s/PSO_test_project_d/files/test_project_d%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
 
-        # TODO: uncomment when testing of IDA::Metax auditing is implemented
-        """
+        frozen_area_root_e = "%s/PSO_test_project_e/files/test_project_e" % (self.config["STORAGE_OC_DATA_ROOT"])
+        staging_area_root_e = "%s/PSO_test_project_e/files/test_project_e%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
+
         # If Metax is available, disable simulation of agents, no matter what might be defined in configuration
         if self.config["METAX_AVAILABLE"] == 1:
             headers = { 'X-SIMULATE-AGENTS': 'false' }
         else:
             headers = { 'X-SIMULATE-AGENTS': 'true' }
-        """
-        headers = { 'X-SIMULATE-AGENTS': 'true' }
 
         # --------------------------------------------------------------------------------
 
@@ -241,8 +276,8 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project A")
 
-        print("(freezing folder /2017-08 in project A)")
-        data = {"project": "test_project_a", "pathname": "/2017-08"}
+        print("(freezing folder /2017-08/Experiment_1/baseline in project A)")
+        data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
@@ -253,9 +288,7 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
 
-        print("(deleting select files and folders from filesystem)")
-
-        # Delete folder /2017-08/Experiment_1/baseline from frozen area
+        print("(deleting folder /2017-08/Experiment_1/baseline from frozen area of filesystem)")
         pathname = "%s/2017-08/Experiment_1/baseline" % frozen_area_root_a
         path = Path(pathname)
         try:
@@ -264,7 +297,7 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
         self.assertFalse(path.exists())
 
-        # Delete folder /2017-10/Experiment_3/baseline from staging area
+        print("(deleting folder /2017-08/Experiment_3/baseline from staging area of filesystem)")
         pathname = "%s/2017-10/Experiment_3/baseline" % staging_area_root_a
         path = Path(pathname)
         try:
@@ -273,10 +306,9 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
         self.assertFalse(path.exists())
 
-        print("(creating zero sized ghost file in filesystem)")
-
-        # Create subfolder /2017-08 in staging area
-        pathname = "%s/2017-08" % staging_area_root_a
+        print("(creating zero sized ghost file /2017-08/Experiment_1/baseline/test01.dat in staging area of filesystem)")
+        # Create subfolder /2017-08/Experiment_1/baseline in staging area
+        pathname = "%s/2017-08/Experiment_1/baseline" % staging_area_root_a
         path = Path(pathname)
         try:
             path.mkdir()
@@ -285,20 +317,8 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to create folder %s: %s" % (pathname, str(error)))
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
-
-        # Create subfolder /2017-08/Experiment_1 in staging area
-        pathname = "%s/2017-08/Experiment_1" % staging_area_root_a
-        path = Path(pathname)
-        try:
-            path.mkdir()
-            shutil.chown(pathname, user=self.config["HTTPD_USER"], group=self.config["HTTPD_USER"])
-        except Exception as error:
-            self.fail("Failed to create folder %s: %s" % (pathname, str(error)))
-        self.assertTrue(path.exists())
-        self.assertTrue(path.is_dir())
-
-        # Create zero sized ghost file in staging area of frozen file /2017-08/Experiment_1/test01.dat
-        pathname = "%s/2017-08/Experiment_1/test01.dat" % staging_area_root_a
+        # Create zero sized ghost file in staging area of frozen file /2017-08/Experiment_1/baseline/test01.dat
+        pathname = "%s/2017-08/Experiment_1/baseline/test01.dat" % staging_area_root_a
         path = Path(pathname)
         try:
             shutil.copyfile("/dev/null", pathname)
@@ -313,8 +333,8 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project B")
 
-        print("(freezing folder /2017-08 in project B)")
-        data = {"project": "test_project_b", "pathname": "/2017-08"}
+        print("(freezing folder /2017-08/Experiment_1/baseline in project B)")
+        data = {"project": "test_project_b", "pathname": "/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
@@ -325,8 +345,6 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_b", test_user_b)
         self.checkForFailedActions("test_project_b", test_user_b)
 
-        print("(modifying technical metadata for select files in Nextcloud)")
-
         # retrieve PSO storage id for test_project_b
         cur.execute("SELECT numeric_id from %sstorages WHERE id = 'home::%stest_project_b' LIMIT 1"
                     % (self.config["DBTABLEPREFIX"], self.config["PROJECT_USER_PREFIX"]))
@@ -335,15 +353,16 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to retrieve storage id for test_project_b")
         storage_id_b = rows[0][0]
 
-        # Change size of Nextcloud file node /2017-08/Experiment_1/test01.dat in frozen area
-        pathname = "files/test_project_b/2017-08/Experiment_1/test01.dat"
+        print("(changing size of Nextcloud file node /2017-08/Experiment_1/baseline/test01.dat in frozen area)")
+        pathname = "files/test_project_b/2017-08/Experiment_1/baseline/test01.dat"
         cur.execute("UPDATE %sfilecache SET size = %d WHERE storage = %d AND path = '%s'"
                     % (self.config["DBTABLEPREFIX"], 123, storage_id_b, pathname))
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node size")
 
-        # Change modified timestamp of Nextcloud file node /2010-10/Experiment_3/test03.dat in staging area
-        pathname = "files/test_project_b%s/2017-10/Experiment_3/test03.dat" % self.config["STAGING_FOLDER_SUFFIX"]
+        print("(changing modified timestamp of Nextcloud file node /2010-10/Experiment_3/baseline/test03.dat in staging area)")
+        # 1500000000 = "2017-07-14T02:40:00Z"
+        pathname = "files/test_project_b%s/2017-10/Experiment_3/baseline/test03.dat" % self.config["STAGING_FOLDER_SUFFIX"]
         cur.execute("UPDATE %sfilecache SET mtime = %d WHERE storage = %d AND path = '%s'"
                     % (self.config["DBTABLEPREFIX"], 1500000000, storage_id_b, pathname))
         conn.commit()
@@ -353,8 +372,8 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project C")
 
-        print("(freezing folder /2017-08 in project C)")
-        data = {"project": "test_project_c", "pathname": "/2017-08"}
+        print("(freezing folder /2017-08/Experiment_1/baseline in project C)")
+        data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
@@ -365,18 +384,16 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_c", test_user_c)
         self.checkForFailedActions("test_project_c", test_user_c)
 
-        print("(swapping select files for folders and folders for files in filesystem)")
-
-        # Delete file /2017-08/Experiment_1/test01.dat from frozen area
-        pathname = "%s/2017-08/Experiment_1/test01.dat" % frozen_area_root_c
+        print("(replacing file /2017-08/Experiment_1/baseline/test01.dat from frozen area of filesystem with same-named folder)")
+        # Delete file /2017-08/Experiment_1/baseline/test01.dat from frozen area
+        pathname = "%s/2017-08/Experiment_1/baseline/test01.dat" % frozen_area_root_c
         path = Path(pathname)
         try:
             os.remove(pathname)
         except Exception as error:
             self.fail("Failed to delete file %s: %s" % (pathname, str(error)))
         self.assertFalse(path.exists())
-
-        # Create folder /2017-08/Experiment_1/test01.dat in frozen area
+        # Create folder /2017-08/Experiment_1/baseline/test01.dat in frozen area
         try:
             path.mkdir()
         except Exception as error:
@@ -384,16 +401,16 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
-        # Delete file /2017-10/Experiment_3/test03.dat from staging area
-        pathname = "%s/2017-10/Experiment_3/test03.dat" % staging_area_root_c
+        print("(replacing file /2017-10/Experiment_3/baseline/test03.dat from staging area of filesystem with same-named folder)")
+        # Delete file /2017-10/Experiment_3/baseline/test03.dat from staging area
+        pathname = "%s/2017-10/Experiment_3/baseline/test03.dat" % staging_area_root_c
         path = Path(pathname)
         try:
             os.remove(pathname)
         except Exception as error:
             self.fail("Failed to delete file %s: %s" % (pathname, str(error)))
         self.assertFalse(path.exists())
-
-        # Create folder /2017-10/Experiment_3/test03.dat in staging area
+        # Create folder /2017-10/Experiment_3/baseline/test03.dat in staging area
         try:
             path.mkdir()
         except Exception as error:
@@ -401,6 +418,7 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
+        print("(replacing folder /empty_folder from staging area of filesystem with same-named file)")
         # Delete folder /empty_folder from staging area
         pathname = "%s/empty_folder" % staging_area_root_c
         path = Path(pathname)
@@ -409,7 +427,6 @@ class TestAuditing(unittest.TestCase):
         except Exception as error:
             self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
         self.assertFalse(path.exists())
-
         # Copy file /License.txt in staging area as file /empty_folder in staging area
         pathname2 = "%s/License.txt" % staging_area_root_c
         try:
@@ -422,10 +439,123 @@ class TestAuditing(unittest.TestCase):
 
         # --------------------------------------------------------------------------------
 
+        print("--- Modifying state of test project D")
+
+        print("(freezing folder /2017-08/Experiment_1/baseline in project D)")
+        data = {"project": "test_project_d", "pathname": "/2017-08/Experiment_1/baseline"}
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        self.waitForPendingActions("test_project_d", test_user_d)
+        self.checkForFailedActions("test_project_d", test_user_d)
+
+        print("(unfreezing file /2017-08/Experiment_1/baseline/test01.dat only in IDA, simulating postprocessing agents)")
+        data = {"project": "test_project_d", "pathname": "/2017-08/Experiment_1/baseline/test01.dat"}
+        headers_d = { 'X-SIMULATE-AGENTS': 'true' }
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers_d, json=data, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "unfreeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        self.waitForPendingActions("test_project_d", test_user_d)
+        self.checkForFailedActions("test_project_d", test_user_d)
+
+        print("(deleting file /2017-08/Experiment_1/baseline/test02.dat from Metax)")
+        data = {"project": "test_project_d", "pathname": "/2017-08/Experiment_1/baseline/test02.dat"}
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 200)
+        file_data = response.json()
+        pid = file_data["pid"]
+        response = requests.delete("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("(changing size of file /2017-08/Experiment_1/baseline/test03.dat in IDA db)")
+        pathname = "/2017-08/Experiment_1/baseline/test03.dat"
+        cur.execute("UPDATE %sida_frozen_file SET size = %d WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], 123, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file size")
+
+        print("(changing checksum of file /2017-08/Experiment_1/baseline/test03.dat in IDA db)")
+        pathname = "/2017-08/Experiment_1/baseline/test03.dat"
+        cur.execute("UPDATE %sida_frozen_file SET checksum = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], "a0b0c0", pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file checksum")
+
+        print("(changing pid of file /2017-08/Experiment_1/baseline/test03.dat in IDA db)")
+        pathname = "/2017-08/Experiment_1/baseline/test03.dat"
+        cur.execute("UPDATE %sida_frozen_file SET pid = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], "abc123", pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
+
+        print("(changing frozen timestamp of file /2017-08/Experiment_1/baseline/test03.dat in IDA db)")
+        pathname = "/2017-08/Experiment_1/baseline/test03.dat"
+        cur.execute("UPDATE %sida_frozen_file SET frozen = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], '2017-01-01T00:00:00Z', pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file frozen timestamp")
+
+        print("(changing modification timestamp of file /2017-08/Experiment_1/baseline/test03.dat in IDA db)")
+        pathname = "/2017-08/Experiment_1/baseline/test03.dat"
+        cur.execute("UPDATE %sida_frozen_file SET modified = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], '2017-01-01T00:00:00Z', pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file modification timestamp")
+
+        print("(deleting file /2017-08/Experiment_1/baseline/test04.dat from replication)")
+        pathname = "%s/projects/test_project_d/2017-08/Experiment_1/baseline/test04.dat" % self.config['DATA_REPLICATION_ROOT']
+        try:
+            os.remove(pathname)
+        except Exception as error:
+            self.fail("Failed to delete file %s: %s" % (pathname, str(error)))
+        path = Path(pathname)
+        self.assertFalse(path.exists())
+
+        print("(changing size of file /2017-08/Experiment_1/baseline/test05.dat in replication)")
+        pathname = "%s/projects/test_project_d/2017-08/Experiment_1/baseline/test05.dat" % self.config['DATA_REPLICATION_ROOT']
+        try:
+            shutil.copyfile("/dev/null", pathname)
+            shutil.chown(pathname, user=self.config["HTTPD_USER"], group=self.config["HTTPD_USER"])
+        except Exception as error:
+            self.fail("Failed to change size of file %s: %s" % (pathname, str(error)))
+        path = Path(pathname)
+        self.assertTrue(path.exists())
+        self.assertTrue(path.is_file())
+
+        print("(swapping file for folder in replication)")
+
+        # Delete file /2017-08/Experiment_1/baseline/zero_size_file from replication
+        pathname = "%s/projects/test_project_d/2017-08/Experiment_1/baseline/zero_size_file" % self.config['DATA_REPLICATION_ROOT']
+        path = Path(pathname)
+        try:
+            os.remove(pathname)
+        except Exception as error:
+            self.fail("Failed to delete file %s: %s" % (pathname, str(error)))
+        self.assertFalse(path.exists())
+
+        # Create folder /2017-08/Experiment_1/baseline/zero_size_file in replication
+        try:
+            path.mkdir()
+        except Exception as error:
+            self.fail("Failed to create folder %s: %s" % (pathname, str(error)))
+        self.assertTrue(path.exists())
+        self.assertTrue(path.is_dir())
+
+        # --------------------------------------------------------------------------------
+
         # Ensure auditing tests start at least one second after file modifications
         # (sometimes on very fast hardware, the auditing begins in less than one
-        # second from the modifications to project C, resulting in those final
-        # file and folder modifications from being excluded from the audit)
+        # second after the modifications to the projects, resulting in those final
+        # file and folder modifications from being excluded from the audit due
+        # to the START timestamp cutoff)
 
         time.sleep(1)
 
@@ -449,8 +579,11 @@ class TestAuditing(unittest.TestCase):
         print("Verify active projects list includes project C")
         self.assertIn("test_project_c", output)
 
-        print("Verify active projects list does not include project D")
-        self.assertNotIn("test_project_d", output)
+        print("Verify active projects list includes project D")
+        self.assertIn("test_project_d", output)
+
+        print("Verify active projects list does not include project E")
+        self.assertNotIn("test_project_e", output)
         
         # --------------------------------------------------------------------------------
 
@@ -459,18 +592,24 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_a", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 93)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 94)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 106)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 6)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 16)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(report_data.get("invalidNodeCount", None), 17)
-        self.assertEquals(len(nodes), 17)
+        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
 
         # Verify select invalid node error messages for each type of error...
 
@@ -479,44 +618,31 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node exists in Nextcloud but not in filesystem")
+        self.assertTrue("Node does not exist in filesystem" in errors)
         node = nodes.get("staging/2017-10/Experiment_3/baseline", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node exists in Nextcloud but not in filesystem")
+        self.assertTrue("Node does not exist in filesystem" in errors)
 
         print("Verify correct error report of Nextcloud file missing from filesystem")
         node = nodes.get("frozen/2017-08/Experiment_1/baseline/test01.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node exists in Nextcloud but not in filesystem")
+        self.assertTrue("Node does not exist in filesystem" in errors)
         node = nodes.get("staging/2017-10/Experiment_3/baseline/test03.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node exists in Nextcloud but not in filesystem")
-
-        print("Verify correct error report of filesystem folder missing from Nextcloud")
-        node = nodes.get("staging/2017-08", None)
-        self.assertIsNotNone(node)
-        errors = node.get("errors", None)
-        self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node exists in filesystem but not in Nextcloud")
+        self.assertTrue("Node does not exist in filesystem" in errors)
 
         print("Verify correct error report of filesystem file missing from Nextcloud")
-        node = nodes.get("staging/2017-08/Experiment_1/test01.dat", None)
+        node = nodes.get("staging/2017-08/Experiment_1/baseline/test01.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node exists in filesystem but not in Nextcloud")
+        self.assertTrue("Node does not exist in Nextcloud" in errors)
 
         # --------------------------------------------------------------------------------
 
@@ -525,44 +651,48 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_b", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 106)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 106)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 6)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 2)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(report_data.get("invalidNodeCount", None), 2)
-        self.assertEquals(len(nodes), 2)
+        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
 
         # Verify both invalid node error messages...
 
         print("Verify correct error report of Nextcloud file size conflict with filesystem")
-        node = nodes.get("frozen/2017-08/Experiment_1/test01.dat", None)
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test01.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node size different for filesystem and Nextcloud")
+        self.assertTrue("Node size different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
         self.assertEquals(nextcloud.get("type", None), "file")
         self.assertEquals(nextcloud.get("size", None), 123)
 
         print("Verify correct error report of Nextcloud modification timestamp conflict with filesystem")
-        node = nodes.get("staging/2017-10/Experiment_3/test03.dat", None)
+        node = nodes.get("staging/2017-10/Experiment_3/baseline/test03.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node modification timestamp different for filesystem and Nextcloud")
+        self.assertTrue("Node modification timestamp different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
         self.assertEquals(nextcloud.get("type", None), "file")
-        self.assertEquals(nextcloud.get("modified", None), 1500000000)
+        self.assertEquals(nextcloud.get("modified", None), "2017-07-14T02:40:00Z")
 
         # --------------------------------------------------------------------------------
 
@@ -571,28 +701,33 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_c", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 106)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 106)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 6)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 3)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(report_data.get("invalidNodeCount", None), 3)
-        self.assertEquals(len(nodes), 3)
+        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
 
         # Verify all three invalid node error messages...
 
         print("Verify correct error report of Nextcloud file type conflict with filesystem folder")
-        node = nodes.get("frozen/2017-08/Experiment_1/test01.dat", None)
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test01.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node type different for filesystem and Nextcloud")
+        self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
         self.assertEquals(nextcloud.get("type", None), "file")
@@ -600,12 +735,11 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(filesystem)
         self.assertEquals(filesystem.get("type", None), "folder")
 
-        node = nodes.get("staging/2017-10/Experiment_3/test03.dat", None)
+        node = nodes.get("staging/2017-10/Experiment_3/baseline/test03.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node type different for filesystem and Nextcloud")
+        self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
         self.assertEquals(nextcloud.get("type", None), "file")
@@ -618,8 +752,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertEquals(len(errors), 1)
-        self.assertEquals(errors[0], "Node type different for filesystem and Nextcloud")
+        self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
         self.assertEquals(nextcloud.get("type", None), "folder")
@@ -631,6 +764,218 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project D and checking results")
         
+        report_data = self.auditProject("test_project_d", "err")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 107)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 107)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 5)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 5)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 6)
+        try:
+            nodes = report_data["invalidNodes"]
+        except Exception as error:
+            self.fail(str(error))
+        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
+
+        # Verify all invalid node error messages...
+
+        print("Verify correct error report of frozen file known to Metax but missing from IDA")
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test01.dat", None)
+        self.assertIsNotNone(node)
+        errors = node.get("errors", None)
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node does not exist in IDA" in errors)
+
+        # Delete file from Metax
+        print("Verify correct error report of frozen file known to IDA but missing from Metax")
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test02.dat", None)
+        self.assertIsNotNone(node)
+        errors = node.get("errors", None)
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node does not exist in Metax" in errors)
+
+        # Change size of frozen file in IDA db
+        # Change checksum of frozen file in IDA db
+        # Change pid of frozen file in IDA db
+        # Change frozen timestamp of frozen file in IDA db
+        # Change modification timestamp of frozen file in IDA db
+
+        print("Verify correct error report of IDA file size conflict with Metax")
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test03.dat", None)
+        self.assertIsNotNone(node)
+        errors = node.get("errors", None)
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node size different for IDA and Metax" in errors)
+
+        print("Verify correct error report of IDA file checksum conflict with Metax")
+        self.assertTrue("Node checksum different for IDA and Metax" in errors)
+
+        print("Verify correct error report of IDA file pid conflict with Metax")
+        self.assertTrue("Node pid different for IDA and Metax" in errors)
+
+        print("Verify correct error report of IDA file frozen timestamp conflict with Metax")
+        self.assertTrue("Node frozen timestamp different for IDA and Metax" in errors)
+
+        print("Verify correct error report of IDA file modification timestamp conflict with Metax")
+        self.assertTrue("Node modification timestamp different for IDA and Metax" in errors)
+
+        print("Verify correct error report of IDA file missing from replication")
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test04.dat", None)
+        self.assertIsNotNone(node)
+        errors = node.get("errors", None)
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node does not exist in replication" in errors)
+
+        print("Verify correct error report of IDA file size conflict with replication")
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/test05.dat", None)
+        self.assertIsNotNone(node)
+        errors = node.get("errors", None)
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node size different for IDA and replication" in errors)
+
+        print("Verify correct error report of IDA file type conflict with replication")
+        node = nodes.get("frozen/2017-08/Experiment_1/baseline/zero_size_file", None)
+        self.assertIsNotNone(node)
+        errors = node.get("errors", None)
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node type different for IDA and replication" in errors)
+
+        # --------------------------------------------------------------------------------
+
+        print("--- Auditing project E and checking results")
+        
+        report_data = self.auditProject("test_project_e", "ok")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+
+        # --------------------------------------------------------------------------------
+
+        # TODO: Uncomment once project repair bugs are resolved per CSCIDA-691
+
+        """
+        print("--- Repairing projects A, B, C, and D for re-auditing")
+        
+        print("(repairing project A)")
+        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        self.waitForPendingActions("test_project_a", test_user_a)
+        self.checkForFailedActions("test_project_a", test_user_a)
+
+        print("(repairing project B)")
+        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        self.waitForPendingActions("test_project_b", test_user_b)
+        self.checkForFailedActions("test_project_b", test_user_b)
+
+        print("(repairing project C)")
+        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_c" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        self.waitForPendingActions("test_project_c", test_user_c)
+        self.checkForFailedActions("test_project_c", test_user_c)
+
+        print("(repairing project D)")
+        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_d" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        self.waitForPendingActions("test_project_d", test_user_d)
+        self.checkForFailedActions("test_project_d", test_user_d)
+
+        print("--- Re-auditing project A and checking results")
+        
+        report_data = self.auditProject("test_project_a", "ok")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+
+        print("--- Re-auditing project B and checking results")
+        
+        report_data = self.auditProject("test_project_b", "ok")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+
+        print("--- Re-auditing project C and checking results")
+        
+        report_data = self.auditProject("test_project_c", "ok")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+
+        print("--- Re-auditing project D and checking results")
+        
         report_data = self.auditProject("test_project_d", "ok")
 
         print("Verify correct number of reported filesystem nodes")
@@ -639,8 +984,15 @@ class TestAuditing(unittest.TestCase):
         print("Verify correct number of reported Nextcloud nodes")
         self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
 
+        print("Verify correct number of reported IDA nodes")
+        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+
         print("Verify correct number of reported invalid nodes")
         self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+        """
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

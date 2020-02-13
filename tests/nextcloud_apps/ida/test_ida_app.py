@@ -120,11 +120,13 @@ class TestIdaApp(unittest.TestCase):
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
 
+        headers = { 'X-SIMULATE-AGENTS': 'true' }
+
         print("--- Freeze Actions")
 
         print("Freeze a single file")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/test01.dat"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -168,7 +170,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Freeze a folder")
         data["pathname"] = "/2017-08/Experiment_1"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -197,7 +199,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Attempt to freeze an empty folder")
         data["pathname"] = "/empty_folder"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data["message"], "The specified folder contains no files which can be frozen.")
@@ -211,7 +213,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Unfreeze single frozen file")
         data["pathname"] = "/2017-08/Experiment_1/baseline/test01.dat"
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "unfreeze")
@@ -236,7 +238,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Unfreeze a folder")
         data["pathname"] = "/2017-08/Experiment_1/baseline"
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "unfreeze")
@@ -261,7 +263,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Attempt to unfreeze an empty folder")
         data["pathname"] = "/empty_folder"
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data["message"], "The specified folder contains no files which can be unfrozen.")
@@ -272,7 +274,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Delete single frozen file")
         data["pathname"] = "/2017-08/Experiment_1/test02.dat"
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "delete")
@@ -297,7 +299,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Delete a frozen folder")
         data["pathname"] = "/2017-08/Experiment_1"
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "delete")
@@ -321,7 +323,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Delete an empty folder and verify action is completed")
         data["pathname"] = "/empty_folder"
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "delete")
@@ -335,31 +337,31 @@ class TestIdaApp(unittest.TestCase):
 
         print("Attempt to freeze a folder with more than max allowed files")
         data["pathname"] = "/MaxFiles"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
 
         # TODO: Verify after failed freeze request that files are still in staging and no pending action exists
 
         print("Freeze a folder with max allowed files")
         data["pathname"] = "/MaxFiles/%s_files" % (self.config["MAX_FILE_COUNT"])
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Freeze one additional file to folder with max allowed files")
         data["pathname"] = "/MaxFiles/test_file.dat"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         action_data = response.json()
         action_pid = action_data["pid"]
         self.assertEqual(response.status_code, 200)
 
         print("Attempt to unfreeze a frozen folder with more than max allowed files")
         data["pathname"] = "/MaxFiles"
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
 
         print("Attempt to delete a frozen folder with more than max allowed files")
         data["pathname"] = "/MaxFiles"
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
 
         self.waitForPendingActions("test_project_a", test_user_a)
@@ -367,7 +369,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Unfreeze a folder with max allowed files")
         data["pathname"] = "/MaxFiles/%s_files" % (self.config["MAX_FILE_COUNT"])
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.text)
 
         self.waitForPendingActions("test_project_a", test_user_a)
@@ -375,7 +377,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Freeze a folder with max allowed files")
         data["pathname"] = "/MaxFiles/%s_files" % (self.config["MAX_FILE_COUNT"])
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
 
         self.waitForPendingActions("test_project_a", test_user_a)
@@ -383,7 +385,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Delete a folder with max allowed files")
         data["pathname"] = "/MaxFiles/%s_files" % (self.config["MAX_FILE_COUNT"])
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
 
         self.waitForPendingActions("test_project_a", test_user_a)
@@ -487,7 +489,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Freeze a single file")
         data = {"project": "test_project_a", "pathname": "/License.txt"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
 
         self.waitForPendingActions("test_project_a", test_user_a)
@@ -619,7 +621,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("Freeze a single file")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_2/test01.dat"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -740,17 +742,17 @@ class TestIdaApp(unittest.TestCase):
 
         print("Attempt to freeze file as admin user")
         data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_2/test01.dat"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 401)
 
         print("Attempt to retrieve file details from project to which user does not belong")
         data = {"project": "test_project_a", "pathname": "/2017-08/Experiment_1/test05.dat"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 401)
 
         print("Attempt to freeze file in project to which user does not belong")
         data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_1/test05.dat"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 401)
 
         # TODO: add tests attempting to update file and action records as normal user, when must be PSO user
@@ -805,7 +807,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/freeze?project=test_project_c&pathname=/2017-08/Experiment_1/test01.dat
         # should fail with 409 Conflict due to locked project
         data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_1/test01.dat"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
         print("Attempt to unlock project as regular user")
@@ -831,7 +833,7 @@ class TestIdaApp(unittest.TestCase):
         print("Freeze a file in an unlocked project")
         # POST /app/ida/api/freeze?project=test_project_c&pathname=/2017-08/Experiment_1/test01.dat
         # should succeed with 200 OK as project is not locked
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("--- Service Locking")
@@ -886,7 +888,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/freeze?project=test_project_c&pathname=/2017-08/Experiment_1/test02.dat
         # should fail with 409 Conflict due to locked project
         data["pathname"] = "/2017-08/Experiment_1/test02.dat"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
         print("Verify all scope checks fail while service is locked")
@@ -939,7 +941,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/freeze?project=test_project_c&pathname=/2017-08/Experiment_1/test02.dat as
         # test_user_c should succeed with 200 OK as service is not locked
         data["pathname"] = "/2017-08/Experiment_1/test02.dat"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json() # For use in subsequent action collision tests below
 
@@ -984,7 +986,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/unfreeze?project=test_project_c&pathname=/2017-08/Experiment_1 as test_user_c
         # should fail with 409 Conflict due to collision with the previous pending action
         data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         # TODO: check for actual error message indicating cause of conflict
 
@@ -992,7 +994,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/freeze?project=test_project_c&pathname=/2017-10/Experiment_3/test01.dat
         # should succeed with 200 OK
         data["pathname"] = "/2017-10/Experiment_3/test01.dat"
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Verify that project is unlocked")
@@ -1010,7 +1012,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/unfreeze?project=test_project_c&pathname=/2017-08/Experiment_1 as test_user_c
         # should fail with 409 Conflict due to collision with existing file in frozen area
         data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         # TODO: check for actual error message indicating cause of conflict
 
@@ -1025,7 +1027,7 @@ class TestIdaApp(unittest.TestCase):
         # POST /app/ida/api/unfreeze?project=test_project_c&pathname=/2017-08/Experiment_1 as
         # test_user_c should succeed with 200 OK
         data = {"project": "test_project_c", "pathname": "/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
         # TODO: consider which tests may be missing...
@@ -1035,7 +1037,7 @@ class TestIdaApp(unittest.TestCase):
         print("Freeze folder which does not intersect with pending action or existing file in frozen area")
         # POST /app/ida/api/freeze?project=test_project_c&pathname=/2017-11/Experiment_6 should succeed with 200 OK
         data = {"project": "test_project_c", "pathname": "/2017-11/Experiment_6"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json() # For use in subsequent action collision tests below
 
@@ -1202,11 +1204,16 @@ class TestIdaApp(unittest.TestCase):
 
         # --------------------------------------------------------------------------------
 
-        print("--- Repair Actions")
+        print("--- Repair Actions (IDA API only)")
+
+        # NOTE: More comprehensive testing of the repair functionality is provided by the
+        # tests for auditing, such that after the various invalid project conditions are
+        # manually created prior to the auditing tests, the invalid projects are all repaired
+        # and re-audited to verify that no further errors are reported.
 
         print("Freeze a folder")
         data = {"project": "test_project_d", "pathname": "/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_d, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -1293,11 +1300,11 @@ class TestIdaApp(unittest.TestCase):
 
         frozen_area_root = "%s/PSO_test_project_b/files/test_project_b" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_b/files/test_project_b%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
-        cmd_base="sudo -u %s %s/utils/admin/execute-batch-action" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd_base="sudo -u %s SIMULATE_AGENTS=true %s/utils/admin/execute-batch-action" % (self.config["HTTPD_USER"], self.config["ROOT"])
 
         print("Attempt to freeze a folder with more than max allowed files")
         data = {"project": "test_project_b", "pathname": "/MaxFiles"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 400)
 
         print("Batch freeze a folder with more than max allowed files")

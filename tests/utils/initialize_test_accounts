@@ -32,12 +32,13 @@
 #
 # The following default project and user configuration will be created:
 #
-#               test_project_a  test_project_b  test_project_c  test_project_d
+#               test_project_a  test_project_b  test_project_c  test_project_d  test_project_e
 # test_user_a         X
 # test_user_b                         X
 # test_user_c                                         X
 # test_user_d                                                         X
-# test_user_x         X               X               X               X
+# test_user_e                                                                         X
+# test_user_x         X               X               X               X               X
 #
 # All projects will be initialized with the same data in their staging area,
 # as defined in /ida/tests/testdata
@@ -102,10 +103,10 @@ if [ "$CONFIG" != "" ]; then
         errorExit "Error: The specified configuration file does not exist or is empty. Aborting"
     fi
 else
-    PROJECTS="test_project_a test_project_b test_project_c test_project_d test_project_s test_project_p test_project_f"
-    USERS="test_user_a test_user_b test_user_c test_user_d test_user_x test_user_s test_user_p test_user_f"
-    BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_x:test_project_a test_user_s:test_project_s test_user_p:test_project_p test_user_f:test_project_f"
-    EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d"
+    PROJECTS="test_project_a test_project_b test_project_c test_project_d test_project_e test_project_s test_project_p test_project_f"
+    USERS="test_user_a test_user_b test_user_c test_user_d test_user_e test_user_x test_user_s test_user_p test_user_f"
+    BASIC_RELATIONS="test_user_a:test_project_a test_user_b:test_project_b test_user_c:test_project_c test_user_d:test_project_d test_user_e:test_project_e test_user_x:test_project_a test_user_s:test_project_s test_user_p:test_project_p test_user_f:test_project_f"
+    EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d test_user_x:test_project_e"
 fi
 
 #--------------------------------------------------------------------------------
