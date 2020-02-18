@@ -29,6 +29,7 @@
 import importlib.util
 import sys
 import os
+import logging
 import json
 import psycopg2
 

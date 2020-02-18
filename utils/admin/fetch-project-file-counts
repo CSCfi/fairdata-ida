@@ -26,7 +26,7 @@
 SCRIPT=`basename $0`
 USAGE="Usage: $SCRIPT project"
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+INIT_FILE=`dirname $0`/lib/init_audit_script.sh
 
 if [ -e $INIT_FILE ]
 then
