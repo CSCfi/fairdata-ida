@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,13 +23,8 @@
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-SCRIPT=`basename "$(realpath $0)"`
-
-USAGE="
-Usage: $SCRIPT
-       $SCRIPT -h
-"
-
+SCRIPT=`basename $0`
+USAGE="Usage: $SCRIPT"
 PROJECT="null"
 
 INIT_FILE=`dirname $0`/lib/init_admin_script.sh
@@ -44,13 +39,38 @@ fi
 
 #--------------------------------------------------------------------------------
 
-for PROJECT in `$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups" -H "OCS-APIRequest: true" | \
-    grep "<element>" | grep -v "<element>admin<" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u `; do
+FIRST="true"
 
-    if [ -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
-        echo "${PROJECT}"
+echo "{"
+
+for PROJECT in `$ROOT/utils/admin/list-projects`; do
+
+    if [ "$FIRST" != "true" ]; then
+        echo ","
     fi
 
+    FIRST="false"
+
+    TOTAL_FILES=0
+    FROZEN_FILES=0
+
+    echo "    \"${PROJECT}\": {"
+
+    DATA=`$ROOT/utils/admin/fetch-project-file-counts $PROJECT 2>/dev/null`
+
+    if [ "$DATA" != "" ]; then
+        TOTAL_FILES=`echo "$DATA" | grep "totalFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+        FROZEN_FILES=`echo "$DATA" | grep "frozenFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+    fi
+
+    echo "        \"totalFiles\":  ${TOTAL_FILES},"
+    echo "        \"frozenFiles\": ${FROZEN_FILES}"
+
+    echo -n "    }"
+
 done
+
+echo ""
+echo "}"
 
 addToLog "DONE"

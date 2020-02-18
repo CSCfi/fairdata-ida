@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -42,36 +42,8 @@ if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; th
     errorExit "The project '${PROJECT}' does not exist"
 fi
 
-DATA=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${PROJECT_USER_PREFIX}${PROJECT}" -H "OCS-APIRequest: true"`
+source $VENV_AUDIT/bin/activate
 
-QUOTA=`echo $DATA | grep "<quota>" | sed -e 's/^.*<quota>//' | sed -e 's/<.*$//'`
-QUOTA=`bytesToHR "0${QUOTA}"`
-echo "Quota:"
-echo "  ${QUOTA}"
-
-USED=`echo $DATA | grep "<used>" | sed -e 's/^.*<used>//' | sed -e 's/<.*$//'`
-USED=`bytesToHR "0${USED}"`
-echo "Used:"
-echo "  ${USED}"
-
-DATA=`$ROOT/utils/admin/fetch-project-file-counts $PROJECT`
-
-TOTAL_FILES=`echo "$DATA" | grep "totalFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-FROZEN_FILES=`echo "$DATA" | grep "frozenFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-
-echo "Total files:"
-echo "    ${TOTAL_FILES}"
-
-echo "Frozen files:"
-echo "    ${FROZEN_FILES}"
-
-echo "Users: "
-
-$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
-    grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
-
-echo "Status: "
-
-$CURL_GET $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/status" | python -m json.tool | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
+python $ROOT/utils/admin/lib/fetch-project-file-counts.py $ROOT $PROJECT | python -m json.tool
 
 addToLog "DONE"
