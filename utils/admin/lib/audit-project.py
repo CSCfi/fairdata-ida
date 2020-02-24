@@ -28,6 +28,8 @@ import requests
 import json
 import logging
 import psycopg2
+import time
+import re
 import dateutil.parser
 from pathlib import Path
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -43,7 +45,7 @@ def main():
 
     try:
 
-        if len(sys.argv) != 4:
+        if len(sys.argv) < 4:
             raise Exception('Invalid number of arguments')
     
         # Load service configuration and constants, and add command arguments
@@ -59,7 +61,11 @@ def main():
         config.PROJECT = sys.argv[2]
         config.START = sys.argv[3]
 
-        #config.DEBUG = 'true' # TEMP HACK
+        config.DEBUG = 'true' # TEMP HACK
+
+        config.IGNORE_TIMESTAMPS = 'false'
+        if len(sys.argv) == 5 and sys.argv[4] == '--ignore-timestamps':
+            config.IGNORE_TIMESTAMPS = 'true'
 
         if [ config.DEBUG == 'true' ]:
             config.LOG_LEVEL = logging.DEBUG
@@ -68,6 +74,7 @@ def main():
     
         if config.DEBUG == 'true':
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
+            sys.stderr.write("PROJECT:       %s\n" % config.PROJECT)
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
             sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)
             sys.stderr.write("LOG:           %s\n" % config.LOG)
@@ -78,8 +85,8 @@ def main():
             sys.stderr.write("ARGS#:         %d\n" % len(sys.argv))
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
             sys.stderr.write("PID:           %s\n" % config.PID)
-            sys.stderr.write("PROJECT:       %s\n" % config.PROJECT)
             sys.stderr.write("START:         %s\n" % config.START)
+            sys.stderr.write("IGNORE_TS:     %s\n" % config.IGNORE_TIMESTAMPS)
     
         # Convert START ISO timestamp strings to epoch seconds
 
@@ -89,19 +96,18 @@ def main():
         if config.DEBUG == 'true':
             sys.stderr.write("START_TS:      %d\n" % config.START_TS)
             sys.stderr.write("START_DT:      %s\n" % str(start_datetime))
-            start_datetime_check = datetime.fromtimestamp(config.START_TS, timezone.utc)
+            start_datetime_check = datetime.utcfromtimestamp(config.START_TS)
             sys.stderr.write("START_DT_CHK:  %s\n" % str(start_datetime_check))
 
-        # Initialize logging
-        #
-        # NOTE! It is expected that the system timezone is set to UTC. No timezone 
-        # conversion for log entry timestamps is performed!
+        # Initialize logging using UTC timestamps
 
         logging.basicConfig(
             filename=config.LOG,
             level=config.LOG_LEVEL,
             format="%s %s (%s) %s" % ('%(asctime)s', config.SCRIPT, config.PID, '%(message)s'),
             datefmt="%Y-%m-%dT%H:%M:%SZ")
+
+        logging.Formatter.converter = time.gmtime
 
         # Audit the project according to the configured values
 
@@ -140,6 +146,11 @@ def add_nextcloud_nodes(nodes, counts, config):
     the auditing started.
     """
 
+    if config.DEBUG == 'true':
+        sys.stderr.write("--- Adding nextcloud nodes...\n")
+        # Only count and report files in debug progress, because we track how many files are in in project, not nodes/folders/etc.
+        fileCount = 0
+
     # Open database connection 
 
     conn = psycopg2.connect(
@@ -157,8 +168,8 @@ def add_nextcloud_nodes(nodes, counts, config):
              WHERE id = 'home::%s%s' \
              LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-    #if config.DEBUG == 'true':
-    #    sys.stderr.write("QUERY: %s\n" % query)
+    if config.DEBUG == 'true':
+        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
     cur.execute(query)
     rows = cur.fetchall()
@@ -178,8 +189,8 @@ def add_nextcloud_nodes(nodes, counts, config):
              AND path ~ 'files/%s\+?/' \
              AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, config.PROJECT, config.START_TS)
 
-    #if config.DEBUG == 'true':
-    #    sys.stderr.write("QUERY: %s\n" % query)
+    if config.DEBUG == 'true':
+        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
     cur.execute(query)
     rows = cur.fetchall()
@@ -199,12 +210,14 @@ def add_nextcloud_nodes(nodes, counts, config):
             pathname = "frozen/%s" % pathname[(project_name_len + 2):]
 
         node_type = 'file'
-        modified = datetime.fromtimestamp(row[3]).strftime('%Y-%m-%dT%H:%M:%SZ')
+        modified = datetime.utcfromtimestamp(row[3]).strftime('%Y-%m-%dT%H:%M:%SZ')
 
         if row[1] == 2:
             node_type = 'folder'
 
         if node_type == 'file':
+            if config.DEBUG == 'true':
+                fileCount = fileCount + 1
             node = {'nextcloud': {'type': node_type, 'size': row[2], 'modified': modified}}
         else:
             node = {'nextcloud': {'type': node_type}}
@@ -213,8 +226,9 @@ def add_nextcloud_nodes(nodes, counts, config):
 
         counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("nextcloud: %s\n%s\n" % (pathname, json.dumps(nodes[pathname]['nextcloud'], indent=2, sort_keys=True)))
+        if config.DEBUG == 'true':
+            #sys.stderr.write("%s: nextcloud: %d %s\n%s\n" % (config.PROJECT, fileCount, pathname, json.dumps(nodes[pathname]['nextcloud'], indent=2, sort_keys=True)))
+            sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, fileCount, pathname))
 
     # Close database connection and return auditing data object
 
@@ -228,25 +242,38 @@ def add_filesystem_nodes(nodes, counts, config):
     before the start of the auditing
     """
 
+    if config.DEBUG == 'true':
+        sys.stderr.write("--- Adding filesystem nodes...\n")
+        # Only count and report files in debug progress, because we track how many files are in in project, not nodes/folders/etc.
+        fileCount = 0
+
     pso_root = "%s/%s%s/" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-    command = "cd %s; find files -mindepth 2" % (pso_root)
+    command = "cd %s; find files -mindepth 2 -printf \"%%Y\\t%%s\\t%%T@\\t%%p\\n\"" % (pso_root)
 
-    #if config.DEBUG == 'true':
-    #    sys.stderr.write("COMMAND:  %s\n" % command)
+    if config.DEBUG == 'true':
+        sys.stderr.write("COMMAND: %s\n" % command)
 
     pipe = Popen(command, shell=True, stdout=PIPE)
 
+    pattern = re.compile("^(?P<type>[^\t])+\t(?P<size>[^\t]+)\t(?P<modified>[^\t]+)\t(?P<pathname>.+)$")
+
     for line in pipe.stdout:
 
-        pathname = line.strip().decode(sys.stdout.encoding)
+        match = pattern.match(line.strip().decode(sys.stdout.encoding))
+        values = match.groupdict()
+
+        if len(values) != 4:
+            raise Exception("Parse error for output from find command: %s" % line.strip().decode(sys.stdout.encoding))
+
+        type = str(values['type'])
+        size = int(values['size'])
+        modified = int(float(values['modified']))
+        pathname = str(values['pathname'])
+
         full_pathname = "%s%s" % (pso_root, pathname)
 
-        fsstat = os.stat(full_pathname)
-
-        fsmodts = int(fsstat.st_mtime)
-
-        if fsmodts < config.START_TS:
+        if modified < config.START_TS:
 
             pathname = pathname[5:]
             project_name_len = len(config.PROJECT)
@@ -256,13 +283,16 @@ def add_filesystem_nodes(nodes, counts, config):
                 pathname = "frozen/%s" % pathname[(project_name_len + 2):]
 
             node_type = 'file'
-            modified = datetime.fromtimestamp(fsmodts).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            if S_ISDIR(fsstat.st_mode):
+            modified = datetime.utcfromtimestamp(modified).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            if type == 'd':
                 node_type = 'folder'
 
             if node_type == 'file':
-                node_details = {'type': node_type, 'size': fsstat.st_size, 'modified': modified}
+                if config.DEBUG == 'true':
+                    fileCount = fileCount + 1
+                node_details = {'type': node_type, 'size': size, 'modified': modified}
             else:
                 node_details = {'type': node_type}
 
@@ -276,8 +306,9 @@ def add_filesystem_nodes(nodes, counts, config):
     
             counts['filesystemNodeCount'] = counts['filesystemNodeCount'] + 1
 
-            #if config.DEBUG == 'true':
-            #    sys.stderr.write("filesystem: %s\n%s\n" % (pathname, json.dumps(nodes[pathname]['filesystem'], indent=2, sort_keys=True)))
+            if config.DEBUG == 'true':
+                #sys.stderr.write("%s: filesystem: %d %s\n%s\n" % (config.PROJECT, fileCount, pathname, json.dumps(nodes[pathname]['filesystem'], indent=2, sort_keys=True)))
+                sys.stderr.write("%s: filesystem: %d %s\n" % (config.PROJECT, fileCount, pathname))
 
 
 def add_frozen_files(nodes, counts, config):
@@ -287,6 +318,9 @@ def add_frozen_files(nodes, counts, config):
     which have no pending metadata postprocessing (i.e. only frozen files with metadata timestamps
     and no cleared or removed timestamps, and a metadata timestamp less than the start timestamp)
     """
+
+    if config.DEBUG == 'true':
+        sys.stderr.write("--- Adding IDA frozen files...\n")
 
     # Open database connection 
 
@@ -311,8 +345,8 @@ def add_frozen_files(nodes, counts, config):
              AND frozen IS NOT NULL \
              AND frozen < '%s' " % (config.DBTABLEPREFIX, config.PROJECT, config.START)
 
-    #if config.DEBUG == 'true':
-    #    sys.stderr.write("QUERY: %s\n" % query)
+    if config.DEBUG == 'true':
+        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
     cur.execute(query)
     rows = cur.fetchall()
@@ -324,6 +358,10 @@ def add_frozen_files(nodes, counts, config):
         #if config.DEBUG == 'true':
         #    sys.stderr.write("ida_frozen: %s\n" % (str(row)))
 
+        checksum = str(row[4])
+        if checksum.startswith('sha256:'):
+            checksum = checksum[7:]
+
         pathname = "frozen%s" % row[0]
 
         node_details = {
@@ -331,7 +369,7 @@ def add_frozen_files(nodes, counts, config):
             'size': row[1],
             'modified': row[2],
             'pid': row[3],
-            'checksum': row[4],
+            'checksum': checksum,
             'frozen': row[5],
             'replicated': row[6]
         }
@@ -346,8 +384,9 @@ def add_frozen_files(nodes, counts, config):
     
         counts['idaNodeCount'] = counts['idaNodeCount'] + 1
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("ida: %s\n%s\n" % (pathname, json.dumps(nodes[pathname]['ida'], indent=2, sort_keys=True)))
+        if config.DEBUG == 'true':
+            #sys.stderr.write("%s: ida: %d %s\n%s\n" % (config.PROJECT, counts['idaNodeCount'], pathname, json.dumps(nodes[pathname]['ida'], indent=2, sort_keys=True)))
+            sys.stderr.write("%s: ida: %d %s\n" % (config.PROJECT, counts['idaNodeCount'], pathname))
 
     # Close database connection and return auditing data object
 
@@ -361,10 +400,13 @@ def add_metax_files(nodes, counts, config):
     published to metax before the start timestamp.
     """
     
+    if config.DEBUG == 'true':
+        sys.stderr.write("--- Adding Metax frozen files...\n")
+
     url = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&project_identifier=%s&no_pagination=true" % (config.METAX_API_ROOT_URL, config.PROJECT)
 
-    #if config.DEBUG == 'true':
-    #    sys.stderr.write("URL: %s\n" % url)
+    if config.DEBUG == 'true':
+        sys.stderr.write("QUERY URL: %s\n" % url)
 
     try:
 
@@ -389,14 +431,17 @@ def add_metax_files(nodes, counts, config):
 
             # Normalize modified and frozen timestamps to ISO UTC format
 
-            modified = datetime.fromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
-            frozen = datetime.fromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
+            modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
+            frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
+            checksum = str(file["checksum_value"])
+            if checksum.startswith('sha256:'):
+                checksum = checksum[7:]
 
             node_details = {
                 'type': 'file',
                 'size': file["byte_size"],
                 'pid': file["identifier"],
-                'checksum': file["checksum_value"],
+                'checksum': checksum,
                 'modified': modified,
                 'frozen': frozen
             }
@@ -411,8 +456,9 @@ def add_metax_files(nodes, counts, config):
     
             counts['metaxNodeCount'] = counts['metaxNodeCount'] + 1
 
-            #if config.DEBUG == 'true':
-            #    sys.stderr.write("metax: %s\n%s\n" % (pathname, json.dumps(nodes[pathname]['metax'], indent=2, sort_keys=True)))
+            if config.DEBUG == 'true':
+                #sys.stderr.write("%s: metax: %d %s\n%s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname, json.dumps(nodes[pathname]['metax'], indent=2, sort_keys=True)))
+                sys.stderr.write("%s: metax: %d %s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname))
 
 
 def audit_project(config):
@@ -436,6 +482,10 @@ def audit_project(config):
 
     invalidNodes = SortedDict({})
     invalidNodeCount = 0
+
+    if config.DEBUG == 'true':
+        # Only count and report files in debug progress, because we track how many files are in in project, not nodes/folders/etc.
+        fileCount = 0
 
     for pathname, node in nodes.items():
 
@@ -470,6 +520,11 @@ def audit_project(config):
         except:
             metax = False
 
+        if config.DEBUG == 'true':
+            if (nextcloud and nextcloud['type'] == 'file') or (filesystem and filesystem['type'] == 'file') or (ida and ida['type'] == 'file') or (metax and metax['type'] == 'file'):
+                fileCount = fileCount + 1
+            sys.stderr.write("%s: auditing: %d %s\n" % (config.PROJECT, fileCount, pathname))
+
         # Check that node exists in both filesystem and Nextcloud, and with same type
 
         if filesystem and not nextcloud:
@@ -488,8 +543,9 @@ def audit_project(config):
             if filesystem and nextcloud and filesystem['size'] != nextcloud['size']:
                 errors['Node size different for filesystem and Nextcloud'] = True
 
-            if filesystem and nextcloud and filesystem['modified'] != nextcloud['modified']:
-                errors['Node modification timestamp different for filesystem and Nextcloud'] = True
+            if config.IGNORE_TIMESTAMPS != 'true':
+                if filesystem and nextcloud and filesystem['modified'] != nextcloud['modified']:
+                    errors['Node modification timestamp different for filesystem and Nextcloud'] = True
 
         # If pathname is in the frozen area, and is known to either Nextcloud or the filesystem
         # as a file; check that the file is registered both as frozen by the IDA app and is published
@@ -533,8 +589,9 @@ def audit_project(config):
                 if ida['size'] != filesystem['size']:
                     errors['Node size different for filesystem and IDA'] = True
 
-                if ida['modified'] != filesystem['modified']:
-                    errors['Node modification timestamp different for filesystem and IDA'] = True
+                if config.IGNORE_TIMESTAMPS != 'true':
+                    if ida['modified'] != filesystem['modified']:
+                        errors['Node modification timestamp different for filesystem and IDA'] = True
 
             # if known in both IDA and nextcloud, check if file details agree
             if ida and nextcloud and nextcloud['type'] == 'file':
@@ -542,8 +599,9 @@ def audit_project(config):
                 if ida['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and IDA'] = True
 
-                if ida['modified'] != nextcloud['modified']:
-                    errors['Node modification timestamp different for Nextcloud and IDA'] = True
+                if config.IGNORE_TIMESTAMPS != 'true':
+                    if ida['modified'] != nextcloud['modified']:
+                        errors['Node modification timestamp different for Nextcloud and IDA'] = True
 
             # if known in both metax and filesystem, check if file details agree
             if metax and filesystem and filesystem['type'] == 'file':
@@ -551,8 +609,9 @@ def audit_project(config):
                 if metax['size'] != filesystem['size']:
                     errors['Node size different for filesystem and Metax'] = True
 
-                if metax['modified'] != filesystem['modified']:
-                    errors['Node modification timestamp different for filesystem and Metax'] = True
+                if config.IGNORE_TIMESTAMPS != 'true':
+                    if metax['modified'] != filesystem['modified']:
+                        errors['Node modification timestamp different for filesystem and Metax'] = True
 
             # if known in both metax and nextcloud, check if file details agree
             if metax and nextcloud and nextcloud['type'] == 'file':
@@ -560,8 +619,9 @@ def audit_project(config):
                 if metax['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and Metax'] = True
 
-                if metax['modified'] != nextcloud['modified']:
-                    errors['Node modification timestamp different for Nextcloud and Metax'] = True
+                if config.IGNORE_TIMESTAMPS != 'true':
+                    if metax['modified'] != nextcloud['modified']:
+                        errors['Node modification timestamp different for Nextcloud and Metax'] = True
 
             # if known in both IDA and metax and filesystem, check if file details agree
             if ida and metax:
@@ -569,11 +629,11 @@ def audit_project(config):
                 if ida['size'] != metax['size']:
                     errors['Node size different for IDA and Metax'] = True
 
-                if ida['modified'] != metax['modified']:
-                    errors['Node modification timestamp different for IDA and Metax'] = True
-
-                if ida['frozen'] != metax['frozen']:
-                    errors['Node frozen timestamp different for IDA and Metax'] = True
+                if config.IGNORE_TIMESTAMPS != 'true':
+                    if ida['modified'] != metax['modified']:
+                        errors['Node modification timestamp different for IDA and Metax'] = True
+                    if ida['frozen'] != metax['frozen']:
+                        errors['Node frozen timestamp different for IDA and Metax'] = True
 
                 if ida['checksum'] != metax['checksum']:
                     errors['Node checksum different for IDA and Metax'] = True
@@ -626,12 +686,16 @@ def audit_project(config):
             invalidNodes[pathname] = node
             invalidNodeCount = invalidNodeCount + 1
 
+            if config.DEBUG == 'true':
+                for error in node['errors']:
+                    sys.stderr.write("Error: %s\n" % error)
+
     # Output report
 
     sys.stdout.write("{\n")
     sys.stdout.write("\"project\": %s,\n" % str(json.dumps(config.PROJECT)))
     sys.stdout.write("\"start\": %s,\n" % str(json.dumps(config.START)))
-    sys.stdout.write("\"end\": %s,\n" % str(json.dumps(strftime("%Y-%m-%dT%H:%M:%SZ"))))
+    sys.stdout.write("\"end\": %s,\n" % str(json.dumps(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))))
     sys.stdout.write("\"filesystemNodeCount\": %d,\n" % counts['filesystemNodeCount'])
     sys.stdout.write("\"nextcloudNodeCount\": %d,\n" % counts['nextcloudNodeCount'])
     sys.stdout.write("\"idaNodeCount\": %d,\n" % counts['idaNodeCount'])

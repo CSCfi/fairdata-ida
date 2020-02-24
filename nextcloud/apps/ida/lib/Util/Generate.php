@@ -66,9 +66,9 @@ class Generate
      */
     public static function newTimestamp($timestamp = null) {
         if ($timestamp === null) {
-            return str_replace('+0000', 'Z', date(DATE_ISO8601));
+            return str_replace('+0000', 'Z', gmdate(DATE_ISO8601));
         } else {
-            return str_replace('+0000', 'Z', date(DATE_ISO8601, $timestamp));
+            return str_replace('+0000', 'Z', gmdate(DATE_ISO8601, $timestamp));
         }
     }
     

@@ -26,7 +26,7 @@
 # created or modified before the start of the auditing process.
 
 USAGE="
-Usage: $SCRIPT project [ ( --report | --report-errors ) [email] ]
+Usage: $SCRIPT project [ ( --report | --report-errors ) [email] ] [ --ignore-timestamps ]
        $SCRIPT -h
 
        project  the project to be audited
@@ -48,8 +48,26 @@ fi
 
 #--------------------------------------------------------------------------------
 
-REPORT_REQ="$2"
-RECIPIENTS="$3"
+REPORT_REQ=""
+RECIPIENTS=""
+IGNORE_TIMESTAMPS=""
+
+if [ "$2" = "--report" ] || [ "$2" = "--report-errors" ]; then
+
+    REPORT_REQ="$2"
+
+    if [ "$3" = "--ignore-timestamps" ]; then
+        IGNORE_TIMESTAMPS="$3"
+        RECIPIENTS="$EMAIL_RECIPIENTS"
+    else
+        RECIPIENTS="$3"
+        IGNORE_TIMESTAMPS="$4"
+    fi
+fi
+
+if [ "$2" = "--ignore-timestamps" ]; then
+    IGNORE_TIMESTAMPS="$2"
+fi
 
 if [ "$REPORT_REQ" != "" ]; then
     if [ "$RECIPIENTS" = "" ]; then
@@ -60,9 +78,12 @@ if [ "$REPORT_REQ" != "" ]; then
     fi
 fi
 
+DEBUG="true"
+
 if [ "$DEBUG" = "true" ]; then
     echo "PROJECT:       $PROJECT" >&2
     echo "REPORT_REQ:    $REPORT_REQ $RECIPIENTS" >&2
+    echo "IGNORE_TS:     $IGNORE_TIMESTAMPS" >&2
 fi
 
 #--------------------------------------------------------------------------------
@@ -80,8 +101,7 @@ mkdir -p $REPORT_ROOT 2>/dev/null
 
 source $VENV_AUDIT/bin/activate
 
-python $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START | python -m json.tool > $REPORT_BASE
-#python $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START > $REPORT_BASE
+python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $IGNORE_TIMESTAMPS | python -m json.tool > $REPORT_BASE
 
 if [ $? -ne 0 ]; then
     if [ -f $REPORT_BASE ]; then

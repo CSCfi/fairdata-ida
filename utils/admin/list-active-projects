@@ -82,7 +82,7 @@ fi
 
 source $VENV_AUDIT/bin/activate
 
-python $ROOT/utils/admin/lib/list-active-projects.py $ROOT $SINCE $START
+python -u $ROOT/utils/admin/lib/list-active-projects.py $ROOT $SINCE $START
 
 if [ $? -ne 0 ]; then
     errorExit "Failed to retrieve listing of active projects"

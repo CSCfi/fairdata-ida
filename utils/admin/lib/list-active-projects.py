@@ -27,6 +27,7 @@ import os
 import logging
 import json
 import psycopg2
+import time
 import dateutil.parser
 from sortedcontainers import SortedDict
 from datetime import datetime, timezone
@@ -97,16 +98,15 @@ def main():
             start_datetime_check = datetime.fromtimestamp(config.START_TS, timezone.utc)
             sys.stderr.write("START_DT_CHK:  %s\n" % str(start_datetime_check))
 
-        # Initialize logging
-        #
-        # NOTE! It is expected that the system timezone is set to UTC. No timezone 
-        # conversion for log entry timestamps is performed!
+        # Initialize logging with UTC timestamps
 
         logging.basicConfig(
             filename=config.LOG,
             level=config.LOG_LEVEL,
             format="%s %s (%s) %s" % ('%(asctime)s', config.SCRIPT, config.PID, '%(message)s'),
             datefmt="%Y-%m-%dT%H:%M:%SZ")
+
+        logging.Formatter.converter = time.gmtime
 
         # Audit the project according to the configured values
 

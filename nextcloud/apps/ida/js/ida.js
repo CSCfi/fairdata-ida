@@ -144,7 +144,7 @@
                 seconds: '2-digit',
                 timeZone: 'UTC'
             };
-            return date.toLocaleTimeString(locale, opts);
+            return date.toLocaleTimeString(locale, opts) + ' UTC';
         },
 
         /**
