@@ -260,11 +260,11 @@ def add_filesystem_nodes(nodes, counts, config):
 
     for line in pipe.stdout:
 
-        match = pattern.match(line.strip().decode(sys.stdout.encoding))
+        match = pattern.match(line.decode(sys.stdout.encoding))
         values = match.groupdict()
 
         if len(values) != 4:
-            raise Exception("Parse error for output from find command: %s" % line.strip().decode(sys.stdout.encoding))
+            raise Exception("Parse error for output from find command: %s" % line.decode(sys.stdout.encoding))
 
         type = str(values['type'])
         size = int(values['size'])
