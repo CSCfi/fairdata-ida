@@ -73,7 +73,7 @@ function skipped {
 
 # flush all action and frozen node data from database for all projects
 
-echo "Flushing all action and frozen node records from database..."
+echo "Flushing all project records from IDA database..."
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
     PROJECT="Demo_Project_$COUNT"
@@ -96,6 +96,24 @@ COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
         success
     fi
 done
+
+if [ "$METAX_AVAILABLE" = "1" ]; then
+
+    echo "Flushing all project records from Metax database..."
+
+    COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
+        PROJECT="Demo_Project_$COUNT"
+        COUNT=$(( $COUNT + 1 ))
+        STEP="   Flushing $PROJECT"
+        printf "%${PADDING}s" "$STEP"
+        OUT=`$CURL_POST $METAX_API_USER:$METAX_API_PASS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 2>&1`
+        if [ "$?" -ne 0 ]; then
+            failure "$OUT (ignored)"
+        else
+            success
+        fi
+    done
+fi
 
 #--------------------------------------------------------------------------------
 
