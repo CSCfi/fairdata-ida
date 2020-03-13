@@ -207,7 +207,7 @@ function bytesToHR()
     done
   
     if [ "$UNIT" == "B" ]; then
-        printf "%4.0f    %s\n" $SIZE $UNIT
+        printf "%4.0f %s\n" $SIZE $UNIT
     else
         printf "%7.02f %s\n" $SIZE $UNIT
     fi

@@ -24,7 +24,7 @@
 # Initialize script with common definitions
 
 SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT"
+USAGE="Usage: $SCRIPT [csv]"
 PROJECT="null"
 
 INIT_FILE=`dirname $0`/lib/init_audit_script.sh
@@ -41,6 +41,23 @@ fi
 
 FIRST="true"
 
+if [ "$1" = "csv" ]; then
+
+    for PROJECT in `$ROOT/utils/admin/list-projects`; do
+        if [ "$FIRST" == "true" ]; then
+            $ROOT/utils/admin/fetch-project-stats $PROJECT csv 2>/dev/null
+            FIRST="false"
+        else
+            $ROOT/utils/admin/fetch-project-stats $PROJECT csv 2>/dev/null | tail -1
+        fi
+    done
+
+    addToLog "DONE"
+    exit 0
+fi
+
+#--------------------------------------------------------------------------------
+
 echo "{"
 
 for PROJECT in `$ROOT/utils/admin/list-projects`; do
@@ -51,20 +68,12 @@ for PROJECT in `$ROOT/utils/admin/list-projects`; do
 
     FIRST="false"
 
-    TOTAL_FILES=0
-    FROZEN_FILES=0
-
     echo "    \"${PROJECT}\": {"
 
-    DATA=`$ROOT/utils/admin/fetch-project-file-counts $PROJECT 2>/dev/null`
-
-    if [ "$DATA" != "" ]; then
-        TOTAL_FILES=`echo "$DATA" | grep "totalFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-        FROZEN_FILES=`echo "$DATA" | grep "frozenFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-    fi
-
-    echo "        \"totalFiles\":  ${TOTAL_FILES},"
-    echo "        \"frozenFiles\": ${FROZEN_FILES}"
+    $ROOT/utils/admin/fetch-project-stats $PROJECT 2>/dev/null \
+        | grep -v '"project": ' \
+        | grep -v '[\{\}]' \
+        | sed -e 's/^/    /'
 
     echo -n "    }"
 

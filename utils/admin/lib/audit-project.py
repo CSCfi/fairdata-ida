@@ -24,6 +24,7 @@
 import importlib.util
 import sys
 import os
+import socket
 import requests
 import json
 import logging
@@ -54,6 +55,12 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
+        # If in production, ensure we are not running on uida-man.csc.fi
+
+        if config.IDA_ENVIRONMENT == "PRODUCTION":
+            if socket.gethostname().startswith("uida-man"):
+                raise Exception ("Do not run project auditing on uida-man.csc.fi!")
+
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
         config.SCRIPT = os.path.basename(sys.argv[0])
@@ -61,7 +68,7 @@ def main():
         config.PROJECT = sys.argv[2]
         config.START = sys.argv[3]
 
-        config.DEBUG = 'true' # TEMP HACK
+        #config.DEBUG = 'true' # TEMP HACK
 
         config.IGNORE_TIMESTAMPS = 'false'
         if len(sys.argv) == 5 and sys.argv[4] == '--ignore-timestamps':
@@ -74,6 +81,7 @@ def main():
     
         if config.DEBUG == 'true':
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
+            sys.stderr.write("HOSTNAME:      %s\n" % socket.gethostname())
             sys.stderr.write("PROJECT:       %s\n" % config.PROJECT)
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
             sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)

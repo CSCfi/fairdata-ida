@@ -46,31 +46,56 @@ DATA=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/$
 
 QUOTA=`echo $DATA | grep "<quota>" | sed -e 's/^.*<quota>//' | sed -e 's/<.*$//'`
 QUOTA=`bytesToHR "0${QUOTA}"`
+USED=`echo $DATA | grep "<used>" | sed -e 's/^.*<used>//' | sed -e 's/<.*$//'`
+USED=`bytesToHR "0${USED}"`
+
+DATA=`$ROOT/utils/admin/fetch-project-stats $PROJECT`
+
+STAGED_VOLUME=`echo "$DATA" | grep "stagedBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+STAGED_VOLUME=`bytesToHR "0${STAGED_VOLUME}"`
+FROZEN_VOLUME=`echo "$DATA" | grep "frozenBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+FROZEN_VOLUME=`bytesToHR "0${FROZEN_VOLUME}"`
+
+TOTAL_FILES=`echo "$DATA" | grep "totalFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+STAGED_FILES=`echo "$DATA" | grep "stagedFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+FROZEN_FILES=`echo "$DATA" | grep "frozenFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+
+LAST_ACTIVE=`echo "$DATA" | grep "lastActive" | sed -e 's/^[^:]*: \"//' | sed -e 's/[\",]*$//'`
+STORAGE_VOLUME=`echo "$DATA" | grep "storageVolume" | sed -e 's/^[^:]*: \"//' | sed -e 's/[\",]*$//'`
+
 echo "Quota:"
 echo "  ${QUOTA}"
 
-USED=`echo $DATA | grep "<used>" | sed -e 's/^.*<used>//' | sed -e 's/<.*$//'`
-USED=`bytesToHR "0${USED}"`
 echo "Used:"
 echo "  ${USED}"
 
-DATA=`$ROOT/utils/admin/fetch-project-file-counts $PROJECT`
+echo "Staged:"
+echo "  ${STAGED_VOLUME}"
 
-TOTAL_FILES=`echo "$DATA" | grep "totalFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-FROZEN_FILES=`echo "$DATA" | grep "frozenFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+echo "Frozen:"
+echo "  ${FROZEN_VOLUME}"
 
 echo "Total files:"
 echo "    ${TOTAL_FILES}"
 
+echo "Staged files:"
+echo "    ${STAGED_FILES}"
+
 echo "Frozen files:"
 echo "    ${FROZEN_FILES}"
+
+echo "Last active:"
+echo "    ${LAST_ACTIVE}"
+
+echo "Storage volume:"
+echo "    ${STORAGE_VOLUME}"
 
 echo "Users: "
 
 $CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
     grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
 
-echo "Status: "
+echo "Action status: "
 
 $CURL_GET $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/status" | python -m json.tool | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
 

@@ -1,0 +1,372 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2020 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+#
+# This script migrates the specified project from its current storage volume
+# to the specified new storage volume.
+# 
+# NOTE: THE MIGRATION PROCESS MUST ONLY RUN WHEN APACHE/NEXTCLOUD IS STOPPED!
+#
+# This is due to Nextcloud caching in memory realpaths of PSO directories which 
+# become invalid when the PSO directory is moved, and thereby cause Nextcloud to
+# enter an unstable state for that project, such that project files cannot be
+# found on disk (due to the change to the realpath).
+#
+# If any of the following conditions are true, migration will NOT be initiated
+# and the script will exit with an error:
+# - apache is running
+# - the project already resides on the specified target volume
+# - the target volume has insufficient space for the project's full quota
+# - initial auditing of the project reports any issues
+#
+# The volume must be specified as the complete pathname from root ending with the
+# 'ida' folder name, e.g. '/mnt/storage_vol03/ida'.
+#
+# The original project data PSO root folder will be renamed with the suffix '_old'.
+# Removal of the original project data PSO root folder must be done manually,
+# after human verification that the migration completed successfully.
+# 
+# The automated migration steps performed by this script are as follows:
+#
+# 1. Run full audit on the project, saving report. Exit if any errors are reported.
+# 2. Execute rsync of project data from current volume to target volume, with archival
+#    mirroring. Pre-migration of project data is supported, such that this final
+#    rsync process should take minimal time. Exit if any errors are reported.
+# 3. Rename original PSO_<project> directory to PSO_<project>_old.
+# 4. Create/update symbolic link if/as needed in /mnt/storage_vol01/ida to the new
+#    PSO_<project> directory on the target volume.
+# 5. Run full audit on the project, saving report. Exit if any errors are reported.
+# 6. Compare first and second audit reports, and verify they agree regarding all node counts.
+#
+# The migration process will be logged in the subdirectory 'migrations' located in the
+# main IDA logging directory. E.g. /mnt/storage_vol01/log/migrations and will have a
+# timestamped filename with the format 'YYYY-MM-DDThh:mm:ssZ_${PROJECT}.log'. In addition
+# the initial and final audit reports will have the main log basename as a prefix, 
+# followed by '_audit_1' and '_audit_2' with a suffix of either '.ok' if no issues
+# reported, or '.err' if issues are reported; as is the norm for audit reports.
+# 
+# After the automated migration steps, the following MANUAL steps must be performed:
+#
+# 1. Review the migration log and verify the migration was fully successful.
+# 2. After restart of apache, verify project data is accessible by test downloading
+#    select files, to ensure Nextcloud can find them from disk.
+# 3. Delete PSO_<project>_old directory from original volume
+#
+# --------------------------------------------------------------------------------
+
+USAGE="
+Usage: $SCRIPT project volume [ --cleanup ]
+       $SCRIPT -h
+
+       project  the project to be audited
+       volume   the target volume pathname to which the project data is to be migrated
+
+       If running in a test environment, if the --cleanup parameter is specified, then
+       after a successful migration, the original project data folder is deleted. This
+       option is not supported in production.
+"
+
+# --------------------------------------------------------------------------------
+# Verify Apache/Nextcloud/IDA is not running
+
+if [ -d /etc/apache2 ]; then
+    STATUS=`systemctl is-active apache2 --quiet && echo "running"`
+else
+    STATUS=`systemctl is-active httpd --quiet && echo "running"`
+fi
+
+if [ "$STATUS" = "running" ]; then
+    echo "Apache cannot be running when migrating projects. Stop apache first. Aborting." >&2
+    exit 1
+fi
+
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+VOLUME="$2"
+
+if [ "$VOLUME" = "" ]; then
+    echo "$USAGE" >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify project exists
+
+PROJECT_STORAGE_OC_DATA_ROOT="$(realpath ${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT})"
+
+if [ ! -d "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
+fi
+
+#--------------------------------------------------------------------------------
+# Special variants of logging functions, to write to migration log rather than
+# main log.
+
+function addToLogM {
+    MSG=`echo "$@" | tr '\n' ' '`
+    echo "$MSG" 2>/dev/null >>"$MIGRATION_LOG"
+}
+
+function echoAndLogM {
+    MSG=`echo "$@" | tr '\n' ' '`
+    echo "$MSG"
+    echo "$MSG" 2>/dev/null >>"$MIGRATION_LOG"
+}
+
+function errorExitM {
+    MSG=`echo "$@" | tr '\n' ' '`
+    echoAndLogM "$MSG"
+    addToLog "$MSG"
+    errorExit "Migration of project $PROJECT failed. See $MIGRATION_LOG for details."
+}
+
+#--------------------------------------------------------------------------------
+# Initialize loging and audit reporting
+
+START="$TIMESTAMP"
+
+LOG_ROOT=`dirname "$(realpath $LOG)"`
+LOG_BASE="${LOG_ROOT}/migrations/${START}_${PROJECT}"
+MIGRATION_LOG="${LOG_BASE}.log"
+REPORT_1_BASE="${LOG_BASE}_audit_1"
+REPORT_2_BASE="${LOG_BASE}_audit_2"
+
+mkdir -p "$LOG_ROOT/migrations" 2>/dev/null
+
+echoAndLogM "START:         $START"
+echoAndLogM "PROJECT:       $PROJECT"
+echoAndLogM "VOLUME:        $VOLUME"
+echoAndLogM "MIGRATION LOG: $MIGRATION_LOG"
+echoAndLogM "DATA_ROOT:     $PROJECT_STORAGE_OC_DATA_ROOT"
+
+#--------------------------------------------------------------------------------
+# Verify target volume is valid 
+
+OUT=`echo "$VOLUME" | grep '^/.*/ida$'`
+
+if [ "$OUT" = "" ]; then
+    errorExitM "Error: The specified volume does not have a valid pathname: $VOLUME"
+fi
+
+OUT=`cat "$ROOT/config/config.sh" | grep "STORAGE_CANDIDATES=" | grep "[\(\" ]${VOLUME}[\)\" ]"`
+
+if [ "$OUT" = "" ]; then
+    errorExitM "Error: The specified volume is not a valid storage candidate volume: $VOLUME"
+fi
+
+#--------------------------------------------------------------------------------
+# Verify project data does not already reside on target volume
+
+NEW_PROJECT_STORAGE_OC_DATA_ROOT="${VOLUME}/${PROJECT_USER_PREFIX}${PROJECT}"
+
+echoAndLogM "NEW_DATA_ROOT: $NEW_PROJECT_STORAGE_OC_DATA_ROOT"
+
+if [ "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" = "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+    errorExitM "Error: The project data already resides in the specified volume: $VOLUME"
+fi
+
+#--------------------------------------------------------------------------------
+# Verify target volume has sufficient space for entire project quota
+
+QUOTA=`$ROOT/utils/admin/fetch-project-stats $PROJECT \
+       | grep "quotaBytes" \
+       | sed -e 's/^[^0-9]*\([0-9][0-9]*\)[^0-9]*$/\1/'`
+
+if [ "$QUOTA" = "" ]; then
+    errorExitM "Error: Failed to retrieve project quota!"
+fi
+
+echoAndLogM "QUOTA:         $QUOTA"
+
+AVAILABLE=`df -B1 --output=avail "$VOLUME" | tail -1`
+
+if [ "$AVAILABLE" = "" ]; then
+    errorExitM "Error: Failed to retrieve available space for target volume!"
+fi
+
+echoAndLogM "AVAILABLE:     $AVAILABLE"
+
+if [ $AVAILABLE -lt $QUOTA ]; then
+    errorExitM "Error: Insufficient space on target volume: Available: $AVAILABLE, Project quota: $QUOTA"
+fi
+
+#--------------------------------------------------------------------------------
+# Run full audit on the project, saving report. Exit if any errors are reported.
+# We filter out the start and end times from the report so we can easily do a 
+# diff of the first and second reports to verify all of the counts agree.
+
+echoAndLogM "Auditing project in original location..."
+
+$ROOT/utils/admin/audit-project $PROJECT \
+    | grep -v "\"start\":" \
+    | grep -v "\"end\":" \
+    > "$REPORT_1_BASE"
+
+OK=`cat "$REPORT_1_BASE" | grep "\"invalidNodeCount\": 0$"`
+
+if [ "$OK" = "" ]; then
+    mv "$REPORT_1_BASE" "$REPORT_1_BASE.err"
+    errorExitM "Error: Initial audit reported errors in project data!"
+fi
+
+mv "$REPORT_1_BASE" "$REPORT_1_BASE.ok"
+
+#--------------------------------------------------------------------------------
+# Execute rsync of project data from current volume to target volume, with
+# archival mirroring. Exit if any errors are reported.
+
+echoAndLogM "Syncing project data..."
+
+# If target volume is equal to STORAGE_OC_DATA_ROOT, we need to remove the
+# symbolic link before proceeding.
+
+if [ "$VOLUME" = "$STORAGE_OC_DATA_ROOT" ]; then
+    if [ -L "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+        rm "$NEW_PROJECT_STORAGE_OC_DATA_ROOT"
+    fi
+fi
+
+if [ -d "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+    errorExitM "Error: New project data root already exists on target volume!"
+fi
+
+# If pre-migration was done and previously copied data exists, rename it to
+# new target folder, else create new empty target folder
+
+if [ -d "${NEW_PROJECT_STORAGE_OC_DATA_ROOT}_pre" ]; then
+    mv "${NEW_PROJECT_STORAGE_OC_DATA_ROOT}_pre" "$NEW_PROJECT_STORAGE_OC_DATA_ROOT"
+else
+    mkdir -p "$NEW_PROJECT_STORAGE_OC_DATA_ROOT"
+fi
+
+if [ ! -d "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+    errorExitM "Error: Failed to initialize new project data root on target volume!"
+fi
+
+# Perform (final) mirroring of project data to new project folder on target volume
+rsync --archive --force --delete --itemize-changes --info=name2,stats \
+    "$PROJECT_STORAGE_OC_DATA_ROOT/" "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" \
+    2>"$TMPDIR/$SCRIPT.$$.err" | tee -a "$MIGRATION_LOG"
+
+if [ "$?" -ne 0 ]; then
+    cat "$TMPDIR/$SCRIPT.$$.err" >> "$MIGRATION_LOG"
+    errorExitM "Error: Failed to sync project data!"
+fi
+
+rm -f "$TMPDIR/$SCRIPT.$$.err" 2>/dev/null
+
+#--------------------------------------------------------------------------------
+# Rename original PSO_<project> directory to PSO_<project>_old.
+
+mv "$PROJECT_STORAGE_OC_DATA_ROOT" "${PROJECT_STORAGE_OC_DATA_ROOT}_old" 
+
+#--------------------------------------------------------------------------------
+# Create/update symbolic link if/as needed in /mnt/storage_vol01/ida to the new
+# PSO_<project> directory on the target volume.
+
+# If target volume is not equal to STORAGE_OC_DATA_ROOT, and was not originally
+# on the STORAGE_OC_DATA_ROOT volume, we need to remove any existing symbolic link
+# and create a new one to the new target project data directory
+
+if [ "$VOLUME" != "$STORAGE_OC_DATA_ROOT" ]; then
+
+    LINK_PROJECT_STORAGE_OC_DATA_ROOT="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}"
+
+    if [ -L "$LINK_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+        rm "$LINK_PROJECT_STORAGE_OC_DATA_ROOT"
+    fi
+
+    ln -s "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" "$LINK_PROJECT_STORAGE_OC_DATA_ROOT" 
+
+    if [ ! -L "$LINK_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+        errorExitM "Error: Failed to create new link to project data root on new volume!"
+    fi
+fi
+
+#--------------------------------------------------------------------------------
+# Run a second full audit on the project, saving the report. Exit if any errors
+# are reported.
+
+echoAndLogM "Auditing project in new location..."
+
+$ROOT/utils/admin/audit-project $PROJECT \
+    | grep -v "\"start\":" \
+    | grep -v "\"end\":" \
+    > "$REPORT_2_BASE"
+
+OK=`cat "$REPORT_2_BASE" | grep "\"invalidNodeCount\": 0$"`
+
+if [ "$OK" = "" ]; then
+    mv "$REPORT_2_BASE" "$REPORT_2_BASE.err"
+    errorExitM "Error: Final audit reported errors in project data!"
+fi
+
+mv "$REPORT_2_BASE" "$REPORT_2_BASE.ok"
+
+#--------------------------------------------------------------------------------
+# Compare the first and second audit reports, and verify they agree regarding
+# all node counts. Exit with error if they disagree.
+
+OUT=`diff "$REPORT_1_BASE.ok" "$REPORT_2_BASE.ok"`
+
+if [ "$OUT" != "" ]; then
+    errorExitM "Error: Initial and final audits do not agree about node counts!"
+fi
+
+#--------------------------------------------------------------------------------
+# If running in a test environment, and the additional parameter --cleanup
+# is specified, unuspend the project (silently), and remove the original project
+# data folder, allowing for easier testing.
+
+if [ "$IDA_ENVIRONMENT" = "TEST" ]; then
+
+    if [ "$3" = "--cleanup" ]; then
+
+        echoAndLogM "Deleting original project data folder..."
+
+        rm -fr "${PROJECT_STORAGE_OC_DATA_ROOT}_old"
+
+        if [ -d "${PROJECT_STORAGE_OC_DATA_ROOT}_old" ]; then
+            errorExitM "Error: Failed to delete original project data folder!"
+        fi
+    fi
+fi
+
+#--------------------------------------------------------------------------------
+
+END=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
+echoAndLogM "Migration of project $PROJECT to volume $VOLUME successful."
+addToLogM "END:           $END"
+
+addToLog "DONE"

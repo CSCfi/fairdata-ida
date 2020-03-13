@@ -104,8 +104,12 @@ if [ ! -d $LOGS ]; then
     exit 1
 fi
 
-if [ ! -d $TMPDIR ]; then
-    mkdir -p $TMPDIR 2>/dev/null
+if [ "$TMPDIR" = "" ]; then
+    TMPDIR=/tmp
+fi
+
+if [ ! -d "$TMPDIR" ]; then
+    mkdir -p $TMPDIR
 fi
 
 if [ ! -d $TMPDIR ]; then
@@ -172,18 +176,21 @@ function urlEncode () {
 
 function addToLog {
     MSG=`echo "$@" | tr '\n' ' '`
+    TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
     echo "$TIMESTAMP $SCRIPT ($PROCESSID) $MSG" 2>/dev/null >>"$LOG"
 }
 
 function echoAndLog {
     MSG=`echo "$@" | tr '\n' ' '`
     echo "$MSG"
+    TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
     echo "$TIMESTAMP $SCRIPT ($PROCESSID) $MSG" 2>/dev/null >>"$LOG"
 }
 
 function errorExit {
     MSG=`echo "$@" | tr '\n' ' '`
     echo "$MSG" >&2
+    TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
     echo "$TIMESTAMP $SCRIPT ($PROCESSID) FATAL ERROR $MSG" >>"$LOG"
     exit 1
 }
@@ -234,7 +241,7 @@ function sendEmail {
 
         fi
 
-        mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS <<EOF
+        mail -s "$SUBJECT" -r $EMAIL_SENDER -S "replyto=$EMAIL_SENDER" $RECIPIENTS <<EOF
 
 $MESSAGE
 

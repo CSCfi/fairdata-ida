@@ -21,10 +21,18 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-# Initialize script with common definitions
+# This script aggregates and reports key stats about the specified project.
+#
+# The script directly queries the database tables and filesystems, and it is
+# not necessary for Apache/Nextcloud/IDA to be running in order to execute this
+# script; only the database needs to be running.
+# --------------------------------------------------------------------------------
 
 SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT project"
+USAGE="Usage: $SCRIPT project [csv]"
+
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
 
 INIT_FILE=`dirname $0`/lib/init_audit_script.sh
 
@@ -44,6 +52,10 @@ fi
 
 source $VENV_AUDIT/bin/activate
 
-python $ROOT/utils/admin/lib/fetch-project-file-counts.py $ROOT $PROJECT | python -m json.tool
+if [ "$2" = "csv" ]; then
+    python $ROOT/utils/admin/lib/fetch-project-stats.py $ROOT $PROJECT csv
+else
+    python $ROOT/utils/admin/lib/fetch-project-stats.py $ROOT $PROJECT | python -m json.tool
+fi
 
 addToLog "DONE"
