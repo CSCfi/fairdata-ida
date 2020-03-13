@@ -252,6 +252,19 @@ return [
             //    pathname = the pathname of the scope to check
         ],
         
+        // File Inventory
+        
+        [
+            // Return an inventory of all project files stored in the IDA service, both in staging
+            // and frozen areas, with all technical metadata about each file.
+            'name' => 'Freezing#getFileInventory',
+            'url'  => '/api/inventory/{project}',
+            'verb' => 'GET'
+            // Restricted to project access scope of user
+            // Required parameters:
+            //     project = the name of the project
+        ],
+        
         // Actions
         
         [

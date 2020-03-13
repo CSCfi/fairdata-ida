@@ -125,6 +125,119 @@ class FreezingController extends Controller
     }
 
     /**
+     * Return an inventory of all project files stored in the IDA service, both in staging
+     * and frozen areas, with all technical metadata about each file.
+     *
+     * @param string $project  the project to which the nodes belongs
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function getFileInventory($project)
+    {
+        try {
+
+            Util::writeLog('ida', 'getFileInventory:' . ' project=' . $project, \OCP\Util::INFO);
+
+            $totalStagedFiles = 0;
+            $totalFrozenFiles = 0;
+
+            $stagedFiles = array();
+            $frozenFiles = array();
+
+            # Aggregate files from staging area
+
+            $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, "/", 0);
+
+            foreach ($nextcloudNodes as $nodeInfo) {
+
+                if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
+
+                    $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
+
+                    $fileInfo = array(
+                        'size' => $nodeInfo->getSize(),
+                        'modified' => Generate::newTimestamp($nodeInfo->getMTime())
+                    );
+
+                    $stagedFiles[$pathname] = $fileInfo;
+                    $totalStagedFiles++;
+                }
+            }
+
+            # Aggregate files from frozen area
+
+            $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, "/", 0);
+
+            foreach ($nextcloudNodes as $nodeInfo) {
+
+                if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
+
+                    $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
+
+                    $fileInfo = array(
+                        'size' => $nodeInfo->getSize(),
+                        'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
+                    );
+
+                    $frozenFile = $this->fileMapper->findByNextcloudNodeId($nodeInfo->getId(), $project);
+
+                    if ($frozenFile != null) {
+
+                        if ($frozenFile->getPid() != null) {
+                            $fileInfo['pid'] = $frozenFile->getPid();
+                        }
+
+                        $checksum = $frozenFile->getChecksum();
+
+                        if ($checksum != null) {
+                            // Ensure the checksum is returned as an sha256: checksum URI
+                            if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
+                                $fileInfo['checksum'] = $checksum;
+                            }
+                            else {
+                                $fileInfo["checksum"] = 'sha256:' . $checksum;
+                            }
+                        }
+
+                        if ($frozenFile->getFrozen() != null) {
+                            $fileInfo['frozen'] = $frozenFile->getFrozen();
+                        }
+                    }
+
+                    $frozenFiles[$pathname] = $fileInfo;
+                    $totalFrozenFiles++;
+                }
+            }
+
+            $totalFiles = $totalStagedFiles + $totalFrozenFiles;
+
+            Util::writeLog(
+                'ida',
+                'getInventory:'
+                    . ' totalFiles=' . $totalFiles
+                    . ' totalStagedFiles=' . $totalStagedFiles
+                    . ' totalFrozenFiles=' . $totalFrozenFiles,
+                \OCP\Util::INFO
+            );
+
+            return new DataResponse(array(
+                       'project' => $project,
+                       'created' => Generate::newTimestamp(),
+                       'totalFiles' => $totalFiles,
+                       'totalStagedFiles' => $totalStagedFiles,
+                       'totalFrozenFiles' => $totalFrozenFiles,
+                       'staging' => $stagedFiles,
+                       'frozen' => $frozenFiles
+                   ));
+        } catch (Exception $e) {
+            return API::serverErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * Check if a project is locked
      *
      * @param string $project project to check
@@ -1732,7 +1845,7 @@ class FreezingController extends Controller
         return true;
     }
 
-    /**
+        /**
      * Retrieve an ordered array of Nextcloud FileInfo instances for all files within the scope of the
      * specified node in the staging or frozen space, depending on the specified action.
      *
