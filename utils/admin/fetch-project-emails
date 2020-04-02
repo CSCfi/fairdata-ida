@@ -41,10 +41,6 @@ fi
 
 #--------------------------------------------------------------------------------
 
-if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "The specified project ${PROJECT} does not exist"
-fi
-
 export LDAP_HOST_URL
 export LDAP_BIND_USER
 export LDAP_PASSWORD
