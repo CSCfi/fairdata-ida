@@ -233,7 +233,7 @@ $ROOT/utils/admin/audit-project $PROJECT \
     | grep -v "\"end\":" \
     > "$REPORT_1_BASE"
 
-OK=`cat "$REPORT_1_BASE" | grep "\"invalidNodeCount\": 0$"`
+OK=`cat "$REPORT_1_BASE" | grep "\"invalidNodeCount\": *0$"`
 
 if [ "$OK" = "" ]; then
     mv "$REPORT_1_BASE" "$REPORT_1_BASE.err"

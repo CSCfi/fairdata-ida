@@ -55,8 +55,8 @@ fi
 echo "Verifying project ${PROJECT} is suspended..."
 
 PIDS=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2>$ERR | \
-      tr "\n" " " | tr "{" "\n" | grep '"action":"suspend"' | grep "\"project\":\"$PROJECT\"" | \
-      sed -e 's/^.*"pid":"//' | sed -e 's/".*$//'`
+      tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend\"" | grep "\"project\": *\"$PROJECT\"" | \
+      sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`

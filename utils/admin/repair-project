@@ -80,12 +80,16 @@ fi
 echo "Repairing project data in IDA..."
 
 ACTION_PID=`$CURL_POST $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: application/json" "$URL_BASE_IDA/api/repair" 2>$ERR | \
-            grep '"pid":' | sed -e 's/^.*"pid":"//' | sed -e 's/".*$//'`
+            grep '"pid":' | sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
     errorExit "Failed to repair project data in IDA"
+fi
+
+if [ "$ACTION_PID" = "" ]; then
+    errorExit "Failed to repair project data in IDA: No action PID found"
 fi
 
 echo "Action PID: ${ACTION_PID}"
