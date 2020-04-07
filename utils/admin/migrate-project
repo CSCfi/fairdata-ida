@@ -193,7 +193,7 @@ NEW_PROJECT_STORAGE_OC_DATA_ROOT="${VOLUME}/${PROJECT_USER_PREFIX}${PROJECT}"
 echoAndLogM "NEW_DATA_ROOT: $NEW_PROJECT_STORAGE_OC_DATA_ROOT"
 
 if [ "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" = "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
-    errorExitM "Error: The project data already resides in the specified volume: $VOLUME"
+    errorExitM "Error: The project $PROJECT data already resides in the specified volume: $VOLUME"
 fi
 
 #--------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ QUOTA=`$ROOT/utils/admin/fetch-project-stats $PROJECT \
        | sed -e 's/^[^0-9]*\([0-9][0-9]*\)[^0-9]*$/\1/'`
 
 if [ "$QUOTA" = "" ]; then
-    errorExitM "Error: Failed to retrieve project quota!"
+    errorExitM "Error: Failed to retrieve project $PROJECT quota!"
 fi
 
 echoAndLogM "QUOTA:         $QUOTA"
@@ -228,7 +228,7 @@ fi
 
 echoAndLogM "Auditing project in original location..."
 
-$ROOT/utils/admin/audit-project $PROJECT \
+$ROOT/utils/admin/audit-project $PROJECT --ignore-timestamps \
     | grep -v "\"start\":" \
     | grep -v "\"end\":" \
     > "$REPORT_1_BASE"
@@ -237,7 +237,7 @@ OK=`cat "$REPORT_1_BASE" | grep "\"invalidNodeCount\": *0$"`
 
 if [ "$OK" = "" ]; then
     mv "$REPORT_1_BASE" "$REPORT_1_BASE.err"
-    errorExitM "Error: Initial audit reported errors in project data!"
+    errorExitM "Error: Initial audit reported errors in project $PROJECT data!"
 fi
 
 mv "$REPORT_1_BASE" "$REPORT_1_BASE.ok"
@@ -258,7 +258,7 @@ if [ "$VOLUME" = "$STORAGE_OC_DATA_ROOT" ]; then
 fi
 
 if [ -d "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
-    errorExitM "Error: New project data root already exists on target volume!"
+    errorExitM "Error: New project $PROJECT data root already exists on target volume!"
 fi
 
 # If pre-migration was done and previously copied data exists, rename it to
@@ -271,7 +271,7 @@ else
 fi
 
 if [ ! -d "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
-    errorExitM "Error: Failed to initialize new project data root on target volume!"
+    errorExitM "Error: Failed to initialize new project $PROJECT data root on target volume!"
 fi
 
 # Perform (final) mirroring of project data to new project folder on target volume
@@ -281,7 +281,7 @@ rsync --archive --force --delete --itemize-changes --info=name2,stats \
 
 if [ "$?" -ne 0 ]; then
     cat "$TMPDIR/$SCRIPT.$$.err" >> "$MIGRATION_LOG"
-    errorExitM "Error: Failed to sync project data!"
+    errorExitM "Error: Failed to sync project $PROJECT data!"
 fi
 
 rm -f "$TMPDIR/$SCRIPT.$$.err" 2>/dev/null
@@ -310,7 +310,7 @@ if [ "$VOLUME" != "$STORAGE_OC_DATA_ROOT" ]; then
     ln -s "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" "$LINK_PROJECT_STORAGE_OC_DATA_ROOT" 
 
     if [ ! -L "$LINK_PROJECT_STORAGE_OC_DATA_ROOT" ]; then
-        errorExitM "Error: Failed to create new link to project data root on new volume!"
+        errorExitM "Error: Failed to create new link to project $PROJECT data root on new volume!"
     fi
 fi
 
@@ -320,16 +320,16 @@ fi
 
 echoAndLogM "Auditing project in new location..."
 
-$ROOT/utils/admin/audit-project $PROJECT \
+$ROOT/utils/admin/audit-project $PROJECT --ignore-timestamps \
     | grep -v "\"start\":" \
     | grep -v "\"end\":" \
     > "$REPORT_2_BASE"
 
-OK=`cat "$REPORT_2_BASE" | grep "\"invalidNodeCount\": 0$"`
+OK=`cat "$REPORT_2_BASE" | grep "\"invalidNodeCount\": *0$"`
 
 if [ "$OK" = "" ]; then
     mv "$REPORT_2_BASE" "$REPORT_2_BASE.err"
-    errorExitM "Error: Final audit reported errors in project data!"
+    errorExitM "Error: Final audit reported errors in project $PROJECT data!"
 fi
 
 mv "$REPORT_2_BASE" "$REPORT_2_BASE.ok"
@@ -341,7 +341,7 @@ mv "$REPORT_2_BASE" "$REPORT_2_BASE.ok"
 OUT=`diff "$REPORT_1_BASE.ok" "$REPORT_2_BASE.ok"`
 
 if [ "$OUT" != "" ]; then
-    errorExitM "Error: Initial and final audits do not agree about node counts!"
+    errorExitM "Error: Initial and final audits for project $PROJECT do not agree about node counts!"
 fi
 
 #--------------------------------------------------------------------------------
@@ -358,7 +358,7 @@ if [ "$IDA_ENVIRONMENT" = "TEST" ]; then
         rm -fr "${PROJECT_STORAGE_OC_DATA_ROOT}_old"
 
         if [ -d "${PROJECT_STORAGE_OC_DATA_ROOT}_old" ]; then
-            errorExitM "Error: Failed to delete original project data folder!"
+            errorExitM "Error: Failed to delete original project $PROJECT data folder!"
         fi
     fi
 fi

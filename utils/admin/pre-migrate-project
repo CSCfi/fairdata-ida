@@ -148,7 +148,7 @@ NEW_PROJECT_STORAGE_OC_DATA_ROOT="${VOLUME}/${PROJECT_USER_PREFIX}${PROJECT}"
 echoAndLogM "NEW_DATA_ROOT: ${NEW_PROJECT_STORAGE_OC_DATA_ROOT}_pre"
 
 if [ "$NEW_PROJECT_STORAGE_OC_DATA_ROOT" = "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
-    errorExitM "Error: The project data already resides in the specified volume: $VOLUME"
+    errorExitM "Error: The project $PROJECT data already resides in the specified volume: $VOLUME"
 fi
 
 #--------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ QUOTA=`$ROOT/utils/admin/fetch-project-stats $PROJECT \
        | sed -e 's/^[^0-9]*\([0-9][0-9]*\)[^0-9]*$/\1/'`
 
 if [ "$QUOTA" = "" ]; then
-    errorExitM "Error: Failed to retrieve project quota!"
+    errorExitM "Error: Failed to retrieve project $PROJECT quota!"
 fi
 
 echoAndLogM "QUOTA:         $QUOTA"
@@ -173,7 +173,7 @@ fi
 echoAndLogM "AVAILABLE:     $AVAILABLE"
 
 if [ $AVAILABLE -lt $QUOTA ]; then
-    errorExitM "Error: Insufficient space on target volume: Available: $AVAILABLE, Project quota: $QUOTA"
+    errorExitM "Error: Insufficient space on target volume: Available: $AVAILABLE, Project $PROJECT quota: $QUOTA"
 fi
 
 #--------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ rsync --archive --force --delete --itemize-changes --info=name2,stats \
 
 if [ "$?" -ne 0 ]; then
     cat "$TMPDIR/$SCRIPT.$$.err" >> "$MIGRATION_LOG"
-    errorExitM "Error: Failed to sync project data!"
+    errorExitM "Error: Failed to sync project $PROJECT data!"
 fi
 
 rm -f "$TMPDIR/$SCRIPT.$$.err" 2>/dev/null
