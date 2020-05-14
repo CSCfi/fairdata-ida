@@ -1,4 +1,6 @@
 psycopg2-binary==2.8.4
+pymysql==0.9.3
 python-dateutil==2.8.1
 sortedcontainers==2.1.0
 requests==2.22.0
+wheel==0.34.2

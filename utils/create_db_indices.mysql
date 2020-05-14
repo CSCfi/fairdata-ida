@@ -1,0 +1,11 @@
+CREATE INDEX oc_ida_frozen_file_node_idx ON oc_ida_frozen_file (node) USING BTREE;
+CREATE INDEX oc_ida_frozen_file_pid_idx ON oc_ida_frozen_file (pid) USING BTREE;
+CREATE INDEX oc_ida_frozen_file_action_idx ON oc_ida_frozen_file (action) USING BTREE;
+CREATE INDEX oc_ida_frozen_file_project_idx ON oc_ida_frozen_file (project) USING BTREE;
+CREATE INDEX oc_ida_frozen_file_removed_idx ON oc_ida_frozen_file (removed) USING BTREE; -- WHERE removed IS NULL;
+CREATE INDEX oc_ida_action_pid_idx ON oc_ida_action (pid) USING BTREE;
+CREATE INDEX oc_ida_action_project_idx ON oc_ida_action (project) USING BTREE;
+CREATE INDEX oc_ida_action_storage_idx ON oc_ida_action (storage) USING BTREE; -- WHERE storage IS NULL;
+CREATE INDEX oc_ida_action_completed_idx ON oc_ida_action (completed) USING BTREE; -- WHERE completed IS NULL;
+CREATE INDEX oc_ida_action_failed_idx ON oc_ida_action (failed) USING BTREE; -- WHERE failed IS NULL;
+CREATE INDEX oc_ida_action_cleared_idx ON oc_ida_action (cleared) USING BTREE; -- WHERE cleared IS NULL;

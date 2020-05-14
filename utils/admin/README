@@ -155,6 +155,7 @@ auditing scripts is controlled by the following variables which must
 be defined in, and are taken from, the $ROOT/config/config.sh:
 
 VENV_AUDIT
+DBTYPE
 DBNAME
 DBHOST
 DBPORT

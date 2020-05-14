@@ -27,6 +27,7 @@ import os
 import logging
 import json
 import psycopg2
+import pymysql
 import time
 import dateutil.parser
 from sortedcontainers import SortedDict
@@ -146,12 +147,16 @@ def add_from_ida_action_table(projects, config):
 
     # Open database connection 
 
-    conn = psycopg2.connect(
-               database=config.DBNAME,
-               user=config.DBROUSER,
-               password=config.DBROPASSWORD,
-               host=config.DBHOST,
-               port=config.DBPORT)
+    dblib = psycopg2
+
+    if config.DBTYPE == 'mysql':
+        dblib = pymysql
+
+    conn = dblib.connect(database=config.DBNAME,
+                         user=config.DBROUSER,
+                         password=config.DBROPASSWORD,
+                         host=config.DBHOST,
+                         port=config.DBPORT)
 
     cur = conn.cursor()
 
@@ -192,12 +197,16 @@ def add_from_filecache_table(projects, config):
 
     # Open database connection 
 
-    conn = psycopg2.connect(
-               database=config.DBNAME,
-               user=config.DBROUSER,
-               password=config.DBROPASSWORD,
-               host=config.DBHOST,
-               port=config.DBPORT)
+    dblib = psycopg2
+
+    if config.DBTYPE == 'mysql':
+        dblib = pymysql
+
+    conn = dblib.connect(database=config.DBNAME,
+                         user=config.DBROUSER,
+                         password=config.DBROPASSWORD,
+                         host=config.DBHOST,
+                         port=config.DBPORT)
 
     cur = conn.cursor()
 

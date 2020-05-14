@@ -22,64 +22,75 @@
 #--------------------------------------------------------------------------------
 
 IDA_ENVIRONMENT="TEST"
+DEBUG="true"
 
 HTTPD_USER="apache"
 
 NC_ADMIN_USER="admin"
-NC_ADMIN_PASS="test"
-PROJECT_USER_PASS="test"
-TEST_USER_PASS="test"
-BATCH_ACTION_TOKEN="test"
+NC_ADMIN_PASS="****"
+PROJECT_USER_PASS="****"
+TEST_USER_PASS="****"
+BATCH_ACTION_TOKEN="****"
 
-ROOT="/var/ida"
-OCC="$ROOT/nextcloud/occ"
-
-STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
-STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida")
-
-DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
-
-URL_BASE_SHARE="http://localhost/ocs/v1.php/apps/files_sharing/api/v1/shares"
-URL_BASE_FILE="http://localhost/remote.php/webdav"
-URL_BASE_GROUP="http://localhost/ocs/v1.php/cloud/groups"
-URL_BASE_IDA="http://localhost/apps/ida"
-
-IDA_API_ROOT_URL="http://localhost/apps/ida/api"
-
-LOG="/mnt/storage_vol01/log/ida.log"
-ADMIN_AUDIT_LOG="/var/log/ida/admin_audit.log"
-
-VENV_AUDIT="/srv/venv-audit"
+DBTYPE="pgsql"
+DBNAME="nextcloud"
+DBHOST="localhost"
+DBPORT=5432
+DBTABLEPREFIX="oc_"
+DBUSER="nextcloud"
+DBPASSWORD="****"
+#DBROUSER="inspector"
+#DBROPASSWORD="****"
 
 RABBIT_HOST="localhost"
 RABBIT_PORT=5672
 RABBIT_WEB_API_PORT=15672
 RABBIT_VHOST="ida-vhost"
 RABBIT_ADMIN_USER="admin"
-RABBIT_ADMIN_PASS="test"
+RABBIT_ADMIN_PASS="****"
 RABBIT_WORKER_USER="worker"
-RABBIT_WORKER_PASS="test"
-RABBIT_WORKER_LOG_FILE="/mnt/storage_vol01/log/ida-agents.log"
+RABBIT_WORKER_PASS="****"
+RABBIT_WORKER_LOG_FILE="/mnt/storage_vol01/log/agents-ida-test.log"
+RABBIT_HEARTBEAT=0
 RABBIT_MONITOR_USER="monitor"
-RABBIT_MONITOR_PASS="test"
-RABBIT_HEARTBEAT=0 # seconds. 0 == disabled
-RABBIT_MONITORING_DIR="/mnt/rabbitmq_monitoring"
+RABBIT_MONITOR_PASS="****"
+RABBIT_MONITORING_DIR="/mnt/storage_vol01/log/rabbitmq_monitoring"
 
-METAX_AVAILABLE=1 # If 0, the metadata publication agent will not try to store metadata to METAX
+METAX_AVAILABLE=1
 METAX_FILE_STORAGE_ID="urn:nbn:fi:att:file-storage-ida"
-METAX_API_ROOT_URL="https://localhost/rest"
-METAX_API_RPC_URL="https://localhost/rpc"
+METAX_FILE_STORAGE_ID=1
 METAX_API_USER="ida"
-METAX_API_PASS="test"
+METAX_API_ROOT_URL="https://localhost/rest/v1"
+METAX_API_RPC_URL="https://localhost/rpc/v1"
+METAX_API_PASS="****"
 
-LDAP_HOST_URL="ldaps://ldaphost.domain.com"
-LDAP_BIND_USER="uid=username,ou=group,dc=domain,dc=com;"
-LDAP_PASSWORD="password"
-LDAP_SEARCH_BASE="ou=scope,dc=domain,dc=com"
+ROOT="/var/ida"
+OCC="$ROOT/nextcloud/occ"
+LOG="/mnt/storage_vol01/log/ida-test.log"
 
-# 2592000 seconds = 30 days
-QUARANTINE_PERIOD="2592000"
+IDA_API_ROOT_URL="https://localhost/apps/ida/api"
+
+URL_BASE_SHARE='https://localhost/ocs/v1.php/apps/files_sharing/api/v1/shares'
+URL_BASE_FILE='https://localhost/remote.php/webdav'
+URL_BASE_GROUP='https://localhost/ocs/v1.php/cloud/groups'
+URL_BASE_IDA="https://localhost/apps/ida"
+
+LDAP_HOST_URL="ldaps://localhost"
+LDAP_BIND_USER="uid=irodsbind,ou=Special Users,dc=csc,dc=fi"
+LDAP_PASSWORD="****"
+LDAP_SEARCH_BASE="ou=idm,dc=csc,dc=fi"
+
+# multiple local storage volumes
+STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida")
+STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
+
+DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
+
+VENV_AUDIT="/srv/venv-audit"
+
 TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
+QUARANTINE_PERIOD="2592000"
+# 2592000 seconds = 30 days
 
 EMAIL_SENDER="root@localhost"
 EMAIL_RECIPIENTS="root@localhost"

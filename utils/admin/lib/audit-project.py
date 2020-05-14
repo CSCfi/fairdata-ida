@@ -29,6 +29,7 @@ import requests
 import json
 import logging
 import psycopg2
+import pymysql
 import time
 import re
 import dateutil.parser
@@ -161,12 +162,16 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     # Open database connection 
 
-    conn = psycopg2.connect(
-               database=config.DBNAME,
-               user=config.DBROUSER,
-               password=config.DBROPASSWORD,
-               host=config.DBHOST,
-               port=config.DBPORT)
+    dblib = psycopg2
+
+    if config.DBTYPE == 'mysql':
+        dblib = pymysql
+
+    conn = dblib.connect(database=config.DBNAME,
+                         user=config.DBROUSER,
+                         password=config.DBROPASSWORD,
+                         host=config.DBHOST,
+                         port=config.DBPORT)
 
     cur = conn.cursor()
 
@@ -196,6 +201,12 @@ def add_nextcloud_nodes(nodes, counts, config):
              WHERE storage = %d \
              AND path ~ 'files/%s\+?/' \
              AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, config.PROJECT, config.START_TS)
+
+    if config.DBTYPE == 'mysql':
+        query = "SELECT path, mimetype, size, mtime FROM %sfilecache \
+                 WHERE storage = %d \
+                 AND path REGEXP 'files/%s\\\\+?/' \
+                 AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, config.PROJECT, config.START_TS)
 
     if config.DEBUG == 'true':
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
@@ -332,12 +343,16 @@ def add_frozen_files(nodes, counts, config):
 
     # Open database connection 
 
-    conn = psycopg2.connect(
-               database=config.DBNAME,
-               user=config.DBROUSER,
-               password=config.DBROPASSWORD,
-               host=config.DBHOST,
-               port=config.DBPORT)
+    dblib = psycopg2
+
+    if config.DBTYPE == 'mysql':
+        dblib = pymysql
+
+    conn = dblib.connect(database=config.DBNAME,
+                         user=config.DBROUSER,
+                         password=config.DBROPASSWORD,
+                         host=config.DBHOST,
+                         port=config.DBPORT)
 
     cur = conn.cursor()
 

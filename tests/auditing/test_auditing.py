@@ -33,6 +33,7 @@ import urllib
 import subprocess
 import unittest
 import psycopg2
+import pymysql
 import time
 import os
 import sys
@@ -265,11 +266,18 @@ class TestAuditing(unittest.TestCase):
         # --------------------------------------------------------------------------------
 
         # open database connection 
-        conn = psycopg2.connect(database=self.config["DBNAME"],
-                                user=self.config["DBUSER"],
-                                password=self.config["DBPASSWORD"],
-                                host=self.config["DBHOST"],
-                                port=self.config["DBPORT"])
+
+        dblib = psycopg2
+
+        if self.config['DBTYPE'] == 'mysql':
+            dblib = pymysql
+
+        conn = dblib.connect(database=self.config["DBNAME"],
+                             user=self.config["DBUSER"],
+                             password=self.config["DBPASSWORD"],
+                             host=self.config["DBHOST"],
+                             port=self.config["DBPORT"])
+
         cur = conn.cursor()
     
         # --------------------------------------------------------------------------------

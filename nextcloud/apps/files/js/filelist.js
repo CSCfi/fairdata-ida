@@ -2659,7 +2659,7 @@
                         var scope = OCA.IDA.Util.stripRootFolder(pathname);
                         try {
                             if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-                                OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                                OC.Notification.show(t('ida', '6: The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
                                 updateInList(oldFileInfo);
                                 return false;
                             }
@@ -2785,7 +2785,13 @@
 			var targetPath = this.getCurrentDirectory() + '/' + name;
 
             var project = OCA.IDA.Util.extractProjectName(targetPath);
-            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+
+            if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+				throw t('ida', '1: The requested change conflicts with an ongoing action in the specified project.');
+			}
+
+			/*
             try {
                 if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
                     OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
@@ -2796,7 +2802,8 @@
                 OC.Notification.show(error, {type: 'error'});
                 deferred.reject(500);
                 return promise;
-            }
+			}
+			*/
 
 			self.filesClient.putFileContents(
 					targetPath,
@@ -2857,7 +2864,13 @@
 			var targetPath = this.getCurrentDirectory() + '/' + name;
 
             var project = OCA.IDA.Util.extractProjectName(targetPath);
-            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+
+            if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+				throw t('ida', '2: The requested change conflicts with an ongoing action in the specified project.');
+			}
+
+			/*
             try {
                 if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
                     OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
@@ -2868,7 +2881,8 @@
                 OC.Notification.show(error, {type: 'error'});
                 deferred.reject(500);
                 return promise;
-            }
+			}
+			*/
 
 			this.filesClient.createDirectory(targetPath)
 				.done(function() {
@@ -3039,16 +3053,23 @@
             // This particular use case is a bit brute force and coarser granulartity than optimal, but is a
             // compromise to having overly complex mods to the existing logic...
             var project = OCA.IDA.Util.extractProjectName(dir);
-            var scope = OCA.IDA.Util.stripRootFolder(dir);
+			var scope = OCA.IDA.Util.stripRootFolder(dir);
+
+            if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+				throw t('ida', '3: The requested change conflicts with an ongoing action in the specified project.');
+			}
+
+			/*
             try {
                 if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-                    OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                    OC.Notification.show(t('ida', '3: The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
                     return;
                 }
             } catch (error) {
                 OC.Notification.show(error, {type: 'error'});
                 return;
-            }
+			}
+			*/
 
 			var removeFunction = function(fileName) {
 				var $tr = self.findFileEl(fileName);
@@ -3485,21 +3506,43 @@
 				}
 
                 // This particular use case is a bit brute force and coarser granulartity than optimal, but is a
-                // compromise to having overly complex mods to the existing logic...
+				// compromise to having overly complex mods to the existing logic...
                 var project = OCA.IDA.Util.extractProjectName(data.targetDir);
                 var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
                 try {
                     if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-                        OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+                        OC.Notification.show(t('ida', '4: The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
+						e.stopPropagation();
+                        return false;
+                    }
+                } catch (error) {
+                    OC.Notification.show(error, {type: 'error'});
+					e.stopPropagation();
+                    return false;
+				}
+			});
+			uploader.on('add', function(e, data) {
+				self._uploader.log('filelist handle fileuploadadd', e, data);
+
+                // This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+				// compromise to having overly complex mods to the existing logic...
+				if (!data.targetDir) {
+					targetDir = self.getCurrentDirectory();
+				}
+				else {
+					targetDir = data.targetDir;
+				}
+                var project = OCA.IDA.Util.extractProjectName(targetDir);
+                var scope = OCA.IDA.Util.stripRootFolder(targetDir);
+                try {
+                    if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
+                        OC.Notification.show(t('ida', '5: The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
                         return;
                     }
                 } catch (error) {
                     OC.Notification.show(error, {type: 'error'});
                     return;
-                }
-			});
-			uploader.on('add', function(e, data) {
-				self._uploader.log('filelist handle fileuploadadd', e, data);
+				}
 
 				// add ui visualization to existing folder
 				if (data.context && data.context.data('type') === 'dir') {
@@ -3524,20 +3567,6 @@
 				if (!data.targetDir) {
 					data.targetDir = self.getCurrentDirectory();
 				}
-
-                // This particular use case is a bit brute force and coarser granulartity than optimal, but is a
-                // compromise to having overly complex mods to the existing logic...
-                var project = OCA.IDA.Util.extractProjectName(data.targetDir);
-                var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
-                try {
-                    if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-                        OC.Notification.show(t('ida', 'The requested change conflicts with an ongoing action in the specified project.'), {type: 'error'});
-                        return;
-                    }
-                } catch (error) {
-                    OC.Notification.show(error, {type: 'error'});
-                    return;
-                }
 			});
 			/*
 			 * when file upload done successfully add row to filelist

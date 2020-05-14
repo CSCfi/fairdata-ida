@@ -23,6 +23,8 @@
 
 DIR=`dirname $0`
 
+systemctl daemon-reload
+
 $DIR/restart-www
 $DIR/restart-agents
 

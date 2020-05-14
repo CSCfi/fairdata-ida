@@ -84,6 +84,7 @@ def load_configuration():
         'STORAGE_OC_DATA_ROOT':   server_configuration.STORAGE_OC_DATA_ROOT,
         'DATA_REPLICATION_ROOT':  server_configuration.DATA_REPLICATION_ROOT,
         'MAX_FILE_COUNT':         service_constants.MAX_FILE_COUNT,
+        'DBTYPE':                 server_configuration.DBTYPE,
         'DBNAME':                 server_configuration.DBNAME,
         'DBUSER':                 server_configuration.DBUSER,
         'DBPASSWORD':             server_configuration.DBPASSWORD,

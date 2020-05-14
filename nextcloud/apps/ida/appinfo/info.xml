@@ -51,6 +51,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <dependencies>
         <nextcloud min-version="16" max-version="16"/>
         <database>pgsql</database>
+        <database>mysql</database>
         <lib>curl</lib>
         <os>Linux</os>
         <os>Darwin</os>

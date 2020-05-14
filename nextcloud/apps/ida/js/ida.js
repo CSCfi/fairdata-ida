@@ -59,9 +59,15 @@
         /**
          * Returns true if the specified scope intersects the scope of an initiating action; else returns false.
          *
-         * @param scope The scope to check
+         * @param project The project name
+         * @param scope   The scope to check
          */
         scopeIntersectsInitiatingAction: function (project, scope) {
+
+            // Skip test if not in production
+            if (location.hostname != 'ida.fairdata.fi') {
+                return false;
+            }
 
             var jqxhr = $.ajax({
                 url: OC.generateUrl('/apps/ida/api/checkScope?project=' + project + '&pathname=' + encodeURIComponent(scope)),
@@ -81,7 +87,6 @@
 
             throw new Error(jqxhr.status + ": " + jqxhr.statusText);
         },
-
 
         extractProjectName: function (pathname) {
             matches = pathname.match('^\/[^\/][^\/]*');

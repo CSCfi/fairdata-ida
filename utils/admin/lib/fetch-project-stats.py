@@ -44,6 +44,7 @@ import re
 import logging
 import json
 import psycopg2
+import pymysql
 import time
 import dateutil.parser
 from pathlib import Path
@@ -74,6 +75,7 @@ def main():
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
             sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)
+            sys.stderr.write("DBTYPE:        %s\n" % config.DBTYPE)
             sys.stderr.write("DBHOST:        %s\n" % config.DBHOST)
             sys.stderr.write("DBROUSER:      %s\n" % config.DBROUSER)
             sys.stderr.write("DBNAME:        %s\n" % config.DBNAME)
@@ -83,12 +85,16 @@ def main():
     
         # Open database connection 
 
-        conn = psycopg2.connect(
-                   database=config.DBNAME,
-                   user=config.DBROUSER,
-                   password=config.DBROPASSWORD,
-                   host=config.DBHOST,
-                   port=config.DBPORT)
+        dblib = psycopg2
+
+        if config.DBTYPE == 'mysql':
+            dblib = pymysql
+    
+        conn = dblib.connect(database=config.DBNAME,
+                             user=config.DBROUSER,
+                             password=config.DBROPASSWORD,
+                             host=config.DBHOST,
+                             port=config.DBPORT)
 
         cur = conn.cursor()
 
@@ -98,8 +104,8 @@ def main():
                  WHERE userid = '%s%s' AND configkey = 'quota' \
                  LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -124,8 +130,8 @@ def main():
                  WHERE id = 'home::%s%s' \
                  LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -140,13 +146,19 @@ def main():
 
         # Select all records for project files
 
-        query = "SELECT COUNT (*) FROM %sfilecache \
+        query = "SELECT COUNT(*) FROM %sfilecache \
                  WHERE storage = %d \
                  AND mimetype != 2 \
                  AND path ~ 'files/%s\+?/' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DBTYPE == 'mysql':
+            query = "SELECT COUNT(*) FROM %sfilecache \
+                     WHERE storage = %d \
+                     AND mimetype != 2 \
+                     AND path REGEXP 'files/%s\\\\+?/' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
+
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -155,13 +167,19 @@ def main():
 
         # Select all records for frozen project files
 
-        query = "SELECT COUNT (*) FROM %sfilecache \
+        query = "SELECT COUNT(*) FROM %sfilecache \
                  WHERE storage = %d \
                  AND mimetype != 2 \
                  AND path ~ 'files/%s/' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DBTYPE == 'mysql':
+            query = "SELECT COUNT(*) FROM %sfilecache \
+                     WHERE storage = %d \
+                     AND mimetype != 2 \
+                     AND path REGEXP 'files/%s/.+' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
+
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -175,8 +193,8 @@ def main():
                  AND mimetype = 2 \
                  AND path = 'files/%s' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -190,8 +208,8 @@ def main():
                  AND mimetype = 2 \
                  AND path = 'files/%s+' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -200,11 +218,11 @@ def main():
 
         # Select last modified timestamp of any node
 
-        query = "SELECT MAX (mtime) FROM %sfilecache \
+        query = "SELECT MAX(mtime) FROM %sfilecache \
                  WHERE storage = %d" % (config.DBTABLEPREFIX, storage_id)
 
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("QUERY: %s\n" % query)
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
         rows = cur.fetchall()
@@ -280,8 +298,6 @@ def load_configuration(pathname):
         from importlib.machinery import SourceFileLoader
         config = SourceFileLoader(module_name, pathname).load_module()
     return config
-
-
 
 
 if __name__ == "__main__":
