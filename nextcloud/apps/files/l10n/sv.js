@@ -2,6 +2,9 @@ OC.L10N.register(
     "files",
     {
     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Den öppna länken föråldras senast {days} dagar efter att den skapats, om inte tiden definieras kortare.",
+    "Log in": "Logga in",
+    "Username" : "Användarnamn",
+    "Password" : "Lösenord",
     "Login with CSC account:": "Logga in med CSC-id:",
     "Personal CSC accounts are created and managed in": "Hantering av CSC-profilen sker i",
     "CSC Customer Portal": "CSC:s kundportal",

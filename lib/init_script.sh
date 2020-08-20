@@ -23,7 +23,7 @@
 #--------------------------------------------------------------------------------
 # Verify needed utilities are available
 
-for NEEDS_PROG in curl php python realpath ascii2uni
+for NEEDS_PROG in curl php python3 realpath
 do
     PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
     if [ ! -e "$PROG_LOCATION" ]; then

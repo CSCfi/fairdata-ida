@@ -75,4 +75,3 @@ chmod -R $PERMS $ROOT/config/config.sh
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT/nextcloud/config/config.php
 chmod -R $PERMS $ROOT/nextcloud/config/config.php
-

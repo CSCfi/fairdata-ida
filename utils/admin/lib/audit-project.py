@@ -456,7 +456,11 @@ def add_metax_files(nodes, counts, config):
 
             modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
             frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
-            checksum = str(file["checksum_value"])
+            try:
+                checksum = str(file["checksum_value"])
+            except Exception as error: # temp workaround for Metax bug
+                csobject = file["checksum"]
+                checksum = str(csobject["value"])
             if checksum.startswith('sha256:'):
                 checksum = checksum[7:]
 

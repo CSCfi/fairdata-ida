@@ -124,32 +124,20 @@ class LoginController extends Controller {
 	 * @return RedirectResponse
 	 */
 	public function logout() {
-
-		// Redirect to the Fairdata SSO so that the SSO session is terminated
-		//
-		// Note: if SSO_API is not defined, redirects to the Nextcloud /logout endpoint
-		// which ignores the SSO specific parameters and ultimately redirects to the
-		// IDA home (login) page.
-		
-		$uid = $this->userSession->getUser()->getUID();
-		$sso_url = $this->config->getSystemValue('SSO_API') . '/logout?service=IDA&redirect_url=' . $this->config->getSystemValue('IDA_HOME');
-
-		Util::writeLog('ida', 'LoginController.php: logout: uid=' . $uid . ' sso_url: ' . $sso_url, \OCP\Util::DEBUG);
-
 		$loginToken = $this->request->getCookie('nc_token');
-
 		if (!is_null($loginToken)) {
-			$this->config->deleteUserValue($uid, 'login_token', $loginToken);
+			$this->config->deleteUserValue($this->userSession->getUser()->getUID(), 'login_token', $loginToken);
 		}
-
 		$this->userSession->logout();
 
-		$response = new RedirectResponse($sso_url);
-		$response->addHeader('Clear-Site-Data', '"cache", "storage", "executionContexts"');
+		$response = new RedirectResponse($this->urlGenerator->linkToRouteAbsolute(
+			'core.login.showLoginForm',
+			['clear' => true] // this param the the code in login.js may be removed when the "Clear-Site-Data" is working in the browsers
+		));
 
 		$this->session->set('clearingExecutionContexts', '1');
 		$this->session->close();
-		
+		$response->addHeader('Clear-Site-Data', '"cache", "storage", "executionContexts"');
 		return $response;
 	}
 

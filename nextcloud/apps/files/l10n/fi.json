@@ -1,6 +1,9 @@
 { "translations": {
     "Note to recipient" : "Viesti vastaanottajalle",
     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Julkinen linkki vanhenee viimeistään {days} päivän jälkeen sen luomisesta, ellei käyttäjä määritä voimassaoloaikaa lyhyemmäksi.",
+    "Log in": "Kirjaudu",
+    "Username" : "Käyttäjätunnus",
+    "Password" : "Salasana",
     "Login with CSC account:": "Kirjaudu CSC-tunnuksella:",
     "Personal CSC accounts are created and managed in": "CSC-tiliä hallinnoidaan",
     "CSC Customer Portal": "CSC:n asiakasportaalissa",

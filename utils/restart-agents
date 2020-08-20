@@ -20,13 +20,16 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
-#
 
-systemctl stop rabbitmq-replication-agent
-systemctl stop rabbitmq-metadata-agent
 systemctl stop rabbitmq-server
+systemctl stop rabbitmq-metadata-agent
+systemctl stop rabbitmq-replication-agent
 
 systemctl start rabbitmq-server
 systemctl start rabbitmq-metadata-agent
 systemctl start rabbitmq-replication-agent
+
+systemctl status rabbitmq-server
+systemctl status rabbitmq-metadata-agent
+systemctl status rabbitmq-replication-agent
 

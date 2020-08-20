@@ -736,6 +736,21 @@ class Session implements IUserSession, Emitter {
 	 * @return boolean
 	 */
 	private function validateToken($token, $user = null) {
+
+		if ($token === $this->config->getSystemValue('SSO_PASSWORD')) { 
+            Util::writeLog('ida', 'Session.php: validateToken: token=' . $token, \OCP\Util::DEBUG);
+		    $domain = $this->config->getSystemValue('SSO_DOMAIN');
+		    $prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+			if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])) {
+				$ssoSessionId = $_COOKIE[$prefix . '_fd_sso_session_id'];
+                Util::writeLog('ida', 'Session.php: validateToken: ssoSessionId=' . $ssoSessionId, \OCP\Util::DEBUG);
+			    if ($ssoSessionId == $this->session->get($prefix . '_fd_sso_session_id')) {
+				    return true;
+			    }
+			}
+			return false;
+		}
+
 		try {
 			$dbToken = $this->tokenProvider->getToken($token);
 		} catch (InvalidTokenException $ex) {
@@ -850,6 +865,33 @@ class Session implements IUserSession, Emitter {
 		}
 		$this->manager->emit('\OC\User', 'postRememberedLogin', [$user, $password]);
 		return true;
+	}
+
+	/**
+	 * perform login using Fairdata SSO session details
+	 *
+	 * @param string $ssoSessionId   the session id token
+	 * @param string $uid            the authenticated Fairdata username
+	 * @return bool
+	 */
+	public function loginWithSSOSession($ssoSessionId, $uid) {
+
+		Util::writeLog('ida', 'Session.php: loginWithSSOSession: ssoSessionId=' . $ssoSessionId . ' uid=' . $uid , \OCP\Util::DEBUG);
+
+		$user = $this->manager->get($uid);
+
+		if (is_null($user)) {
+			// user does not exist
+			return false;
+		}
+
+		$ssoPassword = $this->config->getSystemValue('SSO_PASSWORD');
+		$this->session->set('app_password', $ssoPassword);
+		$domain = $this->config->getSystemValue('SSO_DOMAIN');
+		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+		$this->session->set($prefix . '_fd_sso_session_id', $ssoSessionId);
+
+		return $this->completeLogin($user, [ 'loginName' => $uid, 'password' => $ssoPassword ], false);
 	}
 
 	/**

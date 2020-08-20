@@ -66,6 +66,7 @@ use OCP\Share;
 use OC\Encryption\HookManager;
 use OC\Files\Filesystem;
 use OC\Share20\Hooks;
+use OCP\Util;
 
 require_once 'public/Constants.php';
 
@@ -900,6 +901,7 @@ class OC {
 	 * Handle the request
 	 */
 	public static function handleRequest() {
+        Util::writeLog('ida', 'base.php: handleRequest', \OCP\Util::DEBUG);
 
 		\OC::$server->getEventLogger()->start('handle_request', 'Handle request');
 		$systemConfig = \OC::$server->getSystemConfig();
@@ -1019,17 +1021,26 @@ class OC {
 	 * @return boolean
 	 */
 	static function handleLogin(OCP\IRequest $request) {
+        Util::writeLog('ida', 'base.php: handleLogin', \OCP\Util::DEBUG);
 		$userSession = self::$server->getUserSession();
+		$serverName = $_SERVER['SERVER_NAME'];
+		$domain = substr($serverName, strpos($serverName, '.') + 1);
+		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+		Util::writeLog('ida', 'base.php: handleLogin: domain=' . $domain
+		              . ' fd_sso_session_id=' . $_COOKIE[$prefix . '_fd_sso_session_id']
+		              . ' fd_sso_username=' . $_COOKIE[$prefix . '_fd_sso_username']
+		              . ' fd_sso_services=' . $_COOKIE[$prefix . '_fd_sso_services'], \OCP\Util::DEBUG);
+		if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])
+			&& isset($_COOKIE[$prefix . '_fd_sso_username'])
+			&& isset($_COOKIE[$prefix . '_fd_sso_services'])
+			&& strpos($_COOKIE[$prefix . '_fd_sso_services'], '_IDA_') !== false
+			&& $userSession->loginWithSSOSession ($_COOKIE[$prefix . '_fd_sso_session_id'], $_COOKIE[$prefix . '_fd_sso_username'])) {
+			return true;
+		}
 		if (OC_User::handleApacheAuth()) {
 			return true;
 		}
 		if ($userSession->tryTokenLogin($request)) {
-			return true;
-		}
-		if (isset($_COOKIE['nc_username'])
-			&& isset($_COOKIE['nc_token'])
-			&& isset($_COOKIE['nc_session_id'])
-			&& $userSession->loginWithCookie($_COOKIE['nc_username'], $_COOKIE['nc_token'], $_COOKIE['nc_session_id'])) {
 			return true;
 		}
 		if ($userSession->tryBasicAuthLogin($request, \OC::$server->getBruteForceThrottler())) {

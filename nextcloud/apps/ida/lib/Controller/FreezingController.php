@@ -119,8 +119,12 @@ class FreezingController extends Controller
         $this->actionMapper = $actionMapper;
         $this->fileMapper = $fileMapper;
         $this->userId = $userId;
-        Filesystem::init($userId, '/');
-        $this->fsView = Filesystem::getView();
+        $this->fsView = null;
+        try {
+            Filesystem::init($userId, '/');
+            $this->fsView = Filesystem::getView();
+        }
+        catch (\Exception $e) {}
         $this->config = $config->getSystemValue('ida');
     }
 

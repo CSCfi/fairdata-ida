@@ -37,25 +37,25 @@ use OC\Core\Controller\LoginController;
 		</div>
 		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
 			<input type="text" name="user" id="user"
-				placeholder="CSC <?php p($l->t('Username')); ?>"
-				aria-label="CSC <?php p($l->t('Username')); ?>"
+				placeholder="<?php p($l->t('Username')); ?>"
+				aria-label="<?php p($l->t('Username')); ?>"
 				value="<?php p($_['loginName']); ?>"
 				<?php p($_['user_autofocus'] ? 'autofocus' : ''); ?>
 				autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			<label for="user" class="infield">CSC <?php p($l->t('Username')); ?></label>
+			<label for="user" class="infield"><?php p($l->t('Username')); ?></label>
 		</p>
 
 		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
 			<input type="password" name="password" id="password" value=""
-				placeholder="CSC <?php p($l->t('Password')); ?>"
-				aria-label="CSC <?php p($l->t('Password')); ?>"
+				placeholder="<?php p($l->t('Password')); ?>"
+				aria-label="<?php p($l->t('Password')); ?>"
 				<?php p($_['user_autofocus'] ? '' : 'autofocus'); ?>
 				autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			<label for="password" class="infield">CSC <?php p($l->t('Password')); ?></label>
+			<label for="password" class="infield"><?php p($l->t('Password')); ?></label>
 		</p>
 
 		<div id="submit-wrapper">
-			<input type="submit" id="submit" class="login primary" title="" value="<?php p($l->t('Log in with CSC Account')); ?>" disabled="disabled" />
+			<input type="submit" id="submit" class="login primary" title="" value="<?php p($l->t('Log in')); ?>" disabled="disabled" />
 			<div class="submit-icon icon-confirm-white"></div>
 		</div>
 

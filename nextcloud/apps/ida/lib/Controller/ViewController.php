@@ -94,6 +94,7 @@ class ViewController extends Controller
      * @NoCSRFRequired
      */
     public function getActionTable($status = 'pending') {
+
         Util::addStyle('ida', 'style');
         Util::addStyle('files', 'files');
         
@@ -123,6 +124,7 @@ class ViewController extends Controller
      * @NoCSRFRequired
      */
     public function getActionDetails($pid) {
+
         Util::addStyle('ida', 'style');
         Util::addStyle('files', 'files');
         

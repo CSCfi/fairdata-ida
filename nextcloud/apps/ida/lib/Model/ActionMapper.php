@@ -210,7 +210,7 @@ class ActionMapper extends Mapper
         
         if ($status != null) {
             if ($status == 'pending') {
-                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL';
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL AND action != \'suspend\'';
             }
             elseif ($status == 'completed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NOT NULL';
@@ -222,10 +222,10 @@ class ActionMapper extends Mapper
                 $sql = $sql . ' WHERE cleared IS NOT NULL';
             }
             elseif ($status == 'incomplete') {
-                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL';
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action != \'suspend\'';
             }
             elseif ($status == 'initiating') {
-                $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL';
+                $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
             }
             else {
                 throw new Exception('Invalid action status: "' . $status . '"');
@@ -305,7 +305,7 @@ class ActionMapper extends Mapper
         
         if ($status != null) {
             if ($status == 'pending') {
-                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL';
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL AND action != \'suspend\'';
             }
             elseif ($status == 'completed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NOT NULL';
@@ -317,10 +317,10 @@ class ActionMapper extends Mapper
                 $sql = $sql . ' WHERE cleared IS NOT NULL';
             }
             elseif ($status == 'incomplete') {
-                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL';
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action != \'suspend\'';
             }
             elseif ($status == 'initiating') {
-                $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL';
+                $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
             }
             else {
                 throw new Exception('Invalid action status: "' . $status . '"');

@@ -105,7 +105,9 @@ if [ ! -d /srv/venv-tests ]; then
 fi
 
 source /srv/venv-tests/bin/activate
+python3 -m pip install --upgrade pip
 pip -q install -r $ROOT/tests/requirements.txt
+
 PYTHON=/srv/venv-tests/bin/python
 
 #--------------------------------------------------------------------------------
