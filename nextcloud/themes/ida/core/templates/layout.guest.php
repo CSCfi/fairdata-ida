@@ -53,8 +53,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <?php endforeach; ?>
     <?php print_unescaped($_['headers']); ?>
 
-    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" type="text/javascript" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API'))?>/cookies.js"></script>
-    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" type="text/javascript">document.addEventListener("DOMContentLoaded", fdSSOCheckUserAcceptance("<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API'))?>"));</script> 
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" type="text/javascript" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API'))?>/notification.js"></script>
 </head>
 
 <body id="body-login">
