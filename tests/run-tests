@@ -97,17 +97,7 @@ fi
 #--------------------------------------------------------------------------------
 # Ensure test python environment is properly configured and active
 
-python3 -m venv /srv/venv-tests
-
-if [ ! -d /srv/venv-tests ]; then
-    echo "Error: The test python environment does not exist and could not be created"
-    exit 1
-fi
-
-source /srv/venv-tests/bin/activate
-python3 -m pip install --upgrade pip
-pip -q install -r $ROOT/tests/requirements.txt
-
+$ROOT/tests/utils/initialize_tests_venv
 PYTHON=/srv/venv-tests/bin/python
 
 #--------------------------------------------------------------------------------

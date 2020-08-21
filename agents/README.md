@@ -59,9 +59,8 @@ of IDA.
 
 ```
 # setup a python virtual env and install required packages
-python3 -m venv /srv/venv-agents
-source /srv/venv-agents/bin/activate
-pip install -r /var/ida/agents/requirements.txt
+cd /var/ida/utils
+./initialize_agents_venv
 
 # enable rabbitmq management plugin, initialize and configure rabbitmq users, exchanges, and queues
 cd /var/ida/utils
