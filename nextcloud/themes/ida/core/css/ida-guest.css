@@ -43,6 +43,10 @@ a{
 	max-width: none;
 }
 
+.fd-col {
+	padding-right: 20px;
+}
+
 .cards-wrapper {
 	margin-top: 3rem;
 }

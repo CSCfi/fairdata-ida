@@ -44,6 +44,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     }
 
     function localLoginActive() {
+        if (!SSOActive()) { return true; }
         return \OC::$server->getSystemConfig()->getValue('LOCAL_LOGIN') == true;
     }
 ?>
@@ -82,7 +83,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <?php print_unescaped($_['headers']); ?>
 
     <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-guest.js"></script>
-    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
+
+    <?php if (SSOActive()) : ?>
+        <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
+    <?php endif; ?>
+
     <link rel="stylesheet" href="/themes/ida/core/css/ida-guest.css">
 
     <?php
@@ -144,7 +149,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <div class="fd-content container">
         <div class="row">
             <?php if(localLoginActive()) : ?>
-                <div class="col-lg-4 col-md-12 flex-center-md">
+                <div class="col-lg-4 col-md-12 flex-center-md fd-col" style="max-width: 24%;">
                     <div id="ida-login" class="wrapper">
                         <div class="v-align">
                             <?php if (strpos($_SERVER['REQUEST_URI'], '/s/NOT_FOR_PUBLICATION_') !== false) : ?>
@@ -154,8 +159,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                                     </p>
                                     <?php print_unescaped($_['content']); ?>
                                 </div>
-                            <?php elseif (!SSOActive() || localLoginActive()) : ?>
+                            <?php elseif (localLoginActive()) : ?>
                                 <div class="local-login-form">
+                                    <p style="text-align: center"><b>Local Nextcloud Login:</b></p>
                                     <?php print_unescaped($_['content']); ?>
                                 </div>
                             <?php endif; ?>
@@ -164,7 +170,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                 </div>
             <?php endif; ?>
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
-            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12">
+            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Tervetuloa Fairdata IDA:han</h2>
                 <p>
                     Fairdata IDA on opetus- ja kulttuuriministeriön järjestämä jatkuva tutkimustietojen
@@ -180,7 +186,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                     <a href="https://www.fairdata.fi/services/ida/" target="_blank">Lue lisää IDA:sta</a>
                 </p>
             </div>
-            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top">
+            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top fd-col">
                 <div class="row card-login active">
                     <div class="col-sm-2 col-6 align-center align-right-sm">
                         <span>IDA</span>
@@ -226,7 +232,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                 </div>
             </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
-            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12">
+            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Välkommen till Fairdata IDA</h2>
                 <p>
                     Fairdata IDA är en kontinuerlig forskningsdatalagringstjänst som organiseras av ministeriet
@@ -243,7 +249,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                     <a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Läs mer om IDA  (på engelska)</a>
                 </p>
             </div>
-            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top">
+            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top fd-col">
                 <div class="row card-login active">
                     <div class="col-sm-2 col-6 align-center align-right-sm">
                         <span>IDA</span>
@@ -289,7 +295,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                 </div>
             </div>
             <?php else : ?>
-            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12">
+            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Welcome to Fairdata IDA</h2>
                 <p>
                     Fairdata IDA is a continuous research data storage service organized by the Ministry of
@@ -306,7 +312,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                     <a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Read more about IDA</a>
                 </p>
             </div>
-            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top">
+            <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top fd-col">
                 <div class="row card-login active">
                     <div class="col-sm-2 col-6 align-center align-right-sm">
                         <span>IDA</span>

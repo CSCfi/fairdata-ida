@@ -20,7 +20,7 @@ function fdIDAGetDomainName() {
 }
 
 function fdIDAGetPrefixedCookieName(name) {
-    domain = fdSSOGetDomainName();
+    domain = fdIDAGetDomainName();
     domain = domain.replace(/[^a-zA-Z0-9]/g, "_")
     return domain + "_" + name
 }
