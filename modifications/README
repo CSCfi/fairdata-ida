@@ -70,7 +70,7 @@ the file essential-nextcloud-apps, located in the same directory as this README 
 >> Log in as admin and disable all apps except Files sharing and First run wizard, and disable / do not enable IDA app
 >> Run 'occ db:add-missing-indices' to fix database
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
->> Create new '-original' copies within /nextcloud of all in-place modified files listed below 
+>> Create new '.original' copies within /nextcloud of all in-place modified files listed below 
 >> Copy all in-place modified files from /nextcloud-old to their equivalent locations in /nextcloud
 >> Restart apache
 >> Log in as admin and enable IDA app

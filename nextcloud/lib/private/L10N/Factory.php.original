@@ -184,20 +184,6 @@ class Factory implements IFactory {
 		}
 
 		try {
-			// Sniff for Fairdata language cookie. If a valid value is found and user is not logged in,
-			// use value from cookie. Otherwise do default Nextcloud action (try to get language from request)
-			if (array_key_exists('HTTP_HOST', $_SERVER)) {
-			    $domain = $_SERVER['HTTP_HOST'];
-			    $domain = substr($domain, strpos($domain, ".") + 1);
-				$domain = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-				$cookie = $domain . '_fd_language';
-				if (array_key_exists($cookie, $_COOKIE)) {
-			        $lang = $_COOKIE[$cookie];
-			        if (is_null($this->userSession->getUser()) && $this->languageExists($app, $lang)) {
-				        return $lang;
-			        }
-				}
-			}
 			// Try to get the language from the Request
 			$lang = $this->getLanguageFromRequest($app);
 			if ($userId !== null && $app === null && !$userLang) {
@@ -269,7 +255,7 @@ class Factory implements IFactory {
 		if ($this->languageExists($app, $locale)) {
 			return $locale;
 		}
-
+		
 		// Try to split e.g: fr_FR => fr
 		$locale = explode('_', $locale)[0];
 		if ($this->languageExists($app, $locale)) {

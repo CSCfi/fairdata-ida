@@ -58,8 +58,8 @@ fi
 
 python3 -m venv /srv/venv-tests
 source /srv/venv-tests/bin/activate
-pip install --upgrade pip
-pip install -r $ROOT/tests/requirements.txt
+pip install -q --upgrade pip
+pip install -q -r $ROOT/tests/requirements.txt
 PYTHON=/srv/venv-tests/bin/python
 chown -R $HTTPD_USER:$HTTPD_USER /srv/venv-tests
 chmod -R g+rwX /srv/venv-tests

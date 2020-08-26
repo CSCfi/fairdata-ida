@@ -14,13 +14,31 @@ a { border:0; color:#000; text-decoration:none;}
 a, a *, input, input *, select, .button span, label { cursor:pointer; }
 ul { list-style:none; }
 
+body {
+	background-color: #ffffff;
+	font-weight: normal;
+	font-size: .8em;
+	line-height: 1.6em;
+	font-family: 'Nunito', 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
+	color: #000;
+	text-align: center;
+	background-color: #0082c9;
+	background-image: url('../img/background.png?v=2');
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-attachment: fixed; /* fix background gradient */
+	min-height: 100%; /* fix sticky footer */
+	height: auto;
+}
+
 /* Various fonts settings */
-#body-login #ida-login a {
+#body-login a {
 	color: #fff;
 	font-weight: 600;
 }
-#body-login #ida-login a:not(.button):hover,
-#body-login #ida-login a:not(.button):focus {
+#body-login a:not(.button):hover,
+#body-login a:not(.button):focus {
 	text-decoration: underline;
 	text-decoration-skip-ink: auto;
 }

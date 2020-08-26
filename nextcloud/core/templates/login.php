@@ -83,6 +83,7 @@ use OC\Core\Controller\LoginController;
 		<?php } ?>
 
 		<div class="login-additional">
+		<!--
 			<?php if (!empty($_['canResetPassword'])) { ?>
 			<div class="lost-password-container">
 				<a id="lost-password" href="<?php p($_['resetPasswordLink']); ?>">
@@ -93,6 +94,7 @@ use OC\Core\Controller\LoginController;
 				</a>
 			</div>
 			<?php } ?>
+		-->
 		</div>
 
 		<input type="hidden" name="timezone_offset" id="timezone_offset"/>

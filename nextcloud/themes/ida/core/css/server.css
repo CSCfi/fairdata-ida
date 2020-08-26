@@ -21,7 +21,7 @@
  * @link      https://research.csc.fi/
  */
 
-#body-login table {
+ #body-login table {
 	margin: auto;
     margin-top: 15px;
 }
@@ -81,7 +81,7 @@
 	font-size: 14px;
 }
 
-#body-login a {
+#body-login #ida-login a {
 	color: #007FAD;
 }
 
