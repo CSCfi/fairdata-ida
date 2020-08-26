@@ -13,9 +13,14 @@ $(document).ready(function() {
     })
 })
 
+function fdIDAGetDomainName() {
+    hostname = window.location.hostname;
+    domain = hostname.substring(hostname.indexOf(".") + 1);
+    return domain
+}
+
 function fdIDAGetPrefixedCookieName(name) {
-    var hostname = window.location.hostname;
-    var domain = hostname.substring(hostname.indexOf(".") + 1);
+    domain = fdSSOGetDomainName();
     domain = domain.replace(/[^a-zA-Z0-9]/g, "_")
     return domain + "_" + name
 }
@@ -25,7 +30,7 @@ function setCookie(name, value) {
     var expiryDate = new Date();
     expiryDate.setTime(expiryDate.getTime() + (7*24*60*60*1000));
     var expires = "; expires=" + expiryDate.toUTCString();
-    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/" + "; domain=." + fdIDAGetDomainName();
 }
 
 function fdIDAChangeLanguage(lang) {

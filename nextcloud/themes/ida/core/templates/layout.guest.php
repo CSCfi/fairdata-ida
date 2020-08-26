@@ -81,7 +81,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <?php endforeach; ?>
     <?php print_unescaped($_['headers']); ?>
 
-    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-quest.js"></script>
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-guest.js"></script>
     <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
     <link rel="stylesheet" href="/themes/ida/core/css/ida-guest.css">
 
