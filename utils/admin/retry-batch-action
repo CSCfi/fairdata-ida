@@ -59,7 +59,7 @@ ACTION="$2"
 
 ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
 
-REQUEST_URL="${IDA_API_ROOT_URL}/retry/${ACTION}?token=${BATCH_ACTION_TOKEN}"
+REQUEST_URL="https://localhost/apps/ida/api/retry/${ACTION}?token=${BATCH_ACTION_TOKEN}"
 
 echo "Retrying action ${ACTION} in project ${PROJECT}..."
 

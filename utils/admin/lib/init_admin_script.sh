@@ -61,14 +61,11 @@ if [ "$PROJECT" = "" ]; then
 fi
 
 #--------------------------------------------------------------------------------
-# Normally API requests are directed to localhost, to retain all processing to
-# whichever service instance received the original request, but for the admin
-# scripts, we want all requests to go via the load balancer to one of the primary
-# front end server instances, the way any external request would do, so we
-# override the standard localhost based definition here, if in production env.
+# For admin scripts, we want API requests to be directed to localhost, not via
+# the load balancer, which may not be avaialable during maintenance breaks.
 
 if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-    IDA_API_ROOT_URL="https://ida.fairdata.fi/apps/ida/api"
+    IDA_API_ROOT_URL="https://localhost/apps/ida/api"
 fi
 
 #--------------------------------------------------------------------------------

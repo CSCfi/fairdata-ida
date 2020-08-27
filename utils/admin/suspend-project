@@ -56,7 +56,7 @@ fi
 #--------------------------------------------------------------------------------
 echo "Verifying project ${PROJECT} is not already suspended..."
 
-PIDS=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2>$ERR | \
+PIDS=`$CURL_GET $ADMIN_CREDENTIALS "https://localhost/apps/ida/api/actions?status=pending" 2>$ERR | \
       tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend\"" | grep "\"project\": *\"$PROJECT\"" | \
       sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
 
@@ -74,10 +74,10 @@ fi
 echo "Locking project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"${IDA_API_ROOT_URL}/lock/${PROJECT}\"" >&2
+    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"https://localhost/apps/ida/api/lock/${PROJECT}\"" >&2
 fi
 
-OUT=`$CURL_POST "$PROJECT_USER_CREDENTIALS" "${IDA_API_ROOT_URL}/lock/${PROJECT}" 2>&1`
+OUT=`$CURL_POST "$PROJECT_USER_CREDENTIALS" "https://localhost/apps/ida/api/lock/${PROJECT}" 2>&1`
 
 if [ ! -e $PROJECT_LOCK ]; then
     errorExit "Failed to lock project ${PROJECT}"
@@ -87,10 +87,10 @@ fi
 echo "Creating suspend action for project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/\"" >&2
+     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"https://localhost/apps/ida/api/actions?project=$PROJECT&action=suspend&pathname=/\"" >&2
 fi
 
-OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "${IDA_API_ROOT_URL}/actions?project=$PROJECT&action=suspend&pathname=/"`
+OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "https://localhost/apps/ida/api/actions?project=$PROJECT&action=suspend&pathname=/"`
 
 SUCCESS=`echo "$OUT" | grep '"pid":'`
 

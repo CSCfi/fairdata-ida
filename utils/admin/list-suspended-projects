@@ -39,7 +39,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-OUT=`$CURL_GET $ADMIN_CREDENTIALS "${IDA_API_ROOT_URL}/actions?status=pending" 2>$ERR | \
+OUT=`$CURL_GET $ADMIN_CREDENTIALS "https://localhost/apps/ida/api/actions?status=pending" 2>$ERR | \
     tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend\"" | \
     sed -e 's/^.*"project": *"//' | sed -e 's/".*$//' | sort -u`
 

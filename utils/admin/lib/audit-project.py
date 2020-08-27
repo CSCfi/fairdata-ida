@@ -332,7 +332,7 @@ def add_filesystem_nodes(nodes, counts, config):
 
 def add_frozen_files(nodes, counts, config):
     """
-    Query the IDA API and add all relevant frozen file stats to the auditing data objects
+    Query the IDA database and add all relevant frozen file stats to the auditing data objects
     provided and according to the configured values provided, limited to actively frozen files
     which have no pending metadata postprocessing (i.e. only frozen files with metadata timestamps
     and no cleared or removed timestamps, and a metadata timestamp less than the start timestamp)
