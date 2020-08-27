@@ -21,7 +21,27 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-# Ensure script is run as root
+
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
 
 ID=`id -u -n`
 if [ "$ID" != "root" ]; then
@@ -29,9 +49,25 @@ if [ "$ID" != "root" ]; then
     exit 1
 fi
 
-python3 -m venv /srv/venv-agents
-source /srv/venv-agents/bin/activate
-pip install -q --upgrade pip
-pip install -q -r /var/ida/agents/requirements.txt
-chown -R apache:apache /srv/venv-agents
-chmod -R g+rwX /srv/venv-agents
+if [ ! -x $PYTHON ]; then
+    echo "$PYTHON does not exist!" >&2
+    exit 1
+fi
+
+if [ "$VENV_AGENTS" = "" ]; then
+    echo "Virtual environment path not defined in configuration!" >&2
+    exit 1
+fi
+
+rm -fr $VENV_AGENTS
+
+$PYTHON -m venv $VENV_AGENTS
+
+source $VENV_AGENTS/bin/activate
+
+pip install --upgrade pip
+pip install -r $ROOT/agents/requirements.txt
+
+chown -R $HTTPD_USER:$HTTPD_USER $VENV_AGENTS
+chmod -R g+rwX $VENV_AGENTS
+

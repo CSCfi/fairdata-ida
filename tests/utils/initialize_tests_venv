@@ -22,12 +22,6 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 
-# Setup a python virtual environment in the same directory where this script is
-# located, and install all required packages
-
-#--------------------------------------------------------------------------------
-# Load service constants and configuration settings
-
 SCRIPT_PATHNAME="$(realpath $0)"
 PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
 PARENT_BASENAME=`basename "$PARENT_FOLDER"`
@@ -48,7 +42,6 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-# Ensure script is run as root
 
 ID=`id -u -n`
 if [ "$ID" != "root" ]; then
@@ -56,10 +49,25 @@ if [ "$ID" != "root" ]; then
     exit 1
 fi
 
-python3 -m venv /srv/venv-tests
-source /srv/venv-tests/bin/activate
-pip install -q --upgrade pip
-pip install -q -r $ROOT/tests/requirements.txt
-PYTHON=/srv/venv-tests/bin/python
-chown -R $HTTPD_USER:$HTTPD_USER /srv/venv-tests
-chmod -R g+rwX /srv/venv-tests
+if [ ! -x $PYTHON ]; then
+    echo "$PYTHON does not exist!" >&2
+    exit 1
+fi
+
+if [ "$VENV_TESTS" = "" ]; then
+    echo "Virtual environment path not defined in configuration!" >&2
+    exit 1
+fi
+
+rm -fr $VENV_TESTS
+
+$PYTHON -m venv $VENV_TESTS
+
+source $VENV_TESTS/bin/activate
+
+pip install --upgrade pip
+pip install -r $ROOT/tests/requirements.txt
+
+chown -R $HTTPD_USER:$HTTPD_USER $VENV_TESTS
+chmod -R g+rwX $VENV_TESTS
+

@@ -22,12 +22,6 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 
-# Setup a python virtual environment in the same directory where this script is
-# located, and install all required packages
-
-#--------------------------------------------------------------------------------
-# Load service constants and configuration settings
-
 SCRIPT_PATHNAME="$(realpath $0)"
 PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
 PARENT_BASENAME=`basename "$PARENT_FOLDER"`
@@ -48,7 +42,6 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-# Ensure script is run as root
 
 ID=`id -u -n`
 if [ "$ID" != "root" ]; then
@@ -56,9 +49,25 @@ if [ "$ID" != "root" ]; then
     exit 1
 fi
 
-python3 -m venv $VENV_AUDIT
+if [ ! -x $PYTHON ]; then
+    echo "$PYTHON does not exist!" >&2
+    exit 1
+fi
+
+if [ "$VENV_AUDIT" = "" ]; then
+    echo "Virtual environment path not defined in configuration!" >&2
+    exit 1
+fi
+
+rm -fr $VENV_AUDIT 2>/dev/null
+
+$PYTHON -m venv $VENV_AUDIT
+
 source $VENV_AUDIT/bin/activate
-pip install -q --upgrade pip
-pip install -q -r $ROOT/utils/admin/lib/audit-requirements.txt
+
+pip install --upgrade pip
+pip install -r $ROOT/utils/admin/lib/audit-requirements.txt
+
 chown -R root:$HTTPD_USER $VENV_AUDIT
 chmod -R g+rwX $VENV_AUDIT
+
