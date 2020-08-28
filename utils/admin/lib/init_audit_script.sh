@@ -35,8 +35,8 @@ fi
 #--------------------------------------------------------------------------------
 # Verify required variables are defined
 
-if [ "$VENV_AUDIT" = "" ]; then
-    errorExit "The variable VENV_AUDIT must be defined."
+if [ "$ROOT" = "" ]; then
+    errorExit "The variable ROOT must be defined."
 fi
 
 if [ "$DBNAME" = "" ]; then
@@ -66,8 +66,8 @@ fi
 #--------------------------------------------------------------------------------
 # Verify python virtual environment has been configured
 
-if [ ! -f "$VENV_AUDIT/bin/activate" ]; then
-    errorExit "The python virtual environment $VENV_AUDIT not yet been configured"
+if [ ! -f "$ROOT/venv/bin/activate" ]; then
+    errorExit "The python virtual environment has not been initialized!"
 fi
 
 START="$TIMESTAMP"

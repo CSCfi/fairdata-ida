@@ -50,7 +50,7 @@ if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; th
     errorExit "The project '${PROJECT}' does not exist"
 fi
 
-source $VENV_AUDIT/bin/activate
+source $ROOT/venv/bin/activate
 
 if [ "$2" = "csv" ]; then
     python $ROOT/utils/admin/lib/fetch-project-stats.py $ROOT $PROJECT csv

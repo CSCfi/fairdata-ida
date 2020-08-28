@@ -6,7 +6,7 @@ After=network.target
 User=apache
 Group=apache
 WorkingDirectory=/var/ida
-ExecStart=/srv/venv-agents/bin/python -m agents.metadata.metadata_agent
+ExecStart=/var/ida/venv/bin/python -m agents.metadata.metadata_agent
 
 [Install]
 WantedBy=multi-user.target

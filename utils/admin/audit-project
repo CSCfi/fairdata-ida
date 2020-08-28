@@ -104,7 +104,7 @@ REPORT_BASE="${LOG_ROOT}/audits/${START}_${PROJECT}"
 
 mkdir -p $REPORT_ROOT 2>/dev/null
 
-source $VENV_AUDIT/bin/activate
+source $ROOT/venv/bin/activate
 
 python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $IGNORE_TIMESTAMPS | python -m json.tool > $REPORT_BASE
 

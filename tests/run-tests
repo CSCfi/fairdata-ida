@@ -97,8 +97,7 @@ fi
 #--------------------------------------------------------------------------------
 # Ensure test python environment is properly configured and active
 
-$ROOT/tests/utils/initialize_tests_venv
-PYTHON=/srv/venv-tests/bin/python
+source $ROOT/venv/bin/activate
 
 #--------------------------------------------------------------------------------
 # Execute tests per the provided command line arguments
@@ -107,7 +106,7 @@ cd $ROOT
 
 if [ $# -ge 1 ]; then
 
-    $PYTHON -W ignore -m unittest discover -f -q $*
+    python -W ignore -m unittest discover -f -q $*
 
     if [ $? -ne 0 ]; then
         exit 1
@@ -123,7 +122,7 @@ else
 
     echo "UNIT TESTS:"
 
-    $PYTHON -W ignore -m unittest discover -f -q agents
+    python -W ignore -m unittest discover -f -q agents
 
     if [ $? -ne 0 ]; then
         exit 1
@@ -131,31 +130,31 @@ else
 
     echo "BEHAVIORAL TESTS:"
 
-    $PYTHON -W ignore -m unittest discover -f -q tests.admin
+    python -W ignore -m unittest discover -f -q tests.admin
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    $PYTHON -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
+    python -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    $PYTHON -W ignore -m unittest discover -f -q tests.cli
+    python -W ignore -m unittest discover -f -q tests.cli
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    $PYTHON -W ignore -m unittest discover -f -q tests.agents
+    python -W ignore -m unittest discover -f -q tests.agents
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    $PYTHON -W ignore -m unittest discover -f -q tests.auditing
+    python -W ignore -m unittest discover -f -q tests.auditing
 
     if [ $? -ne 0 ]; then
         exit 1

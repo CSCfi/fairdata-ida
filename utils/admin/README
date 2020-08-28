@@ -153,7 +153,6 @@ In addition to the environment variables specified above, configuration for
 auditing scripts is controlled by the following variables which must
 be defined in, and are taken from, the $ROOT/config/config.sh:
 
-VENV_AUDIT
 DBTYPE
 DBNAME
 DBHOST
@@ -164,6 +163,6 @@ DBPASSWORD
 
 Additionally, the python virtual environment utilized by the core python
 script must first be configured manually before running any of the auditing
-utilities by executing the script $ROOT/utils/admin/lib/initialize_audit_venv
+utilities by executing the script $ROOT/utils/initialize_venv
 as root to configure or update the virtual environment on each server instance
 where the auditing utilities are executed.

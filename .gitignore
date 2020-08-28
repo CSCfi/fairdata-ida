@@ -16,6 +16,7 @@ project.sublime-project
 /data
 /log
 /config
+/venv
 /snapshots
 tmp/
 __pycache__/

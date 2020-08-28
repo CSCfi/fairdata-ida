@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
@@ -49,25 +49,28 @@ if [ "$ID" != "root" ]; then
     exit 1
 fi
 
+if [ -z "$ROOT" ]; then
+    echo "The variable ROOT is not defined in the configuration!" >&2
+    exit 1
+fi
+
+if [ -z "$PYTHON" ]; then
+    echo "The variable PYTHON is not defined in the configuration!" >&2
+    exit 1
+fi
+
 if [ ! -x $PYTHON ]; then
     echo "$PYTHON does not exist!" >&2
     exit 1
 fi
 
-if [ "$VENV_AGENTS" = "" ]; then
-    echo "Virtual environment path not defined in configuration!" >&2
+if [ ! -d $ROOT/venv ]; then
+    echo "The virtual environment does not exist!" >&2
     exit 1
 fi
 
-rm -fr $VENV_AGENTS
-
-$PYTHON -m venv $VENV_AGENTS
-
-source $VENV_AGENTS/bin/activate
+source $ROOT/venv/bin/activate
 
 pip install --upgrade pip
-pip install -r $ROOT/agents/requirements.txt
-
-chown -R $HTTPD_USER:$HTTPD_USER $VENV_AGENTS
-chmod -R g+rwX $VENV_AGENTS
+pip install -r $ROOT/requirements.txt
 

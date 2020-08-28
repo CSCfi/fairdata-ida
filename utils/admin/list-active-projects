@@ -80,7 +80,7 @@ if [[ "$SINCE" > "$START" ]]; then
     errorExit "Specified timestamp $SINCE is in the future"
 fi
 
-source $VENV_AUDIT/bin/activate
+source $ROOT/venv/bin/activate
 
 python -u $ROOT/utils/admin/lib/list-active-projects.py $ROOT $SINCE $START
 
