@@ -195,6 +195,7 @@ OC.L10N.register(
     "Please try again or contact your administrator." : "Vänligen försök igen eller kontakta din administratör.",
     "Username or email" : "Användarnamn eller e-post",
     "Username or\temail" : "Användarnamn eller\te-post",
+    "Login" : "Logga in",
     "Log in" : "Logga in",
     "Logging in …" : "Loggar in ...",
     "Wrong username or password." : "Felaktigt användarnamn eller lösenord",

@@ -120,7 +120,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                 return $lang["short"] != $CURRENT_LANGUAGE;
             });
             foreach ($languagesToDisplay as $lang) {
-                print_unescaped('<div class="language-choice" role="button" tabindex="0" data-language-code="'.$lang["short"].'">'.$lang["full"].'</div>');
+                print_unescaped('<div aria-label="Change language to ' . $lang["full"] . '" class="language-choice" role="button" tabindex="0" data-language-code="'.$lang["short"].'">'.$lang["full"].'</div>');
             }
             ?>
         </div>
@@ -128,18 +128,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <div class="fd-header container-fluid">
         <div class="row no-gutter">
             <div class="col-8">
-                <img src="<?php print_unescaped(image_path('', 'ida-logo-header.png')); ?>" alt="Fairdata logo" class="logo">
+                <img src="<?php print_unescaped(image_path('', 'ida-logo-header.png')); ?>" class="logo">
             </div>
             <div class="language-selector-wrapper col-4">
                 <?php if (SSOActive()) : ?>
                     <a href="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')) ?>/login?service=IDA&redirect_url=<?php p(\OC::$server->getSystemConfig()->getValue('IDA_HOME')) ?>">
-                        <button class="fd-button login-button"><?php p($l->t("Log in")); ?></button>
+                        <button class="fd-button login-button"><?php p($l->t("Login")); ?></button>
                     </a>
                 <?php endif; ?>
                 <div class="language-selector-container">
                     <?php
                     foreach ($languagesToDisplay as $lang) {
-                        print_unescaped('<span class="language-choice" role="button" tabindex="0" data-language-code="'.$lang["short"].'">'.$lang["short"].'</span>');
+                        print_unescaped('<span aria-label="Change language to ' . $lang["full"] . '" class="language-choice" role="button" tabindex="0" data-language-code="'.$lang["short"].'">'.$lang["short"].'</span>');
                     }
                     ?>
                 </div>
@@ -171,20 +171,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <?php endif; ?>
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
-                <h2>Tervetuloa Fairdata IDA:han</h2>
-                <p>
-                    Fairdata IDA on opetus- ja kulttuuriministeriön järjestämä jatkuva tutkimustietojen
-                    tallennuspalvelu. Palvelu tarjotaan ilmaiseksi suomalaisille yliopistoille ja
-                    ammattikorkeakouluille, tutkimuslaitoksille sekä Suomen Akatemian rahoittamalle tutkimukselle.
-                </p>
-                    IDA mahdollistaa tutkimusdatan lataamisen, järjestämisen ja jakamisen projektiryhmässä
-                    sekä tietojen tallentamisen muuttumattomassa tilassa. IDA: han tallennetut tiedot voidaan
-                    sisällyttää tutkimustietokokonaisuuksiin, jotka kuvataan ja saatetaan julkisesti saataville
-                    ladattaviksi muiden Fairdata-palveluiden kautta.
-                </p>
-                <p>
-                    <a href="https://www.fairdata.fi/services/ida/" target="_blank">Lue lisää IDA:sta</a>
-                </p>
+                <h2>Tervetuloa Fairdata IDA -palveluun</h2>
+                <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille, valtion tutkimuslaitoksille sekä tiettyjen Suomen Akatemian rahoitusmuotojen alaiselle tukimukselle. IDA kuuluu opetus- ja kultturiministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
+                <p>Säilytystila on projektikohtaista. IDAssa säilytettävä data voidaan muiden Fairdata-palvelujen avulla kuvailla tutkimusaineistoksi ja julkaista.</p>
+                <p><a href="https://www.fairdata.fi/services/ida/" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
             </div>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top fd-col">
                 <div class="row card-login active">
@@ -192,15 +182,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>IDA</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Tallennat tietoja IDA: han. Voit järjestää ja jäädyttää tietoja lopullisessa muuttumattomassa tilassa.</p>
+                        <p>Siirrä datasi IDA-palveluun. Voit järjestellä dataa ja jäädyttää sen, kun se on valmis säilytykseen.</p>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12 align-center">
-                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow" alt="Arrow">
+                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow">
                     </div>
                 </div>
                 <div class="row card-login">
@@ -208,15 +198,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>Qvain</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'qvain.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'qvain.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Jäädytyksen jälkeen valitset ja kuvaat tietosi ja julkaista ne tietojoukkona Qvainin kautta.</p>
+                        <p>Kun datasi on jäädytetty, kuvaile ja julkaise se Qvain-työkalulla.</p>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12 align-center">
-                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow" alt="Arrow">
+                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow">
                     </div>
                 </div>
                 <div class="row card-login">
@@ -224,30 +214,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>Etsin</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'etsin.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'etsin.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Voit löytää ja ladata tietojoukkoja Etsinin kautta.</p>
+                        <p>Etsin-palvelussa voit hakea ja ladata julkaistuja tutkimusaineistoja.</p>
                     </div>
                 </div>
             </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Välkommen till Fairdata IDA</h2>
-                <p>
-                    Fairdata IDA är en kontinuerlig forskningsdatalagringstjänst som organiseras av ministeriet
-                    för utbildning och kultur. Tjänsten erbjuds gratis till finska universitet och universitet
-                    för tillämpade vetenskaper, forskningsinstitut samt forskning finansierad av Finlands akademi.
-                </p>
-                <p>
-                    IDA möjliggör överföring, organisering och delning av forskningsdata inom en projektgrupp
-                    och lagring av uppgifterna i ett oändligt tillstånd. Uppgifterna lagrade i IDA kan inkluderas
-                    i forskningsdatasätt som beskrivs och göras offentligt tillgängliga för nedladdning via andra
-                    Fairdata-tjänster.
-                </p>
-                <p>
-                    <a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Läs mer om IDA  (på engelska)</a>
-                </p>
+                <p>Fairdata IDA en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshägskolor, forskningsinsitut i Finland och för forskning som finansieras av Finlands Akademi. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
+                <p>Bevaringsutrymmet i IDA tilldelas projekt. Data som finns i IDA kan dokumenteras och publiceras som dataset med hjälp av andra Fairdata-tjänster.</p>
+                <p><a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
             </div>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top fd-col">
                 <div class="row card-login active">
@@ -255,15 +234,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>IDA</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Du laddar upp och lagrar data i IDA. Du kan organisera och frysa data i ett slutligt obestämt tillstånd.</p>
+                        <p>Flytta dina data till IDA, ordna dem och frysa dem.</p>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12 align-center">
-                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow" alt="Arrow">
+                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow">
                     </div>
                 </div>
                 <div class="row card-login">
@@ -271,15 +250,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>Qvain</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'qvain.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'qvain.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Efter frysning väljer du och beskriver dina data och publicerar dem som en datasats genom Qvain.</p>
+                        <p>Då de är frysta kan du dokumentera och publicera dem med hjälp av Qvain.</p>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12 align-center">
-                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow" alt="Arrow">
+                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow">
                     </div>
                 </div>
                 <div class="row card-login">
@@ -287,30 +266,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>Etsin</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'etsin.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'etsin.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Du kan upptäcka och ladda ner datasätt via Etsin.</p>
+                        <p>Du kan upptäcka och ladda ner dataset via Etsin.</p>
                     </div>
                 </div>
             </div>
             <?php else : ?>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Welcome to Fairdata IDA</h2>
-                <p>
-                    Fairdata IDA is a continuous research data storage service organized by the Ministry of
-                    Education and Culture. The service is offered free of charge to Finnish universities and
-                    universities of applied sciences, research institutes, as well as research funded by the
-                    Academy of Finland.
-                </p>
-                <p>
-                    IDA enables uploading, organizing and sharing research data within a project group and
-                    storing the data in an immutable state. The data stored in IDA can be included in research
-                    datasets which are described and made publicly available for download via other Fairdata
-                    services.
-                <p>
-                    <a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Read more about IDA</a>
-                </p>
+                <p>Fairdata IDA is a continuous research data storage service organized by the Ministry of Education and Culture. The service is offered free of charge to Finnish universities and universities of applied sciences, research institutes, as well as research funded by the Academy of Finland.</p>
+                <p>IDA enables uploading, organizing, and sharing research data within a project group and storing the data in an immutable state. The data stored in IDA can be included in research datasets which are described and made publicly available for download via other Fairdata services.</p>
+                <p><a href="https://www.fairdata.fi/en/services/ida/" target="_blank">How to start using IDA and user guides</a></p>
             </div>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 padding-top fd-col">
                 <div class="row card-login active">
@@ -318,15 +286,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>IDA</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>You upload and store data in IDA. You can organize and freeze data in a final immutable state.</p>
+                        <p>You store data in IDA. You can organize and freeze data in a final immutable state.</p>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12 align-center">
-                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow" alt="Arrow">
+                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow">
                     </div>
                 </div>
                 <div class="row card-login">
@@ -334,15 +302,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>Qvain</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'qvain.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'qvain.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>After freezing, you select and describe your data and publish it as a dataset through Qvain.</p>
+                        <p>After freezing, you describe your data and publish it using Qvain.</p>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-12 align-center">
-                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow" alt="Arrow">
+                        <img src="<?php print_unescaped(image_path('', 'arrow.png')); ?>" class="arrow">
                     </div>
                 </div>
                 <div class="row card-login">
@@ -350,7 +318,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <span>Etsin</span>
                     </div>
                     <div class="col-sm-2 col-6 align-center align-left-sm">
-                        <img src="<?php print_unescaped(image_path('', 'etsin.png')); ?>" alt="IDA icon">
+                        <img src="<?php print_unescaped(image_path('', 'etsin.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
                         <p>You can discover and download datasets through Etsin.</p>
@@ -365,22 +333,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
             <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                 <span>Fairdata</span>
-                <p>
-                    Fairdata-palvelut järjestää <strong>opetus- ja kulttuuriministerö </strong> ja toimittaa
-                    <strong>CSC – Tieteen tietotekniikan keskus Oy</strong>
-                </p>
+                <p>Fairdata-palvelut järjestää <strong>opetus- ja kulttuuriministerö </strong> ja toimittaa <strong>CSC – Tieteen tietotekniikan keskus Oy</strong></p>
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                 <span>Tietoa</span>
-                <p><a href="https://www.fairdata.fi/hyodyntaminen/kayttopolitiikat-ja-ehdot/" target="_blank">Käyttöpolitiikat ja ehdot
+                <p><a href="https://www.fairdata.fi/kayttopolitiikat-ja-ehdot/" target="_blank">Käyttöpolitiikat ja ehdot
 
 </a></p>
-                <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" target="_blank">Sopimukset ja tietosuoja</a></p>
+                <p><a href="https://www.fairdata.fi/sopimukset/" target="_blank">Sopimukset ja tietosuoja</a></p>
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                 <span>Saavutettavuus</span>
-                <p><a href="" target="_blank">Saavutettavuus</a></p>
-                <p><a href="#" target="_blank">Sivukartta</a></p>
+                <p><a href="https://www.fairdata.fi/saavutettavuus/" target="_blank">Saavutettavuus</a></p>
             </div>
             <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                 <span>Ota yhteyttä</span>
@@ -389,25 +353,21 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                 <span>Seuraa</span>
                 <p><a href="https://twitter.com/Fairdata_fi" target="_blank">Twitter</a></p>
-                <p><a href="https://www.fairdata.fi/en/news/" target="_blank">Uutiset</a></p>
+                <p><a href="https://www.fairdata.fi/ajankohtaista/" target="_blank">Uutiset</a></p>
             </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
             <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                 <span>Fairdata</span>
-                <p>
-                    Fairdata-tjänsterna erbjuds av <strong>ministeriet för utbildning och kultur</strong>
-                    och produceras av <strong>CSC - IT Center for Science Ltd.</strong>
-                </p>
+                <p>Fairdata-tjänsterna erbjuds av <strong>ministeriet för utbildning och kultur</strong> och produceras av <strong>CSC - IT Center for Science Ltd.</strong></p>
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                 <span>Information</span>
                 <p><a href="https://www.fairdata.fi/en/terms-and-policies/" target="_blank">Villkor och policyer</a></p>
-                <p><a href="https://www.fairdata.fi/hyodyntaminen/sopimukset/" target="_blank">Kontrakt och integritet</a></p>
+                <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" target="_blank">Kontrakt och integritet</a></p>
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                 <span>Tillgänglighet</span>
-                <p><a href="" target="_blank">Tillgänglighet uttalande</a></p>
-                <p><a href="#" target="_blank">Sitemap</a></p>
+                <p><a href="https://www.fairdata.fi/en/accessibility/" target="_blank">Tillgänglighet uttalande</a></p>
             </div>
             <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                 <span>Kontakt</span>
@@ -416,15 +376,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                 <span>Följ</span>
                 <p><a href="https://twitter.com/Fairdata_fi" target="_blank">Twitter</a></p>
-                <p><a href="https://www.fairdata.fi/ajankohtaista/" target="_blank">Nyheter</a></p>
+                <p><a href="https://www.fairdata.fi/en/news/" target="_blank">Nyheter</a></p>
             </div>
             <?php else : ?>
             <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                 <span>Fairdata</span>
-                <p>
-                    The Fairdata services are offered by the<strong> Ministry of Education and
-                    Culture </strong>and produced by<strong> CSC – IT Center for Science Ltd.</strong>
-                </p>
+                <p>The Fairdata services are offered by the<strong> Ministry of Education and Culture </strong>and produced by<strong> CSC – IT Center for Science Ltd.</strong></p>
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                 <span>Information</span>
@@ -433,8 +390,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                 <span>Accessibility</span>
-                <p><a href="" target="_blank">Accessibility statement</a></p>
-                <p><a href="#" target="_blank">Sitemap</a></p>
+                <p><a href="https://www.fairdata.fi/en/accessibility/" target="_blank">Accessibility statement</a></p>
             </div>
             <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                 <span>Contact</span>
