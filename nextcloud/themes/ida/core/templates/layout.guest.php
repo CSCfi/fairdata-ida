@@ -185,7 +185,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Siirrä datasi IDA-palveluun. Voit järjestellä dataa ja jäädyttää sen, kun se on valmis säilytykseen.</p>
+                        <p>Siirrä datasi IDA-palveluun. Voit järjestellä dataa ja jäädyttää sen, kun data on valmis säilytykseen.</p>
                     </div>
                 </div>
                 <div class="row">
@@ -289,7 +289,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>You store data in IDA. You can organize and freeze data in a final immutable state.</p>
+                        <p>You store data in IDA. You can organize your data and freeze it in a final immutable state.</p>
                     </div>
                 </div>
                 <div class="row">
