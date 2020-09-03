@@ -237,7 +237,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                         <img src="<?php print_unescaped(image_path('', 'ida.png')); ?>">
                     </div>
                     <div class="col-sm-8 col-12">
-                        <p>Flytta dina data till IDA, ordna dem och frysa dem.</p>
+                        <p>Flytta dina data till IDA, ordna dem och frys dem.</p>
                     </div>
                 </div>
                 <div class="row">
