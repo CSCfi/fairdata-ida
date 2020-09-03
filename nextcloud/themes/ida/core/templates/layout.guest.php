@@ -172,7 +172,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Tervetuloa Fairdata IDA -palveluun</h2>
-                <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille, valtion tutkimuslaitoksille sekä tiettyjen Suomen Akatemian rahoitusmuotojen alaiselle tukimukselle. IDA kuuluu opetus- ja kultturiministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
+                <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille, valtion tutkimuslaitoksille sekä tiettyjen Suomen Akatemian rahoitusmuotojen alaiselle tutkimukselle. IDA kuuluu opetus- ja kulttuuriministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
                 <p>Säilytystila on projektikohtaista. IDAssa säilytettävä data voidaan muiden Fairdata-palvelujen avulla kuvailla tutkimusaineistoksi ja julkaista.</p>
                 <p><a href="https://www.fairdata.fi/services/ida/" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
             </div>
@@ -224,7 +224,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
             <div class="<?php if(localLoginActive()) p('col-lg-4'); else p('col-lg-6');?> col-md-12 fd-col">
                 <h2>Välkommen till Fairdata IDA</h2>
-                <p>Fairdata IDA en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshägskolor, forskningsinsitut i Finland och för forskning som finansieras av Finlands Akademi. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
+                <p>Fairdata IDA är en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshögskolor, forskningsinstitut i Finland och för forskning som finansieras av Finlands Akademi. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
                 <p>Bevaringsutrymmet i IDA tilldelas projekt. Data som finns i IDA kan dokumenteras och publiceras som dataset med hjälp av andra Fairdata-tjänster.</p>
                 <p><a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
             </div>
@@ -333,7 +333,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
             <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                 <span>Fairdata</span>
-                <p>Fairdata-palvelut järjestää <strong>opetus- ja kulttuuriministerö </strong> ja toimittaa <strong>CSC – Tieteen tietotekniikan keskus Oy</strong></p>
+                <p>Fairdata-palvelut järjestää <strong>opetus- ja kulttuuriministeriö </strong> ja toimittaa <strong>CSC – Tieteen tietotekniikan keskus Oy</strong></p>
             </div>
             <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                 <span>Tietoa</span>
