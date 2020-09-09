@@ -37,9 +37,11 @@
 }
 
 #body-login #haka-login-button {
-	margin-top: 10px;
-	margin-bottom: 20px;
-	width: 320px;
+	padding-top: 0px;
+	margin-top: 0px;
+	margin-bottom: 40px;
+	margin-left: 35px;
+	width: 250px;
 	border-color: #0000004d;
 	box-shadow: 0 6px 12px lightgrey;
 }
@@ -52,6 +54,7 @@
 }
 
 #body-login .local-login-form {
+    text-align: center;
     align-content: center;
 	width: 318px;
 }
@@ -294,6 +297,11 @@ input[type='checkbox'].checkbox--white:checked + label:before {
 
 #ida-body-login div.lost-password-container {
 	display: none;
+}
+
+#ida-login {
+	margin-top: 0px;
+	padding-top: 30px;
 }
 
 #ida-body-login #ida-login {

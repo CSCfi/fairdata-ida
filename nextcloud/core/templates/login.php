@@ -1,63 +1,86 @@
-<?php /** @var $l \OCP\IL10N */ ?>
+<?php
+
+/** @var $l \OCP\IL10N */ ?>
 <?php
 script('core', 'merged-login');
 
 use OC\Core\Controller\LoginController;
+
+$CURRENT_LANGUAGE = $l->getLanguageCode();
+$CURRENT_LANGUAGE = $CURRENT_LANGUAGE ? substr($CURRENT_LANGUAGE, 0, 2) : 'en';
 ?>
 
 <!--[if IE 8]><style>input[type="checkbox"]{padding:0;}</style><![endif]-->
 <form method="post" name="login">
 	<fieldset>
-	<?php if (!empty($_['redirect_url'])) {
-		print_unescaped('<input type="hidden" name="redirect_url" value="' . \OCP\Util::sanitizeHTML($_['redirect_url']) . '">');
-	} ?>
-		<?php if (isset($_['apacheauthfailed']) && $_['apacheauthfailed']): ?>
+		<?php if (!empty($_['redirect_url'])) {
+			print_unescaped('<input type="hidden" name="redirect_url" value="' . \OCP\Util::sanitizeHTML($_['redirect_url']) . '">');
+		} ?>
+		<?php if (isset($_['apacheauthfailed']) && $_['apacheauthfailed']) : ?>
 			<div class="warning">
 				<?php p($l->t('Server side authentication failed!')); ?><br>
 				<small><?php p($l->t('Please contact your administrator.')); ?></small>
 			</div>
 		<?php endif; ?>
-		<?php foreach($_['messages'] as $message): ?>
+		<?php foreach ($_['messages'] as $message) : ?>
 			<div class="warning">
 				<?php p($message); ?><br>
 			</div>
 		<?php endforeach; ?>
-		<?php if (isset($_['internalexception']) && $_['internalexception']): ?>
+		<?php if (isset($_['internalexception']) && $_['internalexception']) : ?>
 			<div class="warning">
 				<?php p($l->t('An internal error occurred.')); ?><br>
 				<small><?php p($l->t('Please try again or contact your administrator.')); ?></small>
 			</div>
 		<?php endif; ?>
 		<div id="message" class="hidden">
-			<img class="float-spinner" alt=""
-				src="<?php p(image_path('core', 'loading-dark.gif'));?>">
+			<img class="float-spinner" alt="" src="<?php p(image_path('core', 'loading-dark.gif')); ?>">
 			<span id="messageText"></span>
 			<!-- the following div ensures that the spinner is always inside the #message div -->
 			<div style="clear: both;"></div>
 		</div>
-		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			<input type="text" name="user" id="user"
-				placeholder="<?php p($l->t('Username')); ?>"
-				aria-label="<?php p($l->t('Username')); ?>"
-				value="<?php p($_['loginName']); ?>"
-				<?php p($_['user_autofocus'] ? 'autofocus' : ''); ?>
-				autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			<label for="user" class="infield"><?php p($l->t('Username')); ?></label>
-		</p>
 
-		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			<input type="password" name="password" id="password" value=""
-				placeholder="<?php p($l->t('Password')); ?>"
-				aria-label="<?php p($l->t('Password')); ?>"
-				<?php p($_['user_autofocus'] ? '' : 'autofocus'); ?>
-				autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			<label for="password" class="infield"><?php p($l->t('Password')); ?></label>
-		</p>
-
-		<div id="submit-wrapper">
-			<input type="submit" id="submit" class="login primary" title="" value="<?php p($l->t('Log in')); ?>" disabled="disabled" />
-			<div class="submit-icon icon-confirm-white"></div>
-		</div>
+		<!-- Language variants are handled here rather than via l10n translation machinery due to integration with cookie based language sniffing for home page -->
+		<?php if ($CURRENT_LANGUAGE == "fi") : ?>
+		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			    <input type="text" name="user" id="user" placeholder="<?php p($l->t('CSC-käyttäjätunnus')); ?>" aria-label="<?php p($l->t('CSC-käyttäjätunnus')); ?>" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			    <label for="user" class="infield"><?php p($l->t('CSC-käyttäjätunnus')); ?></label>
+		    </p>
+		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			    <input type="password" name="password" id="password" value="" placeholder="<?php p($l->t('CSC-salasana')); ?>" aria-label="<?php p($l->t('CSC-salasana')); ?>" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			    <label for="password" class="infield"><?php p($l->t('CSC-salasana')); ?></label>
+		    </p>
+		    <div id="submit-wrapper">
+				<input type="submit" id="submit" class="login primary" title="" value="Kirjaudu" disabled="disabled" />
+			    <div class="submit-icon icon-confirm-white"></div>
+		    </div>
+		<?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
+		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			    <input type="text" name="user" id="user" placeholder="<?php p($l->t('CSC-användarnamn')); ?>" aria-label="<?php p($l->t('CSC-användarnamn')); ?>" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			    <label for="user" class="infield"><?php p($l->t('CSC-användarnamn')); ?></label>
+		    </p>
+		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			    <input type="password" name="password" id="password" value="" placeholder="<?php p($l->t('CSC-lösenord')); ?>" aria-label="<?php p($l->t('CSC-lösenord')); ?>" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			    <label for="password" class="infield"><?php p($l->t('CSC-lösenord')); ?></label>
+		    </p>
+		    <div id="submit-wrapper">
+				<input type="submit" id="submit" class="login primary" title="" value="Logga in" disabled="disabled" />
+			    <div class="submit-icon icon-confirm-white"></div>
+		    </div>
+		<?php else : ?>
+		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			    <input type="text" name="user" id="user" placeholder="<?php p($l->t('CSC username')); ?>" aria-label="<?php p($l->t('CSC username')); ?>" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			    <label for="user" class="infield"><?php p($l->t('CSC username')); ?></label>
+		    </p>
+		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			    <input type="password" name="password" id="password" value="" placeholder="<?php p($l->t('CSC password')); ?>" aria-label="<?php p($l->t('CSC password')); ?>" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			    <label for="password" class="infield"><?php p($l->t('CSC password')); ?></label>
+		    </p>
+		    <div id="submit-wrapper">
+				<input type="submit" id="submit" class="login primary" title="" value="Login" disabled="disabled" />
+			    <div class="submit-icon icon-confirm-white"></div>
+		    </div>
+		<?php endif; ?>
 
 		<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?>
 			<p class="warning wrongPasswordMsg">
@@ -76,14 +99,14 @@ use OC\Core\Controller\LoginController;
 		<?php } ?>
 
 		<?php if (!empty($_['canResetPassword'])) { ?>
-		<div id="reset-password-wrapper" style="display: none;">
-			<input type="submit" id="reset-password-submit" class="login primary" title="" value="<?php p($l->t('Reset password')); ?>" disabled="disabled" />
-			<div class="submit-icon icon-confirm-white"></div>
-		</div>
+			<div id="reset-password-wrapper" style="display: none;">
+				<input type="submit" id="reset-password-submit" class="login primary" title="" value="<?php p($l->t('Reset password')); ?>" disabled="disabled" />
+				<div class="submit-icon icon-confirm-white"></div>
+			</div>
 		<?php } ?>
 
 		<div class="login-additional">
-		<!--
+			<!--
 			<?php if (!empty($_['canResetPassword'])) { ?>
 			<div class="lost-password-container">
 				<a id="lost-password" href="<?php p($_['resetPasswordLink']); ?>">
@@ -97,19 +120,19 @@ use OC\Core\Controller\LoginController;
 		-->
 		</div>
 
-		<input type="hidden" name="timezone_offset" id="timezone_offset"/>
-		<input type="hidden" name="timezone" id="timezone"/>
+		<input type="hidden" name="timezone_offset" id="timezone_offset" />
+		<input type="hidden" name="timezone" id="timezone" />
 		<input type="hidden" name="requesttoken" value="<?php p($_['requesttoken']) ?>">
 	</fieldset>
 </form>
 <?php if (!empty($_['alt_login'])) { ?>
-<form id="alternative-logins">
-	<fieldset>
-		<ul>
-			<?php foreach($_['alt_login'] as $login): ?>
-				<li><a class="button" href="<?php print_unescaped($login['href']); ?>" ><?php p($login['name']); ?></a></li>
-			<?php endforeach; ?>
-		</ul>
-	</fieldset>
-</form>
+	<form id="alternative-logins">
+		<fieldset>
+			<ul>
+				<?php foreach ($_['alt_login'] as $login) : ?>
+					<li><a class="button" href="<?php print_unescaped($login['href']); ?>"><?php p($login['name']); ?></a></li>
+				<?php endforeach; ?>
+			</ul>
+		</fieldset>
+	</form>
 <?php }
