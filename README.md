@@ -32,7 +32,7 @@ and produced by [CSC - IT Center for Science Ltd., Espoo Finland](https://resear
 The service is offered free of charge to Finnish universities and universities of applied sciences, research
 institutes, as well as research funded by the Academy of Finland.
 
-The service is intended for stable research data, both raw data and processed datasets.
+The service is intended for stable research data, both raw and processed.
 
 IDA enables uploading, organizing, and sharing research data within a project group and storing the data in
 an immutable state. The data stored in IDA can be included in research datasets which are described and made
