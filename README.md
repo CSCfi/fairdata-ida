@@ -21,20 +21,25 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 @link     https://research.csc.fi/
 -->
 
-# IDA Research Data Storage Service
+# Fairdata IDA Research Data Storage Service
  
-This repository contains the implementation of version 2 of the IDA service, based on Nextcloud, and
+This repository contains the latest implementation of the [Fairdata IDA service](https://ida.fairdata.fi), and
 is made available under the GNU Affero General Public License, version 3.
 
-Questions regarding the contents of this repository can be directed to [servicedesk@csc.fi](mailto:servicedesk@csc.fi).
+Fairdata IDA is a continuous research data storage service organized by the [Finnish Ministry of Education and Culture](https://minedu.fi/en/frontpage)
+and produced by [CSC - IT Center for Science Ltd., Espoo Finland](https://research.csc.fi).
 
-IDA is a research data storage service offered free of charge to its users.
+The service is offered free of charge to Finnish universities and universities of applied sciences, research
+institutes, as well as research funded by the Academy of Finland.
 
-The service is intended for stable research data, both raw data and processed datasets, and provided 
-to Finnish universities, polytechnics, and research funded by the Academy of Finland.
+The service is intended for stable research data, both raw data and processed datasets.
 
-IDA is organized by the Finnish Ministry of Education and Culture and produced by
-[CSC - IT Center for Science Ltd., Espoo Finland](https://research.csc.fi).
+IDA enables uploading, organizing, and sharing research data within a project group and storing the data in
+an immutable state. The data stored in IDA can be included in research datasets which are described and made
+publicly available for download via other [Fairdata services](https://www.fairdata.fi/en/). 
+
+Questions regarding the contents of this repository can be directed to
+[servicedesk@csc.fi](mailto:servicedesk@csc.fi).
 
 Copyright (C) 2018 Ministry of Education and Culture, Finland
 
