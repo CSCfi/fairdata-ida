@@ -11,6 +11,7 @@
 		}
 	},
 	"require": {
+		"firebase/php-jwt": "^5.2",
 		"php": ">=7.1",
 		"aws/aws-sdk-php": "^3.35",
 		"bantu/ini-get-wrapper": "v1.0.1",

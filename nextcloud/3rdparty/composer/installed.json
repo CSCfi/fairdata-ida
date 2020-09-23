@@ -1022,6 +1022,58 @@
         ]
     },
     {
+        "name": "firebase/php-jwt",
+        "version": "v5.2.0",
+        "version_normalized": "5.2.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/firebase/php-jwt.git",
+            "reference": "feb0e820b8436873675fd3aca04f3728eb2185cb"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/firebase/php-jwt/zipball/feb0e820b8436873675fd3aca04f3728eb2185cb",
+            "reference": "feb0e820b8436873675fd3aca04f3728eb2185cb",
+            "shasum": ""
+        },
+        "require": {
+            "php": ">=5.3.0"
+        },
+        "require-dev": {
+            "phpunit/phpunit": ">=4.8 <=9"
+        },
+        "time": "2020-03-25T18:49:23+00:00",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Firebase\\JWT\\": "src"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "BSD-3-Clause"
+        ],
+        "authors": [
+            {
+                "name": "Neuman Vong",
+                "email": "neuman+pear@twilio.com",
+                "role": "Developer"
+            },
+            {
+                "name": "Anant Narayanan",
+                "email": "anant@php.net",
+                "role": "Developer"
+            }
+        ],
+        "description": "A simple library to encode and decode JSON Web Tokens (JWT) in PHP. Should conform to the current spec.",
+        "homepage": "https://github.com/firebase/php-jwt",
+        "keywords": [
+            "jwt",
+            "php"
+        ]
+    },
+    {
         "name": "guzzlehttp/guzzle",
         "version": "6.3.3",
         "version_normalized": "6.3.3.0",
@@ -1259,7 +1311,8 @@
                 "homepage": "https://github.com/mtdowling"
             }
         ],
-        "description": "Provides a simple API and specification that abstracts away the details of HTTP into a single PHP function."
+        "description": "Provides a simple API and specification that abstracts away the details of HTTP into a single PHP function.",
+        "abandoned": true
     },
     {
         "name": "guzzlehttp/streams",
@@ -1311,7 +1364,8 @@
         "keywords": [
             "Guzzle",
             "stream"
-        ]
+        ],
+        "abandoned": true
     },
     {
         "name": "icewind/searchdav",
@@ -1512,7 +1566,8 @@
             "serializable",
             "serialize",
             "tokenizer"
-        ]
+        ],
+        "abandoned": "opis/closure"
     },
     {
         "name": "justinrainbow/json-schema",
@@ -1634,7 +1689,8 @@
             "sass",
             "scss",
             "stylesheet"
-        ]
+        ],
+        "abandoned": "scssphp/scssphp"
     },
     {
         "name": "league/flysystem",
@@ -1756,7 +1812,8 @@
             "codecs",
             "php",
             "tags"
-        ]
+        ],
+        "abandoned": true
     },
     {
         "name": "microsoft/azure-storage-blob",
@@ -2007,7 +2064,8 @@
             "compression",
             "javascript",
             "minification"
-        ]
+        ],
+        "abandoned": true
     },
     {
         "name": "patchwork/utf8",

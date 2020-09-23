@@ -67,6 +67,7 @@ use OC\Encryption\HookManager;
 use OC\Files\Filesystem;
 use OC\Share20\Hooks;
 use OCP\Util;
+use \Firebase\JWT\JWT;
 
 require_once 'public/Constants.php';
 
@@ -1026,17 +1027,33 @@ class OC {
 		$serverName = $_SERVER['SERVER_NAME'];
 		$domain = substr($serverName, strpos($serverName, '.') + 1);
 		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-		Util::writeLog('ida', 'base.php: handleLogin: domain=' . $domain
-		              . ' fd_sso_session_id=' . $_COOKIE[$prefix . '_fd_sso_session_id']
-		              . ' fd_sso_username=' . $_COOKIE[$prefix . '_fd_sso_username']
-		              . ' fd_sso_services=' . $_COOKIE[$prefix . '_fd_sso_services'], \OCP\Util::DEBUG);
-		if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])
-			&& isset($_COOKIE[$prefix . '_fd_sso_username'])
-			&& isset($_COOKIE[$prefix . '_fd_sso_services'])
-			&& strpos($_COOKIE[$prefix . '_fd_sso_services'], '_IDA_') !== false
-			&& $userSession->loginWithSSOSession ($_COOKIE[$prefix . '_fd_sso_session_id'], $_COOKIE[$prefix . '_fd_sso_username'])) {
-			return true;
+
+		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
+
+		    Util::writeLog('ida', 'base.php: handleLogin: domain=' . $domain
+		                  . ' fd_sso_session_id=' . $_COOKIE[$prefix . '_fd_sso_session_id']
+		                  . ' fd_sso_session=' . $_COOKIE[$prefix . '_fd_sso_session']
+						  , \OCP\Util::DEBUG);
+
+			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+
+			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+
+			if ($session) {
+
+			    Util::writeLog('ida', 'base.php: handleLogin: session=' . json_encode($session), \OCP\Util::DEBUG);
+
+				if ($session->id == $_COOKIE[$prefix . '_fd_sso_session_id']
+				    && $session->fairdata_user
+				    && $session->fairdata_user->id
+				    && $session->services 
+				    && $session->services->IDA 
+			        && $userSession->loginWithSSOSession($session->id, $session->fairdata_user->id)) {
+			        return true;
+		        }
+			}
 		}
+
 		if (OC_User::handleApacheAuth()) {
 			return true;
 		}
