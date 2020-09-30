@@ -48,6 +48,11 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains from which scripts can get loaded */
 	protected $allowedScriptDomains = [
 		'\'self\'',
+		'sso.fairdata.fi',
+		'sso.demo.fairdata.fi',
+		'sso.fd-test.csc.fi',
+		'sso.fd-dev.csc.fi',
+		'psdev.fd-dev.csc.fi:4443'
 	];
 	/**
 	 * @var bool Whether inline CSS is allowed
@@ -58,6 +63,11 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains from which CSS can get loaded */
 	protected $allowedStyleDomains = [
 		'\'self\'',
+		'sso.fairdata.fi',
+		'sso.demo.fairdata.fi',
+		'sso.fd-test.csc.fi',
+		'sso.fd-dev.csc.fi',
+		'psdev.fd-dev.csc.fi:4443'
 	];
 	/** @var array Domains from which images can get loaded */
 	protected $allowedImageDomains = [
