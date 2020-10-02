@@ -51,6 +51,7 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 		'sso.fairdata.fi',
 		'sso.demo.fairdata.fi',
 		'sso.fd-test.csc.fi',
+		'sso.fd-stable.csc.fi',
 		'sso.fd-dev.csc.fi',
 		'psdev.fd-dev.csc.fi:4443'
 	];
@@ -66,6 +67,7 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 		'sso.fairdata.fi',
 		'sso.demo.fairdata.fi',
 		'sso.fd-test.csc.fi',
+		'sso.fd-stable.csc.fi',
 		'sso.fd-dev.csc.fi',
 		'psdev.fd-dev.csc.fi:4443'
 	];

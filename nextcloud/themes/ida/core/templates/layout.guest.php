@@ -89,8 +89,8 @@ function localLoginActive()
     <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-guest.js"></script>
 
     <?php if (SSOActive()) : ?>
-        <link rel="stylesheet" href="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.css">
-        <script src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
+        <link nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" rel="stylesheet" href="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.css">
+        <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
     <?php endif; ?>
 
     <link rel="stylesheet" href="/themes/ida/core/css/ida-guest.css">
