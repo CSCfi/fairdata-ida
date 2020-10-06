@@ -78,8 +78,8 @@ fi
 #--------------------------------------------------------------------------------
 # Verify that we are in a test environment
 
-if [ "$IDA_ENVIRONMENT" != "TEST" ]; then
-    errorExit "Error: This script can only be run in a test environment. Aborting."
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    errorExit "Error: This script can not be run in a production environment. Aborting."
 fi
 
 #--------------------------------------------------------------------------------

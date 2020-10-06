@@ -49,9 +49,9 @@ PROJECT_GROUP="$3"
 USER="$2"
 
 # if not otherwise already defined in the environment, a new user account gets the static
-# password "test" if in the test environment, else gets a random password
+# password "test" if in a non-production environment, else gets a random password
 if [ "$OC_PASS" = "" ]; then
-    if [ "$IDA_ENVIRONMENT" = "TEST" ]; then
+    if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
         export OC_PASS="$TEST_USER_PASS"
     else
         export OC_PASS=`tr -cd '[:alnum:]' < /dev/urandom | head -c16`
@@ -106,17 +106,15 @@ fi
 
 if [ "$1" = "DELETE" ]; then
     PROJECT_USER=`echo $USER | egrep -e "^$PROJECT_USER_PREFIX"`
-    if [ "$IDA_ENVIRONMENT" != "TEST" -a "$PROJECT_USER" != "" ]; then
-        errorExit "Project share owner users can only be deleted in a test environment."
+    if [ "$IDA_ENVIRONMENT" == "PRODUCTION" -a "$PROJECT_USER" != "" ]; then
+        errorExit "Project share owner users can not be deleted in a production environment."
     fi
     OUT=`php "$OCC" user:delete "$USER" 2>&1`
     HITS=`echo $OUT | grep 'The specified user was deleted' | wc -l`
     if [ "$HITS" -ne 1 ]; then
         errorExit "$OUT"
     fi
-    #if [ "$IDA_ENVIRONMENT" = "TEST" -a "$PROJECT_USER" != "" ]; then
-        # TODO?: delete actual PSO user folder and symbolic link from filesystem
-    #fi
+    # TODO?: delete actual PSO user folder and symbolic link from filesystem
 fi
 
 if [ "$1" = "DISABLE" ]; then

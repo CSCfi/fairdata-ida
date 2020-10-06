@@ -79,8 +79,8 @@ fi
 #--------------------------------------------------------------------------------
 # Verify that we are in a test environment
 
-if [ "$IDA_ENVIRONMENT" != "TEST" ]; then
-    echo "This script can only be run in a test environment. Aborting." >&2
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    echo "This script can not be run in a production environment. Aborting." >&2
     exit 1
 fi
 

@@ -111,13 +111,13 @@ class ReplicationAgent(GenericAgent):
     def _check_replication_root_is_mounted(self):
         """
         In production environment, determine if the replication root volume is mounted.
-        In TEST environments, the replication root location is just created on the fly
+        In non-production environments, the replication root location is just created on the fly
         during copy if it is missing.
         """
         self._logger.info('Checking replication root mount point...')
 
-        if self._uida_conf_vars.get('IDA_ENVIRONMENT', False) == 'TEST':
-            self._logger.info('IDA_ENVIRONMENT == TEST, not expecting a real mount point. Returning')
+        if self._uida_conf_vars.get('IDA_ENVIRONMENT') != 'PRODUCTION':
+            self._logger.info('IDA_ENVIRONMENT != PRODUCTION, not expecting a real mount point. Returning')
             return
 
         if not os.path.ismount(self._uida_conf_vars['DATA_REPLICATION_ROOT']):
