@@ -43,7 +43,7 @@ fi
 #--------------------------------------------------------------------------------
 echo "Verifying project ${PROJECT} is suspended..."
 
-SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "https://localhost/apps/ida/api/actions?status=pending" 2>$ERR | \
+SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "https://localhost/apps/ida/api/actions?status=suspend" 2>$ERR | \
            tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend*\"" | grep "\"project\": *\"$PROJECT\"" | \
            sed -e 's/^.*"initiated": *"//' | sed -e 's/".*$//' | sort -u | tail -1`
 

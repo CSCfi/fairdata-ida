@@ -64,8 +64,9 @@ class ActionMapper extends Mapper
      * cleared:     failed action was cleared, possibly retried
      * incomplete:  action is either pending or failed (but not cleared); used to check for action conflicts
      * initiating:  action has not finished updating storage yet
+     * suspend:     action is a suspend action
      *
-     * @param string $status   one of 'pending', 'failed', 'completed', 'cleared', 'incomplete', or 'initiating'
+     * @param string $status   one of 'pending', 'failed', 'completed', 'cleared', 'incomplete', 'initiating', or 'suspend'
      * @param string $projects one or more comma separated project names, with no whitespace
      *
      * @return Entity[]
@@ -94,6 +95,9 @@ class ActionMapper extends Mapper
             }
             elseif ($status == 'initiating') {
                 $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
+            }
+            elseif ($status == 'suspend') {
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action = \'suspend\'';
             }
             else {
                 throw new Exception('Invalid action status: "' . $status . '"');
@@ -196,8 +200,9 @@ class ActionMapper extends Mapper
      * cleared:     failed action was cleared, possibly retried
      * incomplete:  action is either pending or failed (but not cleared); used to check for action conflicts
      * initiating:  action has not finished updating storage yet
+     * suspend:     action is a suspend action
      *
-     * @param string $status   one of 'pending', 'failed', 'completed', 'cleared', 'incomplete', or 'initiating'
+     * @param string $status   one of 'pending', 'failed', 'completed', 'cleared', 'incomplete', 'initiating', or 'suspend'
      * @param string $projects one or more comma separated project names, with no whitespace
      *
      * @return Entity[]
@@ -226,6 +231,9 @@ class ActionMapper extends Mapper
             }
             elseif ($status == 'initiating') {
                 $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
+            }
+            elseif ($status == 'suspend') {
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action = \'suspend\'';
             }
             else {
                 throw new Exception('Invalid action status: "' . $status . '"');
@@ -291,8 +299,9 @@ class ActionMapper extends Mapper
      * cleared:     failed action was cleared, possibly retried
      * incomplete:  action is either pending or failed (but not cleared); used to check for action conflicts
      * initiating:  action has not finished updating storage yet
+     * suspend:     action is a suspend action
      *
-     * @param string $status   one of 'pending', 'failed', 'completed', 'cleared', 'incomplete', or 'initiating'
+     * @param string $status   one of 'pending', 'failed', 'completed', 'cleared', 'incomplete', 'initiating', or 'suspend'
      * @param string $projects one or more comma separated project names, with no whitespace
      *
      * @return Entity[]
@@ -321,6 +330,9 @@ class ActionMapper extends Mapper
             }
             elseif ($status == 'initiating') {
                 $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
+            }
+            elseif ($status == 'suspend') {
+                $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action = \'suspend\'';
             }
             else {
                 throw new Exception('Invalid action status: "' . $status . '"');

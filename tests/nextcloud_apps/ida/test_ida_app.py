@@ -34,6 +34,7 @@ import subprocess
 import unittest
 import time
 import os
+import json
 from tests.common.utils import load_configuration
 
 
@@ -394,6 +395,15 @@ class TestIdaApp(unittest.TestCase):
         # --------------------------------------------------------------------------------
 
         print("--- Action Record Operations")
+
+        print("Retrieve set of suspend actions")
+        data = {"status": "suspend"}
+        response = requests.get("%s/actions" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
+        self.assertEqual(response.status_code, 200)
+        actions = response.json()
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]['project'], 'test_project_s')
+        self.assertEqual(actions[0]['action'], 'suspend')
 
         print("Retrieve set of completed actions")
         data = {"projects": "test_project_a", "status": "completed"}
