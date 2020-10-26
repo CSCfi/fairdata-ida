@@ -151,11 +151,11 @@ script('settings', [
 
 	<div style="padding-left: 10px; padding-top: 30px; padding-bottom: 30px;">
         <?php if ($_['activelanguage']['code'] == 'fi') {?>
-            <p><b>Huomaa:</b> henkilökohtaisen tilin asetusten ja salasanan hallinta tehdään <a style="color: #007FAD" href="https://my.csc.fi" target="_blank">CSC:n asiakasportaalissa</a>.</p>
+            <p><b>Huomaa:</b> henkilökohtaisen tilin asetusten ja salasanan hallinta tehdään <a style="color: #007FAD" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC:n asiakasportaalissa</a>.</p>
         <?php } elseif ($_['activelanguage']['code'] == 'sv') {?>
-            <p><b>Notera:</b> hantering av profilen och lösenord sker i <a style="color: #007FAD;" href="https://my.csc.fi" target="_blank">CSC:s kundportal</a>.</p>
+            <p><b>Notera:</b> hantering av profilen och lösenord sker i <a style="color: #007FAD;" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC:s kundportal</a>.</p>
         <?php } else { ?>
-            <p><b>Note:</b> personal account settings and passwords can be changed in the <a style="color: #007FAD" href="https://my.csc.fi" target="_blank">CSC Customer Portal</a>.</p>
+            <p><b>Note:</b> personal account settings and passwords can be changed in the <a style="color: #007FAD" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC Customer Portal</a>.</p>
 		<?php }?>
 	</div>
 

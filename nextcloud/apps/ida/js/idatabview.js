@@ -31,8 +31,6 @@
         '<div id="rootProjectFolder" style="display: none">' +
         '<div class="idaWarning"><p>' +
         t('ida', 'Root project folders may not be modified.') +
-        '</p><p>' +
-        t('ida', 'See the <a href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA User&apos;s Guide</a> for details.') +
         '</p></div>' +
         '</div>' +
 
@@ -53,8 +51,6 @@
         t('ida', 'The action cannot be terminated before it is complete. Depending on the amount of data, the background operations may take several hours.') +
         '</p><p>' +
         t('ida', 'Once initiated, the progress of the action can be checked from the <a href="../ida/actions/pending">Pending Actions</a> view.') +
-        '</p><p>' +
-        t('ida', 'See the <a href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA User&apos;s Guide</a> for details.') +
         '</p></div>' +
         '</div>' +
 
@@ -75,8 +71,6 @@
         t('ida', 'The action cannot be terminated before it is complete. Depending on the size of the file, the background operations may take several hours.') +
         '</p><p>' +
         t('ida', 'Once initiated, the progress of the action can be checked from the <a href="../ida/actions/pending">Pending Actions</a> view.') +
-        '</p><p>' +
-        t('ida', 'See the <a href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA User&apos;s Guide</a> for details.') +
         '</p></div>' +
         '</div>' +
 
@@ -90,8 +84,6 @@
         t('ida', 'Additional information will be available once the action is complete.') +
         '</p><p>' +
         t('ida', 'The progress of the ongoing action can be viewed by clicking on the action ID above.') +
-        '</p><p>' +
-        t('ida', 'See the <a href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA User&apos;s Guide</a> for details.') +
         '</p></div>' +
         '</div>' +
 
@@ -117,8 +109,6 @@
         t('ida', 'THIS ACTION CANNOT BE UNDONE.') +
         '</b></p><p>' +
         t('ida', 'Once initiated, the progress of the action can be checked from the <a href="../ida/actions/pending">Pending Actions</a> view.') +
-        '</p><p>' +
-        t('ida', 'See the <a href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA User&apos;s Guide</a> for details.') +
         '</p></div>' +
         '</div>' +
 
@@ -149,8 +139,6 @@
         t('ida', 'THIS ACTION CANNOT BE UNDONE.') +
         '</b></p><p>' +
         t('ida', 'Once initiated, the progress of the action can be checked from the <a href="../ida/actions/pending">Pending Actions</a> view.') +
-        '</p><p>' +
-        t('ida', 'See the <a href="https://www.fairdata.fi/en/ida/user-guide" target="_blank">IDA User&apos;s Guide</a> for details.') +
         '</p></div>' +
         '</table>' +
         '</div>' +

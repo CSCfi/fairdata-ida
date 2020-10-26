@@ -51,7 +51,7 @@
         </p>
         <p>
             <!-- TODO: Pull URL from constant -->
-            Read the <a href="https://www.fairdata.fi/en/ida/quick-start-guide" target="_blank">IDA Quick Start Guide</a>
+            Read the <a href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA Quick Start Guide</a>
         </p>
 
         <h2>
@@ -65,7 +65,7 @@
         </p>
         <p>
             <!-- TODO: Pull URL from constant -->
-            Lue <a href="https://www.fairdata.fi/ida/idan-pikaopas" target="_blank">IDAn pikaopas</a>
+            Lue <a href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn pikaopas</a>
         </p>
 
     </div>

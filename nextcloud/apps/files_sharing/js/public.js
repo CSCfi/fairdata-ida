@@ -138,7 +138,7 @@ OCA.Sharing.PublicApp = {
 
 		var imgcontainer = $('<img class="publicpreview" alt="">');
 		if (hideDownload === 'false') {
-			imgcontainer = $('<a href="' + $('#previewURL').val() + '" target="_blank"></a>').append(imgcontainer);
+			imgcontainer = $('<a href="' + $('#previewURL').val() + '" rel="noreferrer noopener" target="_blank"></a>').append(imgcontainer);
 		}
 		var img = imgcontainer.hasClass('publicpreview')? imgcontainer: imgcontainer.find('.publicpreview');
 		img.css({

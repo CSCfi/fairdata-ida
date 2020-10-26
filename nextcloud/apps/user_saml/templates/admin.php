@@ -6,7 +6,7 @@ style('user_saml', 'admin');
 ?>
 <form id="user-saml" class="section" action="#" method="post" data-type="<?php p($_['type']) ?>">
 	<h2 class="inlineblock"><?php p($l->t('SSO & SAML authentication IDA version')); ?></h2>
-	<a target="_blank" rel="noreferrer" class="icon-info"
+	<a target="_blank" rel="noreferrer noopener" class="icon-info"
 	   title="<?php p($l->t('Open documentation'));?>"
 	   href="<?php p(link_to_docs('admin-sso')); ?>"></a>
 

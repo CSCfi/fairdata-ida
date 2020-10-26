@@ -207,13 +207,13 @@ function localLoginActive()
                                         <p id="ida-local-login-form-footer">
                                             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
                                                 CSC-tiliä hallinnoidaan
-                                                <br><a href="https://my.csc.fi/" target="_blank">MyCSC-asiakasportaalissa</a>
+                                                <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC-asiakasportaalissa</a>
                                             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
                                                 Hantering av CSC-profilen sker i
-                                                <br><a href="https://my.csc.fi/" target="_blank">MyCSC</a>
+                                                <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC</a>
                                             <?php else: ?>
                                                 Personal CSC accounts are created and managed in
-                                                <br><a href="https://my.csc.fi/" target="_blank">MyCSC</a>
+                                                <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC</a>
                                             <?php endif; ?>
                                         </p>
                                     </div>
@@ -229,7 +229,7 @@ function localLoginActive()
                     <h2>Tervetuloa Fairdata IDA -palveluun</h2>
                     <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille, valtion tutkimuslaitoksille sekä tiettyjen Suomen Akatemian rahoitusmuotojen alaiselle tutkimukselle. IDA kuuluu opetus- ja kulttuuriministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
                     <p>Säilytystila on projektikohtaista. IDAssa säilytettävä data voidaan muiden Fairdata-palvelujen avulla kuvailla tutkimusaineistoksi ja julkaista.</p>
-                    <p><a href="https://www.fairdata.fi/services/ida/" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
+                    <p><a href="https://www.fairdata.fi/services/ida/" rel="noreferrer noopener" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
                 </div>
                 <div class="<?php if (localLoginActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -283,7 +283,7 @@ function localLoginActive()
                     <h2>Välkommen till Fairdata IDA</h2>
                     <p>Fairdata IDA är en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshögskolor, forskningsinstitut i Finland och för forskning som finansieras av Finlands Akademi. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
                     <p>Bevaringsutrymmet i IDA tilldelas projekt. Data som finns i IDA kan dokumenteras och publiceras som dataset med hjälp av andra Fairdata-tjänster.</p>
-                    <p><a href="https://www.fairdata.fi/en/services/ida/" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
+                    <p><a href="https://www.fairdata.fi/en/services/ida/" rel="noreferrer noopener" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
                 </div>
                 <div class="<?php if (localLoginActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -337,7 +337,7 @@ function localLoginActive()
                     <h2>Welcome to Fairdata IDA</h2>
                     <p>Fairdata IDA is a continuous research data storage service organized by the Ministry of Education and Culture. The service is offered free of charge to Finnish universities and universities of applied sciences, research institutes, as well as research funded by the Academy of Finland.</p>
                     <p>IDA enables uploading, organizing, and sharing research data within a project group and storing the data in an immutable state. The data stored in IDA can be included in research datasets which are described and made publicly available for download via other Fairdata services.</p>
-                    <p><a href="https://www.fairdata.fi/en/services/ida/" target="_blank">How to start using IDA and user guides</a></p>
+                    <p><a href="https://www.fairdata.fi/en/services/ida/" rel="noreferrer noopener" target="_blank">How to start using IDA and user guides</a></p>
                 </div>
                 <div class="<?php if (localLoginActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -397,14 +397,14 @@ function localLoginActive()
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                     <span>Tietoa</span>
-                    <p><a href="https://www.fairdata.fi/kayttopolitiikat-ja-ehdot/" target="_blank">Käyttöpolitiikat ja ehdot
+                    <p><a href="https://www.fairdata.fi/kayttopolitiikat-ja-ehdot/" rel="noreferrer noopener" target="_blank">Käyttöpolitiikat ja ehdot
 
                         </a></p>
-                    <p><a href="https://www.fairdata.fi/sopimukset/" target="_blank">Sopimukset ja tietosuoja</a></p>
+                    <p><a href="https://www.fairdata.fi/sopimukset/" rel="noreferrer noopener" target="_blank">Sopimukset ja tietosuoja</a></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Saavutettavuus</span>
-                    <p><a href="https://www.fairdata.fi/saavutettavuus/" target="_blank">Saavutettavuus</a></p>
+                    <p><a href="https://www.fairdata.fi/saavutettavuus/" rel="noreferrer noopener" target="_blank">Saavutettavuus</a></p>
                 </div>
                 <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Ota yhteyttä</span>
@@ -412,8 +412,8 @@ function localLoginActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Seuraa</span>
-                    <p><a href="https://twitter.com/Fairdata_fi" target="_blank">Twitter</a></p>
-                    <p><a href="https://www.fairdata.fi/ajankohtaista/" target="_blank">Uutiset</a></p>
+                    <p><a href="https://twitter.com/Fairdata_fi" rel="noreferrer noopener" target="_blank">Twitter</a></p>
+                    <p><a href="https://www.fairdata.fi/ajankohtaista/" rel="noreferrer noopener" target="_blank">Uutiset</a></p>
                 </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
@@ -422,12 +422,12 @@ function localLoginActive()
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                     <span>Information</span>
-                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" target="_blank">Villkor och policyer</a></p>
-                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" target="_blank">Kontrakt och integritet</a></p>
+                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" rel="noreferrer noopener" target="_blank">Villkor och policyer</a></p>
+                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" rel="noreferrer noopener" target="_blank">Kontrakt och integritet</a></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Tillgänglighet</span>
-                    <p><a href="https://www.fairdata.fi/en/accessibility/" target="_blank">Tillgänglighet uttalande</a></p>
+                    <p><a href="https://www.fairdata.fi/en/accessibility/" rel="noreferrer noopener" target="_blank">Tillgänglighet uttalande</a></p>
                 </div>
                 <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Kontakt</span>
@@ -435,8 +435,8 @@ function localLoginActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Följ</span>
-                    <p><a href="https://twitter.com/Fairdata_fi" target="_blank">Twitter</a></p>
-                    <p><a href="https://www.fairdata.fi/en/news/" target="_blank">Nyheter</a></p>
+                    <p><a href="https://twitter.com/Fairdata_fi" rel="noreferrer noopener" target="_blank">Twitter</a></p>
+                    <p><a href="https://www.fairdata.fi/en/news/" rel="noreferrer noopener" target="_blank">Nyheter</a></p>
                 </div>
             <?php else : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
@@ -445,12 +445,12 @@ function localLoginActive()
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                     <span>Information</span>
-                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" target="_blank">Terms and Policies</a></p>
-                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" target="_blank">Contracts and Privacy</a></p>
+                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" rel="noreferrer noopener" target="_blank">Terms and Policies</a></p>
+                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" rel="noreferrer noopener" target="_blank">Contracts and Privacy</a></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Accessibility</span>
-                    <p><a href="https://www.fairdata.fi/en/accessibility/" target="_blank">Accessibility statement</a></p>
+                    <p><a href="https://www.fairdata.fi/en/accessibility/" rel="noreferrer noopener" target="_blank">Accessibility statement</a></p>
                 </div>
                 <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Contact</span>
@@ -458,8 +458,8 @@ function localLoginActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Follow</span>
-                    <p><a href="https://twitter.com/Fairdata_fi" target="_blank">Twitter</a></p>
-                    <p><a href="https://www.fairdata.fi/en/news/" target="_blank">What's new</a></p>
+                    <p><a href="https://twitter.com/Fairdata_fi" rel="noreferrer noopener" target="_blank">Twitter</a></p>
+                    <p><a href="https://www.fairdata.fi/en/news/" rel="noreferrer noopener" target="_blank">What's new</a></p>
                 </div>
             <?php endif; ?>
         </div>
