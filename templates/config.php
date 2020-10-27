@@ -68,10 +68,11 @@ $CONFIG = array (
     'SIMULATE_AGENTS' => false,
   ),
   'IDA_HOME' => 'https://ida.fairdata.fi',
-  'LOCAL_LOGIN' => false, // set to true to display Nextcloud login (e.g. on dev/test instances and uida-man)
+  'LOCAL_LOGIN' => false,        // set to true to always display local Nextcloud login (e.g. uida-man, dev/test)
+  'SSO_AUTHENTICATION' => true,  // set to true to always display SSO login (other SSO_ variables must be defined)
   'SSO_DOMAIN' => 'fairdata.fi',
-  'SSO_API' => 'https://sso.fairdata.fi', // if undefined, no SSO login button will be presented
-  'SSO_PASSWORD' => 'test',
+  'SSO_API' => 'https://sso.fairdata.fi',
+  'SSO_KEY' => 'MIDJOwIB9DANBgkqhkiG9w0BAQEFAASCCS0...a284f29', // Encryption key for JSON Web Tokens
   'installed' => true,
   'instanceid' => '****',
   'maintenance' => false,

@@ -132,9 +132,30 @@ class LoginController extends Controller {
 		// IDA home (login) page.
 		
 		$uid = $this->userSession->getUser()->getUID();
-		$sso_url = $this->config->getSystemValue('SSO_API') . '/logout?service=IDA&redirect_url=' . $this->config->getSystemValue('IDA_HOME');
 
-		Util::writeLog('ida', 'LoginController.php: logout: uid=' . $uid . ' sso_url: ' . $sso_url, \OCP\Util::DEBUG);
+		$redirect_url = $this->config->getSystemValue('IDA_HOME');
+
+		$sso_login = false;
+
+		if ($this->config->getSystemValue('SSO_AUTHENTICATION') === true) {
+		    Util::writeLog('ida', 'LoginController.php: logout: SSO_AUTHENTICATION == true', \OCP\Util::DEBUG);
+		    $sso_login = true;
+		}
+
+		if ($sso_login === false) {
+		    $domain = $this->config->getSystemValue('SSO_DOMAIN');
+			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+			if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])) {
+		        $sso_login = true;
+		        Util::writeLog('ida', 'LoginController.php: logout: active SSO session cookie found', \OCP\Util::DEBUG);
+			}
+		}
+
+		if ($sso_login) {
+			$redirect_url = $this->config->getSystemValue('SSO_API') . '/logout?service=IDA&redirect_url=' . $this->config->getSystemValue('IDA_HOME');
+		}
+
+		Util::writeLog('ida', 'LoginController.php: logout: uid=' . $uid . ' redirect_url: ' . $redirect_url, \OCP\Util::DEBUG);
 
 		$loginToken = $this->request->getCookie('nc_token');
 
@@ -144,7 +165,7 @@ class LoginController extends Controller {
 
 		$this->userSession->logout();
 
-		$response = new RedirectResponse($sso_url);
+		$response = new RedirectResponse($redirect_url);
 		$response->addHeader('Clear-Site-Data', '"cache", "storage", "executionContexts"');
 
 		$this->session->set('clearingExecutionContexts', '1');
