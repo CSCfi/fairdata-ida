@@ -10,13 +10,16 @@
 # E.g.
 #
 # git remote add private https://github.com/CSCfi/ida2-dev.git
-# git remote add private https://github.com/CSCfi/ida2-command-line-tools-dev.git
 #
 # To pull a private branch created on another machine:
 #
 # git fetch private
 # git checkout <private branch name>
-
+#
+# The default branch in the private repo should be 'stable' and all pull requests
+# should be made from feature branches in the private repo to the stable branch
+# in the private repo, resulting in squash merges into stable. Then, when appropriate, 
+# private/stable will be merged to origin/master.
 
 SCRIPT=`basename $0`
 BRANCH=$1

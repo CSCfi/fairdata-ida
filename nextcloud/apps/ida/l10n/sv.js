@@ -1,6 +1,36 @@
+/*
+ * This file is part of the IDA research data storage service
+ *
+ * Copyright (C) 2018 Ministry of Education and Culture, Finland
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @author    CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @license   GNU Affero General Public License, version 3
+ * @link      https://research.csc.fi/
+ */
+
 OC.L10N.register(
     "ida",
     {
+        "Action not allowed: Datasets would be deprecated!": "Förbjuden åtgärd: Åtgärden skulle söndra dataset!",
+        "The specified action is not allowed because it would deprecate the datasets listed below, for which the digital preservation process is ongoing.": "Denna åtgärd är inte tillåten, eftersom den skulle påverka följande dataset, som är på väg in i långsiktig bevaring:",
+        "If you have questions, please contact <a href=\"mailto:pas-support@csc.fi\" target=\"_blank\" style=\"color: #007FAD;\">pas-support@csc.fi</a>": "Om du har frågor, var god och kontakta <a href=\"mailto:pas-support@csc.fi\" target=\"_blank\" style=\"color: #007FAD;\">pas-support@csc.fi</a>",
+        "Warning: Datasets will be deprecated!": "Varning! Forskningsmaterialet söndras!",
+        "One or more files included in the specified action belong to a dataset. Proceeding with the specified action will permanently deprecate the datasets listed below.": "En eller flera av de filer du valt för åtgärden ingår i ett dataset. Om du fortsätter förstörs de dataset som listas nedan permanent.",
+        "Do you wish to proceed?": "Vill du fortsätta?",
+        "An error occurred when checking for datasets which may be deprecated by the requested action.": "Ett fel uppstod under granskningen av dataset som potentiellt skulle söndras av den valda åtgärden.",
         "Action Failed": "Åtgärden misslyckades",
         "Action initiated successfully. Show frozen data?": "Åtgärden påbörjad. Visa frysta data?",
         "Action initiated successfully. Files deleted.": "Åtgärden påbörjad. Filer borttagna.",

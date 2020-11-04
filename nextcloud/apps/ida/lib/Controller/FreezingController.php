@@ -123,8 +123,8 @@ class FreezingController extends Controller
         try {
             Filesystem::init($userId, '/');
             $this->fsView = Filesystem::getView();
+        } catch (\Exception $e) {
         }
-        catch (\Exception $e) {}
         $this->config = $config->getSystemValue('ida');
     }
 
@@ -200,8 +200,7 @@ class FreezingController extends Controller
                             // Ensure the checksum is returned as an sha256: checksum URI
                             if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
                                 $fileInfo['checksum'] = $checksum;
-                            }
-                            else {
+                            } else {
                                 $fileInfo["checksum"] = 'sha256:' . $checksum;
                             }
                         }
@@ -228,14 +227,14 @@ class FreezingController extends Controller
             );
 
             return new DataResponse(array(
-                       'project' => $project,
-                       'created' => Generate::newTimestamp(),
-                       'totalFiles' => $totalFiles,
-                       'totalStagedFiles' => $totalStagedFiles,
-                       'totalFrozenFiles' => $totalFrozenFiles,
-                       'staging' => $stagedFiles,
-                       'frozen' => $frozenFiles
-                   ));
+                'project' => $project,
+                'created' => Generate::newTimestamp(),
+                'totalFiles' => $totalFiles,
+                'totalStagedFiles' => $totalStagedFiles,
+                'totalFrozenFiles' => $totalFrozenFiles,
+                'staging' => $stagedFiles,
+                'frozen' => $frozenFiles
+            ));
         } catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }
@@ -918,7 +917,6 @@ class FreezingController extends Controller
             if ($this->isEmptyFolder('delete', $project, $pathname)) {
 
                 $isEmptyFolder = true;
-
             } else {
 
                 // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
@@ -979,11 +977,9 @@ class FreezingController extends Controller
 
                 $actionEntity->setCompleted(Generate::newTimestamp());
                 $this->actionMapper->update($actionEntity);
-
             } else {
 
                 $this->publishActionMessage($actionEntity);
-
             }
 
             // Unlock project and return new action details
@@ -991,7 +987,6 @@ class FreezingController extends Controller
             Access::unlockProject($project);
 
             return new DataResponse($actionEntity);
-
         } catch (Exception $e) {
             try {
                 if ($actionEntity != null) {
@@ -999,7 +994,8 @@ class FreezingController extends Controller
                     $actionEntity->setError($e->getMessage());
                     $this->actionMapper->update($actionEntity);
                 }
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+            }
 
             // Cleanup and report error
 
@@ -1367,6 +1363,318 @@ class FreezingController extends Controller
         Util::writeLog('ida', 'registerAction: id=' . $actionEntity->getId(), \OCP\Util::INFO);
 
         return $actionEntity;
+    }
+
+    /**
+     * Retrieve any datasets from Metax which contain frozen files within the scope of a particular node
+     *
+     * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
+     * @param string $project         project to which the files belong
+     * @param string $pathname        relative pathname of the root node of the scope to be checked, within the root frozen folder
+     * @param string $token           batch action token (optional)
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function getDatasets($nextcloudNodeId, $project, $pathname, $token = null)
+    {
+        try {
+
+            Util::writeLog(
+                'ida',
+                'getDatasets:'
+                    . ' nextcloudNodeId=' . $nextcloudNodeId
+                    . ' project=' . $project
+                    . ' pathname=' . $pathname
+                    . ' user=' . $this->userId
+                    . ' token=' . $token,
+                \OCP\Util::INFO
+            );
+
+            try {
+                API::verifyRequiredStringParameter('project', $project);
+                API::verifyRequiredStringParameter('pathname', $pathname);
+                API::validateIntegerParameter('nextcloudNodeId', $nextcloudNodeId);
+                API::validateStringParameter('token', $token);
+            } catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
+            }
+
+            // Verify that current user has rights to the specified project, rejecting request if not...
+
+            try {
+                Access::verifyIsAllowedProject($project);
+            } catch (Exception $e) {
+                return API::unauthorizedErrorResponse($e->getMessage());
+            }
+
+            // Verify Nextcloud node ID per specified pathname
+
+            try {
+                $nextcloudNodeId = $this->resolveNextcloudNodeId($nextcloudNodeId, 'delete', $project, $pathname);
+            } catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
+            }
+
+            // Ensure specified pathname identifies a node in the frozen area
+
+            $fullPathname = $this->buildFullPathname('delete', $project, $pathname);
+
+            $fileInfo = $this->fsView->getFileInfo($fullPathname);
+
+            if ($fileInfo === false) {
+                return API::notFoundErrorResponse('The specified scope could not be found in the frozen area of the project: ' . $fullPathname);
+            }
+
+            // If the target node is an empty folder (has zero descendant files), return empty array
+
+            if ($this->isEmptyFolder('delete', $project, $pathname)) {
+
+                return new DataResponse(array());
+
+            } else {
+
+                // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
+
+                try {
+
+                    // If PSO user and batch action token valid, impose no file limit, else use default limit
+
+                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                        ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+                        ($token == $this->config['BATCH_ACTION_TOKEN'])
+                    ) {
+                        Util::writeLog(
+                            'ida',
+                            'deleteFiles: Batch Action Execution:'
+                                . ' project=' . $project
+                                . ' pathname=' . $pathname,
+                            \OCP\Util::INFO
+                        );
+                        $nextcloudNodes = $this->getNextcloudNodes('delete', $project, $pathname, 0);
+                    } else {
+                        $nextcloudNodes = $this->getNextcloudNodes('delete', $project, $pathname);
+                    }
+                } catch (Exception $e) {
+                    return API::badRequestErrorResponse($e->getMessage());
+                }
+
+                // Query Metax for any datasets containing any of the frozen files in scope
+
+                $datasets = $this->checkDatasets($nextcloudNodes);
+            }
+
+            return new DataResponse($datasets);
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Retrieve an array of Dataset instances for all datasets in Metax which contain one or more
+     * specified frozen files, providing the PID and title of each dataset, and a boolean flag indicating
+     * whether the dataset has entered the PAS longterm preservation process.
+     *
+     * @param Array $nextcloudNodes an array of Nextcloud FileInfo objects
+     *
+     * @return Dataset[]
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function checkDatasets($nextcloudNodes)
+    {
+
+        Util::writeLog('ida', 'checkDatasets: nodeCount=' . count($nextcloudNodes), \OCP\Util::DEBUG);
+
+        $datasets = array();
+        $metax_datasets = array();
+
+        // Query Metax for intersecting datasets
+
+        $filePIDs = array();
+
+        foreach ($nextcloudNodes as $fileInfo) {
+            $file = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId());
+            $filePIDs[] = $file->getPid();
+        }
+
+        $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets';
+        $username = $this->config['METAX_API_USER'];
+        $password = $this->config['METAX_API_PASS'];
+        $postbody = json_encode($filePIDs);
+
+        Util::writeLog('ida', 'checkDatasets: queryURL=' . $queryURL
+                       . ' username=' . $username
+                       . ' password=' . $password
+                       . ' postbody=' . $postbody
+                       , \OCP\Util::DEBUG);
+
+        $ch = curl_init($queryURL);
+
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
+        curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+        curl_setopt($ch, CURLOPT_HEADER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER,
+            array(
+                'Accept: application/json',
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($postbody)
+            )
+        );
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+        curl_setopt($ch, CURLOPT_FAILONERROR, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+
+        $response = curl_exec($ch);
+
+        if ($response === false) {
+            Util::writeLog('ida', 'checkDatasets:'
+                . ' curl_errno=' . curl_errno($ch)
+                . ' response=' . $response, \OCP\Util::ERROR);
+            curl_close($ch);
+            throw new Exception('Failed to check Metax for intersecting datasets');
+        }
+
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        Util::writeLog('ida', 'checkDatasets: datasets_response=' . $response, \OCP\Util::DEBUG);
+
+        if ($httpcode == 200) {
+
+            $intersecting_dataset_ids = json_decode($response, true);
+
+            if (count($intersecting_dataset_ids) == 0) {
+                list($header, $body) = explode('Content-Disposition: attachment; filename=response.json', $response, 2);
+                Util::writeLog('ida', 'checkDatasets: body=' . $body, \OCP\Util::DEBUG);
+                $intersecting_dataset_ids = json_decode($body, true);
+            }
+
+            Util::writeLog('ida', 'checkDatasets: ids=' . json_encode($intersecting_dataset_ids), \OCP\Util::DEBUG);
+
+            foreach ($intersecting_dataset_ids as $intersecting_dataset_id) {
+
+                // Query Metax for dataset details, first try as PID, then as preferred identifier
+
+                $queryURL = $this->config['METAX_API_ROOT_URL'] . '/datasets/' . $intersecting_dataset_id;
+
+                $ch = curl_init($queryURL);
+
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+                curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+                curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+                curl_setopt($ch, CURLOPT_FAILONERROR, false);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+        
+                $response = curl_exec($ch);
+        
+                Util::writeLog('ida', 'checkDatasets: dataset_response=' . $response, \OCP\Util::DEBUG);
+
+                if ($response === false) {
+                    Util::writeLog('ida', 'checkDatasets:'
+                        . ' curl_errno=' . curl_errno($ch)
+                        . ' response=' . $response, \OCP\Util::ERROR);
+                    curl_close($ch);
+                    throw new Exception('Failed to retrieve dataset by PID');
+                }
+
+                $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+                curl_close($ch);
+
+                if ($httpcode == 200) {
+
+                    Util::writeLog('ida', 'checkDatasets: pid=' . $intersecting_dataset_id , \OCP\Util::DEBUG);
+                    $metax_datasets[] = json_decode($response, true);
+
+                }
+                else {
+
+                    $queryURL = $this->config['METAX_API_ROOT_URL'] . '/datasets?preferred_identifier=' . urlencode($intersecting_dataset_id);
+    
+                    $ch = curl_init($queryURL);
+    
+                    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+                    curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+                    curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+                    curl_setopt($ch, CURLOPT_FAILONERROR, false);
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+            
+                    $response = curl_exec($ch);
+            
+                    Util::writeLog('ida', 'checkDatasets: dataset_response=' . $response, \OCP\Util::DEBUG);
+
+                    if ($response === false) {
+                        Util::writeLog('ida', 'checkDatasets:'
+                            . ' curl_errno=' . curl_errno($ch)
+                            . ' response=' . $response, \OCP\Util::ERROR);
+                        curl_close($ch);
+                        throw new Exception('Failed to retrieve dataset by preferred identifier');
+                    }
+    
+                    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+                    curl_close($ch);
+
+                    if ($httpcode == 200) {
+
+                        Util::writeLog('ida', 'checkDatasets: preferred_identifier=' . $intersecting_dataset_id , \OCP\Util::DEBUG);
+                        $metax_datasets[] = json_decode($response, true);
+
+                    }
+                    else {
+                        Util::writeLog('ida', 'checkDatasets: ' . $response, \OCP\Util::ERROR);
+                        throw new Exception('Failed to retrieve dataset by either PID or preferred identifier');
+                    }
+                }
+            }
+        }
+
+        foreach ($metax_datasets as $metax_dataset) {
+
+            $dataset = array();
+
+            $dataset['pid'] = $metax_dataset['identifier'];
+
+            $dataset['title'] = $metax_dataset['research_dataset']['title']['en']
+                ?? $metax_dataset['research_dataset']['title']['fi']
+                ?? $metax_dataset['research_dataset']['title']['sv']
+                ?? $metax_dataset['research_dataset']['preferred_identifier']
+                ?? $metax_dataset['identifier'];
+
+            $dataset['pas'] = false;
+
+            // Any dataset for which the PAS ingestion process is ongoing, indicated by having a
+            // preservation state greater than zero but less than 120
+            if (array_key_exists('preservation_state', $metax_dataset)
+                    &&
+                    $metax_dataset['preservation_state'] > 0
+                    &&
+                    $metax_dataset['preservation_state'] < 120) {
+                $dataset['pas'] = true;
+            }
+            
+            $datasets[] = $dataset;
+        }
+
+        Util::writeLog('ida', 'checkDatasets: datasetCount=' . count($datasets), \OCP\Util::DEBUG);
+
+        return ($datasets);
     }
 
     /**
@@ -1849,7 +2157,7 @@ class FreezingController extends Controller
         return true;
     }
 
-        /**
+    /**
      * Retrieve an ordered array of Nextcloud FileInfo instances for all files within the scope of the
      * specified node in the staging or frozen space, depending on the specified action.
      *

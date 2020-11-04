@@ -406,3 +406,11 @@ table.idaTable tr:hover {
 .header-shared-by {
     display: none;
 }
+
+span.ui-icon {
+    margin-top: 1px;
+}
+
+.oc-dialog-close{
+	display: none;
+}

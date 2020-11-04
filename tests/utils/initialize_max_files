@@ -47,17 +47,17 @@
 #
 # E.g. if the limit is 500 files, then the generated hierarchy is as follows:
 #
-# /MaxFiles/test_file.dat
-# /MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat
-# /MaxFiles/500_files/100_files_01/10_files_01/...
-# /MaxFiles/500_files/100_files_01/10_files_01/test_file_10.dat
-# /MaxFiles/500_files/100_files_01/10_files_02/test_file_01.dat
-# /MaxFiles/500_files/100_files_01/...
-# /MaxFiles/500_files/100_files_01/10_files_10/test_file_10.dat
-# /MaxFiles/500_files/...
-# /MaxFiles/500_files/100_files_02/10_files_01/test_file_01.dat
-# /MaxFiles/500_files/...
-# /MaxFiles/500_files/100_files_05/10_files_10/test_file_10.dat
+# /testdata//MaxFiles/test_file.dat
+# /testdata//MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat
+# /testdata//MaxFiles/500_files/100_files_01/10_files_01/...
+# /testdata//MaxFiles/500_files/100_files_01/10_files_01/test_file_10.dat
+# /testdata//MaxFiles/500_files/100_files_01/10_files_02/test_file_01.dat
+# /testdata//MaxFiles/500_files/100_files_01/...
+# /testdata//MaxFiles/500_files/100_files_01/10_files_10/test_file_10.dat
+# /testdata//MaxFiles/500_files/...
+# /testdata//MaxFiles/500_files/100_files_02/10_files_01/test_file_01.dat
+# /testdata//MaxFiles/500_files/...
+# /testdata//MaxFiles/500_files/100_files_05/10_files_10/test_file_10.dat
 #
 #--------------------------------------------------------------------------------
 . `dirname $0`/../../lib/init_script.sh
@@ -97,7 +97,7 @@ fi
 
 PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
 PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PSO_USER}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
-MAX_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/MaxFiles"
+MAX_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/testdata/MaxFiles"
 
 echo "Generating MaxFiles test data for project ${PROJECT}..."
 echo "Target folder: $MAX_FILES_FOLDER"

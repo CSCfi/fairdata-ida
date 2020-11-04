@@ -264,7 +264,7 @@ for PROJECT in $PROJECTS; do
     PROJECT_STAGING_FOLDER="$PROJECT$STAGING_FOLDER_SUFFIX"
     PROJECT_FROZEN_FOLDER="$PROJECT"
 
-    OUT=`cp -r $ROOT/tests/testdata/* $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER`
+    OUT=`cp -r $ROOT/tests/testdata $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
@@ -274,7 +274,7 @@ for PROJECT in $PROJECTS; do
 
     rm -fr `find $STORAGE_OC_DATA_ROOT/$USER/files -name .DS_Store`
 
-    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER/empty_folder`
+    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER/testdata/empty_folder`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
@@ -282,7 +282,7 @@ for PROJECT in $PROJECTS; do
         continue
     fi
 
-    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_FROZEN_FOLDER/empty_folder`
+    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_FROZEN_FOLDER/testdata/empty_folder`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
@@ -341,18 +341,27 @@ done
 
 #--------------------------------------------------------------------------------
 
-echo "Suspending project test_project_s..."
+FOUND=`echo "$PROJECTS" | grep "test_project_s"`
 
-/var/ida/utils/admin/suspend-project test_project_s --silent >/dev/null
-
-#--------------------------------------------------------------------------------
-
-echo "Creating pending action in project test_project_p..."
-
-$CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_p&pathname=/&action=freeze" >/dev/null
+if [ "$FOUND" ]; then
+    echo "Suspending project test_project_s..."
+    /var/ida/utils/admin/suspend-project test_project_s --silent >/dev/null
+fi
 
 #--------------------------------------------------------------------------------
 
-echo "Creating failed action in project test_project_f..."
+FOUND=`echo "$PROJECTS" | grep "test_project_p"`
 
-$CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${TIMESTAMP}" >/dev/null
+if [ "$FOUND" ]; then
+    echo "Creating pending action in project test_project_p..."
+    $CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_p&pathname=/&action=freeze" >/dev/null
+fi
+
+#--------------------------------------------------------------------------------
+
+FOUND=`echo "$PROJECTS" | grep "test_project_f"`
+
+if [ "$FOUND" ]; then
+    echo "Creating failed action in project test_project_f..."
+    $CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${TIMESTAMP}" >/dev/null
+fi

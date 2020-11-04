@@ -50,24 +50,34 @@ class TestIdaProject(unittest.TestCase):
         self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config['HTTPD_USER'], self.config['ROOT'])
 
         # clear any residual accounts, if they exist from a prior run
+        self.success = True
+        noflush = self.config.get('NO_FLUSH_AFTER_TESTS', 'false')
+        self.config['NO_FLUSH_AFTER_TESTS'] = 'false'
         self.tearDown()
+        self.success = False
+        self.config['NO_FLUSH_AFTER_TESTS'] = noflush
 
         print("(initializing)")
 
-        # (nothing needs to be done for initialization...)
 
     def tearDown(self):
         # clear all test accounts, ignoring any errors if they do not exist
 
-        print("(cleaning)")
+        if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
 
-        cmd = "%s DISABLE %s 1 2>&1" % (self.ida_project, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+            print("(cleaning)")
 
-        cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+            cmd = "%s DISABLE %s 1 2>&1" % (self.ida_project, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+    
+            cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+
+        self.assertTrue(self.success)
+
 
     def test_ida_project(self):
+
         print("Create new project")
         cmd = "%s ADD %s 1 2>&1" % (self.ida_project, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
@@ -97,3 +107,5 @@ class TestIdaProject(unittest.TestCase):
         cmd = "%s DISABLE %s 2>&1" % (self.ida_project, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 1, "User exists")
+
+        self.success = True

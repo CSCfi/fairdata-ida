@@ -108,6 +108,10 @@ def load_configuration():
         'METAX_API_USER':         server_configuration.METAX_API_USER,
         'METAX_API_PASS':         server_configuration.METAX_API_PASS
     }
+    try:
+        config['NO_FLUSH_AFTER_TESTS'] = server_configuration.NO_FLUSH_AFTER_TESTS
+    except:
+        config['NO_FLUSH_AFTER_TESTS'] = 'false'
 
     return config
 
@@ -145,3 +149,4 @@ def stop_agents():
         return True
     except subprocess.CalledProcessError as e:
         return False
+

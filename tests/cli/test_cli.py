@@ -87,8 +87,11 @@ class TestIdaCli(unittest.TestCase):
 
         # Clear any residual accounts, if they exist from a prior run
         self.success = True
+        noflush = self.config.get('NO_FLUSH_AFTER_TESTS', 'false')
+        self.config['NO_FLUSH_AFTER_TESTS'] = 'false'
         self.tearDown()
         self.success = False
+        self.config['NO_FLUSH_AFTER_TESTS'] = noflush
 
         print("(initializing)")
 
@@ -124,7 +127,7 @@ class TestIdaCli(unittest.TestCase):
         # Flush all test projects, user accounts, and data, but only if all tests passed,
         # else leave projects and data as-is so test project state can be inspected
 
-        if self.success:
+        if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
 
             print("(cleaning)")
 
@@ -138,6 +141,8 @@ class TestIdaCli(unittest.TestCase):
 
             cmd = "%s DELETE %s" % (self.ida_user, self.user_name)
             subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+
+        self.assertTrue(self.success)
 
 
     def test_ida_cli(self):
@@ -856,6 +861,7 @@ class TestIdaCli(unittest.TestCase):
         self.assertIn("  /2017-12/Experiment_1/baseline/test04.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/test05.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/zero_size_file", output)
+        self.assertNotIn(":href>", output)
 
         print("(freeze folder)")
         data = {"project": "test_project_a", "pathname": "/2017-12/Experiment_1/baseline"}
@@ -900,6 +906,7 @@ class TestIdaCli(unittest.TestCase):
         self.assertIn("  /2017-12/Experiment_1/baseline/test04.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/test05.dat", output)
         self.assertIn("  /2017-12/Experiment_1/baseline/zero_size_file", output)
+        self.assertNotIn(":href>", output)
 
         print("Attempt to retrieve file info from staging area using invalid target pathname")
         cmd = "%s info %s /no/such/file.txt" % (self.cli, self.args)

@@ -83,6 +83,25 @@ var OCdialogs = {
 		);
 	},
 	/**
+	* displays alert dialog
+	* @param text content of dialog
+	* @param title dialog title
+	* @param callback which will be triggered when user presses YES or NO
+	*        (true or false would be passed to callback respectively)
+	* @param modal make the dialog modal
+	*/
+	alertHtml:function(text, title, callback, modal) {
+		return this.message(
+			text,
+			title,
+			'alert',
+			OCdialogs.OK_BUTTON,
+			callback,
+			modal,
+			true
+		);
+	},
+	/**
 	* displays confirmation dialog
 	* @param text content of dialog
 	* @param title dialog title

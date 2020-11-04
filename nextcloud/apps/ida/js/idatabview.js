@@ -244,116 +244,262 @@
         );
     }
 
-    function executeAction(fileInfo, action) {
+    function checkDatasets(nodeId, project, pathname) {
+        var datasets = null;
+        $.ajax({
+            async: false,
+            cache: false,
+            url: OC.generateUrl('/apps/ida/api/datasets'),
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ nextcloudNodeId: nodeId, project: project, pathname: pathname }),
+            success: function (data) {
+                datasets = data;
+            },
+            error: function (data) {
+                console.log(data);
+            }
+        });
+        return datasets;
+    }
+
+    function buildDatasetLinkListing(datasets) {
+        listing = '';
+        domain = 'fd-test.csc.fi';
+        count = datasets.length;
+        limit = count;
+        if (count > 5) {
+            limit = 5;
+        }
+        for (i = 0; i < limit; i++) {
+            pid = datasets[i]['pid'];
+            listing = listing
+                + '<a style="color: #007FAD; padding-left: 20px;" href="https://etsin.'
+                + domain
+                + '/dataset/'
+                + pid
+                + '?preview=1" target="_blank">'
+                + datasets[i]['title']
+                + '</a><br>';
+        }
+        if (count > limit) {
+            listing = listing + '<span style="color: gray; padding-left: 20px;">(' + (count - limit) + ' ' + t('ida', 'not shown') + ')</span><br>';
+        }
+        return listing;
+    }
+
+    function executeAction(fileInfo, action, datasetsChecked = false) {
         $(spinner).show();
         var fullpath = fileInfo.getFullPath();
         var project = OCA.IDA.Util.extractProjectName(fullpath);
         var pathname = OCA.IDA.Util.stripRootFolder(fullpath);
         var nodeId = fileInfo.get('id');
-        var params = { nextcloudNodeId: nodeId, project: project, pathname: pathname };
-        $.ajax({
-            cache: false,
-            url: OC.generateUrl('/apps/ida/api/' + action),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(params),
-            success: function (data) {
-                $(spinner).hide();
-                if (data['action'] === 'freeze') {
-                    OC.dialogs.confirmHtml(
-                        t('ida', 'The data has been successfully frozen and moved to the frozen project space.') + ' ' +
-                        t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
-                        t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
-                        t('ida', 'Do you wish to view the data in its frozen location?'),
-                        t('ida', 'Action initiated successfully. Show frozen data?'),
-                        function (result) {
-                            if (result) {
-                                var url = '/apps/files/?dir=' + encodeURIComponent('/' + data['project'] + OCA.IDA.Util.getParentPathname(data['pathname']));
-                                $(spinner).show();
-                                window.location.assign(url);
-                            }
-                            else {
+        if (action === 'freeze' || datasetsChecked) {
+            $.ajax({
+                cache: false,
+                url: OC.generateUrl('/apps/ida/api/' + action),
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ nextcloudNodeId: nodeId, project: project, pathname: pathname }),
+                success: function (data) {
+                    $(spinner).hide();
+                    if (data['action'] === 'freeze') {
+                        OC.dialogs.confirmHtml(
+                            t('ida', 'The data has been successfully frozen and moved to the frozen project space.') + ' ' +
+                            t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
+                            t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
+                            t('ida', 'Do you wish to view the data in its frozen location?'),
+                            t('ida', 'Action initiated successfully. Show frozen data?'),
+                            function (result) {
+                                if (result) {
+                                    var url = '/apps/files/?dir=' + encodeURIComponent('/' + data['project'] + OCA.IDA.Util.getParentPathname(data['pathname']));
+                                    $(spinner).show();
+                                    window.location.assign(url);
+                                }
+                                else {
+                                    $(spinner).show();
+                                    window.location.reload(true);
+                                }
+                            },
+                            true
+                        );
+                    }
+                    else if (data['action'] === 'unfreeze') {
+                        OC.dialogs.confirmHtml(
+                            t('ida', 'The data has been successfully unfrozen and moved back to the project staging space.') + ' ' +
+                            t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
+                            t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
+                            t('ida', 'Do you wish to view the data in its staging location?'),
+                            t('ida', 'Action initiated successfully. Show unfrozen data?'),
+                            function (result) {
+                                if (result) {
+                                    var url = '/apps/files/?dir=' + encodeURIComponent('/' + data['project'] + OCA.IDAConstants.STAGING_FOLDER_SUFFIX + OCA.IDA.Util.getParentPathname(data['pathname']));
+                                    $(spinner).show();
+                                    window.location.assign(url);
+                                }
+                                else {
+                                    $(spinner).show();
+                                    window.location.reload(true);
+                                }
+                            },
+                            true
+                        );
+                    }
+                    else { // action === 'delete')
+                        OC.dialogs.message(
+                            t('ida', 'The files have been successfully deleted.') + ' ' +
+                            t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
+                            t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>.',
+                            t('ida', 'Action initiated successfully. Files deleted.'),
+                            'info',
+                            OCdialogs.OK_BUTTON,
+                            function (result) {
                                 $(spinner).show();
                                 window.location.reload(true);
-                            }
-                        },
-                        true
-                    );
+                            },
+                            true,
+                            true
+                        );
+                    }
+                    return true;
+                },
+                error: function (data) {
+                    $(spinner).hide();
+                    if (action === 'freeze') {
+                        OC.dialogs.alert(
+                            t('ida', 'Unable to freeze the specified files:' + ' ' + data.responseJSON.message),
+                            t('ida', 'Action Failed'),
+                            function (result) {
+                                $(spinner).hide();
+                                $(freezeFileButton).prop('disabled', false);
+                                $(freezeFolderButton).prop('disabled', false);
+                            },
+                            true
+                        );
+                    }
+                    else if (action === 'unfreeze') {
+                        OC.dialogs.alert(
+                            t('ida', 'Unable to unfreeze the specified files:' + ' ' + data.responseJSON.message),
+                            t('ida', 'Action Failed'),
+                            function (result) {
+                                $(spinner).hide();
+                                $(unfreezeFileButton).prop('disabled', false);
+                                $(unfreezeFolderButton).prop('disabled', false);
+                                $(deleteFileButton).prop('disabled', false);
+                                $(deleteFolderButton).prop('disabled', false);
+                            },
+                            true
+                        );
+                    }
+                    else { // action === 'delete')
+                        OC.dialogs.alert(
+                            t('ida', 'Unable to delete the specified files:' + ' ' + data.responseJSON.message),
+                            t('ida', 'Action Failed'),
+                            function (result) {
+                                $(spinner).hide();
+                                $(unfreezeFileButton).prop('disabled', false);
+                                $(unfreezeFolderButton).prop('disabled', false);
+                                $(deleteFileButton).prop('disabled', false);
+                                $(deleteFolderButton).prop('disabled', false);
+                            },
+                            true
+                        );
+                    }
+                    return false;
                 }
-                else if (data['action'] === 'unfreeze') {
-                    OC.dialogs.confirmHtml(
-                        t('ida', 'The data has been successfully unfrozen and moved back to the project staging space.') + ' ' +
-                        t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
-                        t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
-                        t('ida', 'Do you wish to view the data in its staging location?'),
-                        t('ida', 'Action initiated successfully. Show unfrozen data?'),
-                        function (result) {
-                            if (result) {
-                                var url = '/apps/files/?dir=' + encodeURIComponent('/' + data['project'] + OCA.IDAConstants.STAGING_FOLDER_SUFFIX + OCA.IDA.Util.getParentPathname(data['pathname']));
-                                $(spinner).show();
-                                window.location.assign(url);
-                            }
-                            else {
-                                $(spinner).show();
-                                window.location.reload(true);
-                            }
-                        },
-                        true
-                    );
-                }
-                else { // action === 'delete')
-                    OC.dialogs.message(
-                        t('ida', 'The files have been successfully deleted.') + ' ' +
-                        t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
-                        t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>.',
-                        t('ida', 'Action initiated successfully. Files deleted.'),
-                        'info',
-                        OCdialogs.OK_BUTTON,
-                        function (result) {
-                            $(spinner).show();
-                            window.location.reload(true);
-                        },
-                        true,
-                        true
-                    );
-                }
-                return true;
-            },
-            error: function (data) {
-                $(spinner).hide();
-                if (action === 'freeze') {
-                    OC.dialogs.alert(
-                        t('ida', 'Unable to freeze the specified files:' + ' ' + data.responseJSON.message),
-                        t('ida', 'Action Failed'),
-                        function (result) {
-                            window.location.reload(true);
-                        },
-                        true
-                    );
-                }
-                else if (action === 'unfreeze') {
-                    OC.dialogs.alert(
-                        t('ida', 'Unable to unfreeze the specified files:' + ' ' + data.responseJSON.message),
-                        t('ida', 'Action Failed'),
-                        function (result) {
-                            window.location.reload(true);
-                        },
-                        true
-                    );
-                }
-                else { // action === 'delete')
-                    OC.dialogs.alert(
-                        t('ida', 'Unable to delete the specified files:' + ' ' + data.responseJSON.message),
-                        t('ida', 'Action Failed'),
-                        function (result) {
-                            window.location.reload(true);
-                        },
-                        true
-                    );
-                }
+            });
+        }
+        else {
+
+            // Check if any files included in the action scope belong to any datasets defined in Metax
+            var affectedDatasets = checkDatasets(nodeId, project, pathname);
+
+            if (affectedDatasets == null) {
+                OC.dialogs.alert(
+                    t('ida', 'An error occurred when checking for datasets which may be deprecated by the requested action.'),
+                    t('ida', 'Action Failed'),
+                    function (result) {
+                        $(spinner).hide();
+                        $(unfreezeFileButton).prop('disabled', false);
+                        $(unfreezeFolderButton).prop('disabled', false);
+                        $(deleteFileButton).prop('disabled', false);
+                        $(deleteFolderButton).prop('disabled', false);
+                    },
+                    true
+                );
                 return false;
             }
-        });
+
+            var affectedDatasetsCount = affectedDatasets.length;
+
+            // If no datasets will be affected by the action, call function again
+            // indicating dataset check completed
+            if (affectedDatasetsCount === 0) {
+                executeAction(fileInfo, action, true);
+            }
+
+            // Else, construct and present notification/confirmation modal about potentially affected datasets
+            // If user chooses to proceed, call function again indicating dataset check completed
+            // Else if user chooses to cancel the action, do nothing
+            else {
+                $(spinner).hide();
+                var pasDatasets = [];
+                var pasDatasetsPending = false;
+                var max = affectedDatasets.length;
+                for (var i = 0; i < max; i++) {
+                    if (affectedDatasets[i]['pas'] == true) {
+                        pasDatasets.push(affectedDatasets[i]);
+                        pasDatasetsPending = true;
+                    }
+                }
+                if (pasDatasetsPending) {
+                    OC.dialogs.alertHtml(
+                        '<span style="color: #b70c00; font-weight: bold; padding-right: 50px;">'
+                        + t('ida', 'The specified action is not allowed because it would deprecate the datasets listed below, for which the digital preservation process is ongoing.')
+                        + '<br><br>'
+                        + buildDatasetLinkListing(pasDatasets)
+                        + '<br><br><span style="color: black; padding-left: 20px;">'
+                        + t('ida', 'If you have questions, please contact <a href="mailto:pas-support@csc.fi" target="_blank" style="color: #007FAD;">pas-support@csc.fi</a>')
+                        + '</span></span>',
+                        t('ida', 'Action not allowed: Datasets would be deprecated!'),
+                        function (result) {
+                            $(unfreezeFolderButton).prop('disabled', false);
+                            $(unfreezeFileButton).prop('disabled', false);
+                            $(deleteFolderButton).prop('disabled', false);
+                            $(deleteFileButton).prop('disabled', false);
+                        },
+                        true
+                    );
+                }
+                else {
+                    OC.dialogs.confirmHtml(
+                        '<span style="color: #b70c00; font-weight: bold; padding-right: 50px;">'
+                        + t('ida', 'One or more files included in the specified action belong to a dataset. Proceeding with the specified action will permanently deprecate the datasets listed below.')
+                        + ' '
+                        + t('ida', 'THIS ACTION CANNOT BE UNDONE.')
+                        + '</span><br><br><br>'
+                        + buildDatasetLinkListing(affectedDatasets)
+                        + '<br><br><span style="color: #b70c00; font-weight: bold; padding-left: 20px;">'
+                        + t('ida', 'Do you wish to proceed?')
+                        + '</span><br><br>',
+                        t('ida', 'Warning: Datasets will be deprecated!'),
+                        function (result) {
+                            if (result) {
+                                $(spinner).show();
+                                executeAction(fileInfo, action, true);
+                            }
+                            else {
+                                $(unfreezeFolderButton).prop('disabled', false);
+                                $(unfreezeFileButton).prop('disabled', false);
+                                $(deleteFolderButton).prop('disabled', false);
+                                $(deleteFileButton).prop('disabled', false);
+                            }
+                        },
+                        true
+                    );
+                }
+            }
+        }
     }
 
     /**
@@ -425,12 +571,12 @@
 
                 $(spinner).hide();
 
-                $(freezeFolderButton).bind('click', {param: fileInfo}, freezeFolder);
-                $(freezeFileButton).bind('click', {param: fileInfo}, freezeFile);
-                $(unfreezeFolderButton).bind('click', {param: fileInfo}, unfreezeFolder);
-                $(unfreezeFileButton).bind('click', {param: fileInfo}, unfreezeFile);
-                $(deleteFolderButton).bind('click', {param: fileInfo}, deleteFolder);
-                $(deleteFileButton).bind('click', {param: fileInfo}, deleteFile);
+                $(freezeFolderButton).bind('click', { param: fileInfo }, freezeFolder);
+                $(freezeFileButton).bind('click', { param: fileInfo }, freezeFile);
+                $(unfreezeFolderButton).bind('click', { param: fileInfo }, unfreezeFolder);
+                $(unfreezeFileButton).bind('click', { param: fileInfo }, unfreezeFile);
+                $(deleteFolderButton).bind('click', { param: fileInfo }, deleteFolder);
+                $(deleteFileButton).bind('click', { param: fileInfo }, deleteFile);
 
                 if (isRootProjectFolder) {
                     $(rootProjectFolder).show();

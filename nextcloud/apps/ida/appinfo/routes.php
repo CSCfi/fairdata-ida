@@ -111,10 +111,10 @@ return [
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
+            //     nextcloudNodeId = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
             //     project = the name of the project to which the files belongs
             //     pathname = pathname of the root node of the scope, within the staging
             // Optional parameters:
-            //     node = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
             //     token = batch action token (only relevant if PSO user)
         ],
         [
@@ -124,10 +124,10 @@ return [
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
+            //     nextcloudNodeId = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
             //     project = the name of the project to which the files belongs
             //     pathname = pathname of the root node of the scope, within frozen shared project folder
             // Optional parameters:
-            //     node = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
             //     token = batch action token (only relevant if PSO user)
         ],
         [
@@ -137,10 +137,10 @@ return [
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
+            //     nextcloudNodeId = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
             //     project = the name of the project to which the files belongs
             //     pathname = pathname of the root node of the scope, within frozen shared project folder
             // Optional parameters:
-            //     node = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
             //     token = batch action token (only relevant if PSO user)
         ],
         
@@ -176,6 +176,22 @@ return [
             //     projects = one or more projects, comma separated, with no whitespace
         ],
     
+        // Datasets 
+
+        [
+            // Retrieve datasets containing frozen files in the specified scope
+            'name' => 'Freezing#getDatasets',
+            'url'  => '/api/datasets',
+            'verb' => 'POST'
+            // Restricted to project access scope of user
+            // Required parameters:
+            //     nextcloudNodeId = the Nextcloud node ID for the root node of the scope to be frozen, derived from pathname if not specified
+            //     project = the name of the project to which the files belongs
+            //     pathname = pathname of the root node of the scope, within frozen shared project folder
+            // Optional parameters:
+            //     token = batch action token (only relevant if PSO user)
+        ],
+
         // Housekeeping Operations
     
         [
@@ -316,7 +332,7 @@ return [
             //     project = project name
             //     pathname = pathname of root node of action
             // Allowed parameters:
-            //     node = the Nextcloud node ID of the root node of action
+            //     nextcloudNodeId = the Nextcloud node ID of the root node of action
         ],
         [
             // Delete action
@@ -347,7 +363,7 @@ return [
             'verb' => 'GET'
             // Restricted to project access scope of user
             // Required parameters:
-            //     node = Nextcloud node ID of file
+            //     nextcloudNodeId = Nextcloud node ID of file
         ],
         [
             // Retrieve frozen file details by local Nextcloud ID
@@ -407,7 +423,7 @@ return [
             //     project = project name
             //     pathname = pathname of file
             // Allowed parameters:
-            //     node = the Nextcloud node ID of the file
+            //     nextcloudNodeId = the Nextcloud node ID of the file
             //     checksum = checksum string
             //     frozen = timestamp (defaults to current time if not specified)
             //     metadata = timestamp
@@ -425,5 +441,6 @@ return [
             // Required parameters:
             //     pid = the PID of the file
         ],
+
     ]
 ];

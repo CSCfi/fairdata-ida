@@ -38,9 +38,11 @@ from tests.common.utils import load_configuration
 
 class TestIdaUser(unittest.TestCase):
 
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/admin/test_ida_user")
+
 
     def setUp(self):
         self.config = load_configuration()
@@ -49,7 +51,12 @@ class TestIdaUser(unittest.TestCase):
         self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config["HTTPD_USER"], self.config["ROOT"])
 
         # clear any residual accounts, if they exist from a prior run
+        self.success = True
+        noflush = self.config.get('NO_FLUSH_AFTER_TESTS', 'false')
+        self.config['NO_FLUSH_AFTER_TESTS'] = 'false'
         self.tearDown()
+        self.success = False
+        self.config['NO_FLUSH_AFTER_TESTS'] = noflush
 
         print("(initializing)")
 
@@ -63,27 +70,34 @@ class TestIdaUser(unittest.TestCase):
         if OUT != 0:
             raise Exception("Failed to set up test project")
 
+
     def tearDown(self):
         # clear all test accounts, ignoring any errors if they do not exist
 
-        print("(cleaning)")
+        if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
 
-        cmd = "%s DISABLE %s 1 2>&1" % (self.ida_project, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+            print("(cleaning)")
+    
+            cmd = "%s DISABLE %s 1 2>&1" % (self.ida_project, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+    
+            cmd = "%s DELETE user_1_%s 2>&1" % (self.ida_user, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+    
+            cmd = "%s DELETE user_2_%s 2>&1" % (self.ida_user, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+    
+            cmd = "%s DELETE user_3_%s 2>&1" % (self.ida_user, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+    
+            cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
+            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
 
-        cmd = "%s DELETE user_1_%s 2>&1" % (self.ida_user, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        self.assertTrue(self.success)
 
-        cmd = "%s DELETE user_2_%s 2>&1" % (self.ida_user, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
-
-        cmd = "%s DELETE user_3_%s 2>&1" % (self.ida_user, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
-
-        cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
 
     def test_ida_user(self):
+
         print("Create new user")
         cmd = "%s ADD user_1_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
@@ -133,5 +147,7 @@ class TestIdaUser(unittest.TestCase):
         cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
+
+        self.success = True
 
         # TODO: add addition tests involving non-existent users and projects, verifying failure of request

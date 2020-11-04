@@ -82,10 +82,10 @@ fi
 #--------------------------------------------------------------------------------
 # Common initialization for all scripts
 
-CURL_POST='curl --fail -k --raw -s -S -X POST -u'
-CURL_GET='curl --fail -k --raw -s -S -u'
-CURL_DELETE='curl --fail -k --raw -s -S -X DELETE -u'
-CURL_MKCOL='curl --fail -k --raw -s -S -X MKCOL -u'
+CURL_POST='curl --fail -k -s -S -X POST -u'
+CURL_GET='curl --fail -k -s -S -u'
+CURL_DELETE='curl --fail -k -s -S -X DELETE -u'
+CURL_MKCOL='curl --fail -k -s -S -X MKCOL -u'
 
 TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 PROCESSID="$$"
