@@ -210,8 +210,7 @@ OC.Share = _.extend(OC.Share || {}, {
 		var parts = this._REMOTE_OWNER_REGEXP.exec(shareWith);
 		if (!parts) {
 			// display avatar of the user
-			//var avatar = '<span class="avatar" data-username="' + escapeHTML(shareWith) + '" title="' + message + " " + escapeHTML(shareWithDisplayName) + '"></span>';
-			var avatar = '<span class="avatar" data-username="' + escapeHTML(shareWith) + '" aria-label="Open sharing tab"></span>';
+			var avatar = '<span class="avatar" data-username="' + escapeHTML(shareWith) + '" title="' + message + " " + escapeHTML(shareWithDisplayName) + '"></span>';
 			var hidden = '<span class="hidden-visually">' + message + ' ' + escapeHTML(shareWithDisplayName) + '</span> ';
 			return avatar + hidden;
 		}

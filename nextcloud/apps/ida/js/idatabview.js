@@ -24,8 +24,6 @@
 (function () {
 
     var TEMPLATE =
-        '<div id="idaTabView">' +
-
         '<div id="spinnerWrapper"><div id="spinner"></div></div>' +
 
         '<div id="rootProjectFolder" style="display: none">' +
@@ -143,9 +141,7 @@
         '</table>' +
         '</div>' +
 
-        '<div id="debug" style="display: none"></div>' +
-
-        '</div>';
+        '<div id="debug" style="display: none"></div>';
 
     function freezeFolder(e) {
         OC.dialogs.confirm(

@@ -30,9 +30,9 @@
 }
 
 #app-lists {
-    margin-top: 10px;
-    margin-left: 10px;
-    font-weight: bold;
+    /* margin-top: 10px; */
+    /* margin-left: 10px; */
+    /* font-weight: bold; */
 }
 
 .ida table {
@@ -119,3 +119,6 @@ table .ida-checkmark {
     font-family: Courier;
 }
 
+#app-navigation > ul > li > a {
+    padding: 0 12px 0 20px;
+}

@@ -429,7 +429,8 @@ table td.selection {
 
 /* File checkboxes */
 #fileList tr td.selection>.selectCheckBox + label:before {
-	opacity: 0.3;
+	/* opacity: 0.3; */
+	opacity: 1; /* opacity of 0.3 was too light for Accessibility requirements */
 }
 
 /* Show checkbox with full opacity when hovering, checked, or selected */
@@ -545,7 +546,7 @@ a.action > img {
 		display: inline;
 		padding: 17px 8px;
 		line-height: 50px;
-		opacity: .3;
+		opacity: 1;
 		&.action-share {
 			padding: 17px 14px;
 			&.permanent:not(.shared-style) .icon-shared + span {
@@ -571,27 +572,27 @@ a.action > img {
 		}
 		&.no-permission {
 			&:hover, &:focus {
-				opacity: .3;
+				opacity: 1;
 			}
 		}
 		&.disabled {
 			&:hover, &:focus,
 			img {
-				opacity: .3;
+				opacity: 1;
 			}
 			&.action-download {
-				opacity: .7;
+				opacity: 1;
 				&:hover, &:focus {
-					opacity: .7;
+					opacity: 1;
 				}
 			}
 		}
 		&:hover, &:focus {
-			opacity: .7;
+			opacity: 1;
 		}
 	}
 	.fileActionsMenu a.action, a.action.action-share.shared-style {
-		opacity: .7;
+		opacity: 1;
 	}
 }
 
@@ -635,7 +636,8 @@ a.action > img {
 }
 
 .summary {
-	opacity: .3;
+	/* opacity: .3; */
+	opacity: 1;  /* .3 is too light for Accessibility requirements */
 	/* add whitespace to bottom of files list to correctly show dropdowns */
 	height: 250px;
 }

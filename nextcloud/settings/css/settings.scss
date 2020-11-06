@@ -602,7 +602,7 @@ span.usersLastLoginTooltip {
 		&.icon-close {
 			border: none;
 			background-color: initial;
-			opacity: .5;
+			opacity: 1; /* .5; */
 		}
 		&:hover {
 			opacity: 1;

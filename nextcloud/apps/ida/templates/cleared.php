@@ -60,4 +60,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             </table>
         </div>
     </div>
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>">
+        document.title = "Cleared Actions - IDA"; 
+    </script>
 </div>

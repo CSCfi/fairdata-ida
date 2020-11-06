@@ -159,7 +159,4 @@ script('settings', [
 		<?php }?>
 	</div>
 
-	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>">
-        document.title = "Personal info - Settings - IDA"; 
-    </script>
 </div>

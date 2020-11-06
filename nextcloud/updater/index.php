@@ -1519,7 +1519,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 			white-space: nowrap;
 			text-overflow: ellipsis;
 			color: #000;
-			opacity: .57;
+			/* opacity: .57; */
 		}
 		#app-navigation li:hover > a, #app-navigation li:focus > a {
 			opacity: 1;
@@ -1542,7 +1542,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 
 		li.step, .light {
 			-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=57)";
-			opacity: .57;
+			/* opacity: .57; */
 		}
 
 		li.step h2 {
@@ -1550,7 +1550,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 			margin-top: 12px;
 			margin-bottom: 0;
 			-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=57)";
-			opacity: .57;
+			/* opacity: .57; */
 			background-position:8px 50%;
 			background-repeat: no-repeat;
 		}

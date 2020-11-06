@@ -36,7 +36,3 @@ script('settings', [
 ?>
 
 <div id="security" class="section"></div>
-
-<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>">
-    document.title = "Security - Settings - IDA"; 
-</script>

@@ -270,7 +270,7 @@ kbd {
 				white-space: nowrap;
 				text-overflow: ellipsis;
 				color: var(--color-main-text);
-				opacity: .57;
+				/* opacity: .57; */
 				flex: 1 1 0px;
 				z-index: 100; /* above the bullet to allow click*/
 				/* TODO: forbid using img as icon in menu? */
@@ -730,7 +730,7 @@ $min-content-width: $breakpoint-mobile - $navigation-width - $list-min-width;
 
 	/* like app-navigation a */
 	color: var(--color-main-text);
-	opacity: .57;
+	/* opacity: .57; */
 
 	&.opened,
 	&:hover,

@@ -1140,7 +1140,7 @@ div.crumb {
 		order: 2;
 		position: relative;
 		a {
-			opacity: 0.5
+			opacity: 0.7
 		}
 		&.canDropChildren,
 		&.canDrop {
@@ -1176,7 +1176,7 @@ div.crumb {
 	> span {
 		position: relative;
 		padding: 12px;
-		opacity: 0.5;
+		opacity: 0.7;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		overflow: hidden;

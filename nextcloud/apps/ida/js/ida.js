@@ -166,7 +166,7 @@
                 {
                     name: 'Freezing',
                     displayName: '',
-                    altText: t('ida', 'Freezing'),
+                    altText: t('ida', 'Open IDA actions tab'),
                     mime: 'all',
                     permissions: OC.PERMISSION_READ,
                     icon: OC.imagePath('ida', 'appiconblue.png'),

@@ -116,7 +116,7 @@ function NavigationListElements($item, $l, $pinned) {
 		NavigationElementMenu($item);
 		if (isset($item['sublist'])) {
 			?>
-			<button class="collapse app-navigation-noclose" <?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>></button>
+			<button class="collapse app-navigation-noclose" aria-label="toggle submenu"<?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>></button>
 			<ul id="sublist-<?php p($item['id']); ?>">
 				<?php
 				foreach ($item['sublist'] as $item) {

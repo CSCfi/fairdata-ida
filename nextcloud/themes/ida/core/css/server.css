@@ -352,11 +352,11 @@ input[type='checkbox'].checkbox--white:checked + label:before {
 	border: solid;
     border-width: 0 24px 24px 0;
 	border-image: url(/apps/ida/img/sharing.png) 0 100% 100% 0;
-	opacity: 0.4;
+	opacity: .7; 
 }
 
 .avatar img:hover {
-	opacity: 1;
+	opacity: .7;
 }
 
 #app-sidebar .file-details-container .icon-clippy {
