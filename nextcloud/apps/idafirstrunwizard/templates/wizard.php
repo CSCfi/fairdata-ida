@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @var array        $_
  * @var \OCP\IL10N   $l
@@ -26,6 +27,27 @@
  * @license   GNU Affero General Public License, version 3
  * @link      https://research.csc.fi/
  */
+
+$CURRENT_LANGUAGE = null;
+
+if (array_key_exists('HTTP_HOST', $_SERVER)) {
+	$domain = $_SERVER['HTTP_HOST'];
+	$domain = substr($domain, strpos($domain, ".") + 1);
+	$domain = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+	$cookie = $domain . '_fd_language';
+	if (array_key_exists($cookie, $_COOKIE)) {
+		$CURRENT_LANGUAGE = $_COOKIE[$cookie];
+	}
+}
+
+if (!$CURRENT_LANGUAGE) {
+    $CURRENT_LANGUAGE = substr($l->getLanguageCode(), 0, 2);
+}
+
+if ($CURRENT_LANGUAGE != 'en' && $CURRENT_LANGUAGE != 'fi' && $CURRENT_LANGUAGE != 'sv') {
+    $CURRENT_LANGUAGE = 'all';
+}
+
 ?>
 <div id="idafirstrunwizard">
 
@@ -37,36 +59,54 @@
 
     <div class="idafirstrunwizard-content">
 
-        <h2>
-            We hate reading manuals!<br>You probably do too, but...
-        </h2>
-        <p>
+        <?php if ($CURRENT_LANGUAGE == "en" || $CURRENT_LANGUAGE == 'all') : ?>
+            <h2>
+                We hate reading manuals!<br>You probably do too, but...
+            </h2>
+            <p>
+                There are a few special concepts, terms, and features which you should understand to
+                get up to speed quickly with the IDA service.
+            </p>
+            <p>
+                We promise it won't take long, and you
+                can review the full user guide later, if you like.
+            </p>
+            <p>
+                Read the <a href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA Quick Start Guide</a>
+            </p>
+        <?php endif; ?>
 
-            There are a few special concepts, terms, and features which you should understand to
-            get up to speed quickly with the IDA service.
-        </p>
-        <p>
-            We promise it won't take long, and you
-            can review the full user guide later, if you like.
-        </p>
-        <p>
-            <!-- TODO: Pull URL from constant -->
-            Read the <a href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA Quick Start Guide</a>
-        </p>
+        <?php if ($CURRENT_LANGUAGE == "fi" || $CURRENT_LANGUAGE == 'all') : ?>
+            <h2>
+                Käyttöoppaiden lukeminen on tylsää!<br>Niin varmasti sinunkin mielestäsi, mutta...
+            </h2>
+            <p>
+                Muutaman palvelukohtaisen termin ja ominaisuuden ymmärtäminen helpottaa kuitenkin huomattavasti IDA-palvelun käyttöönottoa.
+            </p>
+            <p>
+                Näihin tutustuminen on nopeaa. Voit halutessasi myöhemmin tutustua laajempaan käyttöoppaaseen.
+            </p>
+            <p>
+                Lue <a href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn pikaopas</a>
+            </p>
+        <?php endif; ?>
 
-        <h2>
-            Käyttöoppaiden lukeminen on tylsää!<br>Niin varmasti sinunkin mielestäsi, mutta...
-        </h2>
-        <p>
-            Muutaman palvelukohtaisen termin ja ominaisuuden ymmärtäminen helpottaa kuitenkin huomattavasti IDA-palvelun käyttöönottoa.
-        </p>
-        <p>
-            Näihin tutustuminen on nopeaa. Voit halutessasi myöhemmin tutustua laajempaan käyttöoppaaseen.
-        </p>
-        <p>
-            <!-- TODO: Pull URL from constant -->
-            Lue <a href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn pikaopas</a>
-        </p>
+        <?php if ($CURRENT_LANGUAGE == "sv" || $CURRENT_LANGUAGE == 'all') : ?>
+            <h2>
+                Vi ogillar att läsa manualer!<br>Säkert du också, men...
+            </h2>
+            <p>
+                Det finns ett par speciella koncept, termer och funktioner som det underlättar att förstå, före du börjar använda IDA-tjänsten.
+            </p>
+            <p>
+                Detta tar inte länge och du kan gå igenom den fullständiga användarguiden senare, om du vill.
+            </p>
+            <p>
+                Läs <a href="https://www.fairdata.fi/en/ida/quick-start-guide" target="_blank">IDA:s snabbstartguide (på engelska)</a>
+            </p>
+        <?php endif; ?>
 
     </div>
+
+</div>
 </div>
