@@ -26,12 +26,6 @@
     var TEMPLATE =
         '<div id="spinnerWrapper"><div id="spinner"></div></div>' +
 
-        '<div id="rootProjectFolder" style="display: none">' +
-        '<div class="idaWarning"><p>' +
-        t('ida', 'Root project folders may not be modified.') +
-        '</p></div>' +
-        '</div>' +
-
         '<div id="stagingFolder" style="display: none">' +
         '<table class="idaTable">' +
         '<tr><td align="center">' +
@@ -94,12 +88,12 @@
         '</table>' +
         '<div class="idaWarning"><p><b>' +
         t('ida', 'NOTICE') + '</b>: ' +
-        t('ida', 'Be absolutely sure you want to unfreeze or delete the folder, and all files within it, before proceeding with either option.') +
+        t('ida', 'Be absolutely sure you want to unfreeze or delete all files within the selected folder before proceeding with either option.') +
         '</p><p><b>' +
         t('ida', 'Unfrozen and deleted files will no longer to be accessible to other services, making all external references to them invalid. All replicated copies of unfrozen and deleted files will be removed.') +
         '</b></p><p>' +
-        t('ida', 'Unfreezing will move all files within the specified folder back to the staging area, making them fully editable.') + ' ' +
-        t('ida', 'Deleting will entirely remove the selected folder, and all files within it, from the service.') + ' ' +
+        t('ida', 'Unfreezing will move all files within the selected folder back to the staging area, making them fully editable.') + ' ' +
+        t('ida', 'Deleting will entirely remove all files within the selected folder from the service.') + ' ' +
         t('ida', 'Either action will initiate several background operations.') +
         '</p><p>' +
         t('ida', 'The action cannot be terminated before it is complete. Depending on the amount of data, the background operations may take several hours.') +
@@ -563,7 +557,6 @@
 
                 var fileInfo = this.fileInfo;
                 var fullPath = fileInfo.getFullPath();
-                var isRootProjectFolder = OCA.IDA.Util.testIfRootProjectFolder(fullPath);
 
                 $(spinner).hide();
 
@@ -574,89 +567,83 @@
                 $(deleteFolderButton).bind('click', { param: fileInfo }, deleteFolder);
                 $(deleteFileButton).bind('click', { param: fileInfo }, deleteFile);
 
-                if (isRootProjectFolder) {
-                    $(rootProjectFolder).show();
-                }
-                else {
+                //var project = OCA.IDA.Util.extractProjectName(fullPath);
+                //var pathname = OCA.IDA.Util.stripRootFolder(fullPath);
+                var isFolder = this.fileInfo.isDirectory();
+                var isFrozen = OCA.IDA.Util.testIfFrozen(fullPath);
 
-                    var project = OCA.IDA.Util.extractProjectName(fullPath);
-                    var pathname = OCA.IDA.Util.stripRootFolder(fullPath);
-                    var isFolder = this.fileInfo.isDirectory();
-                    var isFrozen = OCA.IDA.Util.testIfFrozen(fullPath);
+                if (isFrozen) {
 
-                    if (isFrozen) {
+                    if (isFolder) {
+                        $(frozenFolder).show();
+                    }
 
-                        if (isFolder) {
-                            $(frozenFolder).show();
-                        }
+                    else {
 
-                        else {
+                        // Fetch frozen file details...
 
-                            // Fetch frozen file details...
+                        $.ajax({
 
-                            $.ajax({
+                            cache: false,
+                            url: OC.generateUrl('/apps/ida/api/files/byNextcloudNodeId/' + this.fileInfo.id),
+                            type: 'GET',
+                            contentType: 'application/json',
 
-                                cache: false,
-                                url: OC.generateUrl('/apps/ida/api/files/byNextcloudNodeId/' + this.fileInfo.id),
-                                type: 'GET',
-                                contentType: 'application/json',
+                            success: function (fileInfo) {
 
-                                success: function (fileInfo) {
+                                var filePid = fileInfo['pid'];
+                                var actionPid = fileInfo['action'];
+                                var fileFrozen = OCA.IDA.Util.localizeTimestamp(fileInfo['frozen']);
+                                var fileSize = fileInfo['size'];
+                                var fileChecksum = fileInfo['checksum'];
 
-                                    var filePid = fileInfo['pid'];
-                                    var actionPid = fileInfo['action'];
-                                    var fileFrozen = OCA.IDA.Util.localizeTimestamp(fileInfo['frozen']);
-                                    var fileSize = fileInfo['size'];
-                                    var fileChecksum = fileInfo['checksum'];
+                                // Fetch action details...
 
-                                    // Fetch action details...
+                                $.ajax({
 
-                                    $.ajax({
+                                    cache: false,
+                                    url: OC.generateUrl('/apps/ida/api/actions/' + actionPid),
+                                    type: 'GET',
+                                    contentType: 'application/json',
 
-                                        cache: false,
-                                        url: OC.generateUrl('/apps/ida/api/actions/' + actionPid),
-                                        type: 'GET',
-                                        contentType: 'application/json',
+                                    success: function (actionInfo) {
 
-                                        success: function (actionInfo) {
+                                        var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
 
-                                            var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
-
-                                            if (isPending) {
+                                        if (isPending) {
                                                 $(frozenFilePendingAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                                $(frozenFilePending).show();
-                                            }
-                                            else {
-                                                $(frozenFileAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                                $(frozenFileId).html(filePid);
-                                                $(frozenFileFrozen).html(fileFrozen);
-                                                $(frozenFileSize).html(fileSize);
-                                                $(frozenFileChecksum).html(fileChecksum);
-                                                $(frozenFile).show();
-                                            }
-                                        },
-
-                                        error: function (x) {
-                                            // This shouldn't ever happen, but we'll fail gracefully...
+                                            $(frozenFilePending).show();
+                                        }
+                                        else {
+                                            $(frozenFileAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            $(frozenFileId).html(filePid);
+                                            $(frozenFileFrozen).html(fileFrozen);
+                                            $(frozenFileSize).html(fileSize);
+                                            $(frozenFileChecksum).html(fileChecksum);
                                             $(frozenFile).show();
                                         }
-                                    });
-                                },
+                                    },
 
-                                error: function (x) {
-                                    // This shouldn't ever happen, but we'll fail gracefully...
-                                    $(frozenFile).show();
-                                }
-                            });
-                        }
+                                    error: function (x) {
+                                        // This shouldn't ever happen, but we'll fail gracefully...
+                                        $(frozenFile).show();
+                                    }
+                                });
+                            },
+
+                            error: function (x) {
+                                // This shouldn't ever happen, but we'll fail gracefully...
+                                $(frozenFile).show();
+                            }
+                        });
+                    }
+                }
+                else {
+                    if (isFolder) {
+                        $(stagingFolder).show();
                     }
                     else {
-                        if (isFolder) {
-                            $(stagingFolder).show();
-                        }
-                        else {
-                            $(stagingFile).show();
-                        }
+                        $(stagingFile).show();
                     }
                 }
 

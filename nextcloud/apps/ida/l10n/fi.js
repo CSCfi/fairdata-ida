@@ -24,6 +24,9 @@
 OC.L10N.register(
     "ida",
     {
+        "Be absolutely sure you want to unfreeze or delete all files within the selected folder before proceeding with either option.": "Ennen kuin jatkat, olethan täysin varma, että haluat poistaa tai palauttaa valmistelualueelle kaikki valitun kansion tiedostot.",
+        "Unfreezing will move all files within the selected folder back to the staging area, making them fully editable.": "Valmistelualueelle palauttaminen siirtää valitun kansion kaikki tiedostot valmistelualueelle ja tekee niistä muokattavia.",
+        "Deleting will entirely remove all files within the selected folder from the service.": "Poistaminen tarkoittaa, että kaikki valitun kansion sisältämät tiedostot poistetaan palvelusta pysyvästi.",
         "Action not allowed: Datasets would be deprecated!": "Toiminto ei ole sallittu: Tutkimusaineistot rikkoutuisivat!",
         "The specified action is not allowed because it would deprecate the datasets listed below, for which the digital preservation process is ongoing.": "Toiminto ei ole sallittu, sillä se vaikuttaisi seuraaviin PAS-prosessissa oleviin aineistoihin:",
         "If you have questions, please contact <a href=\"mailto:pas-support@csc.fi\" target=\"_blank\" style=\"color: #007FAD;\">pas-support@csc.fi</a>": "Jos sinulla on kysymyksiä, ole hyvä ja ota yhteyttä <a href=\"mailto:pas-support@csc.fi\" target=\"_blank\" style=\"color: #007FAD;\">pas-support@csc.fi</a>",

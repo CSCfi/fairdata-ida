@@ -111,6 +111,9 @@
         },
 
         stripRootFolder: function (pathname) {
+            if (OCA.IDA.Util.testIfRootProjectFolder(pathname)) {
+                return '/';
+            }
             matches = pathname.match('^\/[^\/][^\/]*\/');
             if (matches != null && matches.length > 0) {
                 return pathname.substr(matches[0].length - 1);

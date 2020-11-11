@@ -2347,6 +2347,10 @@ class FreezingController extends Controller
             \OCP\Util::DEBUG
         );
 
+        if ($pathname === '/') {
+            $pathname = '';
+        }
+
         if ($action === 'freeze') {
             $fullPathname = '/' . $project . Constants::STAGING_FOLDER_SUFFIX . $pathname;
         } else {
@@ -2505,6 +2509,45 @@ class FreezingController extends Controller
     }
 
     /**
+     * Move all immediate child nodes within the specified folder node from/to the staging space from/to the frozen space of the specified project, depending on the action
+     *
+     * The WebDAV REST API is used, along with the PSO user credentials, to allow all project members to move content to/from the frozen space.
+     *
+     * It is presumed that there are no file conflicts (i.e. that checkIntersectionWithExistingFiles() has been called prior to
+     * calling this function on the root node of the action).
+     *
+     * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
+     * @param string $project  the project to which the node belongs
+     * @param string $pathname the relative pathname of the folder node
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function moveNextcloudNodeChildren($action, $project, $pathname)
+    {
+        Util::writeLog(
+            'ida',
+            'moveNextcloudNodeChildren:'
+                . ' action=' . $action
+                . ' project=' . $project
+                . ' pathname=' . $pathname,
+            \OCP\Util::INFO
+        );
+
+        if ($action === 'freeze') {
+            $sourcePathname = $this->buildFullPathname('freeze', $project, $pathname);
+        } else {
+            $sourcePathname = $this->buildFullPathname('unfreeze', $project, $pathname);
+        }
+
+        $children = $this->fsView->getDirectoryContent($sourcePathname);
+
+        foreach ($children as $child) {
+            $this->moveNextcloudNode($action, $project, $pathname . '/' . $child->getName());
+        }
+    }
+
+    /**
      * Move the specified node from/to the staging space from/to the frozen space of the specified project, depending on the action
      *
      * The WebDAV REST API is used, along with the PSO user credentials, to allow all project members to move content to/from the frozen space.
@@ -2534,6 +2577,12 @@ class FreezingController extends Controller
                 . ' pathname=' . $pathname,
             \OCP\Util::INFO
         );
+
+        // If pathname is the root folder '/', move all children within the scope of the root folder.
+        
+        if ($pathname === '/' || $pathname === '' || $pathname === null) {
+            return $this->moveNextcloudNodeChildren($action, $project, $pathname);
+        }
 
         if ($action === 'freeze') {
             $sourcePathname = $this->buildFullPathname('freeze', $project, $pathname);
@@ -2623,11 +2672,7 @@ class FreezingController extends Controller
 
             else {
 
-                $children = $this->fsView->getDirectoryContent($sourcePathname);
-
-                foreach ($children as $child) {
-                    $this->moveNextcloudNode($action, $project, $pathname . '/' . $child->getName());
-                }
+                $this->moveNextcloudNodeChildren($action, $project, $pathname);
 
                 $ch = curl_init($sourceURI);
 
@@ -2662,6 +2707,40 @@ class FreezingController extends Controller
     }
 
     /**
+     * Delete all immediate child nodes within the specified folder node from the frozen space of the specified project
+     *
+     * The WebDAV REST API is used, along with the PSO user credentials, to allow all project members to move content to/from the frozen space.
+     *
+     * It is presumed that there are no file conflicts (i.e. that checkIntersectionWithExistingFiles() has been called prior to
+     * calling this function on the root node of the action).
+     *
+     * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
+     * @param string $project  the project to which the node belongs
+     * @param string $pathname the relative pathname of the folder node
+     * 
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function deleteNextcloudNodeChildren($project, $pathname)
+    {
+        Util::writeLog(
+            'ida',
+            'deleteNextcloudNodeChildren:'
+                . ' project=' . $project
+                . ' pathname=' . $pathname,
+            \OCP\Util::INFO
+        );
+
+        $sourcePathname = $this->buildFullPathname('unfreeze', $project, $pathname);
+
+        $children = $this->fsView->getDirectoryContent($sourcePathname);
+
+        foreach ($children as $child) {
+            $this->deleteNextcloudNode($project, $pathname . '/' . $child->getName());
+        }
+    }
+
+    /**
      * Delete the specified node from the frozen space of the specified project
      *
      * The WebDAV REST API is used, along with the PSO user credentials, to allow all project members to delete content from the frozen space.
@@ -2676,6 +2755,12 @@ class FreezingController extends Controller
     {
 
         Util::writeLog('ida', 'deleteNextcloudNode:' . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::INFO);
+
+        // If pathname is the root folder '/', delete all children within the scope of the root folder.
+        
+        if ($pathname === '/' || $pathname === '' || $pathname === null) {
+            return $this->deleteNextcloudNodeChildren($project, $pathname);
+        }
 
         $sourcePathname = '/' . $project . $pathname;
 

@@ -181,8 +181,6 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        # TODO: ensure folder was physically moved from staging area to frozen area
-
         print("Retrieve details of all frozen files associated with previous action")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -247,8 +245,6 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["action"], "unfreeze")
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
-
-        # TODO: ensure folder was physically moved from frozen area to staging area
 
         print("Retrieve details of all unfrozen files associated with previous action")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
@@ -493,8 +489,6 @@ class TestIdaApp(unittest.TestCase):
         action_set_data = response.json()
         self.assertEqual(len(action_set_data), 0)
 
-        # TODO: consider which tests may be missing...
-
         # --------------------------------------------------------------------------------
 
         print("--- File Record Operations")
@@ -591,8 +585,6 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/files/byNextcloudNodeId/%d" % (self.config["IDA_API_ROOT_URL"], file_node), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 404)
 
-        # TODO: consider which tests may be missing...
-
         # --------------------------------------------------------------------------------
 
         print("--- Invalid Timestamps")
@@ -619,8 +611,6 @@ class TestIdaApp(unittest.TestCase):
         data = {"removed": "Tue, Dec 12, 2017 10:03 UTC"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
-
-        # TODO: consider which tests may be missing...
 
         # --------------------------------------------------------------------------------
 
@@ -743,8 +733,6 @@ class TestIdaApp(unittest.TestCase):
         action_set_data = response.json()
         self.assertEqual(len(action_set_data), 0)
 
-        # TODO: consider which tests may be missing...
-
         # --------------------------------------------------------------------------------
 
         print("--- Access Control")
@@ -773,10 +761,6 @@ class TestIdaApp(unittest.TestCase):
 
         # TODO: add tests for housekeeping operations as PSO user, when must be admin
 
-        # TODO: consider which tests may be missing...
-
-        # --------------------------------------------------------------------------------
-        
         # TODO: add tests attempting to copy files or folders to or within the frozen area (not fully covered by CLI tests)
 
         # TODO: add tests for copying files or folders from the frozen area to the staging area (not fully covered by CLI tests)
@@ -1045,7 +1029,7 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        # TODO: consider which tests may be missing...
+        # --------------------------------------------------------------------------------
 
         print("--- Scope Collisions")
 
@@ -1225,8 +1209,6 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # TODO: consider which tests may be missing...
-
         # --------------------------------------------------------------------------------
 
         print("--- Repair Actions (IDA API only)")
@@ -1376,6 +1358,120 @@ class TestIdaApp(unittest.TestCase):
 
         print("Verify data was physically removed from frozen area")
         self.assertFalse(os.path.exists("%s/testdata/MaxFiles" % (frozen_area_root)))
+
+        # --------------------------------------------------------------------------------
+
+        print("--- Root Folder Actions")
+
+        frozen_area_root = "%s/PSO_test_project_b/files/test_project_b" % (self.config["STORAGE_OC_DATA_ROOT"])
+        staging_area_root = "%s/PSO_test_project_b/files/test_project_b%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
+
+        data = {"project": "test_project_b"}
+
+        print("Freeze a folder")
+        data["pathname"] = "/testdata/2017-08/Experiment_1"
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify data was physically moved from staging to frozen area")
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (frozen_area_root)))
+        self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (staging_area_root)))
+
+        print("Unfreeze all files in frozen area")
+        data["pathname"] = "/"
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "unfreeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify all data was physically moved from frozen to staging area")
+        self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (frozen_area_root)))
+        self.assertFalse(os.path.exists("%s/testdata" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (staging_area_root)))
+
+        print("Freeze a folder")
+        data["pathname"] = "/testdata/2017-08/Experiment_2"
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify data was physically moved from staging to frozen area")
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline/test01.dat" % (frozen_area_root)))
+        self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline/test01.dat" % (staging_area_root)))
+
+        print("Unfreeze file in frozen area")
+        data["pathname"] = "/testdata/2017-08/Experiment_2/baseline/test01.dat"
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "unfreeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify file was physically moved from frozen to staging area")
+        self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline/test01.dat" % (staging_area_root)))
+
+        print("Freeze parent folder of unfrozen file")
+        data["pathname"] = "/testdata/2017-08/Experiment_2/baseline"
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify data was physically moved from staging to frozen area")
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline/test01.dat" % (frozen_area_root)))
+        self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline/test01.dat" % (staging_area_root)))
+        self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_2/baseline" % (staging_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_2" % (staging_area_root)))
+
+        print("Freeze all files in staging area")
+        data["pathname"] = "/"
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify all data was physically moved from staging to frozen area")
+        self.assertTrue(os.path.exists("%s/testdata" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_2/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-10/Experiment_3/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-10/Experiment_4/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-10/Experiment_5/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-11/Experiment_6/test01.dat" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/2017-11/Experiment_7/baseline/.hidden_file" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/Contact.txt" % (frozen_area_root)))
+        self.assertTrue(os.path.exists("%s/testdata/License.txt" % (frozen_area_root)))
+        self.assertFalse(os.path.exists("%s/testdata" % (staging_area_root)))
+
+        print("Delete all files in frozen area")
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "delete")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Verify all data was physically removed from frozen area")
+        self.assertFalse(os.path.exists("%s/testdata" % (frozen_area_root)))
+
+        print("Verify both frozen and staging root folders still exist")
+        self.assertTrue(os.path.exists(frozen_area_root))
+        self.assertTrue(os.path.exists(staging_area_root))
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

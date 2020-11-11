@@ -24,6 +24,9 @@
 OC.L10N.register(
     "ida",
     {
+        "Be absolutely sure you want to unfreeze or delete all files within the selected folder before proceeding with either option.": "Före du fortsätter, var säker på att du faktiskt vill ta bort filerna i den valda mappen eller flytta tillbaka dem till preparering.",
+        "Unfreezing will move all files within the selected folder back to the staging area, making them fully editable.": "Om du väljer att flytta tillbaka mappen till preparering kommer alla filer i den valda mappen bli redigerbara.",
+        "Deleting will entirely remove all files within the selected folder from the service.": "Borttagning betyder att alla filer i den valda mappen kommer att raderas från servicen.",
         "Action not allowed: Datasets would be deprecated!": "Förbjuden åtgärd: Åtgärden skulle söndra dataset!",
         "The specified action is not allowed because it would deprecate the datasets listed below, for which the digital preservation process is ongoing.": "Denna åtgärd är inte tillåten, eftersom den skulle påverka följande dataset, som är på väg in i långsiktig bevaring:",
         "If you have questions, please contact <a href=\"mailto:pas-support@csc.fi\" target=\"_blank\" style=\"color: #007FAD;\">pas-support@csc.fi</a>": "Om du har frågor, var god och kontakta <a href=\"mailto:pas-support@csc.fi\" target=\"_blank\" style=\"color: #007FAD;\">pas-support@csc.fi</a>",
