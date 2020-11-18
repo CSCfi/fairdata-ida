@@ -22,12 +22,52 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-source ../config/config.sh
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+ID=`id -u -n`
+if [ "$ID" != "root" ]; then
+    echo "You must execute this script as root"
+    exit 1
+fi
+
+if [ -z "$ROOT" ]; then
+    echo "The variable ROOT is not defined in the configuration!" >&2
+    exit 1
+fi
+
+if [ -z "$ROOT/venv" ]; then
+    echo "The python3 virtual environment does not exist!" >&2
+    exit 1
+fi
+
+cd $ROOT/utils
 
 rabbitmq-plugins enable rabbitmq_management
+
 ./rabbitmq_create_users
 
 # initialize vhost, exchanges, and queues. below action is idempotent.
 # to completely re-initialize rabbitmq, execute script rabbitmq_delete_all first.
-cd ..
-/srv/venv-agents/bin/python -m agents.utils.rabbitmq
+
+cd $ROOT
+
+$ROOT/venv/bin/python -m agents.utils.rabbitmq
