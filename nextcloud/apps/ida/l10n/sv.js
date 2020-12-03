@@ -24,6 +24,7 @@
 OC.L10N.register(
     "ida",
     {
+        "It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.": "Du kan logga ut från IDA-tjänsten och stänga din webbläsare. Pågående bakgrundsoperationer kommer ej att påverkas.",
         "Be absolutely sure you want to unfreeze or delete all files within the selected folder before proceeding with either option.": "Före du fortsätter, var säker på att du faktiskt vill ta bort filerna i den valda mappen eller flytta tillbaka dem till preparering.",
         "Unfreezing will move all files within the selected folder back to the staging area, making them fully editable.": "Om du väljer att flytta tillbaka mappen till preparering kommer alla filer i den valda mappen bli redigerbara.",
         "Deleting will entirely remove all files within the selected folder from the service.": "Borttagning betyder att alla filer i den valda mappen kommer att raderas från servicen.",

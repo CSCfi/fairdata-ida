@@ -220,8 +220,7 @@
     function deleteFile(e) {
         OC.dialogs.confirm(
             t('ida', 'Are you sure you want to delete this file, permanently removing it from the service?') + ' ' +
-            t('ida', 'The action cannot be terminated before it is complete.') + ' ' +
-            t('ida', 'Depending on the size of the file, the background operations may take several hours.') + ' ' +
+            t('ida', 'The action cannot be terminated before it is complete. Depending on the size of the file, the background operations may take several hours.') + ' ' +
             t('ida', 'THIS ACTION CANNOT BE UNDONE.'),
             t('ida', 'Delete File?'),
             function (result) {
@@ -298,6 +297,7 @@
                             t('ida', 'The data has been successfully frozen and moved to the frozen project space.') + ' ' +
                             t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
                             t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
+                            t('ida', 'It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.') + '<br><br>' +
                             t('ida', 'Do you wish to view the data in its frozen location?'),
                             t('ida', 'Action initiated successfully. Show frozen data?'),
                             function (result) {
@@ -319,6 +319,7 @@
                             t('ida', 'The data has been successfully unfrozen and moved back to the project staging space.') + ' ' +
                             t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
                             t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
+                            t('ida', 'It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.') + '<br><br>' +
                             t('ida', 'Do you wish to view the data in its staging location?'),
                             t('ida', 'Action initiated successfully. Show unfrozen data?'),
                             function (result) {
@@ -339,7 +340,8 @@
                         OC.dialogs.message(
                             t('ida', 'The files have been successfully deleted.') + ' ' +
                             t('ida', 'Depending on the amount of data, the background operations may still take several hours.') + ' ' +
-                            t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>.',
+                            t('ida', 'The initiated action is') + ' <a style="color: #007FAD;" href="/apps/ida/action/' + data['pid'] + '">' + data['pid'] + '</a>. ' +
+                            t('ida', 'It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.'),
                             t('ida', 'Action initiated successfully. Files deleted.'),
                             'info',
                             OCdialogs.OK_BUTTON,

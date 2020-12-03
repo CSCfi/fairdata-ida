@@ -24,6 +24,7 @@
 OC.L10N.register(
     "ida",
     {
+        "It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.": "Voit halutessasi kirjautua ulos IDA-palvelusta ja sulkea selaimesi. Se ei vaikuta käynnissä oleviin taustaoperaatioihin.",
         "Be absolutely sure you want to unfreeze or delete all files within the selected folder before proceeding with either option.": "Ennen kuin jatkat, olethan täysin varma, että haluat poistaa tai palauttaa valmistelualueelle kaikki valitun kansion tiedostot.",
         "Unfreezing will move all files within the selected folder back to the staging area, making them fully editable.": "Valmistelualueelle palauttaminen siirtää valitun kansion kaikki tiedostot valmistelualueelle ja tekee niistä muokattavia.",
         "Deleting will entirely remove all files within the selected folder from the service.": "Poistaminen tarkoittaa, että kaikki valitun kansion sisältämät tiedostot poistetaan palvelusta pysyvästi.",
