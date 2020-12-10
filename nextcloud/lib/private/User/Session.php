@@ -398,8 +398,8 @@ class Session implements IUserSession, Emitter
 
 			$this->prepareUserLogin($firstTimeLogin, $regenerateSessionId);
 
-			// If Fairdata language cookie exists, set Nextcloud language setting to user specified language in cookie
-			// Else set to English
+			// If Fairdata language cookie exists, set Nextcloud language setting to user specified
+			// language in cookie. Else set to English.
 
 			Util::writeLog('ida', 'Session.php: completeLogin:' . ' uid=' . $user->getUID(), \OCP\Util::DEBUG);
 
@@ -423,8 +423,6 @@ class Session implements IUserSession, Emitter
 
 			try {
 
-				Util::writeLog('ida', 'Session.php: completeLogin:' . ' fd_language=' . $lang, \OCP\Util::DEBUG);
-
 				// Update user language in Nextcloud settings
 
 				$uid = $user->getUID();
@@ -447,11 +445,13 @@ class Session implements IUserSession, Emitter
 					throw new \Exception('A database error occurred while updating your language. Unable to connect to database.');
 				}
 
-				$sql = "UPDATE oc_preferences SET configvalue = "
-					. pg_escape_literal($db_connection, $lang)
-					. " WHERE userid = "
-					. pg_escape_literal($db_connection, $uid)
-					. " AND appid = 'core' AND configkey = 'lang';";
+				$sql = "INSERT INTO oc_preferences (userid, appid, configkey, configvalue) VALUES("
+					    . pg_escape_literal($db_connection, $uid) . ","
+					    . "'core','lang',"
+					    . pg_escape_literal($db_connection, $lang)
+						. ") ON CONFLICT (userid, appid, configkey) DO UPDATE SET configvalue = "
+						. pg_escape_literal($db_connection, $lang)
+						. ";";
 
 				Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
 
@@ -462,11 +462,13 @@ class Session implements IUserSession, Emitter
 					throw new \Exception('A database error occurred while updating your language.');
 				}
 
-				$sql = "UPDATE oc_preferences SET configvalue = "
-					. pg_escape_literal($db_connection, $locale)
-					. " WHERE userid = "
-					. pg_escape_literal($db_connection, $uid)
-					. " AND appid = 'core' AND configkey = 'locale';";
+				$sql = "INSERT INTO oc_preferences (userid, appid, configkey, configvalue) VALUES("
+					    . pg_escape_literal($db_connection, $uid) . ","
+					    . "'core','locale',"
+					    . pg_escape_literal($db_connection, $locale)
+						. ") ON CONFLICT (userid, appid, configkey) DO UPDATE SET configvalue = "
+						. pg_escape_literal($db_connection, $locale)
+						. ";";
 
 				Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
 
@@ -635,17 +637,6 @@ class Session implements IUserSession, Emitter
 
 			// trigger any other initialization
 			\OC::$server->getEventDispatcher()->dispatch(IUser::class . '::firstLogin', new GenericEvent($this->getUser()));
-		}
-
-		// If Fairdata language cookie exists, set language in user settings to user selected language in cookie
-
-		$serverName = $_SERVER['SERVER_NAME'];
-		$domain = substr($serverName, strpos($serverName, '.') + 1);
-		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-
-		if (isset($_COOKIE[$prefix . '_fairdata_fi_fd_language'])) {
-			$lang = $_COOKIE[$prefix . '_fairdata_fi_fd_language'];
-			Util::writeLog('ida', 'Session.php: prepareUserLogin: lang=' . $lang, \OCP\Util::DEBUG);
 		}
 	}
 

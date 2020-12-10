@@ -86,27 +86,6 @@ script('settings', [
                                      p('English');
                             } ?>
 			        </div>
-                    <!--
-                    <select id="languageinput" name="lang" data-placeholder="<?php p($l->t('Language'));?>">
-                        <option value="<?php p($_['activelanguage']['code']);?>">
-                            <?php
-                                switch ($_['activelanguage']['code']) {
-                                     case 'fi':
-                                         p('Suomi');
-                                         break;
-                                     case 'sv':
-                                         p('Svenska');
-                                         break;
-                                     default:
-                                         p('English');
-                                } ?>
-                        </option>
-                        <optgroup label="––––––––––"></optgroup>
-                        <option value="en">English</option>
-                        <option value="fi">Suomi</option>
-                        <option value="sv">Svenska</option>
-                    </select>
-                    -->
 				</form>
 			<?php } ?>
 		</div>
@@ -142,49 +121,12 @@ script('settings', [
                                      p('English (UK)');
                                      break;
                                  case 'en':
-                                     p('English (US)');
+                                     p('English');
                                      break;
                                  default:
-                                     p('English (US)');
+                                     p($_['activelocale']['code']);
                             } ?>
                     </div>
-                    <!--
-                    <select id="localeinput" name="lang" data-placeholder="<?php p($l->t('Locale'));?>">
-                        <option value="<?php p($_['activelocale']['code']);?>">
-                            <?php
-                                switch ($_['activelocale']['code']) {
-                                     case 'fi_FI':
-                                         p('Suomi');
-                                         break;
-                                     case 'fi':
-                                         p('Suomi');
-                                         break;
-                                     case 'sv_FI':
-                                         p('Svenska');
-                                         break;
-                                     case 'sv':
-                                         p('Svenska');
-                                         break;
-                                     case 'en_US':
-                                         p('English (US)');
-                                         break;
-                                     case 'en_GB':
-                                         p('English (UK)');
-                                         break;
-                                     case 'en':
-                                         p('English (US)');
-                                         break;
-                                     default:
-                                         p('English (US)');
-                                } ?>
-                        </option>
-                        <optgroup label="––––––––––"></optgroup>
-                        <option value="en_GB">English (UK)</option>
-                        <option value="en_US">English (US)</option>
-                        <option value="fi_FI">Suomi</option>
-                        <option value="sv_FI">Svenska</option>
-                    </select>
-                    -->
 					<div id="localeexample" class="personal-info icon-timezone">
 						<p>
 							<span id="localeexample-date"></span> <span id="localeexample-time"></span>

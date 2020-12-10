@@ -148,72 +148,27 @@ class Factory implements IFactory {
 	 * @return string language If nothing works it returns 'en'
 	 */
 	public function findLanguage($app = null) {
-		$forceLang = $this->config->getSystemValue('force_language', false);
-		if (is_string($forceLang)) {
-			$this->requestLanguage = $forceLang;
-		}
 
-		if ($this->requestLanguage !== '' && $this->languageExists($app, $this->requestLanguage)) {
-			return $this->requestLanguage;
-		}
+		$lang = null;
 
-		/**
-		 * At this point Nextcloud might not yet be installed and thus the lookup
-		 * in the preferences table might fail. For this reason we need to check
-		 * whether the instance has already been installed
-		 *
-		 * @link https://github.com/owncloud/core/issues/21955
-		 */
-		if ($this->config->getSystemValue('installed', false)) {
-			$userId = !is_null($this->userSession->getUser()) ? $this->userSession->getUser()->getUID() :  null;
-			if (!is_null($userId)) {
-				$userLang = $this->config->getUserValue($userId, 'core', 'lang', null);
-			} else {
-				$userLang = null;
-			}
-		} else {
-			$userId = null;
-			$userLang = null;
-		}
-
-		if ($userLang) {
-			$this->requestLanguage = $userLang;
-			if ($this->languageExists($app, $userLang)) {
-				return $userLang;
+		// Sniff for Fairdata language cookie. If a valid value is found and user is not logged in,
+		// use value from cookie. Otherwise do default Nextcloud action (try to get language from request)
+		if (array_key_exists('HTTP_HOST', $_SERVER)) {
+			$domain = $_SERVER['HTTP_HOST'];
+			$domain = substr($domain, strpos($domain, ".") + 1);
+			$domain = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+			$cookie = $domain . '_fd_language';
+			if (array_key_exists($cookie, $_COOKIE)) {
+			    $lang = $_COOKIE[$cookie];
 			}
 		}
 
-		try {
-			// Sniff for Fairdata language cookie. If a valid value is found and user is not logged in,
-			// use value from cookie. Otherwise do default Nextcloud action (try to get language from request)
-			if (array_key_exists('HTTP_HOST', $_SERVER)) {
-			    $domain = $_SERVER['HTTP_HOST'];
-			    $domain = substr($domain, strpos($domain, ".") + 1);
-				$domain = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-				$cookie = $domain . '_fd_language';
-				if (array_key_exists($cookie, $_COOKIE)) {
-			        $lang = $_COOKIE[$cookie];
-			        if (is_null($this->userSession->getUser()) && $this->languageExists($app, $lang)) {
-				        return $lang;
-			        }
-				}
-			}
-			// Try to get the language from the Request
-			$lang = $this->getLanguageFromRequest($app);
-			if ($userId !== null && $app === null && !$userLang) {
-				$this->config->setUserValue($userId, 'core', 'lang', $lang);
-			}
-			return $lang;
-		} catch (LanguageNotFoundException $e) {
-			// Finding language from request failed fall back to default language
-			$defaultLanguage = $this->config->getSystemValue('default_language', false);
-			if ($defaultLanguage !== false && $this->languageExists($app, $defaultLanguage)) {
-				return $defaultLanguage;
-			}
+		// If no language cookie, default to English
+		if ($lang === null) {
+			$lang = 'en';
 		}
 
-		// We could not find any language so fall back to english
-		return 'en';
+		return $lang;
 	}
 
 	/**
@@ -223,38 +178,15 @@ class Factory implements IFactory {
 	 * @return null|string
 	 */
 	public function findLocale($lang = null) {
-		$forceLocale = $this->config->getSystemValue('force_locale', false);
-		if (is_string($forceLocale) && $this->localeExists($forceLocale)) {
-			return $forceLocale;
+
+		if ($lang == 'fi') {
+			return 'fi_FI';
 		}
 
-		if ($this->config->getSystemValue('installed', false)) {
-			$userId = null !== $this->userSession->getUser() ? $this->userSession->getUser()->getUID() :  null;
-			$userLocale = null;
-			if (null !== $userId) {
-				$userLocale = $this->config->getUserValue($userId, 'core', 'locale', null);
-			}
-		} else {
-			$userId = null;
-			$userLocale = null;
+		if ($lang == 'sv'){
+			return 'sv_FI';
 		}
 
-		if ($userLocale && $this->localeExists($userLocale)) {
-			return $userLocale;
-		}
-
-		// Default : use system default locale
-		$defaultLocale = $this->config->getSystemValue('default_locale', false);
-		if ($defaultLocale !== false && $this->localeExists($defaultLocale)) {
-			return $defaultLocale;
-		}
-
-		// If no user locale set, use lang as locale
-		if (null !== $lang && $this->localeExists($lang)) {
-			return $lang;
-		}
-
-		// At last, return USA
 		return 'en_US';
 	}
 
