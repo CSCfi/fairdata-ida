@@ -236,6 +236,11 @@ $(document).ready(function () {
 
 	var updateLanguage = function () {
 
+        if (OC.PasswordConfirmation.requiresPasswordConfirmation()) {
+            OC.PasswordConfirmation.requirePasswordConfirmation(updateLanguage);
+            return;
+        }
+
 		var selectedLang = $("#languageinput").val(),
 			user = OC.getCurrentUser();
 
@@ -259,6 +264,11 @@ $(document).ready(function () {
 	$("#languageinput").change(updateLanguage);
 
 	var updateLocale = function () {
+
+        if (OC.PasswordConfirmation.requiresPasswordConfirmation()) {
+            OC.PasswordConfirmation.requirePasswordConfirmation(updateLocale);
+            return;
+        }
 
 		var selectedLocale = $("#localeinput").val(),
 			user = OC.getCurrentUser();

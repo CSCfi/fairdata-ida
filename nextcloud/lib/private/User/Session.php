@@ -393,10 +393,13 @@ class Session implements IUserSession, Emitter
 			$loginDetails['password'],
 			$isToken,
 		]);
+
 		if ($this->isLoggedIn()) {
+
 			$this->prepareUserLogin($firstTimeLogin, $regenerateSessionId);
 
 			// If Fairdata language cookie exists, set Nextcloud language setting to user specified language in cookie
+			// Else set to English
 
 			Util::writeLog('ida', 'Session.php: completeLogin:' . ' uid=' . $user->getUID(), \OCP\Util::DEBUG);
 
@@ -404,54 +407,77 @@ class Session implements IUserSession, Emitter
 			$domain = substr($serverName, strpos($serverName, '.') + 1);
 			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
 
+			$lang = 'en';
+			$locale = 'en_US';
+
 			if (isset($_COOKIE[$prefix . '_fd_language'])) {
+				$lang = $_COOKIE[$prefix . '_fd_language'];
 
-				try {
-
-					$lang = $_COOKIE[$prefix . '_fd_language'];
-
-					Util::writeLog('ida', 'Session.php: completeLogin:' . ' fd_language=' . $lang, \OCP\Util::DEBUG);
-
-					// Update user language in Nextcloud settings
-
-					$uid = $user->getUID();
-
-					$queryURL = 'https://localhost/ocs/v1.php/cloud/users/' . $uid;
-
-					Util::writeLog('ida', 'Session.php: completeLogin: queryURL=' . $queryURL, \OCP\Util::DEBUG);
-
-					$connectionString = 'host=' . $this->config->getSystemValue('dbhost') 
-										 . ' dbname=' . $this->config->getSystemValue('dbname')
-										 . ' user=' . $this->config->getSystemValue('dbuser')
-										 . ' password=' . $this->config->getSystemValue('dbpassword');
-
-					Util::writeLog('ida', 'Session.php: completeLogin: connectionString=' . $connectionString, \OCP\Util::DEBUG);
-
-					$db_connection = pg_connect($connectionString);
-
-                    if (! $db_connection) {
-					    Util::writeLog('ida', 'Session.php: completeLogin: UNABLE TO CONNECT TO DATABASE! connectionString=' . $connectionString, \OCP\Util::ERROR);
-						throw new \Exception('A database error occurred while updating your language. Unable to connect to database.');
-					}
-
-					$sql = "UPDATE oc_preferences SET configvalue = "
-							. pg_escape_literal($db_connection, $lang)
-							. " WHERE userid = "
-							. pg_escape_literal($db_connection, $uid)
-						    . " AND appid = 'core' AND configkey = 'lang';"; 
-
-					Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
-
-					$result = pg_query($db_connection, $sql);
-
-                    if (! $result) {
-					    Util::writeLog('ida', 'Session.php: completeLogin: FAILED TO UPDATE DATABASE! sql=' . $sql, \OCP\Util::ERROR);
-						throw new \Exception('A database error occurred while updating your language.');
-					}
-
-				} catch (\Exception $e) {
-					Util::writeLog('ida', 'Session.php: completeLogin: error: ' . $e, \OCP\Util::ERROR);
+				if ($lang == 'fi') {
+			        $locale = 'fi_FI';
 				}
+				elseif ($lang == 'sv'){
+			        $locale = 'sv_FI';
+				}
+			}
+
+			try {
+
+				Util::writeLog('ida', 'Session.php: completeLogin:' . ' fd_language=' . $lang, \OCP\Util::DEBUG);
+
+				// Update user language in Nextcloud settings
+
+				$uid = $user->getUID();
+
+				$queryURL = 'https://localhost/ocs/v1.php/cloud/users/' . $uid;
+
+				Util::writeLog('ida', 'Session.php: completeLogin: queryURL=' . $queryURL, \OCP\Util::DEBUG);
+
+				$connectionString = 'host=' . $this->config->getSystemValue('dbhost')
+					. ' dbname=' . $this->config->getSystemValue('dbname')
+					. ' user=' . $this->config->getSystemValue('dbuser')
+					. ' password=' . $this->config->getSystemValue('dbpassword');
+
+				Util::writeLog('ida', 'Session.php: completeLogin: connectionString=' . $connectionString, \OCP\Util::DEBUG);
+
+				$db_connection = pg_connect($connectionString);
+
+				if (!$db_connection) {
+					Util::writeLog('ida', 'Session.php: completeLogin: UNABLE TO CONNECT TO DATABASE! connectionString=' . $connectionString, \OCP\Util::ERROR);
+					throw new \Exception('A database error occurred while updating your language. Unable to connect to database.');
+				}
+
+				$sql = "UPDATE oc_preferences SET configvalue = "
+					. pg_escape_literal($db_connection, $lang)
+					. " WHERE userid = "
+					. pg_escape_literal($db_connection, $uid)
+					. " AND appid = 'core' AND configkey = 'lang';";
+
+				Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
+
+				$result = pg_query($db_connection, $sql);
+
+				if (!$result) {
+					Util::writeLog('ida', 'Session.php: completeLogin: FAILED TO UPDATE DATABASE! sql=' . $sql, \OCP\Util::ERROR);
+					throw new \Exception('A database error occurred while updating your language.');
+				}
+
+				$sql = "UPDATE oc_preferences SET configvalue = "
+					. pg_escape_literal($db_connection, $locale)
+					. " WHERE userid = "
+					. pg_escape_literal($db_connection, $uid)
+					. " AND appid = 'core' AND configkey = 'locale';";
+
+				Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
+
+				$result = pg_query($db_connection, $sql);
+
+				if (!$result) {
+					Util::writeLog('ida', 'Session.php: completeLogin: FAILED TO UPDATE DATABASE! sql=' . $sql, \OCP\Util::ERROR);
+					throw new \Exception('A database error occurred while updating your locale.');
+				}
+			} catch (\Exception $e) {
+				Util::writeLog('ida', 'Session.php: completeLogin: error: ' . $e, \OCP\Util::ERROR);
 			}
 
 			return true;

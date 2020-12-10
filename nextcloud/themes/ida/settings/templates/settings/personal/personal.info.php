@@ -73,6 +73,20 @@ script('settings', [
 					<h3>
 						<label for="languageinput"><?php p($l->t('Language'));?></label>
 					</h3>
+			        <div type="text" style="padding-left: 20px">
+                        <?php
+                            switch ($_['activelanguage']['code']) {
+                                 case 'fi':
+                                     p('Suomi');
+                                     break;
+                                 case 'sv':
+                                     p('Svenska');
+                                     break;
+                                 default:
+                                     p('English');
+                            } ?>
+			        </div>
+                    <!--
                     <select id="languageinput" name="lang" data-placeholder="<?php p($l->t('Language'));?>">
                         <option value="<?php p($_['activelanguage']['code']);?>">
                             <?php
@@ -92,6 +106,7 @@ script('settings', [
                         <option value="fi">Suomi</option>
                         <option value="sv">Svenska</option>
                     </select>
+                    -->
 				</form>
 			<?php } ?>
 		</div>
@@ -102,6 +117,38 @@ script('settings', [
 					<h3>
 						<label for="localeinput"><?php p($l->t('Locale'));?></label>
 					</h3>
+			        <div type="text" style="padding-left: 20px">
+                        <?php
+                            switch ($_['activelocale']['code']) {
+                                 case 'fi_FI':
+                                     p('Suomi');
+                                     break;
+                                 case 'fi':
+                                     p('Suomi');
+                                     break;
+                                 case 'sv_FI':
+                                     p('Svenska');
+                                     break;
+                                 case 'sv_SE':
+                                     p('Svenska');
+                                     break;
+                                 case 'sv':
+                                     p('Svenska');
+                                     break;
+                                 case 'en_US':
+                                     p('English (US)');
+                                     break;
+                                 case 'en_GB':
+                                     p('English (UK)');
+                                     break;
+                                 case 'en':
+                                     p('English (US)');
+                                     break;
+                                 default:
+                                     p('English (US)');
+                            } ?>
+                    </div>
+                    <!--
                     <select id="localeinput" name="lang" data-placeholder="<?php p($l->t('Locale'));?>">
                         <option value="<?php p($_['activelocale']['code']);?>">
                             <?php
@@ -137,6 +184,7 @@ script('settings', [
                         <option value="fi_FI">Suomi</option>
                         <option value="sv_FI">Svenska</option>
                     </select>
+                    -->
 					<div id="localeexample" class="personal-info icon-timezone">
 						<p>
 							<span id="localeexample-date"></span> <span id="localeexample-time"></span>
@@ -149,13 +197,25 @@ script('settings', [
 		<span class="msg"></span>
 	</div>
 
-	<div style="padding-left: 10px; padding-top: 30px; padding-bottom: 30px;">
+	<div style="padding-left: 10px; padding-top: 30px;">
         <?php if ($_['activelanguage']['code'] == 'fi') {?>
-            <p><b>Huomaa:</b> henkilökohtaisen tilin asetusten ja salasanan hallinta tehdään <a style="color: #007FAD" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC:n asiakasportaalissa</a>.</p>
+            <p>CSC-salasanan hallinta tehdään <a style="color: #007FAD" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC:n asiakasportaalissa</a>.</p>
         <?php } elseif ($_['activelanguage']['code'] == 'sv') {?>
-            <p><b>Notera:</b> hantering av profilen och lösenord sker i <a style="color: #007FAD;" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC:s kundportal</a>.</p>
+            <p>CSC lösenord sker i <a style="color: #007FAD;" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC:s kundportal</a>.</p>
         <?php } else { ?>
-            <p><b>Note:</b> personal account settings and passwords can be changed in the <a style="color: #007FAD" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC Customer Portal</a>.</p>
+            <p>CSC passwords can be changed in the <a style="color: #007FAD" href="https://my.csc.fi" rel="noreferrer noopener" target="_blank">CSC Customer Portal</a>.</p>
+		<?php }?>
+	</div>
+
+	<div style="padding-left: 10px; padding-top: 10px; padding-bottom: 30px;">
+        <?php if ($_['activelanguage']['code'] != 'en') {?>
+            <p lang="en">To change the language, you must log out and select another language from the top right of the home view.</p>
+		<?php }?>
+        <?php if ($_['activelanguage']['code'] != 'fi') {?>
+            <p lang="fi">Jos haluat vaihtaa käyttöliittymän kielen, kirjaudu ulos palvelusta ja valitse toinen kieli sivun oikeasta yläkulmasta.</p>
+		<?php }?>
+        <?php if ($_['activelanguage']['code'] != 'sv') {?>
+            <p lang="sv">För att ändra språk måste du logga ut och välja ett annat språk högst upp till höger i hemvyn.</p>
 		<?php }?>
 	</div>
 
