@@ -150,15 +150,9 @@ script('settings', [
 	</div>
 
 	<div style="padding-left: 10px; padding-top: 10px; padding-bottom: 30px;">
-        <?php if ($_['activelanguage']['code'] != 'en') {?>
-            <p lang="en">To change the language, you must log out and select another language from the top right of the home view.</p>
-		<?php }?>
-        <?php if ($_['activelanguage']['code'] != 'fi') {?>
-            <p lang="fi">Jos haluat vaihtaa käyttöliittymän kielen, kirjaudu ulos palvelusta ja valitse toinen kieli sivun oikeasta yläkulmasta.</p>
-		<?php }?>
-        <?php if ($_['activelanguage']['code'] != 'sv') {?>
-            <p lang="sv">För att ändra språk måste du logga ut och välja ett annat språk högst upp till höger i hemvyn.</p>
-		<?php }?>
+        <p lang="en">To change the language, you must log out and select another language from the top right of the home view.</p>
+        <p lang="fi">Jos haluat vaihtaa käyttöliittymän kielen, kirjaudu ulos palvelusta ja valitse toinen kieli sivun oikeasta yläkulmasta.</p>
+        <p lang="sv">För att ändra språk måste du logga ut och välja ett annat språk högst upp till höger i hemvyn.</p>
 	</div>
 
 	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>">

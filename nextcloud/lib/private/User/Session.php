@@ -421,66 +421,12 @@ class Session implements IUserSession, Emitter
 				}
 			}
 
-			try {
+			// Update user language and locale in Nextcloud settings
 
-				// Update user language in Nextcloud settings
+			$uid = $user->getUID();
 
-				$uid = $user->getUID();
-
-				$queryURL = 'https://localhost/ocs/v1.php/cloud/users/' . $uid;
-
-				Util::writeLog('ida', 'Session.php: completeLogin: queryURL=' . $queryURL, \OCP\Util::DEBUG);
-
-				$connectionString = 'host=' . $this->config->getSystemValue('dbhost')
-					. ' dbname=' . $this->config->getSystemValue('dbname')
-					. ' user=' . $this->config->getSystemValue('dbuser')
-					. ' password=' . $this->config->getSystemValue('dbpassword');
-
-				Util::writeLog('ida', 'Session.php: completeLogin: connectionString=' . $connectionString, \OCP\Util::DEBUG);
-
-				$db_connection = pg_connect($connectionString);
-
-				if (!$db_connection) {
-					Util::writeLog('ida', 'Session.php: completeLogin: UNABLE TO CONNECT TO DATABASE! connectionString=' . $connectionString, \OCP\Util::ERROR);
-					throw new \Exception('A database error occurred while updating your language. Unable to connect to database.');
-				}
-
-				$sql = "INSERT INTO oc_preferences (userid, appid, configkey, configvalue) VALUES("
-					    . pg_escape_literal($db_connection, $uid) . ","
-					    . "'core','lang',"
-					    . pg_escape_literal($db_connection, $lang)
-						. ") ON CONFLICT (userid, appid, configkey) DO UPDATE SET configvalue = "
-						. pg_escape_literal($db_connection, $lang)
-						. ";";
-
-				Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
-
-				$result = pg_query($db_connection, $sql);
-
-				if (!$result) {
-					Util::writeLog('ida', 'Session.php: completeLogin: FAILED TO UPDATE DATABASE! sql=' . $sql, \OCP\Util::ERROR);
-					throw new \Exception('A database error occurred while updating your language.');
-				}
-
-				$sql = "INSERT INTO oc_preferences (userid, appid, configkey, configvalue) VALUES("
-					    . pg_escape_literal($db_connection, $uid) . ","
-					    . "'core','locale',"
-					    . pg_escape_literal($db_connection, $locale)
-						. ") ON CONFLICT (userid, appid, configkey) DO UPDATE SET configvalue = "
-						. pg_escape_literal($db_connection, $locale)
-						. ";";
-
-				Util::writeLog('ida', 'Session.php: completeLogin: sql=' . $sql, \OCP\Util::DEBUG);
-
-				$result = pg_query($db_connection, $sql);
-
-				if (!$result) {
-					Util::writeLog('ida', 'Session.php: completeLogin: FAILED TO UPDATE DATABASE! sql=' . $sql, \OCP\Util::ERROR);
-					throw new \Exception('A database error occurred while updating your locale.');
-				}
-			} catch (\Exception $e) {
-				Util::writeLog('ida', 'Session.php: completeLogin: error: ' . $e, \OCP\Util::ERROR);
-			}
+			$this->config->setUserValue($uid, 'core', 'lang', $lang);
+			$this->config->setUserValue($uid, 'core', 'locale', $locale);
 
 			return true;
 		}
