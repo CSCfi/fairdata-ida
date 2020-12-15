@@ -229,7 +229,7 @@ function localLoginActive()
                     <h2>Tervetuloa Fairdata IDA -palveluun</h2>
                     <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille, valtion tutkimuslaitoksille sekä tiettyjen Suomen Akatemian rahoitusmuotojen alaiselle tutkimukselle. IDA kuuluu opetus- ja kulttuuriministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
                     <p>Säilytystila on projektikohtaista. IDAssa säilytettävä data voidaan muiden Fairdata-palvelujen avulla kuvailla tutkimusaineistoksi ja julkaista.</p>
-                    <p><a href="https://www.fairdata.fi/services/ida/" rel="noreferrer noopener" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
+                    <p><a href="https://www.fairdata.fi/ida/" rel="noreferrer noopener" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
                 </div>
                 <div class="<?php if (localLoginActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -283,7 +283,7 @@ function localLoginActive()
                     <h2>Välkommen till Fairdata IDA</h2>
                     <p>Fairdata IDA är en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshögskolor, forskningsinstitut i Finland och för forskning som finansieras av Finlands Akademi. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
                     <p>Bevaringsutrymmet i IDA tilldelas projekt. Data som finns i IDA kan dokumenteras och publiceras som dataset med hjälp av andra Fairdata-tjänster.</p>
-                    <p><a href="https://www.fairdata.fi/en/services/ida/" rel="noreferrer noopener" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
+                    <p><a href="https://www.fairdata.fi/en/ida/" rel="noreferrer noopener" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
                 </div>
                 <div class="<?php if (localLoginActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -337,7 +337,7 @@ function localLoginActive()
                     <h2>Welcome to Fairdata IDA</h2>
                     <p>Fairdata IDA is a continuous research data storage service organized by the Ministry of Education and Culture. The service is offered free of charge to Finnish universities and universities of applied sciences, research institutes, as well as research funded by the Academy of Finland.</p>
                     <p>IDA enables uploading, organizing, and sharing research data within a project group and storing the data in an immutable state. The data stored in IDA can be included in research datasets which are described and made publicly available for download via other Fairdata services.</p>
-                    <p><a href="https://www.fairdata.fi/en/services/ida/" rel="noreferrer noopener" target="_blank">How to start using IDA and user guides</a></p>
+                    <p><a href="https://www.fairdata.fi/en/ida/" rel="noreferrer noopener" target="_blank">How to start using IDA and user guides</a></p>
                 </div>
                 <div class="<?php if (localLoginActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
