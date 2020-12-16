@@ -58,21 +58,19 @@ NOTE: Derived from original Nextcloud code nextcloud/core/templates/layout.user.
 		<input type="hidden" id="initial-state-<?php p($app); ?>" value="<?php p(base64_encode($initialState)); ?>">
 	<?php } ?>
 
-	<a href="#app-content" class="button primary skip-navigation skip-content"><?php p($l->t('Skip to main content')); ?></a>
-	<a href="#app-navigation" class="button primary skip-navigation"><?php p($l->t('Skip to navigation of app')); ?></a>
+	<a href="#app-content" tabindex="1" class="button primary skip-navigation skip-content"><?php p($l->t('Skip to main content')); ?></a>
+	<a href="#app-navigation" tabindex="1" class="button primary skip-navigation"><?php p($l->t('Skip to navigation of app')); ?></a>
 
 	<div id="notification-container">
 		<div id="notification"></div>
 	</div>
 	<header role="banner" id="header">
 		<div class="header-left">
-			<a href="<?php print_unescaped(link_to('', 'index.php')); ?>" id="nextcloud">
-				<div class="logo logo-icon">
-					<h1 class="hidden-visually">
-						<?php p($theme->getName()); ?> <?php p(!empty($_['application']) ? $_['application'] : $l->t('Apps')); ?>
-					</h1>
-				</div>
-			</a>
+			<div class="logo logo-icon">
+				<h1 class="hidden-visually">
+					<?php p($theme->getName()); ?> <?php p(!empty($_['application']) ? $_['application'] : $l->t('Apps')); ?>
+				</h1>
+			</div>
 
 			<ul id="appmenu" <?php if ($_['themingInvertMenu']) { ?>class="inverted" <?php } ?>>
 				<?php foreach ($_['navigation'] as $entry) : ?>
