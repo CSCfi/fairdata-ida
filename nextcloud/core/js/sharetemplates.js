@@ -681,6 +681,6 @@ templates['sharedialogview'] = template({"1":function(container,depth0,helpers,p
 
   return "<div class=\"resharerInfoView subView\"></div>\n"
     + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isSharingAllowed : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
-    + "<div class=\"linkShareView subView\"></div>\n<div class=\"shareeListView subView\"></div>\n<div class=\"loading hidden\" style=\"height: 50px\"></div>\n";
+    + "<div class=\"linkShareView subView\" tabindex=\"0\" id=\"shareFocusElement\"></div>\n<div class=\"shareeListView subView\"></div>\n<div class=\"loading hidden\" style=\"height: 50px\"></div>\n";
 },"useData":true});
 })();

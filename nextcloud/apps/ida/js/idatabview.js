@@ -26,7 +26,7 @@
     var TEMPLATE =
         '<div id="spinnerWrapper"><div id="spinner"></div></div>' +
 
-        '<div id="stagingFolder" style="display: none">' +
+        '<div id="stagingFolder" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><td align="center">' +
         '<input type="button" value="' + t('ida', 'Freeze') + '" id="freezeFolderButton"/>' +
@@ -46,7 +46,7 @@
         '</p></div>' +
         '</div>' +
 
-        '<div id="stagingFile" style="display: none">' +
+        '<div id="stagingFile" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><td align="center">' +
         '<input type="button" value="' + t('ida', 'Freeze') + '" id="freezeFileButton"/>' +
@@ -66,7 +66,7 @@
         '</p></div>' +
         '</div>' +
 
-        '<div id="frozenFilePending" style="display: none">' +
+        '<div id="frozenFilePending" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><th>' + t('ida', 'Action') + ':</th><td id="frozenFilePendingAction"></td></tr>' +
         '</table>' +
@@ -79,7 +79,7 @@
         '</p></div>' +
         '</div>' +
 
-        '<div id="frozenFolder" style="display: none">' +
+        '<div id="frozenFolder" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><td>' +
         '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFolderButton"/>' +
@@ -104,7 +104,7 @@
         '</p></div>' +
         '</div>' +
 
-        '<div id="frozenFile" style="display: none">' +
+        '<div id="frozenFile" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><th>' + t('ida', 'Action') + ':</th><td id="frozenFileAction"></td></tr>' +
         '<tr><th>' + t('ida', 'File ID') + ':</th><td id="frozenFileId"></td></tr>' +
@@ -554,7 +554,6 @@
              */
             render: function () {
 
-                //this.$el.html(this.template());
                 this.$el.html(TEMPLATE);
 
                 var fileInfo = this.fileInfo;
@@ -569,15 +568,15 @@
                 $(deleteFolderButton).bind('click', { param: fileInfo }, deleteFolder);
                 $(deleteFileButton).bind('click', { param: fileInfo }, deleteFile);
 
-                //var project = OCA.IDA.Util.extractProjectName(fullPath);
-                //var pathname = OCA.IDA.Util.stripRootFolder(fullPath);
                 var isFolder = this.fileInfo.isDirectory();
                 var isFrozen = OCA.IDA.Util.testIfFrozen(fullPath);
 
                 if (isFrozen) {
 
+
                     if (isFolder) {
                         $(frozenFolder).show();
+                        $(frozenFolder).focus();
                     }
 
                     else {
@@ -613,8 +612,9 @@
                                         var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
 
                                         if (isPending) {
-                                                $(frozenFilePendingAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            $(frozenFilePendingAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
                                             $(frozenFilePending).show();
+                                            $(frozenFilePending).focus();
                                         }
                                         else {
                                             $(frozenFileAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
@@ -623,12 +623,14 @@
                                             $(frozenFileSize).html(fileSize);
                                             $(frozenFileChecksum).html(fileChecksum);
                                             $(frozenFile).show();
+                                            $(frozenFile).focus();
                                         }
                                     },
 
                                     error: function (x) {
                                         // This shouldn't ever happen, but we'll fail gracefully...
                                         $(frozenFile).show();
+                                        $(frozenFile).focus();
                                     }
                                 });
                             },
@@ -636,6 +638,7 @@
                             error: function (x) {
                                 // This shouldn't ever happen, but we'll fail gracefully...
                                 $(frozenFile).show();
+                                $(frozenFile).focus();
                             }
                         });
                     }
@@ -643,9 +646,11 @@
                 else {
                     if (isFolder) {
                         $(stagingFolder).show();
+                        $(stagingFolder).focus();
                     }
                     else {
                         $(stagingFile).show();
+                        $(stagingFile).focus();
                     }
                 }
 
