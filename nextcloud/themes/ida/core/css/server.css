@@ -414,3 +414,8 @@ span.ui-icon {
 .oc-dialog-close{
 	display: none;
 }
+
+:focus {
+  outline: none; 
+  border: 2px solid black;
+}
