@@ -11,7 +11,7 @@ This file is part of the IDA research data storage service
 			</div>
 		</div>
 		<div id="file_action_panel"></div>
-		<div class="notCreatable notPublic hidden">
+		<div class="notCreatable notPublic hidden" tabindex="0">
             <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
 		</div>
 	<?php /* Note: the template attributes are here only for the public page. These are normally loaded
