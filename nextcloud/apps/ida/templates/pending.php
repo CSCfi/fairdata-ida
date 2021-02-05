@@ -21,6 +21,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 @link     https://research.csc.fi/
 -->
 
+<meta name="fdwe-scope" content="ACTIONS / PENDING">
+
 <div id="app" class="ida">
     
     <?php $_['appNavigation']->printPage(); ?>

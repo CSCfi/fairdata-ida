@@ -1,3 +1,36 @@
+<!--
+This file is part of the IDA research data storage service
+
+Copyright (C) 2018 Ministry of Education and Culture, Finland
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+@author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+@license  GNU Affero General Public License, version 3
+@link     https://research.csc.fi/
+
+NOTE: Derived from original Nextcloud code nextcloud/core/templates/layout.user.php
+
+-->
+
+<?php
+function FDWEActive()
+{
+    return \OC::$server->getSystemConfig()->getValue('FDWE_URL', null) != null;
+}
+?>
+
 <!DOCTYPE html>
 <html class="ng-csp" data-placeholder-focus="false" lang="<?php p($_['language']); ?>" data-locale="<?php p($_['locale']); ?>" >
 <head data-requesttoken="<?php p($_['requesttoken']); ?>">
@@ -23,6 +56,12 @@
 	<?php emit_css_loading_tags($_); ?>
 	<?php emit_script_loading_tags($_); ?>
 	<?php print_unescaped($_['headers']); ?>
+
+    <?php if (FDWEActive()) : ?>
+    <meta name="fdwe-service" content="IDA">
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
+    <?php endif; ?>
+
 </head>
 <body id="<?php p($_['bodyid']);?>">
 <?php include('layout.noscript.warning.php'); ?>

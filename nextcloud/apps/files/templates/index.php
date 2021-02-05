@@ -1,6 +1,9 @@
 <?php /** @var $l \OCP\IL10N */ ?>
 <?php $_['appNavigation']->printPage(); ?>
+
 <div id="app-content">
+
+    <meta name="fdwe-scope" content="FILES">
 
 	<?php if (!$_['isIE']) { ?>
 		<input type="checkbox" class="hidden-visually" id="showgridview"

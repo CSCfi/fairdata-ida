@@ -24,6 +24,13 @@ NOTE: Derived from original Nextcloud code nextcloud/core/templates/layout.user.
 
 -->
 
+<?php
+function FDWEActive()
+{
+    return \OC::$server->getSystemConfig()->getValue('FDWE_URL', null) != null;
+}
+?>
+
 <!DOCTYPE html>
 <html class="ng-csp" data-placeholder-focus="false" lang="<?php p($_['language']); ?>" data-locale="<?php p($_['locale']); ?>">
 
@@ -50,6 +57,12 @@ NOTE: Derived from original Nextcloud code nextcloud/core/templates/layout.user.
 	<?php emit_css_loading_tags($_); ?>
 	<?php emit_script_loading_tags($_); ?>
 	<?php print_unescaped($_['headers']); ?>
+
+    <?php if (FDWEActive()) : ?>
+    <meta name="fdwe-service" content="IDA">
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
+    <?php endif; ?>
+
 </head>
 
 <body id="<?php p($_['bodyid']); ?>">

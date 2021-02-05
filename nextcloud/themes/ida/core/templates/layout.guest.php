@@ -44,6 +44,11 @@ function SSOActive()
     return \OC::$server->getSystemConfig()->getValue('SSO_AUTHENTICATION') === true || $_GET['sso_authentication'] === 'true';
 }
 
+function FDWEActive()
+{
+    return \OC::$server->getSystemConfig()->getValue('FDWE_URL', null) != null;
+}
+
 function localLoginActive()
 {
     if (!SSOActive()) {
@@ -89,8 +94,8 @@ function localLoginActive()
     <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-guest.js"></script>
 
     <?php if (SSOActive()) : ?>
-        <link nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" rel="stylesheet" href="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.css">
-        <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
+    <link nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" rel="stylesheet" href="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.css">
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('SSO_API')); ?>/notification.js"></script>
     <?php endif; ?>
 
     <link rel="stylesheet" href="/themes/ida/core/css/ida-guest.css">
@@ -112,6 +117,13 @@ function localLoginActive()
             color: black;
         }
     </style>
+
+    <?php if (FDWEActive()) : ?>
+        <meta name="fdwe-service" content="IDA">
+        <meta name="fdwe-scope" content="HOME">
+        <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
+    <?php endif; ?>
+
 </head>
 
 <body id="body-login">

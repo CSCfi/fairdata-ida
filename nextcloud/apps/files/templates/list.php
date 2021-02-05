@@ -5,6 +5,7 @@ This file is part of the IDA research data storage service
 @link     https://research.csc.fi/
 -->
 
+
 <div id="controls">
 		<div class="actions creatable hidden">
 			<div id="uploadprogresswrapper">

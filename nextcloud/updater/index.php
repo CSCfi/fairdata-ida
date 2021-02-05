@@ -1678,6 +1678,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 		}
 
 	</style>
+
 </head>
 <body>
 <div id="header">
