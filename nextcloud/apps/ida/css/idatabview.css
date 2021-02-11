@@ -25,6 +25,22 @@
     color: #b70c00;
 }
 
+#frozenFile:focus {
+  outline-offset: 5px;
+}
+
+#frozenFolder:focus {
+  outline-offset: 5px;
+}
+
+#stagingFile:focus {
+  outline-offset: 5px;
+}
+
+#stagingFolder:focus {
+  outline-offset: 5px;
+}
+
 #idaTabView input {
     width: 200px;
     margin: 15px;

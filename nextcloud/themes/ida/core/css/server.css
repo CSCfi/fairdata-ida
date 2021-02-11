@@ -411,11 +411,36 @@ span.ui-icon {
     margin-top: 1px;
 }
 
-.oc-dialog-close{
-	display: none;
+:focus {
+    outline: 2px solid #007FAD;
 }
 
-:focus {
-  outline: none; 
-  border: 2px solid black;
+a:focus {
+    outline-offset: 2px;
+}
+
+#appmenu a {
+    min-width: 120px;
+}
+
+#appmenu a:focus {
+    outline: 2px solid white;
+    outline-offset: -5px;
+}
+
+#appmenu a:active {
+    outline: 2px solid white;
+    outline-offset: 5px;
+}
+
+#appmenu a:hover {
+	outline: none;
+}
+
+.oc-dialog {
+	outline: none;
+}
+
+.oc-dialog-close {
+	display: none;
 }

@@ -89,7 +89,7 @@ function FDWEActive()
 				<?php foreach ($_['navigation'] as $entry) : ?>
 					<li data-id="<?php p($entry['id']); ?>" class="hidden" tabindex="-1">
 						<a href="<?php print_unescaped($entry['href']); ?>" tabindex="3" <?php if ($entry['active']) : ?> class="active" <?php endif; ?>>
-							<p class="ida-app-title">
+							<p class="ida-app-title" tabindex="-1">
                                 <?php 
                                      $label = strtoupper(!empty($entry['name']) ? $entry['name'] : $l->t('Apps'));
                                      if ($label == 'ÅTGäRDER') { $label = 'ÅTGÄRDER'; }
