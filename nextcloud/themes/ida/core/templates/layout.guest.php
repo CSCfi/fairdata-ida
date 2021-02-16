@@ -143,7 +143,7 @@ function localLoginActive()
                 return $lang["short"] != $CURRENT_LANGUAGE;
             });
             foreach ($languagesToDisplay as $lang) {
-                print_unescaped('<div aria-label="Change language to ' . $lang["full"] . '" class="language-choice" role="button" tabindex="0" data-language-code="' . $lang["short"] . '">' . $lang["full"] . '</div>');
+                print_unescaped('<button aria-label="Change language to ' . $lang["full"] . '" class="language-choice" tabindex="0" data-language-code="' . $lang["short"] . '">' . $lang["full"] . '</button>');
             }
             ?>
         </div>
@@ -162,7 +162,7 @@ function localLoginActive()
                 <div class="language-selector-container">
                     <?php
                     foreach ($languagesToDisplay as $lang) {
-                        print_unescaped('<span aria-label="Change language to ' . $lang["full"] . '" class="language-choice" role="button" tabindex="0" data-language-code="' . $lang["short"] . '">' . $lang["short"] . '</span>');
+                        print_unescaped('<button aria-label="Change language to ' . $lang["full"] . '" class="language-choice" tabindex="0" data-language-code="' . $lang["short"] . '">' . $lang["short"] . '</button>');
                     }
                     ?>
                 </div>

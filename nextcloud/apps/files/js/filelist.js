@@ -1561,6 +1561,8 @@
 						: '118'
 			}
 
+			maxContrast = OCA.Accessibility && OCA.Accessibility.theme === 'themedark' ? '130' : '118';
+
 			// size column
 			if (typeof(fileData.size) !== 'undefined' && fileData.size >= 0) {
 				simpleSize = humanFileSize(parseInt(fileData.size, 10), true);
