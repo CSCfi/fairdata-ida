@@ -33,7 +33,7 @@
 # ...
 # demo_project_100  demo_user_100
 #
-# The password for all demo_user_# accounts matches the template demo_password_#_XXXX
+# The password for all demo_user_# accounts matches the template Demo_Password_#_XXXX
 # where # is the user number 1-100 and XXXX is a randomly generated alphanumeric sequence,
 # ensuring that the password is unique.
 #
@@ -207,7 +207,7 @@ fi
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
     PROJECT="demo_project_$COUNT"
     TOKEN=`tr -cd '[:alnum:]' < /dev/urandom | head -c64 | sed -e 's/[^a-zA-Z0-9]//' | sed -e 's/[015oOiIlLsS]//g' | head -c4 | tr 'A-Z' 'a-z'`
-    export OC_PASS="demo_password_${COUNT}_${TOKEN}"
+    export OC_PASS="Demo_Password_${COUNT}_${TOKEN}"
     USER="demo_user_$COUNT"
     CREDENTIALS=$(printf "   %-20s%s" "$USER" "$OC_PASS")
     echo "$CREDENTIALS" >> $PWFILE
