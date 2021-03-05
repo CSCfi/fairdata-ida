@@ -44,6 +44,8 @@ use OCP\IRequest;
 use OCP\ISession;
 use OCP\Security\ISecureRandom;
 use OCP\Session\Exceptions\SessionNotAvailableException;
+use OCP\Util;
+use \Firebase\JWT\JWT;
 
 class AuthSettingsController extends Controller {
 
@@ -101,22 +103,48 @@ class AuthSettingsController extends Controller {
 	 * @return JSONResponse
 	 */
 	public function create($name) {
-		try {
-			$sessionId = $this->session->getId();
-		} catch (SessionNotAvailableException $ex) {
-			return $this->getServiceNotAvailableResponse();
+
+		$loginName = null;
+
+		$serverName = $_SERVER['SERVER_NAME'];
+		$domain = substr($serverName, strpos($serverName, '.') + 1);
+		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+
+		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
+
+		    Util::writeLog('ida', 'AuthSettingsController.php: create: domain=' . $domain
+		              . ' fd_sso_session_id=' . $_COOKIE[$prefix . '_fd_sso_session_id']
+		              . ' fd_sso_session=' . $_COOKIE[$prefix . '_fd_sso_session']
+					  , \OCP\Util::DEBUG);
+
+			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+
+			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+
+			if ($session && $session->fairdata_user && $session->fairdata_user->id) {
+		        $loginName = $session->fairdata_user->id;
+			}
 		}
 
-		try {
-			$sessionToken = $this->tokenProvider->getToken($sessionId);
-			$loginName = $sessionToken->getLoginName();
-			try {
-				$password = $this->tokenProvider->getPassword($sessionToken, $sessionId);
-			} catch (PasswordlessTokenException $ex) {
-				$password = null;
-			}
-		} catch (InvalidTokenException $ex) {
-			return $this->getServiceNotAvailableResponse();
+		if ($loginName == null) {
+
+		    try {
+			    $sessionId = $this->session->getId();
+		    } catch (SessionNotAvailableException $ex) {
+			    return $this->getServiceNotAvailableResponse();
+		    }
+    
+		    try {
+			    $sessionToken = $this->tokenProvider->getToken($sessionId);
+			    $loginName = $sessionToken->getLoginName();
+			    try {
+				    $password = $this->tokenProvider->getPassword($sessionToken, $sessionId);
+			    } catch (PasswordlessTokenException $ex) {
+				    $password = null;
+			    }
+		    } catch (InvalidTokenException $ex) {
+			    return $this->getServiceNotAvailableResponse();
+		    }
 		}
 
 		$token = $this->generateRandomDeviceToken();

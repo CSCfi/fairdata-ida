@@ -1028,6 +1028,16 @@ class OC {
 		$domain = substr($serverName, strpos($serverName, '.') + 1);
 		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
 
+		if (OC_User::handleApacheAuth()) {
+			return true;
+		}
+		if ($userSession->tryTokenLogin($request)) {
+			return true;
+		}
+		if ($userSession->tryBasicAuthLogin($request, \OC::$server->getBruteForceThrottler())) {
+			return true;
+		}
+
 		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
 
 		    Util::writeLog('ida', 'base.php: handleLogin: domain=' . $domain
@@ -1054,15 +1064,6 @@ class OC {
 			}
 		}
 
-		if (OC_User::handleApacheAuth()) {
-			return true;
-		}
-		if ($userSession->tryTokenLogin($request)) {
-			return true;
-		}
-		if ($userSession->tryBasicAuthLogin($request, \OC::$server->getBruteForceThrottler())) {
-			return true;
-		}
 		return false;
 	}
 

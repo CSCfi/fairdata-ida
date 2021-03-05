@@ -204,16 +204,6 @@ function localLoginActive()
                                         <?php print_unescaped($_['content']); ?>
                                     </div>
                                 <?php elseif (localLoginActive()) : ?>
-                                    <div class="haka-login">
-                                        <?php if (\OC::$server->getAppManager()->isEnabledForUser('user_saml')) {
-                                            print_unescaped('<a href="');
-                                            $shib_target = \OC::$server->getURLGenerator()->linkToRouteAbsolute('user_saml.SAML.login')
-                                                . '?requesttoken='
-                                                . urlencode(\OC::$server->getCsrfTokenManager()->getToken()->getEncryptedValue());
-                                            print_unescaped($shib_target);
-                                            print_unescaped('" ><img id="haka-login-button" src="/apps/ida/img/Haka_login_vaaka.jpg"></a>');
-                                        } ?>
-                                    </div>
                                     <div class="local-login-form">
                                         <?php print_unescaped($_['content']); ?>
                                         <p id="ida-local-login-form-footer">

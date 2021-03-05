@@ -35,6 +35,7 @@ import unittest
 import time
 import os
 import json
+import datetime
 from tests.common.utils import load_configuration
 
 
@@ -123,9 +124,36 @@ class TestIdaApp(unittest.TestCase):
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
 
-        headers = { 'X-SIMULATE-AGENTS': 'true' }
+        print("--- Temporary Share Links")
+
+        print("Create temporary share link")
+        tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+        expireDate = tomorrow.strftime("%Y-%m-%d")
+        headers = { 'OCS-APIRequest': 'true' }
+        data = {
+            "expireDate": expireDate,
+            "hideDownload": "false",
+            "password": "",
+            "passwordChanged": "false",
+            "sendPasswordByTalk": "false",
+            "permissions": "31",
+            "shareType": "3",
+            "path": "/test_project_a+/testdata/2017-08/Experiment_1/test01.dat"
+        }
+        response = requests.post("%s?format=json" % self.config["URL_BASE_SHARE"], headers=headers, json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        ocs = response_data.get("ocs", None)
+        self.assertIsNotNone(ocs)
+        share_data = ocs.get("data", None)
+        self.assertIsNotNone(share_data)
+        token = share_data.get("token", None)
+        self.assertIsNotNone(token)
+        self.assertTrue(token.startswith("NOT_FOR_PUBLICATION_"))
 
         print("--- Freeze Actions")
+
+        headers = { 'X-SIMULATE-AGENTS': 'true' }
 
         print("Freeze a single file")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test01.dat"}

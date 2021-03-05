@@ -71,6 +71,7 @@ def load_configuration():
         'ROOT':                   server_configuration.ROOT,
         'OCC':                    server_configuration.OCC,
         'IDA_API_ROOT_URL':       server_configuration.IDA_API_ROOT_URL,
+        'URL_BASE_SHARE':         server_configuration.URL_BASE_SHARE,
         'HTTPD_USER':             server_configuration.HTTPD_USER,
         'NC_ADMIN_USER':          server_configuration.NC_ADMIN_USER,
         'NC_ADMIN_PASS':          server_configuration.NC_ADMIN_PASS,
