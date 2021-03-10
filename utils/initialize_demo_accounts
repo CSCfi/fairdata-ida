@@ -28,10 +28,10 @@
 #
 # Project and user accounts will be created for 100 distinct projects, named
 #
-# demo_project_1    demo_user_1
-# demo_project_2    demo_user_2
+# Demo_Project_1    demo_user_1
+# Demo_Project_2    demo_user_2
 # ...
-# demo_project_100  demo_user_100
+# Demo_Project_100  demo_user_100
 #
 # The password for all demo_user_# accounts matches the template Demo_Password_#_XXXX
 # where # is the user number 1-100 and XXXX is a randomly generated alphanumeric sequence,
@@ -76,7 +76,7 @@ function skipped {
 echo "Flushing all project records from IDA database..."
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="demo_project_$COUNT"
+    PROJECT="Demo_Project_$COUNT"
     COUNT=$(( $COUNT + 1 ))
     # Use the PSO account when flushing the project data, NOT the admin account
     # This ensures we never accidentally flush any data other than belonging to
@@ -102,7 +102,7 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
     echo "Flushing all project records from Metax database..."
 
     COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
-        PROJECT="demo_project_$COUNT"
+        PROJECT="Demo_Project_$COUNT"
         COUNT=$(( $COUNT + 1 ))
         STEP="   Flushing $PROJECT"
         printf "%${PADDING}s" "$STEP"
@@ -137,7 +137,7 @@ done
 echo "Deleting any existing demo projects..."
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="demo_project_$COUNT"
+    PROJECT="Demo_Project_$COUNT"
     STEP="   Deleting $PROJECT"
     printf "%${PADDING}s" "$STEP"
     OUT=`$ROOT/admin/ida_project DISABLE $PROJECT 2>&1`
@@ -153,7 +153,7 @@ done
 echo "Deleting any existing project share owners..."
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="demo_project_$COUNT"
+    PROJECT="Demo_Project_$COUNT"
     USER="$PROJECT_USER_PREFIX""$PROJECT"
     STEP="   Deleting $USER"
     printf "%${PADDING}s" "$STEP"
@@ -179,7 +179,7 @@ echo "Creating demo accounts..."
 echo "Creating projects..."
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="demo_project_$COUNT"
+    PROJECT="Demo_Project_$COUNT"
     STEP="   Creating $PROJECT"
     printf "%${PADDING}s" "$STEP"
     OUT=`$ROOT/admin/ida_project ADD $PROJECT 1 2>&1`
@@ -205,7 +205,7 @@ if [ "${EMAIL_SENDER}${EMAIL_RECIPIENTS}" != "" ]; then
 fi
 
 COUNT=1; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="demo_project_$COUNT"
+    PROJECT="Demo_Project_$COUNT"
     TOKEN=`tr -cd '[:alnum:]' < /dev/urandom | head -c64 | sed -e 's/[^a-zA-Z0-9]//' | sed -e 's/[015oOiIlLsS]//g' | head -c4 | tr 'A-Z' 'a-z'`
     export OC_PASS="Demo_Password_${COUNT}_${TOKEN}"
     USER="demo_user_$COUNT"
