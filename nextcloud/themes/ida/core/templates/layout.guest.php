@@ -54,8 +54,17 @@ function localLoginActive()
     if (!SSOActive()) {
         return true;
     }
+    if ($_GET['local_login'] === 'true') {
+        return true;
+    }
     return \OC::$server->getSystemConfig()->getValue('LOCAL_LOGIN') === true;
 }
+
+function localLoginOrSharePasswordActive()
+{
+    return (localLoginActive() || strpos($_SERVER['REQUEST_URI'], '/s/NOT_FOR_PUBLICATION_') !== false);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -102,7 +111,7 @@ function localLoginActive()
 
     <?php
     # We need to increase container width if local login is enabled, as there needs to fit more columns
-    if (localLoginActive()) :
+    if (localLoginOrSharePasswordActive()) :
     ?>
         <style type="text/css">
             .fd-content {
@@ -171,70 +180,46 @@ function localLoginActive()
     </div>
     <div class="fd-content container">
         <div class="row">
-            <?php if (localLoginActive()) : ?>
-                <?php if (SSOActive()) : ?>
-                    <div class="col-lg-4 col-md-12 flex-center-md fd-col">
-                        <div id="ida-login" class="wrapper">
-                            <div class="v-align">
-                                <?php if (strpos($_SERVER['REQUEST_URI'], '/s/NOT_FOR_PUBLICATION_') !== false) : ?>
-                                    <div class="local-login-form">
-                                        <p id="ida-local-login-form-header">
-                                            <?php p($l->t('Enter temporary share password:')); ?>
-                                        </p>
-                                        <?php print_unescaped($_['content']); ?>
-                                    </div>
-                                <?php elseif (localLoginActive()) : ?>
-                                    <div class="local-login-form">
-                                        <?php print_unescaped($_['content']); ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
+            <?php if (localLoginOrSharePasswordActive()) : ?>
+                <div class="col-lg-4 col-md-12 flex-center-md fd-col" style="max-width: 350px;">
+                    <div id="ida-login" class="wrapper">
+                        <div class="v-align">
+                            <?php if (strpos($_SERVER['REQUEST_URI'], '/s/NOT_FOR_PUBLICATION_') !== false) : ?>
+                                <div class="local-login-form">
+                                    <p id="ida-local-login-form-header">
+                                        <?php p($l->t('Enter temporary share password:')); ?>
+                                    </p>
+                                    <?php print_unescaped($_['content']); ?>
+                                </div>
+                            <?php elseif (localLoginActive()) : ?>
+                                <div class="local-login-form">
+                                    <?php print_unescaped($_['content']); ?>
+                                    <p id="ida-local-login-form-footer">
+                                        <?php if ($CURRENT_LANGUAGE == "fi") : ?>
+                                            CSC-tiliä hallinnoidaan
+                                            <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC-asiakasportaalissa</a>
+                                        <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
+                                            Hantering av CSC-profilen sker i
+                                            <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC</a>
+                                        <?php else: ?>
+                                            Personal CSC accounts are created and managed in
+                                            <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC</a>
+                                        <?php endif; ?>
+                                    </p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
-                <?php else : ?>
-                    <!-- To be DEPRECATED once the Fairdata SSO is taken into use. Does not scale on mobile. -->
-                    <div class="col-lg-4 col-md-12 flex-center-md fd-col" style="max-width: 24%;">
-                        <div id="ida-login" class="wrapper">
-                            <div class="v-align">
-                                <?php if (strpos($_SERVER['REQUEST_URI'], '/s/NOT_FOR_PUBLICATION_') !== false) : ?>
-                                    <div class="local-login-form">
-                                        <p id="ida-local-login-form-header">
-                                            <?php p($l->t('Enter temporary share password:')); ?>
-                                        </p>
-                                        <?php print_unescaped($_['content']); ?>
-                                    </div>
-                                <?php elseif (localLoginActive()) : ?>
-                                    <div class="local-login-form">
-                                        <?php print_unescaped($_['content']); ?>
-                                        <p id="ida-local-login-form-footer">
-                                            <?php if ($CURRENT_LANGUAGE == "fi") : ?>
-                                                CSC-tiliä hallinnoidaan
-                                                <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC-asiakasportaalissa</a>
-                                            <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
-                                                Hantering av CSC-profilen sker i
-                                                <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC</a>
-                                            <?php else: ?>
-                                                Personal CSC accounts are created and managed in
-                                                <br><a href="https://my.csc.fi/" rel="noreferrer noopener" target="_blank">MyCSC</a>
-                                            <?php endif; ?>
-                                        </p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                <?php endif; ?>
+                </div>
             <?php endif; ?>
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
-                <div class="<?php if (localLoginActive()) p('col-lg-4');
-                            else p('col-lg-6'); ?> col-md-12 fd-col">
+                <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4'); else p('col-lg-6'); ?> col-md-12 fd-col">
                     <h2>Tervetuloa Fairdata IDA -palveluun</h2>
                     <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille, valtion tutkimuslaitoksille sekä tiettyjen Suomen Akatemian rahoitusmuotojen alaiselle tutkimukselle. IDA kuuluu opetus- ja kulttuuriministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
                     <p>Säilytystila on projektikohtaista. IDAssa säilytettävä data voidaan muiden Fairdata-palvelujen avulla kuvailla tutkimusaineistoksi ja julkaista.</p>
                     <p><a href="https://www.fairdata.fi/ida/" rel="noreferrer noopener" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
                 </div>
-                <div class="<?php if (localLoginActive()) p('col-lg-4');
-                            else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
+                <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4'); else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
                     <div class="row card-login active">
                         <div class="col-sm-2 col-6 align-center align-right-sm">
                             <span>IDA</span>
@@ -280,15 +265,13 @@ function localLoginActive()
                     </div>
                 </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
-                <div class="<?php if (localLoginActive()) p('col-lg-4');
-                            else p('col-lg-6'); ?> col-md-12 fd-col">
+                <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4'); else p('col-lg-6'); ?> col-md-12 fd-col">
                     <h2>Välkommen till Fairdata IDA</h2>
                     <p>Fairdata IDA är en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshögskolor, forskningsinstitut i Finland och för forskning som finansieras av Finlands Akademi. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
                     <p>Bevaringsutrymmet i IDA tilldelas projekt. Data som finns i IDA kan dokumenteras och publiceras som dataset med hjälp av andra Fairdata-tjänster.</p>
                     <p><a href="https://www.fairdata.fi/en/ida/" rel="noreferrer noopener" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
                 </div>
-                <div class="<?php if (localLoginActive()) p('col-lg-4');
-                            else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
+                <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4'); else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
                     <div class="row card-login active">
                         <div class="col-sm-2 col-6 align-center align-right-sm">
                             <span>IDA</span>
@@ -334,15 +317,13 @@ function localLoginActive()
                     </div>
                 </div>
             <?php else : ?>
-                <div class="<?php if (localLoginActive()) p('col-lg-4');
-                            else p('col-lg-6'); ?> col-md-12 fd-col">
+                <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4'); else p('col-lg-6'); ?> col-md-12 fd-col">
                     <h2>Welcome to Fairdata IDA</h2>
                     <p>Fairdata IDA is a continuous research data storage service organized by the Ministry of Education and Culture. The service is offered free of charge to Finnish universities and universities of applied sciences, research institutes, as well as research funded by the Academy of Finland.</p>
                     <p>IDA enables uploading, organizing, and sharing research data within a project group and storing the data in an immutable state. The data stored in IDA can be included in research datasets which are described and made publicly available for download via other Fairdata services.</p>
                     <p><a href="https://www.fairdata.fi/en/ida/" rel="noreferrer noopener" target="_blank">How to start using IDA and user guides</a></p>
                 </div>
-                <div class="<?php if (localLoginActive()) p('col-lg-4');
-                            else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
+                <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4'); else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
                     <div class="row card-login active">
                         <div class="col-sm-2 col-6 align-center align-right-sm">
                             <span>IDA</span>

@@ -42,6 +42,7 @@ use OCP\IUserManager;
 use OCP\IUserSession;
 use OCP\Session\Exceptions\SessionNotAvailableException;
 use OCP\Settings\ISettings;
+use OCP\Util;
 
 class Security implements ISettings {
 
@@ -151,18 +152,43 @@ class Security implements ISettings {
 	}
 
 	private function getAppTokens(): array {
+
 		$tokens = $this->tokenProvider->getTokenByUser($this->uid);
+
+		Util::writeLog('Settings', 'Security.php: getAppTokens: tokens=' . json_encode($tokens), \OCP\Util::DEBUG);
+
+		if (!is_array($tokens) || count($tokens) == 0) {
+			return [];
+		}
+
+		// Special handling for SSO sessions
+		if ($this->session->get('fd_sso_session_id')) {
+		    Util::writeLog('User', 'Session.php: validateToken: sessionToken (SSO_PASSWORD)', \OCP\Util::DEBUG);
+		    $appTokens = array_map(function (IToken $token) {
+			    $data = $token->jsonSerialize();
+			    $data['canDelete'] = true;
+			    $data['canRename'] = $token instanceof INamedToken;
+			    return $data;
+		    }, $tokens);
+		    Util::writeLog('Settings', 'Security.php: getAppTokens: appTokens=' . json_encode($appTokens), \OCP\Util::DEBUG);
+			return $appTokens;
+		}
 
 		try {
 			$sessionId = $this->session->getId();
 		} catch (SessionNotAvailableException $ex) {
 			return [];
 		}
+
+		Util::writeLog('Settings', 'Security.php: getAppTokens: sessionId=' . json_encode($sessionId), \OCP\Util::DEBUG);
+
 		try {
-			$sessionToken = $this->tokenProvider->getToken($sessionId);
+		   $sessionToken = $this->tokenProvider->getToken($sessionId);
 		} catch (InvalidTokenException $ex) {
-			return [];
+		   return [];
 		}
+
+		Util::writeLog('Settings', 'Security.php: getAppTokens: sessionToken=' . json_encode($sessionToken), \OCP\Util::DEBUG);
 
 		return array_map(function (IToken $token) use ($sessionToken) {
 			$data = $token->jsonSerialize();

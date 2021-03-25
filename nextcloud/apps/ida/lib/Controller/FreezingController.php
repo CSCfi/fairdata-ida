@@ -1553,8 +1553,9 @@ class FreezingController extends Controller
 
             $intersecting_dataset_ids = json_decode($response, true);
 
-            if (count($intersecting_dataset_ids) == 0) {
-                list($header, $body) = explode('Content-Disposition: attachment; filename=response.json', $response, 2);
+            if (! is_array($intersecting_dataset_ids)) {
+                list($ignore, $keep) = explode('Content-Disposition: attachment; filename=response.json', $response, 2);
+                list($ignore, $body) = explode("\r\n\r\n", $keep, 2);
                 Util::writeLog('ida', 'checkDatasets: body=' . $body, \OCP\Util::DEBUG);
                 $intersecting_dataset_ids = json_decode($body, true);
             }
