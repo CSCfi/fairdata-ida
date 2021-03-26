@@ -40,47 +40,18 @@ $CURRENT_LANGUAGE = $CURRENT_LANGUAGE ? substr($CURRENT_LANGUAGE, 0, 2) : 'en';
 			<div style="clear: both;"></div>
 		</div>
 
-		<!-- Language variants are handled here rather than via l10n translation machinery due to integration with cookie based language sniffing for home page -->
-		<?php if ($CURRENT_LANGUAGE == "fi") : ?>
-		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			    <input type="text" name="user" id="user" placeholder="<?php p($l->t('CSC-käyttäjätunnus')); ?>" aria-label="<?php p($l->t('CSC-käyttäjätunnus')); ?>" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			    <label for="user" class="infield"><?php p($l->t('CSC-käyttäjätunnus')); ?></label>
-		    </p>
-		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			    <input type="password" name="password" id="password" value="" placeholder="<?php p($l->t('CSC-salasana')); ?>" aria-label="<?php p($l->t('CSC-salasana')); ?>" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			    <label for="password" class="infield"><?php p($l->t('CSC-salasana')); ?></label>
-		    </p>
-		    <div id="submit-wrapper">
-				<input type="submit" id="submit" class="login primary" title="" value="Kirjaudu" disabled="disabled" />
-			    <div class="submit-icon icon-confirm-white"></div>
-		    </div>
-		<?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
-		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			    <input type="text" name="user" id="user" placeholder="<?php p($l->t('CSC-användarnamn')); ?>" aria-label="<?php p($l->t('CSC-användarnamn')); ?>" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			    <label for="user" class="infield"><?php p($l->t('CSC-användarnamn')); ?></label>
-		    </p>
-		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			    <input type="password" name="password" id="password" value="" placeholder="<?php p($l->t('CSC-lösenord')); ?>" aria-label="<?php p($l->t('CSC-lösenord')); ?>" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			    <label for="password" class="infield"><?php p($l->t('CSC-lösenord')); ?></label>
-		    </p>
-		    <div id="submit-wrapper">
-				<input type="submit" id="submit" class="login primary" title="" value="Logga in" disabled="disabled" />
-			    <div class="submit-icon icon-confirm-white"></div>
-		    </div>
-		<?php else : ?>
-		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			    <input type="text" name="user" id="user" placeholder="<?php p($l->t('CSC username')); ?>" aria-label="<?php p($l->t('CSC username')); ?>" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			    <label for="user" class="infield"><?php p($l->t('CSC username')); ?></label>
-		    </p>
-		    <p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			    <input type="password" name="password" id="password" value="" placeholder="<?php p($l->t('CSC password')); ?>" aria-label="<?php p($l->t('CSC password')); ?>" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			    <label for="password" class="infield"><?php p($l->t('CSC password')); ?></label>
-		    </p>
-		    <div id="submit-wrapper">
-				<input type="submit" id="submit" class="login primary" title="" value="Login" disabled="disabled" />
-			    <div class="submit-icon icon-confirm-white"></div>
-		    </div>
-		<?php endif; ?>
+		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			<input type="text" name="user" id="user" placeholder="Username" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			<label for="user" class="infield">Username</label>
+		</p>
+		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
+			<input type="password" name="password" id="password" value="" placeholder="Password" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+			<label for="password" class="infield">Password</label>
+		</p>
+		<div id="submit-wrapper">
+			<input type="submit" id="submit" class="login primary" title="" value="Login" disabled="disabled" />
+			<div class="submit-icon icon-confirm-white"></div>
+		</div>
 
 		<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?>
 			<p class="warning wrongPasswordMsg">

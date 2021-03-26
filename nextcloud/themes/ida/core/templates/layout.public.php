@@ -59,6 +59,9 @@ function FDWEActive()
 
     <?php if (FDWEActive()) : ?>
     <meta name="fdwe-service" content="IDA">
+    <?php if (strpos($_SERVER["REQUEST_URI"], "NOT_FOR_PUBLICATION") !== false ) : ?>
+    <meta name="fdwe-scope" content="FILES / SHARE / ACCESS">
+    <?php endif; ?>
     <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
     <?php endif; ?>
 

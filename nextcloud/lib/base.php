@@ -1024,8 +1024,8 @@ class OC {
 	static function handleLogin(OCP\IRequest $request) {
         Util::writeLog('ida', 'base.php: handleLogin', \OCP\Util::DEBUG);
 		$userSession = self::$server->getUserSession();
-		$serverName = $_SERVER['SERVER_NAME'];
-		$domain = substr($serverName, strpos($serverName, '.') + 1);
+		$hostname = $_SERVER['SERVER_NAME'];
+		$domain = substr($hostname, strpos($hostname, '.') + 1);
 		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
 
 		if (OC_User::handleApacheAuth()) {

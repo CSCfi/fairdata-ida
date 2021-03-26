@@ -63,6 +63,7 @@ use OCP\Security\ISecureRandom;
 use OCP\Session\Exceptions\SessionNotAvailableException;
 use OCP\Util;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use \Firebase\JWT\JWT;
 
 /**
  * Class Session
@@ -403,23 +404,26 @@ class Session implements IUserSession, Emitter
 
 			Util::writeLog('User', 'Session.php: completeLogin:' . ' uid=' . $user->getUID(), \OCP\Util::DEBUG);
 
-			$serverName = $_SERVER['SERVER_NAME'];
-			$domain = substr($serverName, strpos($serverName, '.') + 1);
-			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-
 			$lang = 'en';
 			$locale = 'en_US';
 
-			if (isset($_COOKIE[$prefix . '_fd_language'])) {
-				$lang = $_COOKIE[$prefix . '_fd_language'];
-
-				if ($lang == 'fi') {
-			        $locale = 'fi_FI';
-				}
-				elseif ($lang == 'sv'){
-			        $locale = 'sv_FI';
-				}
-			}
+			$hostname = $_SERVER['SERVER_NAME'];
+			$domain = substr($hostname, strpos($hostname, '.') + 1);
+			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+			$cookie = $prefix . '_fd_sso_session';
+	        if (array_key_exists($cookie, $_COOKIE)) {
+                $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+		        $session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+				if ($session && $session->language) {
+		            $lang = $session->language;
+				    if ($lang == 'fi') {
+			            $locale = 'fi_FI';
+				    }
+				    elseif ($lang == 'sv'){
+			            $locale = 'sv_FI';
+				    }
+                }
+	        }
 
 			// Update user language and locale in Nextcloud settings
 

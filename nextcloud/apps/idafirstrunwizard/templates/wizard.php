@@ -28,15 +28,21 @@
  * @link      https://research.csc.fi/
  */
 
+use \Firebase\JWT\JWT;
+
 $CURRENT_LANGUAGE = null;
 
 if (array_key_exists('HTTP_HOST', $_SERVER)) {
-	$domain = $_SERVER['HTTP_HOST'];
-	$domain = substr($domain, strpos($domain, ".") + 1);
-	$domain = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-	$cookie = $domain . '_fd_language';
+	$hostname = $_SERVER['HTTP_HOST'];
+	$domain = substr($hostname, strpos($hostname, ".") + 1);
+	$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+	$cookie = $prefix . '_fd_sso_session';
 	if (array_key_exists($cookie, $_COOKIE)) {
-		$CURRENT_LANGUAGE = $_COOKIE[$cookie];
+        $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+		$session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+		if ($session && $session->language) {
+		    return $session->language;
+        }
 	}
 }
 

@@ -36,6 +36,7 @@ use OCP\IUser;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
 use OCP\L10N\ILanguageIterator;
+use \Firebase\JWT\JWT;
 
 /**
  * A factory that generates language instances
@@ -54,12 +55,12 @@ class Factory implements IFactory {
 	/**
 	 * @var array Structure: App => string[]
 	 */
-	protected $availableLanguages = [];
+	protected $availableLanguages = ['en', 'fi', 'sv'];
 
 	/**
 	 * @var array
 	 */
-	protected $availableLocales = [];
+	protected $availableLocales = ['en_US', 'fi_FI', 'sv_FI'];
 
 	/**
 	 * @var array Structure: string => callable
@@ -67,8 +68,9 @@ class Factory implements IFactory {
 	protected $pluralFunctions = [];
 
 	const COMMON_LANGUAGE_CODES = [
-		'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
-		'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
+		'en', 'fi', 'sv', 'en_US', 'en_UK', 'en_GB', 'fi_FI', 'sv_SV', 'sv_FI'
+		//'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
+		//'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
 	];
 
 	/** @var IConfig */
@@ -149,26 +151,28 @@ class Factory implements IFactory {
 	 */
 	public function findLanguage($app = null) {
 
-		$lang = null;
+        if (array_key_exists('HTTP_HOST', $_SERVER)) {
+	        $hostname = $_SERVER['HTTP_HOST'];
+	        $domain = substr($hostname, strpos($hostname, ".") + 1);
+	        $prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+	        $cookie = $prefix . '_fd_sso_session';
+	        if (array_key_exists($cookie, $_COOKIE)) {
+                $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+		        $session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+				if ($session && $session->language) {
+		            return $session->language;
+                }
+	        }
+        }
 
-		// Sniff for Fairdata language cookie. If a valid value is found and user is not logged in,
-		// use value from cookie. Otherwise do default Nextcloud action (try to get language from request)
-		if (array_key_exists('HTTP_HOST', $_SERVER)) {
-			$domain = $_SERVER['HTTP_HOST'];
-			$domain = substr($domain, strpos($domain, ".") + 1);
-			$domain = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-			$cookie = $domain . '_fd_language';
-			if (array_key_exists($cookie, $_COOKIE)) {
-			    $lang = $_COOKIE[$cookie];
-			}
-		}
+		try {
+		    $lang = $this->getLanguageFromRequest($app);
+            if ($lang == 'en' || $lang == 'fi' || $lang == 'sv') {
+		        return $lang;
+            }
+		} catch (LanguageNotFoundException $e) { ; }
 
-		// If no language cookie, default to English
-		if ($lang === null) {
-			$lang = 'en';
-		}
-
-		return $lang;
+		return 'en';
 	}
 
 	/**

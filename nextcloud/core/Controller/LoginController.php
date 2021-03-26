@@ -125,34 +125,25 @@ class LoginController extends Controller {
 	 */
 	public function logout() {
 
-		// Redirect to the Fairdata SSO so that the SSO session is terminated
+		// Log out of IDA.
 		//
-		// Note: if SSO_API is not defined, redirects to the Nextcloud /logout endpoint
-		// which ignores the SSO specific parameters and ultimately redirects to the
-		// IDA home (login) page.
+		// If login was via SSO, redirects to the Fairdata SSO so that the SSO session is
+		// terminated, ultimately being redirected back to the IDA home page.
+		//
+		// if login was via local Nextcloud authentication, redirects directly to the IDA
+		// home page.
 		
 		$uid = $this->userSession->getUser()->getUID();
-
+        $language = $this->config->getUserValue($uid, 'core', 'lang');
 		$redirect_url = $this->config->getSystemValue('IDA_HOME');
 
-		$sso_login = false;
-
 		if ($this->config->getSystemValue('SSO_AUTHENTICATION') === true) {
-		    Util::writeLog('ida', 'LoginController.php: logout: SSO_AUTHENTICATION == true', \OCP\Util::DEBUG);
-		    $sso_login = true;
-		}
-
-		if ($sso_login === false) {
 		    $domain = $this->config->getSystemValue('SSO_DOMAIN');
 			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
 			if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])) {
-		        $sso_login = true;
+			    $redirect_url = $this->config->getSystemValue('SSO_API') . '/logout?service=IDA&redirect_url=' . urlencode($redirect_url) . '&language=' . $language;
 		        Util::writeLog('ida', 'LoginController.php: logout: active SSO session cookie found', \OCP\Util::DEBUG);
 			}
-		}
-
-		if ($sso_login) {
-			$redirect_url = $this->config->getSystemValue('SSO_API') . '/logout?service=IDA&redirect_url=' . $this->config->getSystemValue('IDA_HOME');
 		}
 
 		Util::writeLog('ida', 'LoginController.php: logout: uid=' . $uid . ' redirect_url: ' . $redirect_url, \OCP\Util::DEBUG);

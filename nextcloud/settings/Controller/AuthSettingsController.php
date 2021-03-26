@@ -106,8 +106,8 @@ class AuthSettingsController extends Controller {
 
 		$loginName = null;
 
-		$serverName = $_SERVER['SERVER_NAME'];
-		$domain = substr($serverName, strpos($serverName, '.') + 1);
+		$hostname = $_SERVER['SERVER_NAME'];
+		$domain = substr($hostname, strpos($hostname, '.') + 1);
 		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
 
 		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {

@@ -141,31 +141,6 @@ function avatarResponseHandler (data) {
 	}
 }
 
-function fdIDAGetDomainName() {
-    hostname = window.location.hostname;
-    domain = hostname.substring(hostname.indexOf(".") + 1);
-    return domain
-}
-
-function fdIDAGetPrefixedCookieName(name) {
-    domain = fdIDAGetDomainName();
-    domain = domain.replace(/[^a-zA-Z0-9]/g, "_")
-    return domain + "_" + name
-}
-
-function setCookie(name, value) {
-    name = fdIDAGetPrefixedCookieName(name);
-    var expiryDate = new Date();
-    expiryDate.setTime(expiryDate.getTime() + (7*24*60*60*1000));
-    var expires = "; expires=" + expiryDate.toUTCString();
-    document.cookie = name + "=" + (value || "")  + expires + "; path=/" + "; domain=." + fdIDAGetDomainName();
-}
-
-function fdIDAChangeLanguage(lang) {
-    setCookie("fd_language", lang)
-    window.location.reload()
-}
-
 $(document).ready(function () {
 	if($('#pass2').length) {
 		$('#pass2').showPassword().keyup();
@@ -243,8 +218,6 @@ $(document).ready(function () {
 
 		var selectedLang = $("#languageinput").val(),
 			user = OC.getCurrentUser();
-
-		fdIDAChangeLanguage(selectedLang);
 
 		$.ajax({
 			url: OC.linkToOCS('cloud/users', 2) + user['uid'],
