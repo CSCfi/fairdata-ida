@@ -58,3 +58,11 @@
         #cboxLoadingGraphic{background:none;}
         #cboxClose{position:absolute; top:5px; right:5px; display:block; background:none; width:38px; height:19px; text-indent:-9999px; border:none;}
         #cboxClose:hover{background-position:bottom center;}
+
+div:hover{
+    outline: none;
+}
+
+div:focus{
+    outline: none;
+}
