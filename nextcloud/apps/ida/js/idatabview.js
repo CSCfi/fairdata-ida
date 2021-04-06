@@ -144,7 +144,7 @@
             t('ida', 'Freeze Folder?'),
             function (result) {
                 if (result) {
-                    if (fdweSiteId) fdweRecordEvent(e, 'FILES / FREEZE / FOLDER');
+                    if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / FREEZE / FOLDER');
                     $(freezeFolderButton).prop('disabled', true);
                     executeAction(e.data.param, 'freeze');
                 }
@@ -160,7 +160,7 @@
             t('ida', 'Freeze File?'),
             function (result) {
                 if (result) {
-                    if (fdweSiteId) fdweRecordEvent(e, 'FILES / FREEZE / FILE');
+                    if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / FREEZE / FILE');
                     $(freezeFileButton).prop('disabled', true);
                     executeAction(e.data.param, 'freeze');
                 }
@@ -177,7 +177,7 @@
             t('ida', 'Unfreeze Folder?'),
             function (result) {
                 if (result) {
-                    if (fdweSiteId) fdweRecordEvent(e, 'FILES / UNFREEZE / FOLDER');
+                    if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / UNFREEZE / FOLDER');
                     $(unfreezeFolderButton).prop('disabled', true);
                     $(deleteFolderButton).prop('disabled', true);
                     executeAction(e.data.param, 'unfreeze');
@@ -195,7 +195,7 @@
             t('ida', 'Unfreeze File?'),
             function (result) {
                 if (result) {
-                    if (fdweSiteId) fdweRecordEvent(e, 'FILES / UNFREEZE / FILE');
+                    if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / UNFREEZE / FILE');
                     $(unfreezeFileButton).prop('disabled', true);
                     $(deleteFileButton).prop('disabled', true);
                     executeAction(e.data.param, 'unfreeze');
@@ -213,7 +213,7 @@
             t('ida', 'Delete Folder?'),
             function (result) {
                 if (result) {
-                    if (fdweSiteId) fdweRecordEvent(e, 'FILES / DELETE / FOLDER');
+                    if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / DELETE / FOLDER');
                     $(deleteFolderButton).prop('disabled', true);
                     executeAction(e.data.param, 'delete');
                 }
@@ -230,7 +230,7 @@
             t('ida', 'Delete File?'),
             function (result) {
                 if (result) {
-                    if (fdweSiteId) fdweRecordEvent(e, 'FILES / DELETE / FILE');
+                    if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / DELETE / FILE');
                     $(deleteFileButton).prop('disabled', true);
                     executeAction(e.data.param, 'delete');
                 }
