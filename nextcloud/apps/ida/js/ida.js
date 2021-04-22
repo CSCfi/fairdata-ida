@@ -88,6 +88,29 @@
             throw new Error(jqxhr.status + ": " + jqxhr.statusText);
         },
 
+        /**
+         * Returns project title, if defined, else returns project name as title.
+         *
+         * @param project The project name
+         */
+        getProjectTitle: function (project) {
+
+            var jqxhr = $.ajax({
+                url: OC.generateUrl('/apps/ida/api/getProjectTitle?project=' + project),
+                type: 'POST',
+                contentType: 'application/json',
+                cache: false,
+                async: false
+            });
+
+            if (jqxhr.status === 200) {
+                var data = JSON.parse(jqxhr.responseText);
+                return data['message'];
+            }
+
+            return project;
+        },
+
         extractProjectName: function (pathname) {
             matches = pathname.match('^\/[^\/][^\/]*');
             if (matches != null && matches.length > 0) {

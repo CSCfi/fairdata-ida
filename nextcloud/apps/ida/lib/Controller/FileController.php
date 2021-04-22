@@ -607,4 +607,74 @@ class FileController extends Controller
         }
     }
 
+    /**
+     * Retrieve the title of the specified project, if defined, else return project name
+     *
+     * Restricted to the project access scope of the user.
+     *
+     * @param string $project the project name
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function getProjectTitle($project) {
+
+        Util::writeLog('ida', 'getProjectTitle: project=' . $project , \OCP\Util::INFO);
+
+        try {
+            try {
+                API::verifyRequiredStringParameter('project', $project);
+            }
+            catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
+            }
+
+            // If user is not admin, verify access rights
+            if ($this->userId != 'admin') {
+
+                // Get user projects and verify user belongs to at least one project
+                $userProjects = Access::getUserProjects();
+
+                if ($userProjects == null || !in_array($project, explode(",", $userProjects))) {
+                    return API::notFoundErrorResponse('The specified project was not found.');
+                }
+            }
+
+            $filesFolderPathname = self::buildFilesFolderPathname($project);
+
+            if (!file_exists($filesFolderPathname)) {
+                return API::notFoundErrorResponse('The specified project was not found.');
+            }
+
+            $title = $project;
+
+            $titleFilePathname = $filesFolderPathname . '/TITLE';
+
+            if (file_exists($titleFilePathname)) {
+                $title = trim(file_get_contents($titleFilePathname));
+            }
+
+            return API::successResponse($title);
+        }
+        catch (Exception $e) {
+            return API::serverErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Builds and returns the full pathname of the files folder for the specified project.
+     *
+     * @param string $project the project name
+     *
+     * @return string
+     */
+    protected static function buildFilesFolderPathname($project) {
+        $dataRootPathname = '/mnt/storage_vol01/ida'; // TODO get this from configuration
+        $filesFolderPathname = $dataRootPathname . '/' . Constants::PROJECT_USER_PREFIX . $project . '/files';
+        Util::writeLog('ida', 'buildFilesFolderPathname: filesFolderPathname=' . $filesFolderPathname, \OCP\Util::DEBUG);
+        return ($filesFolderPathname);
+    }
+    
 }

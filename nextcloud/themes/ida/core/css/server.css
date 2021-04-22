@@ -444,3 +444,42 @@ a:focus {
 .oc-dialog-close {
 	display: none;
 }
+
+span.nametext {
+	min-width: 175px;
+	max-width: 175px;
+}
+
+span.nametext-tight {
+	min-width: 100px;
+	max-width: 100px;
+}
+
+span.fileactions {
+	padding-left: 50px;
+}
+
+span.projectDetails {
+	/* color: #007FAD; */
+	flex-grow: 1;
+    display: flex;
+    position: relative;
+    vertical-align: top;
+}
+
+span.projectDetailsTight {
+	margin-left: -75px;
+}
+
+span.projectArea {
+	min-width: 75px;
+	max-width: 75px;
+	text-align: left;
+}
+
+span.projectTitle {
+	max-width: 350px;
+	text-align: left;
+	text-overflow: ellipsis;
+    overflow: hidden;
+}

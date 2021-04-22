@@ -79,6 +79,7 @@ OC.L10N.register(
         "Root project folders may not be modified.": "Projektets rotmapp kan inte ändras.",
         "See the <a href=\"https://www.fairdata.fi/en/ida/user-guide\" target=\"_blank\">IDA User&apos;s Guide</a> for details.": "Läs mera i <a href=\"https://www.fairdata.fi/en/ida/user-guide\" target=\"_blank\">IDA User&apos;s Guide</a>.",
         "Size": "Storlek",
+        "Staging": "Preparering",
         "THIS ACTION CANNOT BE UNDONE.": "DENNA ÅTGÄRD KAN INTE ÅNGRAS.",
         "Temporary share link": "Tillfällig länk för delning",
         "The action cannot be terminated before it is complete. Depending on the amount of data, the background operations may take several hours.": "Åtgärden kan inte avbrytas. Bakgrundsoperationerna kan upp till flera timmar om datamängden är stor.",

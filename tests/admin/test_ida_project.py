@@ -108,4 +108,20 @@ class TestIdaProject(unittest.TestCase):
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 1, "User exists")
 
+        print("Define project title")
+        cmd = "%s TITLE %s \"Test title 123\" 2>&1" % (self.ida_project, self.project_name)
+        OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        self.assertEqual(OUT, 0, "Setting project test_project title to \"Test title 123\"")
+        titleFilePath = "%s/PSO_%s/files/TITLE" % (self.config["STORAGE_OC_DATA_ROOT"], self.project_name)
+        self.assertTrue(os.path.exists(titleFilePath))
+        self.assertEqual("Test title 123\n", open(titleFilePath).read())
+
+        print("Change project title")
+        cmd = "%s TITLE %s \"Test title 234\" 2>&1" % (self.ida_project, self.project_name)
+        OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        self.assertEqual(OUT, 0, "Setting project test_project title to \"Test title 234\"")
+        titleFilePath = "%s/PSO_%s/files/TITLE" % (self.config["STORAGE_OC_DATA_ROOT"], self.project_name)
+        self.assertTrue(os.path.exists(titleFilePath))
+        self.assertEqual("Test title 234\n", open(titleFilePath).read())
+
         self.success = True

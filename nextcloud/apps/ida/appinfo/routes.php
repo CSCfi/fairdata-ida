@@ -442,5 +442,17 @@ return [
             //     pid = the PID of the file
         ],
 
+        // Project Titles
+        
+        [
+            // Retrieve project title, if defined
+            'name' => 'File#getProjectTitle',
+            'url'  => '/api/getProjectTitle',
+            'verb' => 'POST'
+            // Restricted to project access scope of user
+            // Required parameters:
+            //    project = the name of the project to check
+        ],
+        
     ]
 ];

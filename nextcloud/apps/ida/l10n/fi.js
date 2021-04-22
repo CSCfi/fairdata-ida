@@ -79,6 +79,7 @@ OC.L10N.register(
         "Root project folders may not be modified.": "Projektien juurikansiot eivät ole muokattavissa.",
         "See the <a href=\"https://www.fairdata.fi/en/ida/user-guide\" target=\"_blank\">IDA User&apos;s Guide</a> for details.": "Katso lisätietoja <a href=\"https://www.fairdata.fi/ida/kayttoopas\" target=\"_blank\">IDAn käyttöoppaasta</a>.",
         "Size": "Koko",
+        "Staging": "Valmistelu",
         "THIS ACTION CANNOT BE UNDONE.": "TÄTÄ TOIMINTOA EI VOIDA PERUUTTAA.",
         "Temporary share link": "Väliaikainen jakolinkki",
         "The action cannot be terminated before it is complete. Depending on the amount of data, the background operations may take several hours.": "Toimintoa ei voida peruuttaa ennen kuin se on suoritettu loppuun. Datan määrästä riippuen taustaoperaatiot voivat kestää useita tunteja.",

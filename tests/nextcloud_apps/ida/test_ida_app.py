@@ -70,6 +70,8 @@ class TestIdaApp(unittest.TestCase):
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
+        self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
+
 
     def tearDown(self):
         # flush all test projects, user accounts, and data, but only if all tests passed,
@@ -123,6 +125,40 @@ class TestIdaApp(unittest.TestCase):
 
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
+
+        print("--- Project Titles")
+
+        print("Define project title")
+        cmd = "%s TITLE test_project_a \"Test title A\" 2>&1" % (self.ida_project)
+        OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        self.assertEqual(OUT, 0, "Setting project test_project title to \"Test title A\"")
+        titleFilePath = "%s/PSO_test_project_a/files/TITLE" % self.config["STORAGE_OC_DATA_ROOT"]
+        self.assertTrue(os.path.exists(titleFilePath))
+        self.assertEqual("Test title A\n", open(titleFilePath).read())
+
+        print("Retrieve defined project title")
+        data = {"project": "test_project_a"}
+        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["message"], "Test title A")
+
+        print("Retrieve default project title")
+        data = {"project": "test_project_b"}
+        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["message"], "test_project_b")
+
+        print("Attempt to retrieve project title with insufficient permissions")
+        data = {"project": "test_project_a"}
+        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 404)
+
+        print("Attempt to retrieve title of non-existent project")
+        data = {"project": "nonexistentproject"}
+        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
+        self.assertEqual(response.status_code, 404)
 
         print("--- Temporary Share Links")
 

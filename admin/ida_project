@@ -23,7 +23,7 @@
 #--------------------------------------------------------------------------------
 . `dirname $0`/../lib/init_script.sh
 
-USAGE="Usage: $SCRIPT [ ADD proj_name quota | MODIFY proj_name quota | DISABLE proj_name | SHARE proj_name | UNSHARE proj_name ]"
+USAGE="Usage: $SCRIPT [ ADD proj_name quota | MODIFY proj_name quota | DISABLE proj_name | SHARE proj_name | UNSHARE proj_name | TITLE proj_name proj_title ]"
 
 # checks
 
@@ -44,7 +44,7 @@ do
     fi
 done
 
-if [ "$1" == "ADD" -o "$1" == "MODIFY" ]; then
+if [ "$1" == "ADD" -o "$1" == "MODIFY" -o "$1" == "TITLE" ]; then
     if [ $# -ne 3 ]; then
         errorExit "$USAGE"
     fi
@@ -398,4 +398,11 @@ if [ "$1" == "DISABLE" ]; then
     echoAndLog "NOTE: Project \"$PROJECT_USER\" data is kept on purpose"
 fi
 
-
+if [ "$1" == "TITLE" ]; then
+    # Set project title
+    echoAndLog "Setting project $2 title to \"$3\""
+    if [ ! -d "$STORAGE_OC_DATA_ROOT/$PROJECT_USER/files" ]; then
+        errorExit "Project $2 does not exist!"
+    fi
+    echo "$3" > "$STORAGE_OC_DATA_ROOT/$PROJECT_USER/files/TITLE"
+fi
