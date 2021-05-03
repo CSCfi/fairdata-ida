@@ -1636,19 +1636,19 @@
 
 			try {
 				if (path != null && path == '/') {
-					path = '/' + name;
-					projectName = OCA.IDA.Util.extractProjectName(path);
-					projectTitle = OCA.IDA.Util.getProjectTitle(projectName);
-					tr.attr('data-project-name', projectName);
-					tr.attr('data-project-title', projectTitle);
-					var projectArea = t('ida', 'Frozen');
-					if (name.substr(name.length - 1) == '+') {
-						projectArea = t('ida', 'Staging');
-					}
-					spans = tr.find("span.nametext");
-					if (spans.length > 0) {
+				    spans = tr.find("span.nametext");
+				    if (spans.length > 0) {
+					    path = '/' + name;
+					    projectName = OCA.IDA.Util.extractProjectName(path);
+					    projectTitle = OCA.IDA.Util.getProjectTitle(projectName);
+					    tr.attr('data-project-name', projectName);
+					    tr.attr('data-project-title', projectTitle);
+					    var projectArea = t('ida', 'Frozen');
+					    if (name.substr(name.length - 1) == '+') {
+						    projectArea = t('ida', 'Staging');
+					    }
 						var htmlInsertion = "<span class=\"projectDetails\">";
-                        // Use slightly tighter spacing in production
+                        // Use slightly tighter spacing in production since all project names are shorter
 						if (location.hostname == 'ida.fairdata.fi') {
 							htmlInsertion = "<span class=\"projectDetails projectDetailsTight\">";
 						}

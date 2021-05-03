@@ -447,12 +447,6 @@ a:focus {
 
 span.nametext {
 	min-width: 175px;
-	max-width: 175px;
-}
-
-span.nametext-tight {
-	min-width: 100px;
-	max-width: 100px;
 }
 
 span.fileactions {
@@ -460,9 +454,8 @@ span.fileactions {
 }
 
 span.projectDetails {
-	/* color: #007FAD; */
-	flex-grow: 1;
     display: flex;
+	flex-grow: 4;
     position: relative;
     vertical-align: top;
 }
