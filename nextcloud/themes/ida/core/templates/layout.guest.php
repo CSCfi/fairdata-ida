@@ -68,7 +68,7 @@ $IDA_LANGUAGES = array(
 
 function SSOActive()
 {
-    return \OC::$server->getSystemConfig()->getValue('SSO_AUTHENTICATION') === true || $_GET['sso_authentication'] === 'true';
+    return \OC::$server->getSystemConfig()->getValue('SSO_AUTHENTICATION') === true;
 }
 
 function FDWEActive()
