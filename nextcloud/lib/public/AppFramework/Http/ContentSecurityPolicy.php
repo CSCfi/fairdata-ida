@@ -48,7 +48,8 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains from which scripts can get loaded */
 	protected $allowedScriptDomains = [
 		'\'self\'',
-		'matomo.fairdata.fi',
+		'metrics.fairdata.fi',
+		'metrics.fd-test.csc.fi',
 		'matomo.fd-test.csc.fi',
 		'sso.fairdata.fi',
 		'sso.demo.fairdata.fi',
@@ -66,7 +67,8 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains from which CSS can get loaded */
 	protected $allowedStyleDomains = [
 		'\'self\'',
-		'matomo.fairdata.fi',
+		'metrics.fairdata.fi',
+		'metrics.fd-test.csc.fi',
 		'matomo.fd-test.csc.fi',
 		'sso.fairdata.fi',
 		'sso.demo.fairdata.fi',
@@ -84,7 +86,8 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains to which connections can be done */
 	protected $allowedConnectDomains = [
 		'\'self\'',
-		'matomo.fairdata.fi',
+		'metrics.fairdata.fi',
+		'metrics.fd-test.csc.fi',
 		'matomo.fd-test.csc.fi',
 	];
 	/** @var array Domains from which media elements can be loaded */
