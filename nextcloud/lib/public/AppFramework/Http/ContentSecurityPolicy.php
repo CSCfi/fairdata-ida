@@ -50,6 +50,7 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 		'\'self\'',
 		'metrics.fairdata.fi',
 		'metrics.fd-test.csc.fi',
+		'matomo.fairdata.fi',
 		'matomo.fd-test.csc.fi',
 		'sso.fairdata.fi',
 		'sso.demo.fairdata.fi',

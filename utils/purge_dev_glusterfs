@@ -1,0 +1,136 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2021 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script unmounts and purges the contents of any existing emulation of the
+# glusterfs volumes in a non-production environment.
+#
+# The directory $ROOT/storage/ will remain, but will be empty upon completion.
+#
+# This script can and should only be executed in non-production environment and will
+# first check for existing glusterfs volumes, and if not present, will exit. It will
+# only run when purging volumes which already exist.
+#
+# This script must be run as root.
+#
+# NOTE: Prior to running this script, you likely will want to create a backup of
+# any existing storage volumes, to be restored after recreation of the emulated
+# glusterfs volumes using initialize_dev_glusterfs:
+#
+#     systemctl stop httpd
+#     cd /var/ida/storage/mnt
+#     tar czvf /tmp/ida_storage_volumes.tgz .
+#     cd /var/ida
+#     utils/purge_dev_glusterfs
+#     utils/initialize_dev_glusterfs
+#     cd /var/ida/storage/mnt
+#     tar xzvf /tmp/ida_storage_volumes.tgz
+#     cd /var/ida
+#     utils/fix-permissions
+#     utiis/restart
+#     sudo -u apache nextcloud/occ files:scan --all
+#
+#--------------------------------------------------------------------------------
+
+PARENT_FOLDER=`dirname "$(realpath $0)"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+if [ "$ROOT" = "" ]; then
+    echo "The configuration variable $ROOT has not been defined Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify that we are in a non-production environment
+
+if [ "$IDA_ENVIRONMENT" = "" ]; then
+    echo "The configuration variable $IDA_ENVIRONMENT has not been defined Aborting." >&2
+    exit 1
+fi
+
+if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+    echo "Error: This script can not be run in a production environment. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Ensure script is run as root
+
+ID=`id -u -n`
+if [ "$ID" != "root" ]; then
+    echo "Error: You must execute this script as root" >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ ! -d $ROOT/storage/ ]; then
+    errorExit "Error: The root volume directory $ROOT/storage/ does not exist! Aborting."
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+umount -l $ROOT/storage/mnt/storage_vol01
+umount -l $ROOT/storage/mnt/storage_vol02
+umount -l $ROOT/storage/mnt/storage_vol03
+umount -l $ROOT/storage/mnt/storage_vol04
+
+gluster volume stop storage_vol01 --mode=script
+gluster volume stop storage_vol02 --mode=script
+gluster volume stop storage_vol03 --mode=script
+gluster volume stop storage_vol04 --mode=script
+
+gluster volume delete storage_vol01 --mode=script
+gluster volume delete storage_vol02 --mode=script
+gluster volume delete storage_vol03 --mode=script
+gluster volume delete storage_vol04 --mode=script
+
+SERVERS="ida201 ida202 ida203 ida204 ida191 ida192"
+
+for SERVER in $SERVERS; do
+    for COUNT in {1..12}; do
+        umount -f "$ROOT/storage/$SERVER/mnt/storage_brick$COUNT"
+    done
+done
+
+rm -fr $ROOT/storage/* 
+
+#--------------------------------------------------------------------------------
+
+echo "Done"

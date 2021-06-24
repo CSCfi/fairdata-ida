@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Ensure that all peers are connected
+gluster peer status | grep -q Disconnected && echo "Peer disconnected." && exit 1
+
+# Ensure that all bricks have a running log file (i.e., are sending/receiving)
+for vol in $(gluster volume list); do
+  for brick in $(gluster volume info "$vol" | awk '/^Brick[0-9]*:/ {print $2}'); do
+    gluster volume log locate "$vol" "$brick";
+  done;
+done |
+ grep -qE "does not (exist|exitst)" &&
+ echo "Log file missing - $vol/$brick ." &&
+ exit 1

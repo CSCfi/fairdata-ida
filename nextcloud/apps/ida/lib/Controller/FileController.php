@@ -671,7 +671,7 @@ class FileController extends Controller
      * @return string
      */
     protected static function buildFilesFolderPathname($project) {
-        $dataRootPathname = '/mnt/storage_vol01/ida'; // TODO get this from configuration
+        $dataRootPathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida');
         $filesFolderPathname = $dataRootPathname . '/' . Constants::PROJECT_USER_PREFIX . $project . '/files';
         Util::writeLog('ida', 'buildFilesFolderPathname: filesFolderPathname=' . $filesFolderPathname, \OCP\Util::DEBUG);
         return ($filesFolderPathname);

@@ -206,7 +206,7 @@ class Access
      * @return string
      */
     protected static function buildLockFilePathname($project) {
-        $dataRootPathname = '/mnt/storage_vol01/ida'; // TODO get this from configuration
+        $dataRootPathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida');
         if ($project === 'all') {
             $lockFilePathname = $dataRootPathname . '/LOCK';
         }
