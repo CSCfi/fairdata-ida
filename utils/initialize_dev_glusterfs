@@ -181,13 +181,15 @@ for SERVER in $SERVERS; do
     BRICK=0
     for COUNT in {1..6}; do
         BRICK=$((BRICK + 1)) 
-        DIR="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK/brick"
+        DIR="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
         echo "$DIR"
-        mkdir -p "$DIR"
+        mkdir -p "$DIR/brick"
+        touch "$DIR/DO_NOT_DELETE_sentinel_file"
         BRICK=$((BRICK + 1)) 
-        DIR="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK/brick"
+        DIR="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
         echo "$DIR"
-        mkdir -p "$DIR"
+        mkdir -p "$DIR/brick"
+        touch "$DIR/DO_NOT_DELETE_sentinel_file"
     done
 done
 
