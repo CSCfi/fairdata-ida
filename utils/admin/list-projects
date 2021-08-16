@@ -44,13 +44,6 @@ fi
 
 #--------------------------------------------------------------------------------
 
-for PROJECT in `$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups" -H "OCS-APIRequest: true" | \
-    grep "<element>" | grep -v "<element>admin<" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u `; do
-
-    if [ -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
-        echo "${PROJECT}"
-    fi
-
-done
+ls "${STORAGE_OC_DATA_ROOT}/" | grep "^${PROJECT_USER_PREFIX}" | sed -e "s/^${PROJECT_USER_PREFIX}//"
 
 addToLog "DONE"
