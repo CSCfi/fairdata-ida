@@ -684,6 +684,25 @@ class TestIdaCli(unittest.TestCase):
         path = Path("%s/2017-10/Experiment_3/.hidden_file" % (self.staging))
         self.assertFalse(path.exists(), output)
 
+        print("Upload folder with files containing special characters")
+        cmd = "%s upload %s /Special\ Characters %s/Special\ Characters" % (self.cli, self.args, self.testdata)
+        try:
+            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+        self.assertIn("Target uploaded successfully.", output)
+        path = Path("%s/Special Characters" % (self.staging))
+        self.assertTrue(path.is_dir(), output)
+        path = Path("%s/Special Characters/file_with_ä_and_ö_and_even_å_oh_my.dat" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(446, path.stat().st_size, output)
+        path = Path("%s/Special Characters/file with spaces and [brackets] {etc}" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(446, path.stat().st_size, output)
+        path = Path("%s/Special Characters/$file with spaces and special characters #@äÖ+\"^.dat&" % (self.staging))
+        self.assertTrue(path.is_file(), output)
+        self.assertEquals(446, path.stat().st_size, output)
+
         print("Copy folder within staging area")
         cmd = "%s copy %s /2017-10/Experiment_3/baseline /2017-11/Experiment_8/baseline" % (self.cli, self.args)
         try:

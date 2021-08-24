@@ -600,10 +600,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_a", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 96)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 97)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 108)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 6)
@@ -659,10 +659,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_b", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 108)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 108)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 6)
@@ -709,10 +709,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_c", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 108)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 108)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 6)
@@ -775,10 +775,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_d", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 110)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 110)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 5)
@@ -864,10 +864,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_e", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 106)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 107)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 106)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 107)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 0)
@@ -930,10 +930,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_a", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 0)
@@ -949,10 +949,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_b", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 0)
@@ -968,10 +968,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_c", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 0)
@@ -987,10 +987,10 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_d", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 104)
+        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 104)
+        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEquals(report_data.get("idaNodeCount", None), 0)
