@@ -64,11 +64,6 @@
          */
         scopeIntersectsInitiatingAction: function (project, scope) {
 
-            // Skip test if not in production
-            if (location.hostname != 'ida.fairdata.fi') {
-                return false;
-            }
-
             var jqxhr = $.ajax({
                 url: OC.generateUrl('/apps/ida/api/checkScope?project=' + project + '&pathname=' + encodeURIComponent(scope)),
                 type: 'POST',
