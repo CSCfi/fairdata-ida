@@ -42,8 +42,12 @@
 #     2 real glusterfs volumes spanning 3 RAID volumes (6 bricks) per server over 4 servers (24 bricks per volume)
 #     2 real glusterfs volumes spanning 3 RAID volumes (6 bricks) per server over 2 servers (12 bricks per volume)
 #
-# Prior to executing this script, glusterfs must be installed, and the root volume
-# directory /var/ida-storage/ must be exist and be empty, and owned by apache:
+# Prior to executing this script, glusterfs must be installed, and none of the following directories can exist:
+#     /var/ida-storage/
+#     /mnt/storage_vol01/
+#     /mnt/storage_vol02/
+#     /mnt/storage_vol03/
+#     /mnt/storage_vol04/
 #
 #     # If necessary, remove any existing version of glusterfs
 #     sudo yum remove glusterfs gluster-cli glusterfs-api glusterfs-libs glusterfs-server
@@ -77,25 +81,31 @@
 #     127.0.0.1 ida191.local
 #     127.0.0.1 ida192.local
 #
-#     # Create top level storage directory:
+#     # Create top level storage directories:
 #
 #     sudo mkdir /var/ida-storage
 #     chown apache:apache /var/ida-storage
 #
+#     sudo mkdir /mnt/storage_vol01
+#     sudo mkdir /mnt/storage_vol02
+#     sudo mkdir /mnt/storage_vol03
+#     sudo mkdir /mnt/storage_vol04
+#     chown apache:apache /mnt/storage_vol*
+
 #     # In /var/ida/config/config.sh, define the following pathnames:
 #
-#     STORAGE_OC_DATA_ROOT="/var/ida/storage/mnt/storage_vol01/ida"
-#     STORAGE_CANDIDATES=("/var/ida/storage/mnt/storage_vol01/ida" "/var/ida/storage/mnt/storage_vol02/ida" "/var/ida/storage/mnt/storage_vol03/ida" "/var/ida/storage/mnt/storage_vol04/ida")
-#     DATA_REPLICATION_ROOT="/var/ida/storage/mnt/storage_vol02/ida_replication"
-#     TRASH_DATA_ROOT="/var/ida/storage/mnt/storage_vol02/ida_trash"
+#     STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
+#     STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida" "/mnt/storage_vol03/ida" "/mnt/storage_vol04/ida")
+#     DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
+#     TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
 #     LOG="/var/ida/storage/mnt/storage_vol01/log/ida.log"
-#     RABBIT_WORKER_LOG_FILE="/var/ida/storage/mnt/storage_vol01/log/agents.log"
-#     RABBIT_MONITORING_DIR="/var/ida/storage/mnt/storage_vol01/log/rabbitmq_monitoring"
+#     RABBIT_WORKER_LOG_FILE="/mnt/storage_vol01/log/agents.log"
+#     RABBIT_MONITORING_DIR="/mnt/storage_vol01/log/rabbitmq_monitoring"
 #
 #     # In /var/ida/nextcloud/config/config.php, define the following pathnames:
 #
-#     'datadirectory' => '/var/ida/storage/mnt/storage_vol01/ida',
-#     'logfile' => '/var/ida/storage/mnt/storage_vol01/log/nextcloud.log',
+#     'datadirectory' => '/mnt/storage_vol01/ida',
+#     'logfile' => '/mnt/storage_vol01/log/nextcloud.log',
 #
 # NOTE: See the comments in purge_dev_glusterfs regarding backing up and restoring existing
 # emulated glusterfs volumes, if the emulated glusterfs volumes need re-initialization.
@@ -153,17 +163,34 @@ fi
 
 #--------------------------------------------------------------------------------
 
-if [ ! -d /var/ida-storage/ ]; then
-    echo "Error: The root storage directory /var/ida-storage/ does not exist! Aborting." >&2
+if [ -d /var/ida-storage/ ]; then
+    echo "Error: The directory /var/ida-storage/ already exists! Aborting." >&2
     exit 1
 fi
 
-LISTING=`ls /var/ida-storage/ 2>/dev/null`
-
-if [ ! -z "$LISTING" ]; then
-    echo "Error: The root storage directory /var/ida-storage/ is not empty! Aborting." >&2
+if [ -d /mnt/storage_vol01/ ]; then
+    echo "Error: The directory /mnt/storage_vol01/ already exists! Aborting." >&2
     exit 1
 fi
+
+if [ -d /mnt/storage_vol02/ ]; then
+    echo "Error: The directory /mnt/storage_vol02/ already exists! Aborting." >&2
+    exit 1
+fi
+
+if [ -d /mnt/storage_vol03/ ]; then
+    echo "Error: The directory /mnt/storage_vol03/ already exists! Aborting." >&2
+    exit 1
+fi
+
+if [ -d /mnt/storage_vol04/ ]; then
+    echo "Error: The directory /mnt/storage_vol04/ already exists! Aborting." >&2
+    exit 1
+fi
+
+mkdir -p /var/ida-storage
+chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
+chmod -R g+rwX,o-rwx /var/ida-storage
 
 #--------------------------------------------------------------------------------
 
@@ -327,41 +354,14 @@ gluster volume start storage_vol04
 echo "Mounting glusterfs volumes..."
 
 for VOLUME in {1..4}; do
-    mkdir -p "/var/ida-storage/mnt/storage_vol0$VOLUME"
-    chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
-    COMMAND="mount -t glusterfs ida201.local:/storage_vol0$VOLUME -o defaults,_netdev /var/ida-storage/mnt/storage_vol0$VOLUME"
+    mkdir -p "/mnt/storage_vol0$VOLUME"
+    chown -R $HTTPD_USER:$HTTPD_USER "/mnt/storage_vol0$VOLUME"
+    chmod -R g+rwX,o-rwx "/mnt/storage_vol0$VOLUME"
+    COMMAND="mount -t glusterfs ida201.local:/storage_vol0$VOLUME -o defaults,_netdev /mnt/storage_vol0$VOLUME"
     echo $COMMAND >> /var/ida-storage/mount.init
     $COMMAND
-    mkdir "/var/ida-storage/mnt/storage_vol0$VOLUME/ida"
+    mkdir "/mnt/storage_vol0$VOLUME/ida"
 done
-
-#--------------------------------------------------------------------------------
-
-echo "Creating symbolic links from /mnt to /var/ida-storage/mnt"
-
-if [ ! -e /mnt/storage_vol01 ]; then
-    ln -s /var/ida-storage/mnt/storage_vol01 /mnt/storage_vol01
-else
-    echo "Warning: /mnt/storage_vol01 already exists!"
-fi
-
-if [ ! -e /mnt/storage_vol02 ]; then
-    ln -s /var/ida-storage/mnt/storage_vol02 /mnt/storage_vol02
-else
-    echo "Warning: /mnt/storage_vol02 already exists!"
-fi
-
-if [ ! -e /mnt/storage_vol03 ]; then
-    ln -s /var/ida-storage/mnt/storage_vol03 /mnt/storage_vol03
-else
-    echo "Warning: /mnt/storage_vol03 already exists!"
-fi
-
-if [ ! -e /mnt/storage_vol04 ]; then
-    ln -s /var/ida-storage/mnt/storage_vol04 /mnt/storage_vol04
-else
-    echo "Warning: /mnt/storage_vol04 already exists!"
-fi
 
 #--------------------------------------------------------------------------------
 

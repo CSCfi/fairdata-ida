@@ -39,12 +39,14 @@
 # any existing storage volumes, to be restored after recreation of the emulated
 # glusterfs volumes using initialize_dev_glusterfs:
 #
+#     cd /
 #     systemctl stop httpd
-#     cd /var/ida-storage/mnt
-#     tar czvf /tmp/ida_storage_volumes.tgz .
+#     tar czvf /tmp/ida_storage_volumes.tgz /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
 #     /var/ida/utils/purge_dev_glusterfs
 #     /var/ida/utils/initialize_dev_glusterfs
 #     tar xzvf /tmp/ida_storage_volumes.tgz
+#     chown -R apache:apache /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
+#     chmod -R g+rwX,o-rwx /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
 #     /var/ida/utiis/restart
 #     sudo -u apache /var/ida/nextcloud/occ files:scan --all
 #
@@ -127,23 +129,11 @@ for SERVER in $SERVERS; do
     done
 done
 
-if [ -L /mnt/storage_vol01 ]; then
-    rm -f /mnt/storage_vol01
-fi
-
-if [ -L /mnt/storage_vol02 ]; then
-    rm -f /mnt/storage_vol02
-fi
-
-if [ -L /mnt/storage_vol03 ]; then
-    rm -f /mnt/storage_vol03
-fi
-
-if [ -L /mnt/storage_vol04 ]; then
-    rm -f /mnt/storage_vol04
-fi
-
-rm -fr /var/ida-storage/* 
+rm -fr /mnt/storage_vol01
+rm -fr /mnt/storage_vol02
+rm -fr /mnt/storage_vol03
+rm -fr /mnt/storage_vol04
+rm -fr /var/ida-storage
 
 #--------------------------------------------------------------------------------
 
