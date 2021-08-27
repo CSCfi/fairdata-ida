@@ -501,6 +501,12 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
 
+            // Reject the action if the project is suspended
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -695,6 +701,12 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
 
+            // Reject the action if the project is suspended
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -885,6 +897,12 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
 
+            // Reject the action if the project is suspended
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
+            }
+
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
@@ -1062,6 +1080,12 @@ class FreezingController extends Controller
             if (!$this->verifyRabbitMQConnectionOK()) {
                 Util::writeLog('ida', 'retryAction: ERROR: Unable to open connection to RabbitMQ!', \OCP\Util::ERROR);
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+
+            // Reject the action if the project is suspended
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
             }
 
             // Lock the project so no other user can initiate an action
@@ -1279,6 +1303,12 @@ class FreezingController extends Controller
 
             if ($actionEntity->getFailed() != null && $actionEntity->getCompleted() != null && $actionEntity->getCleared() != null) {
                 return API::badRequestErrorResponse('Specified action is neither failed nor pending.');
+            }
+
+            // Reject the action if the project is suspended
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
             }
 
             // Lock the project so no other user can initiate an action
@@ -3193,6 +3223,14 @@ class FreezingController extends Controller
             // Extract project name from PSO user name...
 
             $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
+
+            // Reject the action if the project is suspended
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
+            }
+
+            // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
