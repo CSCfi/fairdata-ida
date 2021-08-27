@@ -119,8 +119,7 @@ done
 
 CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
 
-if [ -e $CONFIG_FILE ]
-then
+if [ -e $CONFIG_FILE ]; then
     . $CONFIG_FILE
 else
     echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
@@ -337,6 +336,34 @@ for VOLUME in {1..4}; do
     $COMMAND
     mkdir "$ROOT/storage/mnt/storage_vol0$VOLUME/ida"
 done
+
+#--------------------------------------------------------------------------------
+
+echo "Creating symbolic links from /mnt to $ROOT/storage/mnt"
+
+if [ ! -e /mnt/storage_vol01 ]; then
+    ln -s $ROOT/storage/mnt/storage_vol01 /mnt/storage_vol01
+else
+    echo "Warning: /mnt/storage_vol01 already exists!"
+fi
+
+if [ ! -e /mnt/storage_vol02 ]; then
+    ln -s $ROOT/storage/mnt/storage_vol02 /mnt/storage_vol02
+else
+    echo "Warning: /mnt/storage_vol02 already exists!"
+fi
+
+if [ ! -e /mnt/storage_vol03 ]; then
+    ln -s $ROOT/storage/mnt/storage_vol03 /mnt/storage_vol03
+else
+    echo "Warning: /mnt/storage_vol03 already exists!"
+fi
+
+if [ ! -e /mnt/storage_vol04 ]; then
+    ln -s $ROOT/storage/mnt/storage_vol04 /mnt/storage_vol04
+else
+    echo "Warning: /mnt/storage_vol04 already exists!"
+fi
 
 #--------------------------------------------------------------------------------
 
