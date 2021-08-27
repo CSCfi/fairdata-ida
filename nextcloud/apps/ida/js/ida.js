@@ -57,6 +57,35 @@
         },
 
         /**
+         * Returns false if the service is available, the project is not suspended, and the specified scope does not
+         * intersect the scope of any initiating action; else returns an error message string.
+         *
+         * @param project The project name
+         * @param scope   The scope to check
+         */
+        scopeNotOK: function (project, scope) {
+
+            var jqxhr = $.ajax({
+                url: OC.generateUrl('/apps/ida/api/checkScope?project=' + project + '&pathname=' + encodeURIComponent(scope)),
+                type: 'POST',
+                contentType: 'application/json',
+                cache: false,
+                async: false
+            });
+
+            if (jqxhr.status === 200) {
+                return false;
+            }
+
+            if (jqxhr.status === 409) {
+                var data = JSON.parse(jqxhr.responseText);
+                return data['message'];
+            }
+
+            throw new Error(jqxhr.status + ": " + jqxhr.statusText);
+        },
+
+        /**
          * Returns true if the specified scope intersects the scope of an initiating action; else returns false.
          *
          * @param project The project name

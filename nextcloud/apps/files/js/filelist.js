@@ -2695,11 +2695,12 @@
 						var project = OCA.IDA.Util.extractProjectName(pathname);
 						var scope = OCA.IDA.Util.stripRootFolder(pathname);
 						try {
-							if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-								OC.Notification.show(t('ida', '6: The requested change conflicts with an ongoing action in the specified project.'), { type: 'error' });
+						    var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                            if (message !== false) {
+                                OC.Notification.show(t('ida', message), {type: 'error'});
 								updateInList(oldFileInfo);
 								return false;
-							}
+                            }
 						} catch (error) {
 							OC.Notification.show(error, { type: 'error' });
 							updateInList(oldFileInfo);
@@ -2824,9 +2825,10 @@
 			var project = OCA.IDA.Util.extractProjectName(targetPath);
 			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
 
-			if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-				throw t('ida', '1: The requested change conflicts with an ongoing action in the specified project.');
-			}
+			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+            if (message !== false) {
+                throw t('ida', message);
+            }
 
 			self.filesClient.putFileContents(
 				targetPath,
@@ -2889,9 +2891,10 @@
 			var project = OCA.IDA.Util.extractProjectName(targetPath);
 			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
 
-			if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-				throw t('ida', '2: The requested change conflicts with an ongoing action in the specified project.');
-			}
+			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+            if (message !== false) {
+                throw t('ida', message);
+            }
 
 			this.filesClient.createDirectory(targetPath)
 				.done(function () {
@@ -3064,9 +3067,10 @@
 			var project = OCA.IDA.Util.extractProjectName(dir);
 			var scope = OCA.IDA.Util.stripRootFolder(dir);
 
-			if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-				throw t('ida', '3: The requested change conflicts with an ongoing action in the specified project.');
-			}
+			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+            if (message !== false) {
+                throw t('ida', message);
+            }
 
 			var removeFunction = function (fileName) {
 				var $tr = self.findFileEl(fileName);
@@ -3507,11 +3511,12 @@
 				var project = OCA.IDA.Util.extractProjectName(data.targetDir);
 				var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
 				try {
-					if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-						OC.Notification.show(t('ida', '4: The requested change conflicts with an ongoing action in the specified project.'), { type: 'error' });
+			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                    if (message !== false) {
+                        OC.Notification.show(t('ida', message), {type: 'error'});
 						e.stopPropagation();
 						return false;
-					}
+                    }
 				} catch (error) {
 					OC.Notification.show(error, { type: 'error' });
 					e.stopPropagation();
@@ -3532,10 +3537,11 @@
 				var project = OCA.IDA.Util.extractProjectName(targetDir);
 				var scope = OCA.IDA.Util.stripRootFolder(targetDir);
 				try {
-					if (OCA.IDA.Util.scopeIntersectsInitiatingAction(project, scope)) {
-						OC.Notification.show(t('ida', '5: The requested change conflicts with an ongoing action in the specified project.'), { type: 'error' });
-						return;
-					}
+			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                    if (message !== false) {
+                        OC.Notification.show(t('ida', message), {type: 'error'});
+                        return;
+                    }
 				} catch (error) {
 					OC.Notification.show(error, { type: 'error' });
 					return;

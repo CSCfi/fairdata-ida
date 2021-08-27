@@ -3576,10 +3576,10 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
             }
 
-            // If project is locked, always report conflict
+            // If project is suspended, always report conflict
 
-            if (Access::projectIsLocked($project)) {
-                return API::conflictErrorResponse('Project currently locked. Please try again later.');
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
             }
 
             // Verify that current user has rights to the specified project, rejecting request if not...
