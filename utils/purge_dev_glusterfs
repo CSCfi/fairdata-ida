@@ -25,7 +25,7 @@
 # This script unmounts and purges the contents of any existing emulation of the
 # glusterfs volumes in a non-production environment.
 #
-# The directory $ROOT/storage/ will remain, but will be empty upon completion.
+# The directory /var/ida-storage/ will remain, but will be empty upon completion.
 #
 # This script can and should only be executed in non-production environment and will
 # first check for existing glusterfs volumes, and if not present, will exit. It will
@@ -33,22 +33,20 @@
 #
 # This script must be run as root.
 #
+#--------------------------------------------------------------------------------
+#
 # NOTE: Prior to running this script, you likely will want to create a backup of
 # any existing storage volumes, to be restored after recreation of the emulated
 # glusterfs volumes using initialize_dev_glusterfs:
 #
 #     systemctl stop httpd
-#     cd /var/ida/storage/mnt
+#     cd /var/ida-storage/mnt
 #     tar czvf /tmp/ida_storage_volumes.tgz .
-#     cd /var/ida
-#     utils/purge_dev_glusterfs
-#     utils/initialize_dev_glusterfs
-#     cd /var/ida/storage/mnt
+#     /var/ida/utils/purge_dev_glusterfs
+#     /var/ida/utils/initialize_dev_glusterfs
 #     tar xzvf /tmp/ida_storage_volumes.tgz
-#     cd /var/ida
-#     utils/fix-permissions
-#     utiis/restart
-#     sudo -u apache nextcloud/occ files:scan --all
+#     /var/ida/utiis/restart
+#     sudo -u apache /var/ida/nextcloud/occ files:scan --all
 #
 #--------------------------------------------------------------------------------
 
@@ -99,17 +97,17 @@ fi
 
 #--------------------------------------------------------------------------------
 
-if [ ! -d $ROOT/storage/ ]; then
-    errorExit "Error: The root volume directory $ROOT/storage/ does not exist! Aborting."
+if [ ! -d /var/ida-storage/ ]; then
+    errorExit "Error: The root volume directory /var/ida-storage/ does not exist! Aborting."
     exit 1
 fi
 
 #--------------------------------------------------------------------------------
 
-umount -l $ROOT/storage/mnt/storage_vol01
-umount -l $ROOT/storage/mnt/storage_vol02
-umount -l $ROOT/storage/mnt/storage_vol03
-umount -l $ROOT/storage/mnt/storage_vol04
+umount -l /var/ida-storage/mnt/storage_vol01
+umount -l /var/ida-storage/mnt/storage_vol02
+umount -l /var/ida-storage/mnt/storage_vol03
+umount -l /var/ida-storage/mnt/storage_vol04
 
 gluster volume stop storage_vol01 --mode=script
 gluster volume stop storage_vol02 --mode=script
@@ -125,11 +123,27 @@ SERVERS="ida201 ida202 ida203 ida204 ida191 ida192"
 
 for SERVER in $SERVERS; do
     for COUNT in {1..12}; do
-        umount -f "$ROOT/storage/$SERVER/mnt/storage_brick$COUNT"
+        umount -f "/var/ida-storage/$SERVER/mnt/storage_brick$COUNT"
     done
 done
 
-rm -fr $ROOT/storage/* 
+if [ -L /mnt/storage_vol01 ]; then
+    rm -f /mnt/storage_vol01
+fi
+
+if [ -L /mnt/storage_vol02 ]; then
+    rm -f /mnt/storage_vol02
+fi
+
+if [ -L /mnt/storage_vol03 ]; then
+    rm -f /mnt/storage_vol03
+fi
+
+if [ -L /mnt/storage_vol04 ]; then
+    rm -f /mnt/storage_vol04
+fi
+
+rm -fr /var/ida-storage/* 
 
 #--------------------------------------------------------------------------------
 

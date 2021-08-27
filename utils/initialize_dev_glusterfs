@@ -43,7 +43,7 @@
 #     2 real glusterfs volumes spanning 3 RAID volumes (6 bricks) per server over 2 servers (12 bricks per volume)
 #
 # Prior to executing this script, glusterfs must be installed, and the root volume
-# directory $ROOT/storage/ must be exist and be empty, and owned by apache:
+# directory /var/ida-storage/ must be exist and be empty, and owned by apache:
 #
 #     # If necessary, remove any existing version of glusterfs
 #     sudo yum remove glusterfs gluster-cli glusterfs-api glusterfs-libs glusterfs-server
@@ -77,12 +77,10 @@
 #     127.0.0.1 ida191.local
 #     127.0.0.1 ida192.local
 #
-#     Assiming $ROOT in config.sh is defined as "/var/ida":
-#
 #     # Create top level storage directory:
 #
-#     sudo mkdir /var/ida/storage
-#     chown apache:apache /var/ida/storage
+#     sudo mkdir /var/ida-storage
+#     chown apache:apache /var/ida-storage
 #
 #     # In /var/ida/config/config.sh, define the following pathnames:
 #
@@ -155,15 +153,15 @@ fi
 
 #--------------------------------------------------------------------------------
 
-if [ ! -d $ROOT/storage/ ]; then
-    echo "Error: The root volume directory $ROOT/storage/ does not exist! Aborting." >&2
+if [ ! -d /var/ida-storage/ ]; then
+    echo "Error: The root storage directory /var/ida-storage/ does not exist! Aborting." >&2
     exit 1
 fi
 
-LISTING=`ls $ROOT/storage/ 2>/dev/null`
+LISTING=`ls /var/ida-storage/ 2>/dev/null`
 
 if [ ! -z "$LISTING" ]; then
-    echo "Error: The root volume directory $ROOT/storage/ is not empty! Aborting." >&2
+    echo "Error: The root storage directory /var/ida-storage/ is not empty! Aborting." >&2
     exit 1
 fi
 
@@ -180,12 +178,12 @@ for SERVER in $SERVERS; do
     BRICK=0
     for COUNT in {1..6}; do
         BRICK=$((BRICK + 1)) 
-        DIR="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        DIR="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
         echo "$DIR"
         mkdir -p "$DIR/brick"
         touch "$DIR/DO_NOT_DELETE_sentinel_file"
         BRICK=$((BRICK + 1)) 
-        DIR="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        DIR="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
         echo "$DIR"
         mkdir -p "$DIR/brick"
         touch "$DIR/DO_NOT_DELETE_sentinel_file"
@@ -198,7 +196,7 @@ echo "Creating brick mount points and brick subdirectories..."
 
 for SERVER in $SERVERS; do
     for COUNT in {1..12}; do
-        DIR="$ROOT/storage/$SERVER/mnt/storage_brick$COUNT"
+        DIR="/var/ida-storage/$SERVER/mnt/storage_brick$COUNT"
         echo "$DIR"
         mkdir -p "$DIR"
     done
@@ -208,24 +206,24 @@ done
 
 echo "Mounting simulated bricks..."
 
-rm -f $ROOT/storage/fstab 2>/dev/null
+rm -f /var/ida-storage/fstab 2>/dev/null
 
 for SERVER in $SERVERS; do
     BRICK=0
     for COUNT in {1..6}; do
         BRICK=$((BRICK + 1)) 
-        SOURCE="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
-        TARGET="$ROOT/storage/$SERVER/mnt/storage_brick$BRICK"
+        SOURCE="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        TARGET="/var/ida-storage/$SERVER/mnt/storage_brick$BRICK"
         echo "$SOURCE $TARGET"
         COMMAND="mount --bind $SOURCE $TARGET"
-        echo $COMMAND >> $ROOT/storage/mount.init
+        echo $COMMAND >> /var/ida-storage/mount.init
         $COMMAND
         BRICK=$((BRICK + 1)) 
-        SOURCE="$ROOT/storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
-        TARGET="$ROOT/storage/$SERVER/mnt/storage_brick$BRICK"
+        SOURCE="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        TARGET="/var/ida-storage/$SERVER/mnt/storage_brick$BRICK"
         echo "$SOURCE $TARGET"
         COMMAND="mount --bind $SOURCE $TARGET"
-        echo $COMMAND >> $ROOT/storage/mount.init
+        echo $COMMAND >> /var/ida-storage/mount.init
         $COMMAND
     done
 done
@@ -237,90 +235,90 @@ echo "Creating glusterfs volumes..."
 systemctl restart glusterd
 
 gluster volume create storage_vol01 \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick1/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick1/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick1/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick1/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick2/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick2/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick2/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick2/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick3/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick3/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick3/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick3/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick4/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick4/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick4/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick4/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick5/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick5/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick5/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick5/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick6/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick6/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick6/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick6/brick force
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick1/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick1/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick1/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick1/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick2/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick2/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick2/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick2/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick3/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick3/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick3/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick3/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick4/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick4/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick4/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick4/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick5/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick5/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick5/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick5/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick6/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick6/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick6/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick6/brick force
 
 gluster volume start storage_vol01
 
 gluster volume create storage_vol02 \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick7/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick7/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick7/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick7/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick8/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick8/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick8/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick8/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick9/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick9/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick9/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick9/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick10/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick10/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick10/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick10/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick11/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick11/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick11/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick11/brick \
-    ida201.local:$ROOT/storage/ida201/mnt/storage_brick12/brick \
-    ida202.local:$ROOT/storage/ida202/mnt/storage_brick12/brick \
-    ida203.local:$ROOT/storage/ida203/mnt/storage_brick12/brick \
-    ida204.local:$ROOT/storage/ida204/mnt/storage_brick12/brick force
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick7/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick7/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick7/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick7/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick8/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick8/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick8/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick8/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick9/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick9/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick9/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick9/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick10/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick10/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick10/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick10/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick11/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick11/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick11/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick11/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick12/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick12/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick12/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick12/brick force
 
 gluster volume start storage_vol02
 
 gluster volume create storage_vol03 \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick1/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick1/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick2/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick2/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick3/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick3/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick4/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick4/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick5/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick5/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick6/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick6/brick force
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick1/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick1/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick2/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick2/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick3/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick3/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick4/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick4/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick5/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick5/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick6/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick6/brick force
 
 gluster volume start storage_vol03
 
 gluster volume create storage_vol04 \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick7/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick7/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick8/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick8/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick9/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick9/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick10/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick10/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick11/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick11/brick \
-    ida191.local:$ROOT/storage/ida191/mnt/storage_brick12/brick \
-    ida192.local:$ROOT/storage/ida192/mnt/storage_brick12/brick force
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick7/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick7/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick8/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick8/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick9/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick9/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick10/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick10/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick11/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick11/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick12/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick12/brick force
 
 gluster volume start storage_vol04
 
@@ -329,45 +327,46 @@ gluster volume start storage_vol04
 echo "Mounting glusterfs volumes..."
 
 for VOLUME in {1..4}; do
-    mkdir -p "$ROOT/storage/mnt/storage_vol0$VOLUME"
-    chown -R $HTTPD_USER:$HTTPD_USER $ROOT/storage
-    COMMAND="mount -t glusterfs ida201.local:/storage_vol0$VOLUME -o defaults,_netdev $ROOT/storage/mnt/storage_vol0$VOLUME"
-    echo $COMMAND >> $ROOT/storage/mount.init
+    mkdir -p "/var/ida-storage/mnt/storage_vol0$VOLUME"
+    chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
+    COMMAND="mount -t glusterfs ida201.local:/storage_vol0$VOLUME -o defaults,_netdev /var/ida-storage/mnt/storage_vol0$VOLUME"
+    echo $COMMAND >> /var/ida-storage/mount.init
     $COMMAND
-    mkdir "$ROOT/storage/mnt/storage_vol0$VOLUME/ida"
+    mkdir "/var/ida-storage/mnt/storage_vol0$VOLUME/ida"
 done
 
 #--------------------------------------------------------------------------------
 
-echo "Creating symbolic links from /mnt to $ROOT/storage/mnt"
+echo "Creating symbolic links from /mnt to /var/ida-storage/mnt"
 
 if [ ! -e /mnt/storage_vol01 ]; then
-    ln -s $ROOT/storage/mnt/storage_vol01 /mnt/storage_vol01
+    ln -s /var/ida-storage/mnt/storage_vol01 /mnt/storage_vol01
 else
     echo "Warning: /mnt/storage_vol01 already exists!"
 fi
 
 if [ ! -e /mnt/storage_vol02 ]; then
-    ln -s $ROOT/storage/mnt/storage_vol02 /mnt/storage_vol02
+    ln -s /var/ida-storage/mnt/storage_vol02 /mnt/storage_vol02
 else
     echo "Warning: /mnt/storage_vol02 already exists!"
 fi
 
 if [ ! -e /mnt/storage_vol03 ]; then
-    ln -s $ROOT/storage/mnt/storage_vol03 /mnt/storage_vol03
+    ln -s /var/ida-storage/mnt/storage_vol03 /mnt/storage_vol03
 else
     echo "Warning: /mnt/storage_vol03 already exists!"
 fi
 
 if [ ! -e /mnt/storage_vol04 ]; then
-    ln -s $ROOT/storage/mnt/storage_vol04 /mnt/storage_vol04
+    ln -s /var/ida-storage/mnt/storage_vol04 /mnt/storage_vol04
 else
     echo "Warning: /mnt/storage_vol04 already exists!"
 fi
 
 #--------------------------------------------------------------------------------
 
-chmod +x $ROOT/storage/mount.init
-chown -R $HTTPD_USER:$HTTPD_USER $ROOT/storage
+chmod +x /var/ida-storage/mount.init
+chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
+chmod -R g+rwX,o-rwx /var/ida-storage
 
 echo "Done"
