@@ -361,6 +361,7 @@ for VOLUME in {1..4}; do
     echo $COMMAND >> /var/ida-storage/mount.init
     $COMMAND
     mkdir "/mnt/storage_vol0$VOLUME/ida"
+    touch "/mnt/storage_vol0$VOLUME/DO_NOT_DELETE_sentinel_file"
 done
 
 #--------------------------------------------------------------------------------
