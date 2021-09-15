@@ -132,9 +132,6 @@ if [ "$1" == "ADD" ]; then
             fi
         done
 
-        # TEMPORARY HACK - TO BE REMOVED AFTER MIGRATION TO NEW VOLUMES IS COMPLETED
-        STORAGE_VOLUME="/mnt/storage_vol04/ida"
-
         echoAndLog "Creating new project share owner folder: $STORAGE_VOLUME/$PROJECT_USER"
 
         mkdir -p -m g+rw,o-rwx "$STORAGE_VOLUME/$PROJECT_USER"
