@@ -260,7 +260,7 @@
 
     function buildDatasetLinkListing(datasets) {
         listing = '';
-        domain = 'fd-test.csc.fi';
+        domain = window.location.hostname.substring(4);
         count = datasets.length;
         limit = count;
         if (count > 5) {
