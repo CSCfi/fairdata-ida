@@ -122,6 +122,7 @@ class TestIdaApp(unittest.TestCase):
         test_user_c = ("test_user_c", self.config["TEST_USER_PASS"])
         test_user_d = ("test_user_d", self.config["TEST_USER_PASS"])
         test_user_x = ("test_user_x", self.config["TEST_USER_PASS"])
+        test_user_s = ("test_user_s", self.config["TEST_USER_PASS"])
 
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
@@ -186,6 +187,28 @@ class TestIdaApp(unittest.TestCase):
         token = share_data.get("token", None)
         self.assertIsNotNone(token)
         self.assertTrue(token.startswith("NOT_FOR_PUBLICATION_"))
+
+        print("--- Suspended Project Limitations")
+
+        data = {"project": "test_project_s", "pathname": "/testdata/License.txt"}
+
+        print("Attempt to freeze a file when the specific project is suspended")
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        suspendedSentinelFile = "%s/control/SUSPENDED" % self.config.get('IDA_DATA_ROOT', '/mnt/storage_vol01/ida')
+
+        with open(suspendedSentinelFile, 'a') as sentinelFile:
+            sentinelFile.write("TEST")
+            sentinelFile.close()
+
+        data = {"project": "test_project_a", "pathname": "/testdata/License.txt"}
+
+        print("Attempt to freeze a file when all projects are suspended")
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        os.remove(suspendedSentinelFile)
 
         print("--- Freeze Actions")
 

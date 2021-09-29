@@ -208,7 +208,7 @@ class Access
     protected static function buildLockFilePathname($project) {
         $dataRootPathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida');
         if ($project === 'all') {
-            $lockFilePathname = $dataRootPathname . '/LOCK';
+            $lockFilePathname = $dataRootPathname . '/control/LOCK';
         }
         else {
             $lockFilePathname = $dataRootPathname . '/' . Constants::PROJECT_USER_PREFIX . $project . '/files/LOCK';

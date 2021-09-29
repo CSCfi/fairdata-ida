@@ -699,7 +699,7 @@ class TestIdaCli(unittest.TestCase):
         path = Path("%s/Special Characters/file with spaces and [brackets] {etc}" % (self.staging))
         self.assertTrue(path.is_file(), output)
         self.assertEquals(446, path.stat().st_size, output)
-        path = Path("%s/Special Characters/$file with spaces and special characters #@äÖ+\"^.dat&" % (self.staging))
+        path = Path("%s/Special Characters/$file with spaces and special characters #@äÖ+\'^.dat&" % (self.staging))
         self.assertTrue(path.is_file(), output)
         self.assertEquals(446, path.stat().st_size, output)
 

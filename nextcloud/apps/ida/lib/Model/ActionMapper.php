@@ -146,7 +146,7 @@ class ActionMapper extends Mapper
     }
 
     /**
-     * Return true if any pending suspend action exists for one or more projects; else return false.
+     * Return true if any pending suspend action exists for one or more projects, or if all projects are suspended via the SUSPEND sentinel file; else return false.
      *
      * @param string $projects one or more comma separated project names, with no whitespace
      *
@@ -154,6 +154,12 @@ class ActionMapper extends Mapper
      */
     function isSuspended($projects = null) {
         
+        $sentinelFilePathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida') . '/control/SUSPENDED';
+        
+        if (file_exists($sentinelFilePathname)) {
+            return True;
+        }
+
         $sql = 'SELECT * FROM *PREFIX*ida_action WHERE action = \'suspend\' AND cleared IS NULL AND completed IS NULL AND failed IS NULL';
 
         // Add project restrictions if defined
