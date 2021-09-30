@@ -44,6 +44,12 @@ fi
 
 #--------------------------------------------------------------------------------
 
-ls "${STORAGE_OC_DATA_ROOT}/" | grep "^${PROJECT_USER_PREFIX}" | sed -e "s/^${PROJECT_USER_PREFIX}//"
+PROJECTS=`ls "${STORAGE_OC_DATA_ROOT}/" | grep "^${PROJECT_USER_PREFIX}" | sed -e "s/^${PROJECT_USER_PREFIX}//" | tr "\n" " "`
+
+for PROJECT in $PROJECTS; do
+    if [ -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}" ]; then
+        echo "$PROJECT"
+    fi
+done
 
 addToLog "DONE"
