@@ -53,3 +53,4 @@ for PROJECT in `$SCRIPT_DIR/list-projects`; do
 done
 
 addToLog "DONE"
+
