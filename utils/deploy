@@ -1,0 +1,64 @@
+#!/bin/bash
+
+SCRIPT=`basename "$0"`
+
+USAGE="Usage: $SCRIPT branch [ test | stable | demo ]"
+
+if [ "$1" == "-h" ]; then
+    echo "$USAGE"
+    exit
+fi
+
+SOURCE="$1"
+TARGET="$2"
+
+if [ "$SOURCE" == "" ]; then
+    echo "Missing source branch"
+    echo "$USAGE"
+    exit 1
+fi
+
+if [ "$TARGET" == "" ]; then
+    echo "Missing target"
+    echo "$USAGE"
+    exit 1
+fi
+
+CHECK=`echo "$TARGET" | grep -e "^test$" -e "^stable$" -e "^demo$"`
+
+if [ "$CHECK" == "" ]; then
+    echo "Invalid target '$TARGET'"
+    echo "$USAGE"
+    exit 1
+fi
+
+echo "Deploying source branch $SOURCE to target $TARGET"
+
+git checkout "$SOURCE"
+
+if [ $? -ne 0 ]; then
+    echo "Failed to checkout source branch $SOURCE"
+    exit 1
+fi
+
+git branch -D "$TARGET"
+
+if [ $? -ne 0 ]; then
+    echo "Failed to delete target branch $TARGET"
+    exit 1
+fi
+
+git branch "$TARGET"
+
+if [ $? -ne 0 ]; then
+    echo "Failed to create new target branch $TARGET"
+    exit 1
+fi
+
+git push -f origin "$TARGET"
+
+if [ $? -ne 0 ]; then
+    echo "Failed to push target branch $TARGET" to origin
+    exit 1
+fi
+
