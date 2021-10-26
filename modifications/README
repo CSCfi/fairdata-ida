@@ -61,7 +61,6 @@ the file essential-nextcloud-apps, located in the same directory as this README 
 >> Ensure the following are installed: php7*-intl php7*-pgsql php7*-zip php7*-gd
 >> Copy /nextcloud-old/themes/ida to /nextcloud/themes/ida
 >> Copy /nextcloud-old/apps/ida to /nextcloud/apps/ida
->> Copy /nextcloud-old/apps/user_saml to /nextcloud/apps/user_saml
 >> Copy /nextcloud-old/.htaccess to /nextcloud/.htaccess
 >> Copy /nextcloud-old/config/config.php to /nextcloud/config/config.php
 >> Edit /nextcloud/config.php to update the Nextcloud version to the newly installed version (c.f. /nextcloud/version.php)
