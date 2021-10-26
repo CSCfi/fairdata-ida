@@ -1,0 +1,9 @@
+{ "translations": {
+    "Password policy" : "Política de contraseñas",
+    "Forbid common passwords" : "Restringir contraseñas comunes",
+    "Enforce upper and lower case characters" : "Imponer caracteres en mayúsculas y minúsculas",
+    "Enforce numeric characters" : "Imponer caracteres numéricos",
+    "Enforce special characters" : "Imponer caracteres especiales",
+    "Minimal length" : "Longitud mínima"
+},"pluralForm" :"nplurals=2; plural=(n != 1);"
+}

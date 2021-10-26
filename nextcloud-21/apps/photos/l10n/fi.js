@@ -1,0 +1,25 @@
+OC.L10N.register(
+    "photos",
+    {
+    "Photos" : "Kuvat",
+    "Your memories under your control" : "Muistosi hallinnassasi",
+    "Your photos" : "Valokuvat",
+    "Your videos" : "Videot",
+    "Favorites" : "Suosikit",
+    "Your folders" : "Kansiot",
+    "Shared with you" : "Jaettu kanssasi",
+    "Tagged photos" : "Tunnisteilla varustetut kuvat",
+    "Locations" : "Sijainnit",
+    "Settings" : "Asetukset",
+    "Open the full size \"{name}\" image" : "Avaa kuva \"{name}\" todellisessa koossa",
+    "Open the \"{name}\" sub-directory" : "Avaa \"{name}\"-alikansio",
+    "Share this folder" : "Jaa tämä kansio",
+    "Back to {folder}" : "Takaisin kansioon {folder}",
+    "View" : "Näytä",
+    "An error occurred" : "Tapahtui virhe",
+    "No photos in here" : "Ei kuvia täällä",
+    "No tags yet" : "Ei vielä tunnisteita",
+    "Photos with tags will show up here" : "Tunnisteilla varustetut kuvat näkyvät täällä",
+    "This folder does not exists" : "Tätä kansiota ei ole olemassa"
+},
+"nplurals=2; plural=(n != 1);");
