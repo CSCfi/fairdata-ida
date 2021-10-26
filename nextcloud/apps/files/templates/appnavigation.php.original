@@ -1,3 +1,6 @@
+<?php
+script(\OCA\Files\AppInfo\Application::APP_ID, 'dist/files-app-settings');
+?>
 <div id="app-navigation">
 	<ul class="with-icon">
 
@@ -9,26 +12,23 @@
 		}
 		?>
 
-		<li id="quota"
-			class="pinned <?php p($pinned === 0 ? 'first-pinned ' : '') ?><?php
-			if ($_['quota'] !== \OCP\Files\FileInfo::SPACE_UNLIMITED) {
-			?>has-tooltip" title="<?php p($_['usage_relative'] . '%, ');
-			p($l->t('%s of %s used', [$_['usage'], $_['total_space']]));
-		} ?>">
-			<a href="#" class="icon-quota svg">
-				<p id="quotatext"><?php
-					if ($_['quota'] !== \OCP\Files\FileInfo::SPACE_UNLIMITED) {
-						p($l->t('%1$s%% of %2$s used', [round($_['usage_relative'], 1), $_['total_space']]));
-					} else {
-						p($l->t('%s used', [$_['usage']]));
-					} ?></p>
-				<div class="quota-container">
-					<progress value="<?php p($_['usage_relative']); ?>"
-							  max="100"
-						<?php if ($_['usage_relative'] > 80): ?> class="warn" <?php endif; ?>></progress>
-				</div>
-			</a>
-		</li>
+		<?php if ($_['quota'] === \OCP\Files\FileInfo::SPACE_UNLIMITED): ?>
+			<li id="quota" class="pinned <?php p($pinned === 0 ? 'first-pinned ' : '') ?>">
+				<a href="#" class="icon-quota svg">
+					<p><?php p($l->t('%s used', [$_['usage']])); ?></p>
+				</a>
+			</li>
+		<?php else: ?>
+			<li id="quota" class="has-tooltip pinned <?php p($pinned === 0 ? 'first-pinned ' : '') ?>"
+				title="<?php p($l->t('%s%% of %s used', [$_['usage_relative'], $_['total_space']])); ?>">
+				<a href="#" class="icon-quota svg">
+					<p id="quotatext"><?php p($l->t('%1$s of %2$s used', [$_['usage'], $_['total_space']])); ?></p>
+					<div class="quota-container">
+						<progress value="<?php p($_['usage_relative']); ?>" max="100" class="<?= ($_['usage_relative'] > 80) ? 'warn' : '' ?>"></progress>
+					</div>
+				</a>
+			</li>
+		<?php endif; ?>
 	</ul>
 	<div id="app-settings">
 		<div id="app-settings-header">
@@ -38,15 +38,21 @@
 			</button>
 		</div>
 		<div id="app-settings-content">
+			<div id="files-app-settings"></div>
 			<div id="files-setting-showhidden">
 				<input class="checkbox" id="showhiddenfilesToggle"
 					   checked="checked" type="checkbox">
 				<label for="showhiddenfilesToggle"><?php p($l->t('Show hidden files')); ?></label>
 			</div>
+			<div id="files-setting-cropimagepreviews">
+				<input class="checkbox" id="cropimagepreviewsToggle"
+					   checked="checked" type="checkbox">
+				<label for="cropimagepreviewsToggle"><?php p($l->t('Crop image previews')); ?></label>
+			</div>
 			<label for="webdavurl"><?php p($l->t('WebDAV')); ?></label>
 			<input id="webdavurl" type="text" readonly="readonly"
-				   value="<?php p(\OCP\Util::linkToRemote('webdav')); ?>"/>
-			<em><?php print_unescaped($l->t('Use this address to <a href="%s" target="_blank" rel="noreferrer noopener">access your Files via WebDAV</a>', array(link_to_docs('user-webdav')))); ?></em>
+				   value="<?php p($_['webdav_url']); ?>"/>
+			<em><a href="<?php echo link_to_docs('user-webdav') ?>" target="_blank" rel="noreferrer noopener"><?php p($l->t('Use this address to access your Files via WebDAV')) ?> ↗</a></em>
 		</div>
 	</div>
 
@@ -65,15 +71,16 @@
  * @return int Returns the pinned value
  */
 function NavigationListElements($item, $l, $pinned) {
-	strpos($item['classes'] ?? '', 'pinned') !== false ? $pinned++ : '';
-	?>
+	strpos($item['classes'] ?? '', 'pinned') !== false ? $pinned++ : ''; ?>
 	<li
 		data-id="<?php p($item['id']) ?>"
 		<?php if (isset($item['dir'])) { ?> data-dir="<?php p($item['dir']); ?>" <?php } ?>
 		<?php if (isset($item['view'])) { ?> data-view="<?php p($item['view']); ?>" <?php } ?>
 		<?php if (isset($item['expandedState'])) { ?> data-expandedstate="<?php p($item['expandedState']); ?>" <?php } ?>
 		class="nav-<?php p($item['id']) ?>
-		<?php if (isset($item['classes'])) { p($item['classes']); } ?>
+		<?php if (isset($item['classes'])) {
+		p($item['classes']);
+	} ?>
 		<?php p($pinned === 1 ? 'first-pinned' : '') ?>
 		<?php if (isset($item['defaultExpandedState']) && $item['defaultExpandedState']) { ?> open<?php } ?>"
 		<?php if (isset($item['folderPosition'])) { ?> folderposition="<?php p($item['folderPosition']); ?>" <?php } ?>>
@@ -84,17 +91,20 @@ function NavigationListElements($item, $l, $pinned) {
 
 		<?php
 		NavigationElementMenu($item);
-		if (isset($item['sublist'])) {
-			?>
-			<button class="collapse app-navigation-noclose" <?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>></button>
+	if (isset($item['sublist'])) {
+		?>
+			<button class="collapse app-navigation-noclose"
+				aria-label="<?php p($l->t('Toggle %1$s sublist', $item['name'])) ?>"
+				<?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>>
+			</button>
 			<ul id="sublist-<?php p($item['id']); ?>">
 				<?php
 				foreach ($item['sublist'] as $item) {
 					$pinned = NavigationListElements($item, $l, $pinned);
-				}
-				?>
+				} ?>
 			</ul>
-		<?php } ?>
+		<?php
+	} ?>
 	</li>
 
 
@@ -126,5 +136,6 @@ function NavigationElementMenu($item) {
 
 			</ul>
 		</div>
-	<?php }
+	<?php
+	}
 }

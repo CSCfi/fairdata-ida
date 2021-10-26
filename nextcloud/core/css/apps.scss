@@ -77,7 +77,7 @@ kbd {
 
 /* APP-NAVIGATION ------------------------------------------------------------ */
 /* Navigation: folder like structure */
-#app-navigation {
+#app-navigation:not(.vue) {
 	width: $navigation-width;
 	position: fixed;
 	top: $header-height;
@@ -152,16 +152,20 @@ kbd {
 				padding-left: 38px !important;
 			}
 
-			&.active,
 			a:hover,
-			a:focus,
+			a:focus {
+				&,
+				> a {
+					background-color: var(--color-background-hover);
+				}
+			}
+			&.active,
 			a:active,
 			a.selected ,
 			a.active {
 				&,
 				> a {
-					opacity: 1;
-					box-shadow: inset 4px 0 var(--color-primary);
+					background-color: var(--color-primary-light);
 				}
 			}
 
@@ -186,8 +190,6 @@ kbd {
 				padding: 0 44px;
 				white-space: nowrap;
 				text-overflow: ellipsis;
-				// !important to overwrite specific hover and focus
-				opacity: .7;
 				box-shadow: none !important;
 				user-select: none;
 				pointer-events:none;
@@ -207,17 +209,18 @@ kbd {
 					flex-wrap: wrap;
 					padding-left: 44px;
 					&:hover,
-					&:focus,
+					&:focus {
+						&,
+						> a {
+							background-color: var(--color-background-hover);
+						}
+					}
 					&.active,
 					a.selected {
 						&,
 						> a {
-							opacity: 1;
+							background-color: var(--color-primary-light);
 						}
-					}
-
-					&.active {
-						box-shadow: inset 4px 0 var(--color-primary);
 					}
 
 					/* align loader */
@@ -264,21 +267,24 @@ kbd {
 				justify-content: space-between;
 				line-height: 44px;
 				min-height: 44px;
-				padding: 0 12px 0 44px;
+				padding: 0 12px 0 14px;
 				overflow: hidden;
 				box-sizing: border-box;
 				white-space: nowrap;
 				text-overflow: ellipsis;
 				color: var(--color-main-text);
-				/* opacity: .57; */
+				opacity: .8;
 				flex: 1 1 0px;
 				z-index: 100; /* above the bullet to allow click*/
 				/* TODO: forbid using img as icon in menu? */
+
+				&.svg {
+					padding: 0 12px 0 44px;
+				}
 				&:first-child img {
 				    margin-right: 11px;
 				    width: 16px;
 				    height: 16px;
-				    margin-left: -30px;
 				}
 
 				/* counter can also be inside the link */
@@ -384,7 +390,8 @@ kbd {
 			-ms-transform: rotate(-90deg);
 			transform: rotate(-90deg);
 			z-index: 105; // above a, under button
-			background-color: var(--color-main-background);
+			background-color: var(--color-background-hover);
+			border-radius: 50%;
 			transition: opacity $animation-quick ease-in-out;
 		}
 
@@ -592,7 +599,7 @@ kbd {
 
 /**
  * !Important. We are defining the minimum requirement we want for flex
- * Just before the mobile breakpoint we have $breakpoint-mobile (768px) - $navigation-width
+ * Just before the mobile breakpoint we have $breakpoint-mobile (1024px) - $navigation-width
  * -> 468px. In that case we want 200px for the list and 268px for the content
  */
 $min-content-width: $breakpoint-mobile - $navigation-width - $list-min-width;
@@ -711,7 +718,7 @@ $min-content-width: $breakpoint-mobile - $navigation-width - $list-min-width;
 }
 
 
-.settings-button {
+#app-settings-header .settings-button {
 	display: block;
 	height: 44px;
 	width: 100%;
@@ -725,19 +732,21 @@ $min-content-width: $breakpoint-mobile - $navigation-width - $list-min-width;
 	border: 0;
 	border-radius: 0;
 	text-align: left;
-	padding-left: 42px;
+	padding-left: 44px;
 	font-weight: normal;
+	font-size: 100%;
+	opacity: 0.8;
 
 	/* like app-navigation a */
 	color: var(--color-main-text);
-	/* opacity: .57; */
 
-	&.opened,
+	&.opened {
+		border-top: solid 1px var(--color-border);
+		background-color: var(--color-main-background);
+	}
 	&:hover,
 	&:focus {
-		background-color: var(--color-main-background);
-		opacity: 1;
-		box-shadow: inset 4px 0 var(--color-primary);
+		background-color: var(--color-background-hover);
 	}
 }
 
@@ -872,6 +881,7 @@ $outter-margin: ($popoveritem-height - $popovericon-size) / 2;
 	right: 0;
 	filter: drop-shadow(0 1px 3px var(--color-box-shadow));
 	display: none;
+	will-change: filter;
 
 	&:after {
 		bottom: 100%;
@@ -949,8 +959,7 @@ $outter-margin: ($popoveritem-height - $popovericon-size) / 2;
 			width: 100%;
 			color: var(--color-main-text);
 			white-space: nowrap;
-			/* Override the app-navigation li opacity */
-			opacity: .7 !important;
+
 			span[class^='icon-'],
 			span[class*=' icon-'],
 			&[class^='icon-'],
@@ -981,9 +990,11 @@ $outter-margin: ($popoveritem-height - $popovericon-size) / 2;
 				padding: 0 #{($popoveritem-height - $popovericon-size) / 2} 0 $popoveritem-height !important;
 			}
 			&:hover,
-			&:focus,
+			&:focus {
+				background-color: var(--color-background-hover);
+			}
 			&.active {
-				opacity: 1 !important;
+				background-color: var(--color-primary-light);
 			}
 			/* prevent .action class to break the design */
 			&.action {
@@ -1122,7 +1133,6 @@ $outter-margin: ($popoveritem-height - $popovericon-size) / 2;
 	.app-content-list-item {
 		position: relative;
 		height: 68px;
-		border-top: 1px solid var(--color-border);
 		cursor: pointer;
 		padding: 10px 7px;
 		display: flex;

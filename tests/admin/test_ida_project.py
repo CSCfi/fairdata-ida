@@ -48,6 +48,7 @@ class TestIdaProject(unittest.TestCase):
         self.project_name = "test_project_a"
         self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
         self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config['HTTPD_USER'], self.config['ROOT'])
+        self.offlineSentinelFile = "%s/control/OFFLINE" % self.config.get('STORAGE_OC_DATA_ROOT', '/mnt/storage_vol01/ida')
 
         # clear any residual accounts, if they exist from a prior run
         self.success = True
@@ -67,11 +68,11 @@ class TestIdaProject(unittest.TestCase):
 
             print("(cleaning)")
 
-            cmd = "%s DISABLE %s 1 2>&1" % (self.ida_project, self.project_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
-    
-            cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+            if (os.path.exists(self.offlineSentinelFile)) :
+                os.remove(self.offlineSentinelFile)
+
+            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            os.system(cmd)
 
         self.assertTrue(self.success)
 
@@ -123,5 +124,14 @@ class TestIdaProject(unittest.TestCase):
         titleFilePath = "%s/PSO_%s/files/TITLE" % (self.config["STORAGE_OC_DATA_ROOT"], self.project_name)
         self.assertTrue(os.path.exists(titleFilePath))
         self.assertEqual("Test title 234\n", open(titleFilePath).read())
+
+        print("Attempt to create new project while service in OFFLINE mode")
+        with open(self.offlineSentinelFile, 'a') as sentinelFile:
+            sentinelFile.write("TEST")
+            sentinelFile.close()
+        cmd = "%s ADD %s 1 2>&1" % (self.ida_project, self.project_name)
+        OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        self.assertEqual(OUT, 1, "Sentinel file ignored")
+        os.remove(self.offlineSentinelFile)
 
         self.success = True

@@ -1,14 +1,19 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -23,13 +28,13 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\AppFramework\Utility;
 
-use \OCP\AppFramework\Utility\IControllerMethodReflector;
+use OCP\AppFramework\Utility\IControllerMethodReflector;
 
 /**
  * Reads and parses annotations from doc comments
@@ -43,7 +48,7 @@ class ControllerMethodReflector implements IControllerMethodReflector {
 	 * @param object $object an object or classname
 	 * @param string $method the method which we want to inspect
 	 */
-	public function reflect($object, string $method){
+	public function reflect($object, string $method) {
 		$reflection = new \ReflectionMethod($object, $method);
 		$docs = $reflection->getDocComment();
 
@@ -51,6 +56,7 @@ class ControllerMethodReflector implements IControllerMethodReflector {
 			// extract everything prefixed by @ and first letter uppercase
 			preg_match_all('/^\h+\*\h+@(?P<annotation>[A-Z]\w+)((?P<parameter>.*))?$/m', $docs, $matches);
 			foreach ($matches['annotation'] as $key => $annontation) {
+				$annontation = strtolower($annontation);
 				$annotationValue = $matches['parameter'][$key];
 				if (isset($annotationValue[0]) && $annotationValue[0] === '(' && $annotationValue[\strlen($annotationValue) - 1] === ')') {
 					$cutString = substr($annotationValue, 1, -1);
@@ -72,17 +78,14 @@ class ControllerMethodReflector implements IControllerMethodReflector {
 		}
 
 		foreach ($reflection->getParameters() as $param) {
-			// extract type information from PHP 7 scalar types and prefer them
-			// over phpdoc annotations
-			if (method_exists($param, 'getType')) {
-				$type = $param->getType();
-				if ($type !== null) {
-					$this->types[$param->getName()] = (string) $type;
-				}
+			// extract type information from PHP 7 scalar types and prefer them over phpdoc annotations
+			$type = $param->getType();
+			if ($type instanceof \ReflectionNamedType) {
+				$this->types[$param->getName()] = $type->getName();
 			}
 
 			$default = null;
-			if($param->isOptional()) {
+			if ($param->isOptional()) {
 				$default = $param->getDefaultValue();
 			}
 			$this->parameters[$param->name] = $default;
@@ -97,7 +100,7 @@ class ControllerMethodReflector implements IControllerMethodReflector {
 	 * would return int or null if not existing
 	 */
 	public function getType(string $parameter) {
-		if(array_key_exists($parameter, $this->types)) {
+		if (array_key_exists($parameter, $this->types)) {
 			return $this->types[$parameter];
 		}
 
@@ -117,6 +120,7 @@ class ControllerMethodReflector implements IControllerMethodReflector {
 	 * @return bool true if the annotation is found
 	 */
 	public function hasAnnotation(string $name): bool {
+		$name = strtolower($name);
 		return array_key_exists($name, $this->annotations);
 	}
 
@@ -128,7 +132,8 @@ class ControllerMethodReflector implements IControllerMethodReflector {
 	 * @return string
 	 */
 	public function getAnnotationParameter(string $name, string $key): string {
-		if(isset($this->annotations[$name][$key])) {
+		$name = strtolower($name);
+		if (isset($this->annotations[$name][$key])) {
 			return $this->annotations[$name][$key];
 		}
 

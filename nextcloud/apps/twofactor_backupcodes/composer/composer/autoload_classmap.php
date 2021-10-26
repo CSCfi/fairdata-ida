@@ -6,6 +6,7 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = $vendorDir;
 
 return array(
+    'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
     'OCA\\TwoFactorBackupCodes\\Activity\\Provider' => $baseDir . '/../lib/Activity/Provider.php',
     'OCA\\TwoFactorBackupCodes\\AppInfo\\Application' => $baseDir . '/../lib/AppInfo/Application.php',
     'OCA\\TwoFactorBackupCodes\\BackgroundJob\\CheckBackupCodes' => $baseDir . '/../lib/BackgroundJob/CheckBackupCodes.php',
@@ -16,7 +17,6 @@ return array(
     'OCA\\TwoFactorBackupCodes\\Event\\CodesGenerated' => $baseDir . '/../lib/Event/CodesGenerated.php',
     'OCA\\TwoFactorBackupCodes\\Listener\\ActivityPublisher' => $baseDir . '/../lib/Listener/ActivityPublisher.php',
     'OCA\\TwoFactorBackupCodes\\Listener\\ClearNotifications' => $baseDir . '/../lib/Listener/ClearNotifications.php',
-    'OCA\\TwoFactorBackupCodes\\Listener\\IListener' => $baseDir . '/../lib/Listener/IListener.php',
     'OCA\\TwoFactorBackupCodes\\Listener\\ProviderDisabled' => $baseDir . '/../lib/Listener/ProviderDisabled.php',
     'OCA\\TwoFactorBackupCodes\\Listener\\ProviderEnabled' => $baseDir . '/../lib/Listener/ProviderEnabled.php',
     'OCA\\TwoFactorBackupCodes\\Listener\\RegistryUpdater' => $baseDir . '/../lib/Listener/RegistryUpdater.php',

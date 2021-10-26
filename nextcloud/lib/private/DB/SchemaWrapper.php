@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,11 +26,10 @@ namespace OC\DB;
 
 use Doctrine\DBAL\Schema\Schema;
 use OCP\DB\ISchemaWrapper;
-use OCP\IDBConnection;
 
 class SchemaWrapper implements ISchemaWrapper {
 
-	/** @var IDBConnection|Connection */
+	/** @var Connection */
 	protected $connection;
 
 	/** @var Schema */
@@ -38,10 +38,7 @@ class SchemaWrapper implements ISchemaWrapper {
 	/** @var array */
 	protected $tablesToDelete = [];
 
-	/**
-	 * @param IDBConnection $connection
-	 */
-	public function __construct(IDBConnection $connection) {
+	public function __construct(Connection $connection) {
 		$this->connection = $connection;
 		$this->schema = $this->connection->createSchema();
 	}
@@ -64,7 +61,7 @@ class SchemaWrapper implements ISchemaWrapper {
 	 */
 	public function getTableNamesWithoutPrefix() {
 		$tableNames = $this->schema->getTableNames();
-		return array_map(function($tableName) {
+		return array_map(function ($tableName) {
 			if (strpos($tableName, $this->connection->getPrefix()) === 0) {
 				return substr($tableName, strlen($this->connection->getPrefix()));
 			}
@@ -110,6 +107,7 @@ class SchemaWrapper implements ISchemaWrapper {
 	 * @return \Doctrine\DBAL\Schema\Table
 	 */
 	public function createTable($tableName) {
+		unset($this->tablesToDelete[$tableName]);
 		return $this->schema->createTable($this->connection->getPrefix() . $tableName);
 	}
 

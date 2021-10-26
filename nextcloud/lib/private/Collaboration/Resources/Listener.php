@@ -1,7 +1,12 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2019 Joas Schilling <coding@schilljs.com>
+ *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -16,12 +21,11 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OC\Collaboration\Resources;
-
 
 use OCP\Collaboration\Resources\IManager;
 use OCP\IGroup;
@@ -30,9 +34,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 class Listener {
-
 	public static function register(EventDispatcherInterface $dispatcher): void {
-		$listener = function(GenericEvent $event) {
+		$listener = function (GenericEvent $event) {
 			/** @var IUser $user */
 			$user = $event->getArgument('user');
 			/** @var IManager $resourceManager */
@@ -43,7 +46,7 @@ class Listener {
 		$dispatcher->addListener(IGroup::class . '::postAddUser', $listener);
 		$dispatcher->addListener(IGroup::class . '::postRemoveUser', $listener);
 
-		$dispatcher->addListener(IUser::class . '::postDelete', function(GenericEvent $event) {
+		$dispatcher->addListener(IUser::class . '::postDelete', function (GenericEvent $event) {
 			/** @var IUser $user */
 			$user = $event->getSubject();
 			/** @var IManager $resourceManager */
@@ -52,7 +55,7 @@ class Listener {
 			$resourceManager->invalidateAccessCacheForUser($user);
 		});
 
-		$dispatcher->addListener(IGroup::class . '::preDelete', function(GenericEvent $event) {
+		$dispatcher->addListener(IGroup::class . '::preDelete', function (GenericEvent $event) {
 			/** @var IGroup $group */
 			$group = $event->getSubject();
 			/** @var IManager $resourceManager */

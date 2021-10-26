@@ -2,6 +2,8 @@
 /**
  * @copyright 2016 Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,9 +19,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OC\Files\SimpleFS;
 
 use OCP\Files\File;
@@ -28,7 +31,7 @@ use OCP\Files\Node;
 use OCP\Files\NotFoundException;
 use OCP\Files\SimpleFS\ISimpleFolder;
 
-class SimpleFolder implements ISimpleFolder   {
+class SimpleFolder implements ISimpleFolder {
 
 	/** @var Folder */
 	private $folder;
@@ -49,7 +52,7 @@ class SimpleFolder implements ISimpleFolder   {
 	public function getDirectoryListing() {
 		$listing = $this->folder->getDirectoryListing();
 
-		$fileListing = array_map(function(Node $file) {
+		$fileListing = array_map(function (Node $file) {
 			if ($file instanceof File) {
 				return new SimpleFile($file);
 			}
@@ -79,9 +82,13 @@ class SimpleFolder implements ISimpleFolder   {
 		return new SimpleFile($file);
 	}
 
-	public function newFile($name) {
-		$file = $this->folder->newFile($name);
-
-		return new SimpleFile($file);
+	public function newFile($name, $content = null) {
+		if ($content === null) {
+			// delay creating the file until it's written to
+			return new NewSimpleFile($this->folder, $name);
+		} else {
+			$file = $this->folder->newFile($name, $content);
+			return new SimpleFile($file);
+		}
 	}
 }

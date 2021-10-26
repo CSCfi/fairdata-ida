@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @copyright Copyright (c) 2017, Sandro Lutz <sandro.lutz@temparus.ch>
  * @copyright Copyright (c) 2016, ownCloud, Inc.
@@ -7,10 +6,12 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Felix Rupp <github@felixrupp.com>
+ * @author Greta Doci <gretadoci@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lionel Elie Mamane <lionel@mamane.lu>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
@@ -18,7 +19,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sandro Lutz <sandro.lutz@temparus.ch>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -32,7 +33,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -51,6 +52,7 @@ use OC_User;
 use OC_Util;
 use OCA\DAV\Connector\Sabre\Auth;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\NotPermittedException;
 use OCP\IConfig;
 use OCP\ILogger;
@@ -61,6 +63,7 @@ use OCP\IUserSession;
 use OCP\Lockdown\ILockdownManager;
 use OCP\Security\ISecureRandom;
 use OCP\Session\Exceptions\SessionNotAvailableException;
+use OCP\User\Events\PostLoginEvent;
 use OCP\Util;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use \Firebase\JWT\JWT;
@@ -79,7 +82,7 @@ use \Firebase\JWT\JWT;
  * - preUnassignedUserId(string $uid)
  * - postUnassignedUserId(string $uid)
  * - preLogin(string $user, string $password)
- * - postLogin(\OC\User\User $user, string $password)
+ * - postLogin(\OC\User\User $user, string $loginName, string $password, boolean $isTokenLogin)
  * - preRememberedLogin(string $uid)
  * - postRememberedLogin(\OC\User\User $user)
  * - logout()
@@ -87,8 +90,7 @@ use \Firebase\JWT\JWT;
  *
  * @package OC\User
  */
-class Session implements IUserSession, Emitter
-{
+class Session implements IUserSession, Emitter {
 
 	/** @var Manager|PublicEmitter $manager */
 	private $manager;
@@ -116,6 +118,8 @@ class Session implements IUserSession, Emitter
 
 	/** @var ILogger */
 	private $logger;
+	/** @var IEventDispatcher */
+	private $dispatcher;
 
 	/**
 	 * @param Manager $manager
@@ -127,15 +131,15 @@ class Session implements IUserSession, Emitter
 	 * @param ILockdownManager $lockdownManager
 	 * @param ILogger $logger
 	 */
-	public function __construct(
-		Manager $manager,
-		ISession $session,
-		ITimeFactory $timeFactory,
-		$tokenProvider,
-		IConfig $config,
-		ISecureRandom $random,
-		ILockdownManager $lockdownManager,
-		ILogger $logger
+	public function __construct(Manager $manager,
+								ISession $session,
+								ITimeFactory $timeFactory,
+								$tokenProvider,
+								IConfig $config,
+								ISecureRandom $random,
+								ILockdownManager $lockdownManager,
+								ILogger $logger,
+								IEventDispatcher $dispatcher
 	) {
 		$this->manager = $manager;
 		$this->session = $session;
@@ -145,13 +149,13 @@ class Session implements IUserSession, Emitter
 		$this->random = $random;
 		$this->lockdownManager = $lockdownManager;
 		$this->logger = $logger;
+		$this->dispatcher = $dispatcher;
 	}
 
 	/**
 	 * @param IProvider $provider
 	 */
-	public function setTokenProvider(IProvider $provider)
-	{
+	public function setTokenProvider(IProvider $provider) {
 		$this->tokenProvider = $provider;
 	}
 
@@ -160,8 +164,7 @@ class Session implements IUserSession, Emitter
 	 * @param string $method
 	 * @param callable $callback
 	 */
-	public function listen($scope, $method, callable $callback)
-	{
+	public function listen($scope, $method, callable $callback) {
 		$this->manager->listen($scope, $method, $callback);
 	}
 
@@ -170,8 +173,7 @@ class Session implements IUserSession, Emitter
 	 * @param string $method optional
 	 * @param callable $callback optional
 	 */
-	public function removeListener($scope = null, $method = null, callable $callback = null)
-	{
+	public function removeListener($scope = null, $method = null, callable $callback = null) {
 		$this->manager->removeListener($scope, $method, $callback);
 	}
 
@@ -180,8 +182,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @return Manager|PublicEmitter
 	 */
-	public function getManager()
-	{
+	public function getManager() {
 		return $this->manager;
 	}
 
@@ -190,8 +191,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @return ISession
 	 */
-	public function getSession()
-	{
+	public function getSession() {
 		return $this->session;
 	}
 
@@ -200,8 +200,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @param ISession $session
 	 */
-	public function setSession(ISession $session)
-	{
+	public function setSession(ISession $session) {
 		if ($this->session instanceof ISession) {
 			$this->session->close();
 		}
@@ -214,8 +213,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @param IUser|null $user
 	 */
-	public function setUser($user)
-	{
+	public function setUser($user) {
 		if (is_null($user)) {
 			$this->session->remove('user_id');
 		} else {
@@ -229,8 +227,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @return IUser|null Current user, otherwise null
 	 */
-	public function getUser()
-	{
+	public function getUser() {
 		// FIXME: This is a quick'n dirty work-around for the incognito mode as
 		// described at https://github.com/owncloud/core/pull/12912#issuecomment-67391155
 		if (OC_User::isIncognitoMode()) {
@@ -256,8 +253,7 @@ class Session implements IUserSession, Emitter
 	 * - For token-authenticated clients, the token validity is checked
 	 * - For browsers, the session token validity is checked
 	 */
-	protected function validateSession()
-	{
+	protected function validateSession() {
 		$token = null;
 		$appPassword = $this->session->get('app_password');
 
@@ -282,8 +278,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @return bool if logged in
 	 */
-	public function isLoggedIn()
-	{
+	public function isLoggedIn() {
 		$user = $this->getUser();
 		if (is_null($user)) {
 			return false;
@@ -297,8 +292,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @param string|null $loginName for the logged in user
 	 */
-	public function setLoginName($loginName)
-	{
+	public function setLoginName($loginName) {
 		if (is_null($loginName)) {
 			$this->session->remove('loginname');
 		} else {
@@ -311,8 +305,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @return string
 	 */
-	public function getLoginName()
-	{
+	public function getLoginName() {
 		if ($this->activeUser) {
 			return $this->session->get('loginname');
 		}
@@ -327,12 +320,31 @@ class Session implements IUserSession, Emitter
 	}
 
 	/**
+	 * @return null|string
+	 */
+	public function getImpersonatingUserID(): ?string {
+		return $this->session->get('oldUserId');
+	}
+
+	public function setImpersonatingUserID(bool $useCurrentUser = true): void {
+		if ($useCurrentUser === false) {
+			$this->session->remove('oldUserId');
+			return;
+		}
+
+		$currentUser = $this->getUser();
+
+		if ($currentUser === null) {
+			throw new \OC\User\NoUserException();
+		}
+		$this->session->set('oldUserId', $currentUser->getUID());
+	}
+	/**
 	 * set the token id
 	 *
 	 * @param int|null $token that was used to log in
 	 */
-	protected function setToken($token)
-	{
+	protected function setToken($token) {
 		if ($token === null) {
 			$this->session->remove('token-id');
 		} else {
@@ -348,8 +360,7 @@ class Session implements IUserSession, Emitter
 	 * @return boolean|null
 	 * @throws LoginException
 	 */
-	public function login($uid, $password)
-	{
+	public function login($uid, $password) {
 		$this->session->regenerateId();
 		if ($this->validateToken($password, $uid)) {
 			return $this->loginWithToken($password);
@@ -364,8 +375,7 @@ class Session implements IUserSession, Emitter
 	 * @return true returns true if login successful or an exception otherwise
 	 * @throws LoginException
 	 */
-	public function completeLogin(IUser $user, array $loginDetails, $regenerateSessionId = true)
-	{
+	public function completeLogin(IUser $user, array $loginDetails, $regenerateSessionId = true) {
 		if (!$user->isEnabled()) {
 			// disabled users can not log in
 			// injecting l10n does not work - there is a circular dependency between session and \OCP\L10N\IFactory
@@ -389,14 +399,20 @@ class Session implements IUserSession, Emitter
 			$this->setToken(null);
 			$firstTimeLogin = $user->updateLastLoginTimestamp();
 		}
+
+		$this->dispatcher->dispatchTyped(new PostLoginEvent(
+			$user,
+			$loginDetails['loginName'],
+			$loginDetails['password'],
+			$isToken
+		));
 		$this->manager->emit('\OC\User', 'postLogin', [
 			$user,
+			$loginDetails['loginName'],
 			$loginDetails['password'],
 			$isToken,
 		]);
-
 		if ($this->isLoggedIn()) {
-
 			$this->prepareUserLogin($firstTimeLogin, $regenerateSessionId);
 
 			// If Fairdata language cookie exists, set Nextcloud language setting to user specified
@@ -453,16 +469,14 @@ class Session implements IUserSession, Emitter
 	 * @throws PasswordLoginForbiddenException
 	 * @return boolean
 	 */
-	public function logClientIn(
-		$user,
-		$password,
-		IRequest $request,
-		OC\Security\Bruteforce\Throttler $throttler
-	) {
+	public function logClientIn($user,
+								$password,
+								IRequest $request,
+								OC\Security\Bruteforce\Throttler $throttler) {
 		$currentDelay = $throttler->sleepDelay($request->getRemoteAddress(), 'login');
 
 		if ($this->manager instanceof PublicEmitter) {
-			$this->manager->emit('\OC\User', 'preLogin', array($user, $password));
+			$this->manager->emit('\OC\User', 'preLogin', [$user, $password]);
 		}
 
 		try {
@@ -485,10 +499,12 @@ class Session implements IUserSession, Emitter
 			// Failed, maybe the user used their email address
 			$users = $this->manager->getByEmail($user);
 			if (!(\count($users) === 1 && $this->login($users[0]->getUID(), $password))) {
-
 				$this->logger->warning('Login failed: \'' . $user . '\' (Remote IP: \'' . \OC::$server->getRequest()->getRemoteAddress() . '\')', ['app' => 'core']);
 
 				$throttler->registerAttempt('login', $request->getRemoteAddress(), ['user' => $user]);
+
+				$this->dispatcher->dispatchTyped(new OC\Authentication\Events\LoginFailed($user));
+
 				if ($currentDelay === 0) {
 					$throttler->sleepDelay($request->getRemoteAddress(), 'login');
 				}
@@ -498,7 +514,7 @@ class Session implements IUserSession, Emitter
 
 		if ($isTokenPassword) {
 			$this->session->set('app_password', $password);
-		} else if ($this->supportsCookies($request)) {
+		} elseif ($this->supportsCookies($request)) {
 			// Password login, but cookies supported -> create (browser) session token
 			$this->createSessionToken($request, $this->getUser()->getUID(), $user, $password);
 		}
@@ -506,8 +522,7 @@ class Session implements IUserSession, Emitter
 		return true;
 	}
 
-	protected function supportsCookies(IRequest $request)
-	{
+	protected function supportsCookies(IRequest $request) {
 		if (!is_null($request->getCookie('cookie_test'))) {
 			return true;
 		}
@@ -515,17 +530,15 @@ class Session implements IUserSession, Emitter
 		return false;
 	}
 
-	private function isTokenAuthEnforced()
-	{
+	private function isTokenAuthEnforced() {
 		return $this->config->getSystemValue('token_auth_enforced', false);
 	}
 
-	protected function isTwoFactorEnforced($username)
-	{
+	protected function isTwoFactorEnforced($username) {
 		Util::emitHook(
 			'\OCA\Files_Sharing\API\Server2Server',
 			'preLoginNameUsedAsUserName',
-			array('uid' => &$username)
+			['uid' => &$username]
 		);
 		$user = $this->manager->get($username);
 		if (is_null($user)) {
@@ -549,20 +562,22 @@ class Session implements IUserSession, Emitter
 	 * @return boolean
 	 * @throws ExpiredTokenException
 	 */
-	public function isTokenPassword($password)
-	{
+	public function isTokenPassword($password) {
 		try {
 			$this->tokenProvider->getToken($password);
 			return true;
 		} catch (ExpiredTokenException $e) {
 			throw $e;
 		} catch (InvalidTokenException $ex) {
+			$this->logger->logException($ex, [
+				'level' => ILogger::DEBUG,
+				'message' => 'Token is not valid: ' . $ex->getMessage(),
+			]);
 			return false;
 		}
 	}
 
-	protected function prepareUserLogin($firstTimeLogin, $refreshCsrfToken = true)
-	{
+	protected function prepareUserLogin($firstTimeLogin, $refreshCsrfToken = true) {
 		if ($refreshCsrfToken) {
 			// TODO: mock/inject/use non-static
 			// Refresh the token
@@ -598,10 +613,8 @@ class Session implements IUserSession, Emitter
 	 * @param OC\Security\Bruteforce\Throttler $throttler
 	 * @return boolean if the login was successful
 	 */
-	public function tryBasicAuthLogin(
-		IRequest $request,
-		OC\Security\Bruteforce\Throttler $throttler
-	) {
+	public function tryBasicAuthLogin(IRequest $request,
+									  OC\Security\Bruteforce\Throttler $throttler) {
 		if (!empty($request->server['PHP_AUTH_USER']) && !empty($request->server['PHP_AUTH_PW'])) {
 			try {
 				if ($this->logClientIn($request->server['PHP_AUTH_USER'], $request->server['PHP_AUTH_PW'], $request, $throttler)) {
@@ -613,8 +626,7 @@ class Session implements IUserSession, Emitter
 					 * @see https://github.com/owncloud/core/issues/22893
 					 */
 					$this->session->set(
-						Auth::DAV_AUTHENTICATED,
-						$this->getUser()->getUID()
+						Auth::DAV_AUTHENTICATED, $this->getUser()->getUID()
 					);
 
 					// Set the last-password-confirm session to make the sudo mode work
@@ -637,8 +649,7 @@ class Session implements IUserSession, Emitter
 	 * @return boolean
 	 * @throws LoginException if an app canceld the login process or the user is not enabled
 	 */
-	private function loginWithPassword($uid, $password)
-	{
+	private function loginWithPassword($uid, $password) {
 		$user = $this->manager->checkPasswordNoLogging($uid, $password);
 		if ($user === false) {
 			// Password check failed
@@ -655,8 +666,7 @@ class Session implements IUserSession, Emitter
 	 * @return boolean
 	 * @throws LoginException if an app canceled the login process or the user is not enabled
 	 */
-	private function loginWithToken($token)
-	{
+	private function loginWithToken($token) {
 		try {
 			$dbToken = $this->tokenProvider->getToken($token);
 		} catch (InvalidTokenException $ex) {
@@ -672,7 +682,7 @@ class Session implements IUserSession, Emitter
 			// Ignore and use empty string instead
 		}
 
-		$this->manager->emit('\OC\User', 'preLogin', array($uid, $password));
+		$this->manager->emit('\OC\User', 'preLogin', [$uid, $password]);
 
 		$user = $this->manager->get($uid);
 		if (is_null($user)) {
@@ -687,8 +697,7 @@ class Session implements IUserSession, Emitter
 				'password' => $password,
 				'token' => $dbToken
 			],
-			false
-		);
+			false);
 	}
 
 	/**
@@ -701,8 +710,7 @@ class Session implements IUserSession, Emitter
 	 * @param int $remember
 	 * @return boolean
 	 */
-	public function createSessionToken(IRequest $request, $uid, $loginName, $password = null, $remember = IToken::DO_NOT_REMEMBER)
-	{
+	public function createSessionToken(IRequest $request, $uid, $loginName, $password = null, $remember = IToken::DO_NOT_REMEMBER) {
 		if (is_null($this->manager->get($uid))) {
 			// User does not exist
 			return false;
@@ -730,8 +738,7 @@ class Session implements IUserSession, Emitter
 	 * @param string $password either the login password or a device token
 	 * @return string|null the password or null if none was set in the token
 	 */
-	private function getPassword($password)
-	{
+	private function getPassword($password) {
 		if (is_null($password)) {
 			// This is surely no token ;-)
 			return null;
@@ -753,11 +760,10 @@ class Session implements IUserSession, Emitter
 	 * @param string $token
 	 * @return boolean
 	 */
-	private function checkTokenCredentials(IToken $dbToken, $token)
-	{
+	private function checkTokenCredentials(IToken $dbToken, $token) {
 		// Check whether login credentials are still valid and the user was not disabled
 		// This check is performed each 5 minutes
-		$lastCheck = $dbToken->getLastCheck() ?: 0;
+		$lastCheck = $dbToken->getLastCheck() ? : 0;
 		$now = $this->timeFactory->getTime();
 		if ($lastCheck > ($now - 60 * 5)) {
 			// Checked performed recently, nothing to do now
@@ -807,8 +813,8 @@ class Session implements IUserSession, Emitter
 	 * @param string $user login name
 	 * @return boolean
 	 */
-	private function validateToken($token, $user = null)
-	{
+	private function validateToken($token, $user = null) {
+
         // If SSO session, check same session ID as in cookie
 		if ($token === $this->config->getSystemValue('SSO_PASSWORD')) {
 			Util::writeLog('User', 'Session.php: validateToken (SSO_PASSWORD)', \OCP\Util::DEBUG);
@@ -832,9 +838,14 @@ class Session implements IUserSession, Emitter
 
 		// Check if login names match
 		if (!is_null($user) && $dbToken->getLoginName() !== $user) {
-			// TODO: this makes it imposssible to use different login names on browser and client
+			// TODO: this makes it impossible to use different login names on browser and client
 			// e.g. login by e-mail 'user@example.com' on browser for generating the token will not
 			//      allow to use the client token with the login name 'user'.
+			$this->logger->error('App token login name does not match', [
+				'tokenLoginName' => $dbToken->getLoginName(),
+				'sessionLoginName' => $user,
+			]);
+
 			return false;
 		}
 
@@ -857,18 +868,17 @@ class Session implements IUserSession, Emitter
 	 * @todo check remember me cookie
 	 * @return boolean
 	 */
-	public function tryTokenLogin(IRequest $request)
-	{
+	public function tryTokenLogin(IRequest $request) {
 		$authHeader = $request->getHeader('Authorization');
-		if (strpos($authHeader, 'Bearer ') === false) {
+		if (strpos($authHeader, 'Bearer ') === 0) {
+			$token = substr($authHeader, 7);
+		} else {
 			// No auth header, let's try session id
 			try {
 				$token = $this->session->getId();
 			} catch (SessionNotAvailableException $ex) {
 				return false;
 			}
-		} else {
-			$token = substr($authHeader, 7);
 		}
 
 		if (!$this->loginWithToken($token)) {
@@ -878,67 +888,19 @@ class Session implements IUserSession, Emitter
 			return false;
 		}
 
-		// Set the session variable so we know this is an app password
-		$this->session->set('app_password', $token);
-
-		return true;
-	}
-
-	/**
-	 * perform login using the magic cookie (remember login)
-	 *
-	 * @param string $uid the username
-	 * @param string $currentToken
-	 * @param string $oldSessionId
-	 * @return bool
-	 */
-	public function loginWithCookie($uid, $currentToken, $oldSessionId)
-	{
-		$this->session->regenerateId();
-		$this->manager->emit('\OC\User', 'preRememberedLogin', array($uid));
-		$user = $this->manager->get($uid);
-		if (is_null($user)) {
-			// user does not exist
-			return false;
-		}
-
-		// get stored tokens
-		$tokens = $this->config->getUserKeys($uid, 'login_token');
-		// test cookies token against stored tokens
-		if (!in_array($currentToken, $tokens, true)) {
-			return false;
-		}
-		// replace successfully used token with a new one
-		$this->config->deleteUserValue($uid, 'login_token', $currentToken);
-		$newToken = $this->random->generate(32);
-		$this->config->setUserValue($uid, 'login_token', $newToken, $this->timeFactory->getTime());
-
 		try {
-			$sessionId = $this->session->getId();
-			$this->tokenProvider->renewSessionToken($oldSessionId, $sessionId);
-		} catch (SessionNotAvailableException $ex) {
-			return false;
-		} catch (InvalidTokenException $ex) {
-			\OC::$server->getLogger()->warning('Renewing session token failed', ['app' => 'core']);
-			return false;
+			$dbToken = $this->tokenProvider->getToken($token);
+		} catch (InvalidTokenException $e) {
+			// Can't really happen but better save than sorry
+			return true;
 		}
 
-		$this->setMagicInCookie($user->getUID(), $newToken);
-		$token = $this->tokenProvider->getToken($sessionId);
-
-		//login
-		$this->setUser($user);
-		$this->setLoginName($token->getLoginName());
-		$this->setToken($token->getId());
-		$this->lockdownManager->setToken($token);
-		$user->updateLastLoginTimestamp();
-		$password = null;
-		try {
-			$password = $this->tokenProvider->getPassword($token, $sessionId);
-		} catch (PasswordlessTokenException $ex) {
-			// Ignore
+		// Remember me tokens are not app_passwords
+		if ($dbToken->getRemember() === IToken::DO_NOT_REMEMBER) {
+			// Set the session variable so we know this is an app password
+			$this->session->set('app_password', $token);
 		}
-		$this->manager->emit('\OC\User', 'postRememberedLogin', [$user, $password]);
+
 		return true;
 	}
 
@@ -967,11 +929,68 @@ class Session implements IUserSession, Emitter
 		return $this->completeLogin($user, ['loginName' => $uid, 'password' => $ssoPassword], false);
 	}
 
+
+	/**
+	 * perform login using the magic cookie (remember login)
+	 *
+	 * @param string $uid the username
+	 * @param string $currentToken
+	 * @param string $oldSessionId
+	 * @return bool
+	 */
+	public function loginWithCookie($uid, $currentToken, $oldSessionId) {
+
+		$this->session->regenerateId();
+		$this->manager->emit('\OC\User', 'preRememberedLogin', [$uid]);
+		$user = $this->manager->get($uid);
+		if (is_null($user)) {
+			// user does not exist
+			return false;
+		}
+
+		// get stored tokens
+		$tokens = $this->config->getUserKeys($uid, 'login_token');
+		// test cookies token against stored tokens
+		if (!in_array($currentToken, $tokens, true)) {
+			return false;
+		}
+		// replace successfully used token with a new one
+		$this->config->deleteUserValue($uid, 'login_token', $currentToken);
+		$newToken = $this->random->generate(32);
+		$this->config->setUserValue($uid, 'login_token', $newToken, $this->timeFactory->getTime());
+
+		try {
+			$sessionId = $this->session->getId();
+			$token = $this->tokenProvider->renewSessionToken($oldSessionId, $sessionId);
+		} catch (SessionNotAvailableException $ex) {
+			return false;
+		} catch (InvalidTokenException $ex) {
+			\OC::$server->getLogger()->warning('Renewing session token failed', ['app' => 'core']);
+			return false;
+		}
+
+		$this->setMagicInCookie($user->getUID(), $newToken);
+
+		//login
+		$this->setUser($user);
+		$this->setLoginName($token->getLoginName());
+		$this->setToken($token->getId());
+		$this->lockdownManager->setToken($token);
+		$user->updateLastLoginTimestamp();
+		$password = null;
+		try {
+			$password = $this->tokenProvider->getPassword($token, $sessionId);
+		} catch (PasswordlessTokenException $ex) {
+			// Ignore
+		}
+		$this->manager->emit('\OC\User', 'postRememberedLogin', [$user, $password]);
+		return true;
+	}
+
 	/**
 	 * @param IUser $user
 	 */
-	public function createRememberMeToken(IUser $user)
-	{
+	public function createRememberMeToken(IUser $user) {
 		$token = $this->random->generate(32);
 		$this->config->setUserValue($user->getUID(), 'login_token', $token, $this->timeFactory->getTime());
 		$this->setMagicInCookie($user->getUID(), $token);
@@ -980,11 +999,10 @@ class Session implements IUserSession, Emitter
 	/**
 	 * logout the user from the session
 	 */
-	public function logout()
-	{
-		$this->manager->emit('\OC\User', 'logout');
+	public function logout() {
 		$user = $this->getUser();
-		if (!is_null($user)) {
+		$this->manager->emit('\OC\User', 'logout', [$user]);
+		if ($user !== null) {
 			try {
 				$this->tokenProvider->invalidateToken($this->session->getId());
 			} catch (SessionNotAvailableException $ex) {
@@ -995,7 +1013,7 @@ class Session implements IUserSession, Emitter
 		$this->setToken(null);
 		$this->unsetMagicInCookie();
 		$this->session->clear();
-		$this->manager->emit('\OC\User', 'postLogout');
+		$this->manager->emit('\OC\User', 'postLogout', [$user]);
 	}
 
 	/**
@@ -1004,8 +1022,7 @@ class Session implements IUserSession, Emitter
 	 * @param string $username username to be set
 	 * @param string $token
 	 */
-	public function setMagicInCookie($username, $token)
-	{
+	public function setMagicInCookie($username, $token) {
 		$secureCookie = OC::$server->getRequest()->getServerProtocol() === 'https';
 		$webRoot = \OC::$WEBROOT;
 		if ($webRoot === '') {
@@ -1052,8 +1069,7 @@ class Session implements IUserSession, Emitter
 	/**
 	 * Remove cookie for "remember username"
 	 */
-	public function unsetMagicInCookie()
-	{
+	public function unsetMagicInCookie() {
 		//TODO: DI for cookies and IRequest
 		$secureCookie = OC::$server->getRequest()->getServerProtocol() === 'https';
 
@@ -1075,8 +1091,7 @@ class Session implements IUserSession, Emitter
 	 *
 	 * @param string $password
 	 */
-	public function updateSessionTokenPassword($password)
-	{
+	public function updateSessionTokenPassword($password) {
 		try {
 			$sessionId = $this->session->getId();
 			$token = $this->tokenProvider->getToken($sessionId);
@@ -1088,8 +1103,7 @@ class Session implements IUserSession, Emitter
 		}
 	}
 
-	public function updateTokens(string $uid, string $password)
-	{
+	public function updateTokens(string $uid, string $password) {
 		$this->tokenProvider->updatePasswords($uid, $password);
 	}
 }

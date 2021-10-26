@@ -103,7 +103,7 @@ class ActionController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects === null) {
-                    return API::unauthorizedErrorResponse('Session user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
                 // If any projects are specified with the request, reduce the user project list to the
@@ -176,7 +176,7 @@ class ActionController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects === null) {
-                    return API::unauthorizedErrorResponse('Session user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
                 // If any projects are specified with the request, reduce the user project list to the
@@ -247,7 +247,7 @@ class ActionController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects == null) {
-                    return API::unauthorizedErrorResponse('Session user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
                 // Set the allowed project list to the list of user projects
@@ -353,7 +353,7 @@ class ActionController extends Controller
 
             // Restrict to admin and PSO user for the specified project
             if ($this->userId != 'admin' && $this->userId != Constants::PROJECT_USER_PREFIX . $project) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             if ($node === null) {
@@ -492,7 +492,7 @@ class ActionController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects == null) {
-                    return API::unauthorizedErrorResponse('Session user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
                 // Set the allowed project list to the list of user projects
@@ -506,14 +506,12 @@ class ActionController extends Controller
                 return API::notFoundErrorResponse('The specified action was not found.');
             }
 
-            // Restrict to admin and PSO user for the specified project. In order to prevent unauthorized users
-            // determining whether certain entities exist by randomly trying PIDs, we treat this as a not found
-            // error rather than an unauthorized error.
+            // Restrict to admin and PSO user for the specified project. 
 
             $psoUser = strtolower(Constants::PROJECT_USER_PREFIX . $actionEntity->getProject());
 
             if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                return API::notFoundErrorResponse('The specified action was not found.');
+                return API::forbiddenErrorResponse('Session user does not have permission to modify the specified action.');
             }
 
             // Clear all specified parameter values defined explicitly as the string 'null' but only if admin or PSO user
@@ -586,7 +584,7 @@ class ActionController extends Controller
             // but we allow the admin or PSO user to set it explicitly
             if ($completed != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                    return API::unauthorizedErrorResponse('Session user does not have permission to update the specified value.');
+                    return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
                 $actionEntity->setCompleted($completed);
             }
@@ -601,31 +599,31 @@ class ActionController extends Controller
             }
             if ($cleared != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                    return API::unauthorizedErrorResponse('Session user does not have permission to update the specified value.');
+                    return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
                 $actionEntity->setCleared($cleared);
             }
             if ($retry != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                    return API::unauthorizedErrorResponse('Session user does not have permission to update the specified value.');
+                    return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
                 $actionEntity->setRetry((trim($retry) === '') ? null : $retry);
             }
             if ($retrying != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                    return API::unauthorizedErrorResponse('Session user does not have permission to update the specified value.');
+                    return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
                 $actionEntity->setRetry((trim($retrying) === '') ? null : $retrying);
             }
             if ($storage != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                    return API::unauthorizedErrorResponse('Session user does not have permission to update the specified value.');
+                    return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
                 $actionEntity->setStorage($storage);
             }
             if ($pathname != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
-                    return API::unauthorizedErrorResponse('Session user does not have permission to update the specified value.');
+                    return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
                 $actionEntity->setPathname($pathname);
             }
@@ -666,12 +664,10 @@ class ActionController extends Controller
                 return API::notFoundErrorResponse('The specified action was not found.');
             }
 
-            // Restrict to admin and PSO user for the specified project. In order to prevent unauthorized users
-            // determining whether certain entities exist by randomly trying PIDs, we treat this as a not found
-            // error rather than an unauthorized error.
+            // Restrict to admin and PSO user for the specified project. 
 
             if ($this->userId != 'admin' && $this->userId != strtolower(Constants::PROJECT_USER_PREFIX . $actionEntity->getProject())) {
-                return API::notFoundErrorResponse('The specified action was not found.');
+                return API::forbiddenErrorResponse('Session user does not have permission to modify the specified action.');
             }
 
             $this->actionMapper->deleteAction($pid);

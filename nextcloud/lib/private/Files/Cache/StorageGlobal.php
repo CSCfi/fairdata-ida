@@ -2,6 +2,7 @@
 /**
  * @copyright Robin Appelman <robin@icewind.nl>
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Robin Appelman <robin@icewind.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -61,6 +62,7 @@ class StorageGlobal {
 		while ($row = $result->fetch()) {
 			$this->cache[$row['id']] = $row;
 		}
+		$result->closeCursor();
 	}
 
 	/**
@@ -69,7 +71,18 @@ class StorageGlobal {
 	 */
 	public function getStorageInfo($storageId) {
 		if (!isset($this->cache[$storageId])) {
-			$this->loadForStorageIds([$storageId]);
+			$builder = $this->connection->getQueryBuilder();
+			$query = $builder->select(['id', 'numeric_id', 'available', 'last_checked'])
+				->from('storages')
+				->where($builder->expr()->eq('id', $builder->createNamedParameter($storageId)));
+
+			$result = $query->execute();
+			$row = $result->fetch();
+			$result->closeCursor();
+
+			if ($row) {
+				$this->cache[$storageId] = $row;
+			}
 		}
 		return isset($this->cache[$storageId]) ? $this->cache[$storageId] : null;
 	}

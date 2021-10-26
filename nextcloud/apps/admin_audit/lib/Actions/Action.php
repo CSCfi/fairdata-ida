@@ -1,10 +1,14 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -19,7 +23,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -50,8 +54,8 @@ class Action {
 						array $params,
 						array $elements,
 						bool $obfuscateParameters = false) {
-		foreach($elements as $element) {
-			if(!isset($params[$element])) {
+		foreach ($elements as $element) {
+			if (!isset($params[$element])) {
 				if ($obfuscateParameters) {
 					$this->logger->critical(
 						'$params["'.$element.'"] was missing.',
@@ -71,8 +75,8 @@ class Action {
 		}
 
 		$replaceArray = [];
-		foreach($elements as $element) {
-			if($params[$element] instanceof \DateTime) {
+		foreach ($elements as $element) {
+			if ($params[$element] instanceof \DateTime) {
 				$params[$element] = $params[$element]->format('Y-m-d H:i:s');
 			}
 			$replaceArray[] = $params[$element];

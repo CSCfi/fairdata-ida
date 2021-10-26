@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
@@ -62,11 +62,6 @@ class SearchHandler {
 		}
 		/** @var BasicSearch $query */
 		$query = $xml['{DAV:}basicsearch'];
-		if (!$query->where) {
-			$response->setStatus(400);
-			$response->setBody('Parse error: Missing {DAV:}where from {DAV:}basicsearch');
-			return false;
-		}
 		if (!$query->select) {
 			$response->setStatus(400);
 			$response->setBody('Parse error: Missing {DAV:}select from {DAV:}basicsearch');
@@ -89,7 +84,8 @@ class SearchHandler {
 			$response->setBody($e->getMessage());
 			return false;
 		}
-		$data = $this->server->generateMultiStatus(iterator_to_array($this->getPropertiesIteratorResults($results, $query->select)), false);
+		$data = $this->server->generateMultiStatus(iterator_to_array($this->getPropertiesIteratorResults($results,
+			$query->select)), false);
 		$response->setBody($data);
 		return false;
 	}
@@ -98,9 +94,10 @@ class SearchHandler {
 	 * @param BasicSearch $xml
 	 * @param SearchPropertyDefinition[] $allProps
 	 * @return Query
+	 * @throws BadRequest
 	 */
-	private function getQueryForXML(BasicSearch $xml, array $allProps) {
-		$orderBy = array_map(function(\SearchDAV\XML\Order $order) use ($allProps) {
+	private function getQueryForXML(BasicSearch $xml, array $allProps): Query {
+		$orderBy = array_map(function (\SearchDAV\XML\Order $order) use ($allProps) {
 			if (!isset($allProps[$order->property])) {
 				throw new BadRequest('requested order by property is not a valid property for this scope');
 			}
@@ -110,9 +107,9 @@ class SearchHandler {
 			}
 			return new Order($prop, $order->order);
 		}, $xml->orderBy);
-		$select = array_map(function($propName) use ($allProps) {
+		$select = array_map(function ($propName) use ($allProps) {
 			if (!isset($allProps[$propName])) {
-				return;
+				return null;
 			}
 			$prop = $allProps[$propName];
 			if (!$prop->selectable) {
@@ -122,13 +119,19 @@ class SearchHandler {
 		}, $xml->select);
 		$select = array_filter($select);
 
-		$where = $this->transformOperator($xml->where, $allProps);
+		$where = $xml->where ? $this->transformOperator($xml->where, $allProps) : null;
 
 		return new Query($select, $xml->from, $where, $orderBy, $xml->limit);
 	}
 
-	private function transformOperator(\SearchDAV\XML\Operator $operator, array $allProps) {
-		$arguments = array_map(function($argument) use ($allProps) {
+	/**
+	 * @param \SearchDAV\XML\Operator $operator
+	 * @param array $allProps
+	 * @return Operator
+	 * @throws BadRequest
+	 */
+	private function transformOperator(\SearchDAV\XML\Operator $operator, array $allProps): Operator {
+		$arguments = array_map(function ($argument) use ($allProps) {
 			if (is_string($argument)) {
 				if (!isset($allProps[$argument])) {
 					throw new BadRequest('requested search property is not a valid property for this scope');
@@ -138,10 +141,12 @@ class SearchHandler {
 					throw new BadRequest('requested search property is not searchable');
 				}
 				return $prop;
-			} else if ($argument instanceof \SearchDAV\XML\Operator) {
-				return $this->transformOperator($argument, $allProps);
 			} else {
-				return $argument;
+				if ($argument instanceof \SearchDAV\XML\Operator) {
+					return $this->transformOperator($argument, $allProps);
+				} else {
+					return $argument;
+				}
 			}
 		}, $operator->arguments);
 
@@ -162,7 +167,7 @@ class SearchHandler {
 	 * @param int $depth
 	 * @return \Iterator
 	 */
-	private function getPropertiesIteratorResults($results, $propertyNames = [], $depth = 0) {
+	private function getPropertiesIteratorResults($results, $propertyNames = [], $depth = 0): \Iterator {
 		$propFindType = $propertyNames ? PropFind::NORMAL : PropFind::ALLPROPS;
 
 		foreach ($results as $result) {

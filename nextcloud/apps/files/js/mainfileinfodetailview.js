@@ -1,11 +1,4 @@
 /*
- * This file is part of the IDA research data storage service
- *
- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
- * @link     https://research.csc.fi/
- */
-
-/*
  * Copyright (c) 2015
  *
  * This file is licensed under the Affero General Public License version 3
@@ -74,7 +67,7 @@
 		},
 
 		_setupClipboard: function() {
-            return;
+			return;
 			var clipboard = new Clipboard('.permalink');
 			clipboard.on('success', function(e) {
 				var $el = $(e.trigger);
@@ -104,7 +97,7 @@
 		},
 
 		_onFocusPermalink: function() {
-            return;
+			return;
 			this.$('.permalink-field>input').select();
 		},
 
@@ -195,6 +188,9 @@
 					this._previewManager.loadPreview(this.model, $iconDiv, $container);
 				} else {
 					var iconUrl = this.model.get('icon') || OC.MimeType.getIconUrl('dir');
+					if (typeof this.model.get('mountType') !== 'undefined') {
+						iconUrl = OC.MimeType.getIconUrl('dir-' + this.model.get('mountType'))
+					}
 					$iconDiv.css('background-image', 'url("' + iconUrl + '")');
 				}
 				this.$el.find('[title]').tooltip({placement: 'bottom'});

@@ -41,12 +41,12 @@ The configuration has the following structure:
 
 ::
 
-	'objectstore' => array(
+	'objectstore' => [
 		'class' => 'Object\\Storage\\Backend\\Class',
-		'arguments' => array(
+		'arguments' => [
 			...
-		),
-	),
+		],
+	],
 
 ~~~~~~~~~~~~~~~
 OpenStack Swift
@@ -57,11 +57,15 @@ server into the virtual filesystem.
 
 The class to be used is :code:`\\OC\\Files\\ObjectStore\\Swift`
 
+Both openstack v2 and v3 authentication are supported,
+
+V2 Authentication:
+
 ::
 
-	'objectstore' => array(
+	'objectstore' => [
 		'class' => '\\OC\\Files\\ObjectStore\\Swift',
-		'arguments' => array(
+		'arguments' => [
 			'username' => 'username',
 			'password' => 'Secr3tPaSSWoRdt7',
 			// the container to store the data in
@@ -75,8 +79,38 @@ The class to be used is :code:`\\OC\\Files\\ObjectStore\\Swift`
 			'serviceName' => 'swift',
 			// The Interface / url Type, optional
 			'urlType' => 'internal'
-		),
-	),
+		],
+	],
+
+V3 Authentication:
+
+::
+
+	'objectstore' => [
+		'class' => 'OC\\Files\\ObjectStore\\Swift',
+		'arguments' => [
+			'autocreate' => true,
+			'user' => [
+				'name' => 'UserName',
+				'password' => 'Secr3tPaSSWoRdt7',
+				'domain' => [
+					'name' => 'Default',
+				],
+			],
+			'scope' => [
+				'project' => [
+					'name' => 'TenantName',
+					'domain' => [
+						'name' => 'Default',
+					],
+				],
+			],
+			'serviceName' => 'swift',
+			'region' => 'regionOne',
+			'url' => 'http://example.com/v3',
+			'bucket' => 'nextcloud',
+		],
+	],
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Simple Storage Service (S3)
@@ -90,9 +124,9 @@ The class to be used is :code:`\\OC\\Files\\ObjectStore\\S3`
 
 ::
 
-	'objectstore' => array(
+	'objectstore' => [
 		'class' => '\\OC\\Files\\ObjectStore\\S3',
-		'arguments' => array(
+		'arguments' => [
 			'bucket' => 'nextcloud',
 			'autocreate' => true,
 			'key'    => 'EJ39ITYZEUH5BGWDRUFY',
@@ -103,8 +137,8 @@ The class to be used is :code:`\\OC\\Files\\ObjectStore\\S3`
 			'region' => 'optional',
 			// required for some non Amazon S3 implementations
 			'use_path_style'=>true
-		),
-	),
+		],
+	],
 
 .. note:: Not all configuration options are required for all S3 servers. Overriding
           the hostname, port and region of your S3 server is only required for
@@ -120,7 +154,31 @@ The class to be used is :code:`\\OC\\Files\\ObjectStore\\S3`
 Multibucket Object Store
 ------------------------
 
-It's possible to configure Nextcloud to distribute its data over multiple buckets
-for scalability purpose. You can find out more information about upscaling with
-object storage and Nextcloud in the
+It's possible to configure Nextcloud to distribute the data over multiple buckets
+for scalability purposes.
+
+To setup multiple buckets, use :code:`'objectstore_multibucket'` storage backend
+in :code:`config.php`:
+
+::
+
+	'objectstore_multibucket' => [
+		'class' => 'Object\\Storage\\Backend\\Class',
+		'arguments' => [
+			// optional, defaults to 64
+			'num_buckets' => 64,
+			// will be postfixed by an integer in the range from 0 to (num_nuckets-1)
+			'bucket' => 'nextcloud_',
+			...
+		],
+	],
+
+Multibucket object store backend maps every user to a range of buckets and saves
+all files for that user in their corresponding bucket.
+
+.. note:: While it is possible to change the number of buckets used by an existing Nextcloud
+          instance, the user-to-buckets mapping is only created once, so only newly created
+          users will be mapped to the updated range of buckets.
+
+You can find out more information about upscaling with object storage and Nextcloud in the
 `Nextcloud customer portal <https://portal.nextcloud.com/article/object-store-as-primary-storage-16.html>`_.

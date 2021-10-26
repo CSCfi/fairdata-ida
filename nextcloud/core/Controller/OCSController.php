@@ -2,6 +2,8 @@
 /**
  *
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
@@ -20,9 +22,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OC\Core\Controller;
 
 use OC\CapabilitiesManager;
@@ -91,21 +94,24 @@ class OCSController extends \OCP\AppFramework\OCSController {
 	public function getCapabilities() {
 		$result = [];
 		list($major, $minor, $micro) = \OCP\Util::getVersion();
-		$result['version'] = array(
+		$result['version'] = [
 			'major' => $major,
 			'minor' => $minor,
 			'micro' => $micro,
 			'string' => \OC_Util::getVersionString(),
 			'edition' => '',
-		);
+			'extendedSupport' => \OCP\Util::hasExtendedSupport()
+		];
 
-		if($this->userSession->isLoggedIn()) {
+		if ($this->userSession->isLoggedIn()) {
 			$result['capabilities'] = $this->capabilitiesManager->getCapabilities();
 		} else {
 			$result['capabilities'] = $this->capabilitiesManager->getCapabilities(true);
 		}
 
-		return new DataResponse($result);
+		$response = new DataResponse($result);
+		$response->setETag(md5(json_encode($result)));
+		return $response;
 	}
 
 	/**
@@ -142,7 +148,7 @@ class OCSController extends \OCP\AppFramework\OCSController {
 	public function getIdentityProof($cloudId) {
 		$userObject = $this->userManager->get($cloudId);
 
-		if($userObject !== null) {
+		if ($userObject !== null) {
 			$key = $this->keyManager->getKey($userObject);
 			$data = [
 				'public' => $key->getPublic(),

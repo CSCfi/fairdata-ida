@@ -1,8 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2018, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -18,7 +21,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -58,14 +61,14 @@ abstract class Job implements IJob {
 
 	/**
 	 * The function to prepare the execution of the job.
-
+	 *
 	 *
 	 * @param IJobList $jobList
 	 * @param ILogger|null $logger
 	 *
 	 * @since 15.0.0
 	 */
-	public function execute($jobList, ILogger $logger = null) {
+	public function execute(IJobList $jobList, ILogger $logger = null) {
 		$jobList->setLastRun($this);
 		if ($logger === null) {
 			$logger = \OC::$server->getLogger();
@@ -92,14 +95,14 @@ abstract class Job implements IJob {
 	/**
 	 * @since 15.0.0
 	 */
-	final public function setId($id) {
+	final public function setId(int $id) {
 		$this->id = $id;
 	}
 
 	/**
 	 * @since 15.0.0
 	 */
-	final public function setLastRun($lastRun) {
+	final public function setLastRun(int $lastRun) {
 		$this->lastRun = $lastRun;
 	}
 
@@ -135,7 +138,6 @@ abstract class Job implements IJob {
 	 * The actual function that is called to run the job
 	 *
 	 * @param $argument
-	 * @return mixed
 	 *
 	 * @since 15.0.0
 	 */

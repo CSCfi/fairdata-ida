@@ -1,0 +1,373 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2021 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script initializes an emulation of the glusterfs volumes used in production,
+# but based on simple directories on the local server rather than actual distributed
+# RAID arrays hosted by multiple servers. The glusterfs layer, however, is fully
+# functional, and can be manipulated as needed to verify correct behavior of the
+# healthcheck monitoring.
+#
+# This script can and should only be executed in non-production environment and will
+# first check for existing glusterfs volumes, and if present, will exit. It will
+# only run when initializing new volumes when no volumes already exist.
+#
+# This script must be run as root.
+#
+# Glustefs emulation configuration:
+#
+#     6 simulated physical servers (plain directories)
+#     6 simulated RAID volumes per server (plain directories)
+#     2 simulated glusterfs bricks per simulated RAID volume (plain directories)
+#     2 real glusterfs volumes spanning 3 RAID volumes (6 bricks) per server over 4 servers (24 bricks per volume)
+#     2 real glusterfs volumes spanning 3 RAID volumes (6 bricks) per server over 2 servers (12 bricks per volume)
+#
+# Prior to executing this script, glusterfs must be installed, and none of the following directories can exist:
+#     /var/ida-storage/
+#     /mnt/storage_vol01/
+#     /mnt/storage_vol02/
+#     /mnt/storage_vol03/
+#     /mnt/storage_vol04/
+#
+#     # If necessary, remove any existing version of glusterfs
+#     sudo yum remove glusterfs gluster-cli glusterfs-api glusterfs-libs glusterfs-server
+#
+#     # Initialize v5 release of glusterfs (currently running glusterfs v5.11 in production)
+#     sudo yum install centos-release-gluster5.noarch
+#
+#     # Install glusterfs v5.11, then glusterfs-server v5.11
+#     sudo yum install glusterfs-5.11-1.el7.x86_64
+#     sudo yum install glusterfs-server-5.11-1.el7.x86_64
+#
+#     # Enable glusterfs to start on boot, start and check glusterfs
+#     sudo systemctl enable glusterd
+#     sudo systemctl start glusterd
+#     sudo systemctl status glusterd
+#
+#     # Install glustercli and gstatus
+#     python3 -m pip install --upgrade pip
+#     sudo pip3 install glustercli
+#     cd /var
+#     git clone https://github.com/gluster/gstatus.git
+#     cd gstatus
+#     VERSION=1.0.6 make gen-version
+#     python3 setup.py install
+#
+#     # Add the following to /etc/hosts:
+#     127.0.0.1 ida201.local
+#     127.0.0.1 ida202.local
+#     127.0.0.1 ida203.local
+#     127.0.0.1 ida204.local
+#     127.0.0.1 ida191.local
+#     127.0.0.1 ida192.local
+#
+#     # Create top level storage directories:
+#
+#     sudo mkdir /var/ida-storage
+#     chown apache:apache /var/ida-storage
+#
+#     sudo mkdir /mnt/storage_vol01
+#     sudo mkdir /mnt/storage_vol02
+#     sudo mkdir /mnt/storage_vol03
+#     sudo mkdir /mnt/storage_vol04
+#     chown apache:apache /mnt/storage_vol*
+
+#     # In /var/ida/config/config.sh, define the following pathnames:
+#
+#     STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
+#     STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida" "/mnt/storage_vol03/ida" "/mnt/storage_vol04/ida")
+#     DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
+#     TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
+#     LOG="/var/ida/storage/mnt/storage_vol01/log/ida.log"
+#     RABBIT_WORKER_LOG_FILE="/mnt/storage_vol01/log/agents.log"
+#     RABBIT_MONITORING_DIR="/mnt/storage_vol01/log/rabbitmq_monitoring"
+#
+#     # In /var/ida/nextcloud/config/config.php, define the following pathnames:
+#
+#     'datadirectory' => '/mnt/storage_vol01/ida',
+#     'logfile' => '/mnt/storage_vol01/log/nextcloud.log',
+#
+# NOTE: See the comments in purge_dev_glusterfs regarding backing up and restoring existing
+# emulated glusterfs volumes, if the emulated glusterfs volumes need re-initialization.
+#
+# After initialization, the generated file /var/ida/storage/mount.init should be configured to
+# be executed on boot, e.g. by adding the following to /etc/rc.local
+#
+#     /bin/bash /var/ida/storage/mount.init
+#
+#--------------------------------------------------------------------------------
+
+PARENT_FOLDER=`dirname "$(realpath $0)"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]; then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+if [ "$ROOT" = "" ]; then
+    echo "The configuration variable $ROOT has not been defined Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify that we are in a non-production environment
+
+if [ "$IDA_ENVIRONMENT" = "" ]; then
+    echo "The configuration variable $IDA_ENVIRONMENT has not been defined Aborting." >&2
+    exit 1
+fi
+
+if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+    echo "Error: This script can not be run in a production environment. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Ensure script is run as root
+
+ID=`id -u -n`
+if [ "$ID" != "root" ]; then
+    echo "Error: You must execute this script as root" >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ -d /var/ida-storage/ ]; then
+    echo "Error: The directory /var/ida-storage/ already exists! Aborting." >&2
+    exit 1
+fi
+
+if [ -d /mnt/storage_vol01/ ]; then
+    echo "Error: The directory /mnt/storage_vol01/ already exists! Aborting." >&2
+    exit 1
+fi
+
+if [ -d /mnt/storage_vol02/ ]; then
+    echo "Error: The directory /mnt/storage_vol02/ already exists! Aborting." >&2
+    exit 1
+fi
+
+if [ -d /mnt/storage_vol03/ ]; then
+    echo "Error: The directory /mnt/storage_vol03/ already exists! Aborting." >&2
+    exit 1
+fi
+
+if [ -d /mnt/storage_vol04/ ]; then
+    echo "Error: The directory /mnt/storage_vol04/ already exists! Aborting." >&2
+    exit 1
+fi
+
+mkdir -p /var/ida-storage
+chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
+chmod -R g+rwX,o-rwx /var/ida-storage
+
+#--------------------------------------------------------------------------------
+
+# The emulated RAID arrays, bricks, and volumes correspond to the actual configuration
+# in production as detailed in the IDA Admin Guide, based on the 2019 and 2020 servers.
+
+SERVERS="ida201 ida202 ida203 ida204 ida191 ida192"
+
+echo "Creating simulated RAID arrays and glusterfs bricks..."
+
+for SERVER in $SERVERS; do
+    BRICK=0
+    for COUNT in {1..6}; do
+        BRICK=$((BRICK + 1)) 
+        DIR="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        echo "$DIR"
+        mkdir -p "$DIR/brick"
+        touch "$DIR/DO_NOT_DELETE_sentinel_file"
+        BRICK=$((BRICK + 1)) 
+        DIR="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        echo "$DIR"
+        mkdir -p "$DIR/brick"
+        touch "$DIR/DO_NOT_DELETE_sentinel_file"
+    done
+done
+
+#--------------------------------------------------------------------------------
+
+echo "Creating brick mount points and brick subdirectories..."
+
+for SERVER in $SERVERS; do
+    for COUNT in {1..12}; do
+        DIR="/var/ida-storage/$SERVER/mnt/storage_brick$COUNT"
+        echo "$DIR"
+        mkdir -p "$DIR"
+    done
+done
+
+#--------------------------------------------------------------------------------
+
+echo "Mounting simulated bricks..."
+
+rm -f /var/ida-storage/fstab 2>/dev/null
+
+for SERVER in $SERVERS; do
+    BRICK=0
+    for COUNT in {1..6}; do
+        BRICK=$((BRICK + 1)) 
+        SOURCE="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        TARGET="/var/ida-storage/$SERVER/mnt/storage_brick$BRICK"
+        echo "$SOURCE $TARGET"
+        COMMAND="mount --bind $SOURCE $TARGET"
+        echo $COMMAND >> /var/ida-storage/mount.init
+        $COMMAND
+        BRICK=$((BRICK + 1)) 
+        SOURCE="/var/ida-storage/$SERVER/dev/gfs_vg$COUNT/storage_brick$BRICK"
+        TARGET="/var/ida-storage/$SERVER/mnt/storage_brick$BRICK"
+        echo "$SOURCE $TARGET"
+        COMMAND="mount --bind $SOURCE $TARGET"
+        echo $COMMAND >> /var/ida-storage/mount.init
+        $COMMAND
+    done
+done
+
+#--------------------------------------------------------------------------------
+
+echo "Creating glusterfs volumes..."
+
+systemctl restart glusterd
+
+gluster volume create storage_vol01 \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick1/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick1/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick1/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick1/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick2/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick2/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick2/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick2/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick3/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick3/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick3/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick3/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick4/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick4/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick4/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick4/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick5/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick5/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick5/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick5/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick6/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick6/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick6/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick6/brick force
+
+gluster volume start storage_vol01
+
+gluster volume create storage_vol02 \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick7/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick7/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick7/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick7/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick8/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick8/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick8/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick8/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick9/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick9/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick9/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick9/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick10/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick10/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick10/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick10/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick11/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick11/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick11/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick11/brick \
+    ida201.local:/var/ida-storage/ida201/mnt/storage_brick12/brick \
+    ida202.local:/var/ida-storage/ida202/mnt/storage_brick12/brick \
+    ida203.local:/var/ida-storage/ida203/mnt/storage_brick12/brick \
+    ida204.local:/var/ida-storage/ida204/mnt/storage_brick12/brick force
+
+gluster volume start storage_vol02
+
+gluster volume create storage_vol03 \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick1/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick1/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick2/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick2/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick3/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick3/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick4/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick4/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick5/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick5/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick6/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick6/brick force
+
+gluster volume start storage_vol03
+
+gluster volume create storage_vol04 \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick7/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick7/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick8/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick8/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick9/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick9/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick10/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick10/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick11/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick11/brick \
+    ida191.local:/var/ida-storage/ida191/mnt/storage_brick12/brick \
+    ida192.local:/var/ida-storage/ida192/mnt/storage_brick12/brick force
+
+gluster volume start storage_vol04
+
+#--------------------------------------------------------------------------------
+
+echo "Mounting glusterfs volumes..."
+
+for VOLUME in {1..4}; do
+    mkdir -p "/mnt/storage_vol0$VOLUME"
+    chown -R $HTTPD_USER:$HTTPD_USER "/mnt/storage_vol0$VOLUME"
+    chmod -R g+rwX,o-rwx "/mnt/storage_vol0$VOLUME"
+    COMMAND="mount -t glusterfs ida201.local:/storage_vol0$VOLUME -o defaults,_netdev /mnt/storage_vol0$VOLUME"
+    echo $COMMAND >> /var/ida-storage/mount.init
+    $COMMAND
+    mkdir "/mnt/storage_vol0$VOLUME/ida"
+    touch "/mnt/storage_vol0$VOLUME/DO_NOT_DELETE_sentinel_file"
+done
+
+#--------------------------------------------------------------------------------
+
+chmod +x /var/ida-storage/mount.init
+chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
+chmod -R g+rwX,o-rwx /var/ida-storage
+
+echo "Done"

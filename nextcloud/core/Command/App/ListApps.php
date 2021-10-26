@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
@@ -19,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -60,20 +61,20 @@ class ListApps extends Base {
 		;
 	}
 
-	protected function execute(InputInterface $input, OutputInterface $output) {
-		if ($input->getOption('shipped') === 'true' || $input->getOption('shipped') === 'false'){
+	protected function execute(InputInterface $input, OutputInterface $output): int {
+		if ($input->getOption('shipped') === 'true' || $input->getOption('shipped') === 'false') {
 			$shippedFilter = $input->getOption('shipped') === 'true';
 		} else {
 			$shippedFilter = null;
 		}
-		
+
 		$apps = \OC_App::getAllApps();
 		$enabledApps = $disabledApps = [];
 		$versions = \OC_App::getAppVersions();
 
 		//sort enabled apps above disabled apps
 		foreach ($apps as $app) {
-			if ($shippedFilter !== null && $this->manager->isShipped($app) !== $shippedFilter){
+			if ($shippedFilter !== null && $this->manager->isShipped($app) !== $shippedFilter) {
 				continue;
 			}
 			if ($this->manager->isInstalled($app)) {
@@ -96,6 +97,7 @@ class ListApps extends Base {
 		}
 
 		$this->writeAppList($input, $output, $apps);
+		return 0;
 	}
 
 	/**
@@ -121,10 +123,10 @@ class ListApps extends Base {
 
 	/**
 	 * @param string $optionName
-	 * @param CompletionContext $completionContext
+	 * @param CompletionContext $context
 	 * @return array
 	 */
-	public function completeOptionValues($optionName, CompletionContext $completionContext) {
+	public function completeOptionValues($optionName, CompletionContext $context) {
 		if ($optionName === 'shipped') {
 			return ['true', 'false'];
 		}

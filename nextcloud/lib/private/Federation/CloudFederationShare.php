@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2018 Bjoern Schiessle <bjoern@schiessle.org>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -15,16 +18,16 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OC\Federation;
 
 use OCP\Federation\ICloudFederationShare;
+use OCP\Share\IShare;
 
 class CloudFederationShare implements ICloudFederationShare {
-
 	private $share = [
 		'shareWith' => '',
 		'shareType' => '',
@@ -83,7 +86,6 @@ class CloudFederationShare implements ICloudFederationShare {
 		]);
 		$this->setShareType($shareType);
 		$this->setResourceType($resourceType);
-
 	}
 
 	/**
@@ -204,7 +206,7 @@ class CloudFederationShare implements ICloudFederationShare {
 	 * @since 14.0.0
 	 */
 	public function setShareType($shareType) {
-		if ($shareType === 'group' || $shareType === \OCP\Share::SHARE_TYPE_REMOTE_GROUP) {
+		if ($shareType === 'group' || $shareType === IShare::TYPE_REMOTE_GROUP) {
 			$this->share['shareType'] = 'group';
 		} else {
 			$this->share['shareType'] = 'user';

@@ -31,7 +31,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 	<author>CSC</author>
 
 	<dependencies>
-		<nextcloud min-version="12" max-version="16" />
+		<nextcloud min-version="21" max-version="21" />
 	</dependencies>
 
 	<types>

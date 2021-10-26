@@ -4,9 +4,13 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
  * @author Jakob Sack <mail@jakobsack.de>
+ * @author Jan-Philipp Litza <jplitza@users.noreply.github.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Owen Winkler <a_github@midnightcircus.com>
@@ -15,9 +19,7 @@
  * @author Semih Serhat Karakaya <karakayasemi@itu.edu.tr>
  * @author Stefan Schneider <stefan.schneider@squareweave.com.au>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
- * @author Vinicius Cubas Brand <vinicius@eita.org.br>
- * @author CSC <support@csc.fi>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -25,13 +27,13 @@
  * it under the terms of the GNU Affero General Public License, version 3,
  * as published by the Free Software Foundation.
  *
- * This program is distributeo in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -40,6 +42,7 @@ namespace OCA\DAV\Connector\Sabre;
 use Icewind\Streams\CallbackWrapper;
 use OC\AppFramework\Http\Request;
 use OC\Files\Filesystem;
+use OC\Files\Stream\HashWrapper;
 use OC\Files\View;
 use OCA\DAV\Connector\Sabre\Exception\EntityTooLarge;
 use OCA\DAV\Connector\Sabre\Exception\FileLocked;
@@ -49,6 +52,7 @@ use OCP\Encryption\Exceptions\GenericEncryptionException;
 use OCP\Files\EntityTooLargeException;
 use OCP\Files\FileInfo;
 use OCP\Files\ForbiddenException;
+use OCP\Files\GenericFileException;
 use OCP\Files\InvalidContentException;
 use OCP\Files\InvalidPathException;
 use OCP\Files\LockNotAcquiredException;
@@ -56,19 +60,19 @@ use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\Files\Storage;
 use OCP\Files\StorageNotAvailableException;
+use OCP\ILogger;
 use OCP\Lock\ILockingProvider;
 use OCP\Lock\LockedException;
 use OCP\Share\IManager;
 use Sabre\DAV\Exception;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\Exception\NotImplemented;
 use Sabre\DAV\Exception\ServiceUnavailable;
 use Sabre\DAV\IFile;
-use Sabre\DAV\Exception\NotFound;
 
 class File extends Node implements IFile {
-
 	protected $request;
 
 	/**
@@ -118,7 +122,6 @@ class File extends Node implements IFile {
 	 * @return string|null
 	 */
 	public function put($data) {
-
 		try {
 			$exists = $this->fileView->file_exists($this->path);
 			if ($this->info && $exists && !$this->info->isUpdateable()) {
@@ -131,69 +134,69 @@ class File extends Node implements IFile {
 		// verify path of the target
 		$this->verifyPath();
 
-        // Special handling for zero size files
-        $zero_size = false;
-        try {
-            $filesize   = false;
-            $headers    = null;
-            $firstbyte  = null;
-            $test_basis = null;
-
-            // Retrieve stream metadata
-            $metadata = stream_get_meta_data($data);
-
-            if ($metadata != null && is_array($metadata) && isset($metadata['uri'])) {
-                // First, we'll attempt to get the filesize based on the URI defined in the
-                // stream metadata, assuming the stream wrapper type supports os.filesize;
-                // which if not, it will either return false or throw an exception
-                $test_basis = 'filesize-stat';
-                $file_uri = $metadata['uri'];
-                try {
-                    $filesize = filesize($file_uri);
-                    if ($filesize === 0) {
-                        $zero_size = true;
-                    }
-                } catch (Exception $e) {
-                    $filesize = false;
-                }
-            }
-            if ($filesize === false) {
-                // If we're here, then either no URI was defined or the stream wrapper type does not
-                // support os.filesize, so we'll try to get the size from the content length header,
-                // if it exists
-                $test_basis = 'content-length-header';
-                $headers = get_headers($data, 1);
-                if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
-                    $filesize = (int)$headers['Content-Length'];
-                    if ($filesize === 0) {
-                        $zero_size = true;
-                    }
-                }
-            }
-            if ($filesize === false) {
-                // OK, last recourse is to actually read from the stream, but only if it 
-                // is seekable and thus can be reset to the beginning so there is no loss
-                // of data during the actual copy operation...
-               $test_basis = 'read-first-byte';
-                if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
-                    $firstbyte = fread($data, 1);
-                    fseek($data, 0);
-                    if (strlen($firstbyte) === 0) {
-                        $zero_size = true;
-                    }
-                }
-            }
-            \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: '
-                . ' metadata: '   . json_encode($metadata)
-                . ' headers: '    . json_encode($headers)
-                . ' filesize: '   . json_encode($filesize)
-                . ' firstbyte: '  . json_encode(strlen($firstbyte))
-                . ' zero_size: '  . json_encode($zero_size)
-                . ' test_basis: ' . $test_basis);
-        } catch (Exception $e) {
-            \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: Error: ' . $e->getMessage());
-        }
-
+		// Special handling for zero size files
+		$zero_size = false;
+		try {
+			$filesize   = false;
+			$headers    = null;
+			$firstbyte  = null;
+			$test_basis = null;
+		
+			// Retrieve stream metadata
+			$metadata = stream_get_meta_data($data);
+		
+			if ($metadata != null && is_array($metadata) && isset($metadata['uri'])) {
+				// First, we'll attempt to get the filesize based on the URI defined in the
+				// stream metadata, assuming the stream wrapper type supports os.filesize;
+				// which if not, it will either return false or throw an exception
+				$test_basis = 'filesize-stat';
+				$file_uri = $metadata['uri'];
+				try {
+					$filesize = filesize($file_uri);
+					if ($filesize === 0) {
+						$zero_size = true;
+					}
+				} catch (Exception $e) {
+					$filesize = false;
+				}
+			}
+			if ($filesize === false) {
+				// If we're here, then either no URI was defined or the stream wrapper type does not
+				// support os.filesize, so we'll try to get the size from the content length header,
+				// if it exists
+				$test_basis = 'content-length-header';
+				$headers = get_headers($data, 1);
+				if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
+					$filesize = (int)$headers['Content-Length'];
+					if ($filesize === 0) {
+						$zero_size = true;
+					}
+				}
+			}
+			if ($filesize === false) {
+				// OK, last recourse is to actually read from the stream, but only if it 
+				// is seekable and thus can be reset to the beginning so there is no loss
+				// of data during the actual copy operation...
+				$test_basis = 'read-first-byte';
+				if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
+					$firstbyte = fread($data, 1);
+					fseek($data, 0);
+					if (strlen($firstbyte) === 0) {
+						$zero_size = true;
+					}
+				}
+			}
+			\OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: '
+			. ' metadata: '   . json_encode($metadata)
+			. ' headers: '    . json_encode($headers)
+			. ' filesize: '   . json_encode($filesize)
+			. ' firstbyte: '  . json_encode(strlen($firstbyte))
+			. ' zero_size: '  . json_encode($zero_size)
+			. ' test_basis: ' . $test_basis);
+		} catch (Exception $e) {
+			\OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: Error: ' . $e->getMessage());
+		}
+		
 		// chunked handling
 		if (isset($_SERVER['HTTP_OC_CHUNKED'])) {
 			try {
@@ -236,24 +239,39 @@ class File extends Node implements IFile {
 				$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
 			}
 
-			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
-
-				if (!is_resource($data)) {
-					$tmpData = fopen('php://temp', 'r+');
-					if ($data !== null) {
-						fwrite($tmpData, $data);
-						rewind($tmpData);
-					}
-					$data = $tmpData;
+			if (!is_resource($data)) {
+				$tmpData = fopen('php://temp', 'r+');
+				if ($data !== null) {
+					fwrite($tmpData, $data);
+					rewind($tmpData);
 				}
+				$data = $tmpData;
+			}
 
+			$data = HashWrapper::wrap($data, 'md5', function ($hash) {
+				$this->header('X-Hash-MD5: ' . $hash);
+			});
+			$data = HashWrapper::wrap($data, 'sha1', function ($hash) {
+				$this->header('X-Hash-SHA1: ' . $hash);
+			});
+			$data = HashWrapper::wrap($data, 'sha256', function ($hash) {
+				$this->header('X-Hash-SHA256: ' . $hash);
+			});
+
+			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
 				$isEOF = false;
 				$wrappedData = CallbackWrapper::wrap($data, null, null, null, null, function ($stream) use (&$isEOF) {
 					$isEOF = feof($stream);
 				});
 
-				$count = $partStorage->writeStream($internalPartPath, $wrappedData);
-				$result = $count > 0;
+				$result = true;
+				$count = -1;
+				try {
+					$count = $partStorage->writeStream($internalPartPath, $wrappedData);
+				} catch (GenericFileException $e) {
+					$result = false;
+				}
+
 
 				if ($result === false) {
 					$result = $isEOF;
@@ -261,7 +279,6 @@ class File extends Node implements IFile {
 						$result = feof($wrappedData);
 					}
 				}
-
 			} else {
 				$target = $partStorage->fopen($internalPartPath, 'wb');
 				if ($target === false) {
@@ -273,10 +290,10 @@ class File extends Node implements IFile {
 				fclose($target);
 			}
 
-            // Special handling for zero size files
-            if ($zero_size === true && $count === 0) {
-                $result = true;
-            }
+			// Special handling for zero size files
+			if ($zero_size === true && $count === 0) {
+				$result = true;
+			}
 
 			if ($result === false) {
 				$expected = -1;
@@ -294,12 +311,17 @@ class File extends Node implements IFile {
 			if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
 				$expected = (int)$_SERVER['CONTENT_LENGTH'];
 				if ($count !== $expected) {
-					throw new BadRequest('expected filesize ' . $expected . ' got ' . $count);
+					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $count . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
 				}
 			}
-
 		} catch (\Exception $e) {
-			\OC::$server->getLogger()->logException($e);
+			$context = [];
+
+			if ($e instanceof LockedException) {
+				$context['level'] = ILogger::DEBUG;
+			}
+
+			\OC::$server->getLogger()->logException($e, $context);
 			if ($needsPartFile) {
 				$partStorage->unlink($internalPartPath);
 			}
@@ -315,10 +337,22 @@ class File extends Node implements IFile {
 				try {
 					$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
 				} catch (LockedException $e) {
-					if ($needsPartFile) {
-						$partStorage->unlink($internalPartPath);
+					// during very large uploads, the shared lock we got at the start might have been expired
+					// meaning that the above lock can fail not just only because somebody else got a shared lock
+					// or because there is no existing shared lock to make exclusive
+					//
+					// Thus we try to get a new exclusive lock, if the original lock failed because of a different shared
+					// lock this will still fail, if our original shared lock expired the new lock will be successful and
+					// the entire operation will be safe
+
+					try {
+						$this->acquireLock(ILockingProvider::LOCK_EXCLUSIVE);
+					} catch (LockedException $ex) {
+						if ($needsPartFile) {
+							$partStorage->unlink($internalPartPath);
+						}
+						throw new FileLocked($e->getMessage(), $e->getCode(), $e);
 					}
-					throw new FileLocked($e->getMessage(), $e->getCode(), $e);
 				}
 
 				// rename to correct path
@@ -330,6 +364,9 @@ class File extends Node implements IFile {
 						throw new Exception('Could not rename part file to final file');
 					}
 				} catch (ForbiddenException $ex) {
+					if (!$ex->getRetry()) {
+						$partStorage->unlink($internalPartPath);
+					}
 					throw new DAVForbiddenException($ex->getMessage(), $ex->getRetry());
 				} catch (\Exception $e) {
 					$partStorage->unlink($internalPartPath);
@@ -354,6 +391,19 @@ class File extends Node implements IFile {
 				}
 			}
 
+			$fileInfoUpdate = [
+				'upload_time' => time()
+			];
+
+			// allow sync clients to send the creation time along in a header
+			if (isset($this->request->server['HTTP_X_OC_CTIME'])) {
+				$ctime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_CTIME']);
+				$fileInfoUpdate['creation_time'] = $ctime;
+				$this->header('X-OC-CTime: accepted');
+			}
+
+			$this->fileView->putFileInfo($this->path, $fileInfoUpdate);
+
 			if ($view) {
 				$this->emitPostHooks($exists);
 			}
@@ -364,13 +414,12 @@ class File extends Node implements IFile {
 				$checksum = trim($this->request->server['HTTP_OC_CHECKSUM']);
 				$this->fileView->putFileInfo($this->path, ['checksum' => $checksum]);
 				$this->refreshInfo();
-			} else if ($this->getChecksum() !== null && $this->getChecksum() !== '') {
+			} elseif ($this->getChecksum() !== null && $this->getChecksum() !== '') {
 				$this->fileView->putFileInfo($this->path, ['checksum' => '']);
 				$this->refreshInfo();
 			}
-
 		} catch (StorageNotAvailableException $e) {
-			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage());
+			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage(), 0, $e);
 		}
 
 		return '"' . $this->info->getEtag() . '"';
@@ -396,20 +445,20 @@ class File extends Node implements IFile {
 		$run = true;
 
 		if (!$exists) {
-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, array(
+			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, [
 				\OC\Files\Filesystem::signal_param_path => $hookPath,
 				\OC\Files\Filesystem::signal_param_run => &$run,
-			));
+			]);
 		} else {
-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, array(
+			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, [
 				\OC\Files\Filesystem::signal_param_path => $hookPath,
 				\OC\Files\Filesystem::signal_param_run => &$run,
-			));
+			]);
 		}
-		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, array(
+		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, [
 			\OC\Files\Filesystem::signal_param_path => $hookPath,
 			\OC\Files\Filesystem::signal_param_run => &$run,
-		));
+		]);
 		return $run;
 	}
 
@@ -422,17 +471,17 @@ class File extends Node implements IFile {
 		}
 		$hookPath = Filesystem::getView()->getRelativePath($this->fileView->getAbsolutePath($path));
 		if (!$exists) {
-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, array(
+			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, [
 				\OC\Files\Filesystem::signal_param_path => $hookPath
-			));
+			]);
 		} else {
-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, array(
+			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, [
 				\OC\Files\Filesystem::signal_param_path => $hookPath
-			));
+			]);
 		}
-		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, array(
+		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, [
 			\OC\Files\Filesystem::signal_param_path => $hookPath
-		));
+		]);
 	}
 
 	/**
@@ -513,7 +562,7 @@ class File extends Node implements IFile {
 	}
 
 	/**
-	 * @return array|false
+	 * @return array|bool
 	 */
 	public function getDirectDownload() {
 		if (\OCP\App::isEnabled('encryption')) {
@@ -548,13 +597,12 @@ class File extends Node implements IFile {
 		$bytesWritten = $chunk_handler->store($info['index'], $data);
 
 		//detect aborted upload
-		if (isset ($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+		if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
 			if (isset($_SERVER['CONTENT_LENGTH'])) {
 				$expected = (int)$_SERVER['CONTENT_LENGTH'];
 				if ($bytesWritten !== $expected) {
 					$chunk_handler->remove($info['index']);
-					throw new BadRequest(
-						'expected filesize ' . $expected . ' got ' . $bytesWritten);
+					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $bytesWritten . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
 				}
 			}
 		}
@@ -629,7 +677,7 @@ class File extends Node implements IFile {
 				if (isset($this->request->server['HTTP_OC_CHECKSUM'])) {
 					$checksum = trim($this->request->server['HTTP_OC_CHECKSUM']);
 					$this->fileView->putFileInfo($targetPath, ['checksum' => $checksum]);
-				} else if ($info->getChecksum() !== null && $info->getChecksum() !== '') {
+				} elseif ($info->getChecksum() !== null && $info->getChecksum() !== '') {
 					$this->fileView->putFileInfo($this->path, ['checksum' => '']);
 				}
 
@@ -707,6 +755,8 @@ class File extends Node implements IFile {
 	}
 
 	protected function header($string) {
-		\header($string);
+		if (!\OC::$CLI) {
+			\header($string);
+		}
 	}
 }

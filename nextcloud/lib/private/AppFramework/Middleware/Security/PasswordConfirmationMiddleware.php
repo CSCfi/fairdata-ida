@@ -2,6 +2,7 @@
 /**
  * @copyright 2018, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,9 +18,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OC\AppFramework\Middleware\Security;
 
 use OC\AppFramework\Middleware\Security\Exceptions\NotConfirmedException;
@@ -68,6 +70,9 @@ class PasswordConfirmationMiddleware extends Middleware {
 	 */
 	public function beforeController($controller, $methodName) {
 		if ($this->reflector->hasAnnotation('PasswordConfirmationRequired')) {
+			// IDA MOD: Because we use the SSO, we never require password confirmation for actions 
+			// becausee Nextcloud doesn't have user passwords for all authentication methods.
+			return;
 			$user = $this->userSession->getUser();
 			$backendClassName = '';
 			if ($user !== null) {

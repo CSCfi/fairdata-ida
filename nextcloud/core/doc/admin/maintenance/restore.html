@@ -1,58 +1,45 @@
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Restoring backup &#8212; Nextcloud latest Administration Manual latest documentation</title>
-    <link rel="stylesheet" href="../_static/" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../_static/main.min.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js"></script>
-    <script type="text/javascript" src="../_static/js/jquery-fix.js"></script>
-    <script type="text/javascript" src="../_static/bootstrap-3.1.0/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restoring backup &mdash; Nextcloud latest Administration Manual latest documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="How to upgrade" href="upgrade.html" />
-    <link rel="prev" title="Backup" href="backup.html" />
-<meta charset='utf-8'>
-<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
-<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1d2d44">
+    <link rel="prev" title="Backup" href="backup.html" /> 
+</head>
 
-  </head><body>
-
-
-<div class="wrap container not-front">
-  <div class="content row">
-  <main class="main">
-    
-			<div class="row">
-				<div class="col-md-3">
-					<div class="sidebar">
-            <h1>Nextcloud latest Administration Manual</h1>
-            
-            <div class="sidebar-search">
-              <form class="headersearch" action="../search.html" method="get">
-                <input type="text" value="" name="q" id="q" class="form-control" /> 
-                <button  class="btn btn-default" type="submit" id="searchsubmit">Search</button>
-              </form>
-            </div>
-            
-							<div class="menu-support-container">
-								<ul id="menu-support" class="menu">
-									<ul>
-                    <li><a href="../contents.html">Table of Contents</a></li>
-									</ul>
-                  <ul class="current">
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../contents.html">
+            <img src="../_static/logo-white.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../release_schedule.html">Maintenance and release schedule</a></li>
@@ -62,14 +49,24 @@
 <li class="toctree-l1"><a class="reference internal" href="../configuration_user/index.html">User management</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration_files/index.html">File sharing and management</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../file_workflows/index.html">File workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../groupware/index.html">Groupware</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration_database/index.html">Database configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../configuration_mimetypes/index.html">Mimetypes management</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Maintenance</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="backup.html">Backup</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Restoring backup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#restore-folders">Restore folders</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#restore-database">Restore database</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#restoring">Restoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#restore-database">Restore database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mysql">MySQL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#postgresql">PostgreSQL</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#restoring">Restoring</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">MySQL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sqlite">SQLite</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2">PostgreSQL</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="upgrade.html">How to upgrade</a></li>
@@ -81,51 +78,57 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../issues/index.html">Issues and troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gdpr/index.html">GDPR</a></li>
 </ul>
 
-								</ul>
-							</div>
-					</div>
-				</div>
-        
+        </div>
+      </div>
+    </nav>
 
-				<div class="col-md-9">
-					<div class="page-content">
-            
-<ul class="prevnext-title list-unstyled list-inline">
-  <li class="prev">
-    <a href="backup.html" title="Previous Chapter: Backup"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Backup</span>
-    </a>
-  </li>
-  <li class="next">
-    <a href="upgrade.html" title="Next Chapter: How to upgrade"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">How to upgrade &raquo;</span>
-    </a>
-  </li>
-</ul>
-						
-  <div class="section" id="restoring-backup">
-<h1>Restoring backup<a class="headerlink" href="#restoring-backup" title="Permalink to this headline">¶</a></h1>
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../contents.html">Nextcloud latest Administration Manual</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../contents.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Maintenance</a> &raquo;</li>
+      <li>Restoring backup</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/nextcloud/documentation/edit/master/admin_manual/maintenance/restore.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="restoring-backup">
+<h1>Restoring backup<a class="headerlink" href="#restoring-backup" title="Permalink to this headline"></a></h1>
 <p>To restore a Nextcloud installation there are four main things you need to
 restore:</p>
 <ol class="arabic simple">
-<li>The configuration directory</li>
-<li>The data directory</li>
-<li>The database</li>
-<li>The theme directory</li>
+<li><p>The configuration directory</p></li>
+<li><p>The data directory</p></li>
+<li><p>The database</p></li>
+<li><p>The theme directory</p></li>
 </ol>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">You must have both the database and data directory. You cannot
+<p class="admonition-title">Note</p>
+<p>You must have both the database and data directory. You cannot
 complete restoration unless you have both of these.</p>
 </div>
 <p>When you have completed your restoration, also make sure to run the
 <a class="reference internal" href="../configuration_server/occ_command.html#maintenance-commands-label"><span class="std std-ref">maintenance:data-fingerprint</span></a> command
 afterwards, to ensure your sync clients can recover from the restored backup.</p>
-<div class="section" id="restore-folders">
-<h2>Restore folders<a class="headerlink" href="#restore-folders" title="Permalink to this headline">¶</a></h2>
+<section id="restore-folders">
+<h2>Restore folders<a class="headerlink" href="#restore-folders" title="Permalink to this headline"></a></h2>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This guide assumes that your previous backup is called
+<p class="admonition-title">Note</p>
+<p>This guide assumes that your previous backup is called
 “nextcloud-dirbkp”</p>
 </div>
 <p>Simply copy your configuration and data folder (or even your whole Nextcloud
@@ -133,83 +136,133 @@ install and data folder) to your Nextcloud environment. You could use this comma
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rsync</span> <span class="o">-</span><span class="n">Aax</span> <span class="n">nextcloud</span><span class="o">-</span><span class="n">dirbkp</span><span class="o">/</span> <span class="n">nextcloud</span><span class="o">/</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="restore-database">
-<h2>Restore database<a class="headerlink" href="#restore-database" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="restore-database">
+<h2>Restore database<a class="headerlink" href="#restore-database" title="Permalink to this headline"></a></h2>
 <div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">Before restoring a backup you need to make sure to delete all existing database tables.</p>
+<p class="admonition-title">Warning</p>
+<p>Before restoring a backup you need to make sure to delete all existing database tables.</p>
 </div>
 <p>The easiest way to do this is to drop and recreate the database.
 SQLite does this automatically.</p>
-<div class="section" id="mysql">
-<h3>MySQL<a class="headerlink" href="#mysql" title="Permalink to this headline">¶</a></h3>
+<section id="mysql">
+<h3>MySQL<a class="headerlink" href="#mysql" title="Permalink to this headline"></a></h3>
 <p>MySQL is the recommended database engine. To restore MySQL:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mysql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">u</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">password</span><span class="p">]</span> <span class="o">-</span><span class="n">e</span> <span class="s2">&quot;DROP DATABASE nextcloud&quot;</span>
 <span class="n">mysql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">u</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">password</span><span class="p">]</span> <span class="o">-</span><span class="n">e</span> <span class="s2">&quot;CREATE DATABASE nextcloud&quot;</span>
 </pre></div>
 </div>
-<p>If you use UTF8 with multibyte support (e.g. for emoijs in filenames), use:</p>
+<p>If you use UTF8 with multibyte support (e.g. for emojis in filenames), use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mysql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">u</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">password</span><span class="p">]</span> <span class="o">-</span><span class="n">e</span> <span class="s2">&quot;DROP DATABASE nextcloud&quot;</span>
 <span class="n">mysql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">u</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">password</span><span class="p">]</span> <span class="o">-</span><span class="n">e</span> <span class="s2">&quot;CREATE DATABASE nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci&quot;</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="postgresql">
-<h3>PostgreSQL<a class="headerlink" href="#postgresql" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="postgresql">
+<h3>PostgreSQL<a class="headerlink" href="#postgresql" title="Permalink to this headline"></a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PGPASSWORD</span><span class="o">=</span><span class="s2">&quot;password&quot;</span> <span class="n">psql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">U</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">d</span> <span class="n">template1</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;DROP DATABASE </span><span class="se">\&quot;</span><span class="s2">nextcloud</span><span class="se">\&quot;</span><span class="s2">;&quot;</span>
 <span class="n">PGPASSWORD</span><span class="o">=</span><span class="s2">&quot;password&quot;</span> <span class="n">psql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">U</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">d</span> <span class="n">template1</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;CREATE DATABASE </span><span class="se">\&quot;</span><span class="s2">nextcloud</span><span class="se">\&quot;</span><span class="s2">;&quot;</span>
 </pre></div>
 </div>
-</div>
-</div>
-<div class="section" id="restoring">
-<h2>Restoring<a class="headerlink" href="#restoring" title="Permalink to this headline">¶</a></h2>
+</section>
+</section>
+<section id="restoring">
+<h2>Restoring<a class="headerlink" href="#restoring" title="Permalink to this headline"></a></h2>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This guide assumes that your previous backup is called
+<p class="admonition-title">Note</p>
+<p>This guide assumes that your previous backup is called
 “nextcloud-sqlbkp.bak”</p>
 </div>
-<div class="section" id="id1">
-<h3>MySQL<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<section id="id1">
+<h3>MySQL<a class="headerlink" href="#id1" title="Permalink to this headline"></a></h3>
 <p>MySQL is the recommended database engine. To restore MySQL:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mysql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">u</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">password</span><span class="p">]</span> <span class="p">[</span><span class="n">db_name</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">nextcloud</span><span class="o">-</span><span class="n">sqlbkp</span><span class="o">.</span><span class="n">bak</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="sqlite">
-<h3>SQLite<a class="headerlink" href="#sqlite" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="sqlite">
+<h3>SQLite<a class="headerlink" href="#sqlite" title="Permalink to this headline"></a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rm</span> <span class="n">data</span><span class="o">/</span><span class="n">owncloud</span><span class="o">.</span><span class="n">db</span>
 <span class="n">sqlite3</span> <span class="n">data</span><span class="o">/</span><span class="n">owncloud</span><span class="o">.</span><span class="n">db</span> <span class="o">&lt;</span> <span class="n">nextcloud</span><span class="o">-</span><span class="n">sqlbkp</span><span class="o">.</span><span class="n">bak</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="id2">
-<h3>PostgreSQL<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="id2">
+<h3>PostgreSQL<a class="headerlink" href="#id2" title="Permalink to this headline"></a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PGPASSWORD</span><span class="o">=</span><span class="s2">&quot;password&quot;</span> <span class="n">psql</span> <span class="o">-</span><span class="n">h</span> <span class="p">[</span><span class="n">server</span><span class="p">]</span> <span class="o">-</span><span class="n">U</span> <span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">-</span><span class="n">d</span> <span class="n">nextcloud</span> <span class="o">-</span><span class="n">f</span> <span class="n">nextcloud</span><span class="o">-</span><span class="n">sqlbkp</span><span class="o">.</span><span class="n">bak</span>
 </pre></div>
 </div>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
-            
-<ul class="prevnext-title list-unstyled list-inline">
-  <li class="prev">
-    <a href="backup.html" title="Previous Chapter: Backup"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Backup</span>
-    </a>
-  </li>
-  <li class="next">
-    <a href="upgrade.html" title="Next Chapter: How to upgrade"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">How to upgrade &raquo;</span>
-    </a>
-  </li>
-</ul>
-					</div>
-				</div>
-			</div>
-  </main>  
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="backup.html" class="btn btn-neutral float-left" title="Backup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="upgrade.html" class="btn btn-neutral float-right" title="How to upgrade" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021 Nextcloud GmbH.</p>
   </div>
-</div>
-  </body>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="Versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: latest
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      <dl>
+        <dt>Versions</dt>
+        
+          <dd><a href="https://docs.nextcloud.com/server/17/admin_manual">17</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/18/admin_manual">18</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/19/admin_manual">19</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/20/admin_manual">20</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/stable/admin_manual">stable</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/latest/admin_manual">latest</a></dd>
+        
+      </dl>
+      <dl>
+        <dt>Downloads</dt>
+        
+      </dl>
+      <dl>
+        
+        <dt>On Read the Docs</dt>
+          <dd>
+            <a href="///projects//?fromdocs=">Project Home</a>
+          </dd>
+          <dd>
+            <a href="///builds//?fromdocs=">Builds</a>
+          </dd>
+      </dl>
+    </div>
+  </div>
+<script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
 </html>

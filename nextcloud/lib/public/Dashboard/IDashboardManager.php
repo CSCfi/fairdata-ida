@@ -1,15 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
-
 /**
- * Nextcloud - Dashboard App
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Maxence Lange <maxence@artificial-owl.com>
  * @copyright 2018, Maxence Lange <maxence@artificial-owl.com>
+ *
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Maxence Lange <maxence@artificial-owl.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,13 +21,11 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
-
 namespace OCP\Dashboard;
-
 
 use OCP\Dashboard\Exceptions\DashboardAppNotAvailableException;
 use OCP\Dashboard\Model\IWidgetConfig;
@@ -43,8 +39,8 @@ use OCP\Dashboard\Service\IWidgetsService;
  * The call can be done from any Service.
  *
  * @since 15.0.0
+ * @deprecated 20.0.0
  *
- * @package OCP\Dashboard
  */
 interface IDashboardManager {
 
@@ -53,6 +49,7 @@ interface IDashboardManager {
 	 * Register a IWidgetsService.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param IWidgetsService $widgetsService
 	 */
@@ -63,6 +60,7 @@ interface IDashboardManager {
 	 * Register a IEventsService.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param IEventsService $eventsService
 	 */
@@ -75,6 +73,7 @@ interface IDashboardManager {
 	 * @see IWidgetConfig
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $widgetId
 	 * @param string $userId
@@ -97,6 +96,7 @@ interface IDashboardManager {
 	 * that are running dashboard.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $widgetId
 	 * @param array $users
@@ -111,6 +111,7 @@ interface IDashboardManager {
 	 * Create push notifications for groups. (ie. createUsersEvent())
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $widgetId
 	 * @param array $groups
@@ -125,6 +126,7 @@ interface IDashboardManager {
 	 * Create push notifications for everyone. (ie. createUsersEvent())
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $widgetId
 	 * @param array $payload
@@ -132,6 +134,4 @@ interface IDashboardManager {
 	 * @throws DashboardAppNotAvailableException
 	 */
 	public function createGlobalEvent(string $widgetId, array $payload, string $uniqueId = '');
-
 }
-

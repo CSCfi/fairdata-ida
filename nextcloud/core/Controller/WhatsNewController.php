@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2018 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -74,13 +75,13 @@ class WhatsNewController extends OCSController {
 	 */
 	public function get():DataResponse {
 		$user = $this->userSession->getUser();
-		if($user === null) {
+		if ($user === null) {
 			throw new \RuntimeException("Acting user cannot be resolved");
 		}
 		$lastRead = $this->config->getUserValue($user->getUID(), 'core', 'whatsNewLastRead', 0);
 		$currentVersion = $this->whatsNewService->normalizeVersion($this->config->getSystemValue('version'));
 
-		if(version_compare($lastRead, $currentVersion, '>=')) {
+		if (version_compare($lastRead, $currentVersion, '>=')) {
 			return new DataResponse([], Http::STATUS_NO_CONTENT);
 		}
 
@@ -94,7 +95,7 @@ class WhatsNewController extends OCSController {
 			];
 			do {
 				$lang = $iterator->current();
-				if(isset($whatsNew['whatsNew'][$lang])) {
+				if (isset($whatsNew['whatsNew'][$lang])) {
 					$resultData['whatsNew'] = $whatsNew['whatsNew'][$lang];
 					break;
 				}
@@ -114,7 +115,7 @@ class WhatsNewController extends OCSController {
 	 */
 	public function dismiss(string $version):DataResponse {
 		$user = $this->userSession->getUser();
-		if($user === null) {
+		if ($user === null) {
 			throw new \RuntimeException("Acting user cannot be resolved");
 		}
 		$version = $this->whatsNewService->normalizeVersion($version);

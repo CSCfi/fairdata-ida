@@ -176,6 +176,7 @@
 					dirInfo: this.dirInfo
 				});
 				$crumb.append(view.$el);
+				$menuItem.append(view.$el.clone(true));
 			}, this);
 
 			// setup drag and drop
@@ -200,9 +201,10 @@
 		 * Makes a breadcrumb structure based on the given path
 		 *
 		 * @param {String} dir path to split into a breadcrumb structure
+		 * @param {String} [rootIcon=icon-home] icon to use for root
 		 * @return {Object.<String, String>} map of {dir: path, name: displayName}
 		 */
-		_makeCrumbs: function(dir) {
+		_makeCrumbs: function(dir, rootIcon) {
 			var crumbs = [];
 			var pathToHere = '';
 			// trim leading and trailing slashes
@@ -221,7 +223,7 @@
 				name: t('core', 'Home'),
 				dir: '/',
 				class: 'crumbhome',
-				linkclass: 'icon-home'
+				linkclass: rootIcon || 'icon-home'
 			});
 			for (var i = 0; i < parts.length; i++) {
 				var part = parts[i];
@@ -325,7 +327,7 @@
 			// Note that the crumbs shown always overflow the parent width
 			// (except, of course, when they all fit in).
 			while (this.$el.find(this.hiddenCrumbSelector).length > 0
-				&& this.getTotalWidth() <= this.$el.parent().width()) {
+				&& Math.round(this.getTotalWidth()) <= Math.round(this.$el.parent().width())) {
 				this._showCrumb();
 			}
 
@@ -341,7 +343,7 @@
 
 			// If container is smaller than content
 			// AND if there are crumbs left to hide
-			while (this.getTotalWidth() > availableWidth
+			while (Math.round(this.getTotalWidth()) > Math.round(availableWidth)
 				&& this.$el.find(this.crumbSelector).length > 0) {
 				// As soon as one of the crumbs is hidden the menu will be
 				// shown. This is needed for proper results in further width

@@ -2,7 +2,13 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Maxence Lange <maxence@nextcloud.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -18,13 +24,15 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OC\Share20;
 
-use OCP\Files\Cache\ICacheEntry;
 use OCP\Files\File;
+use OCP\Files\Cache\ICacheEntry;
+use OCP\Files\FileInfo;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
@@ -58,6 +66,8 @@ class Share implements \OCP\Share\IShare {
 	private $shareOwner;
 	/** @var int */
 	private $permissions;
+	/** @var int */
+	private $status;
 	/** @var string */
 	private $note = '';
 	/** @var \DateTime */
@@ -104,7 +114,7 @@ class Share implements \OCP\Share\IShare {
 			$id = (string)$id;
 		}
 
-		if(!is_string($id)) {
+		if (!is_string($id)) {
 			throw new \InvalidArgumentException('String expected.');
 		}
 
@@ -137,7 +147,7 @@ class Share implements \OCP\Share\IShare {
 	 * @inheritdoc
 	 */
 	public function setProviderId($id) {
-		if(!is_string($id)) {
+		if (!is_string($id)) {
 			throw new \InvalidArgumentException('String expected.');
 		}
 
@@ -164,14 +174,13 @@ class Share implements \OCP\Share\IShare {
 	 */
 	public function getNode() {
 		if ($this->node === null) {
-
 			if ($this->shareOwner === null || $this->fileId === null) {
 				throw new NotFoundException();
 			}
 
 			// for federated shares the owner can be a remote user, in this
 			// case we use the initiator
-			if($this->userManager->userExists($this->shareOwner)) {
+			if ($this->userManager->userExists($this->shareOwner)) {
 				$userFolder = $this->rootFolder->getUserFolder($this->shareOwner);
 			} else {
 				$userFolder = $this->rootFolder->getUserFolder($this->sharedBy);
@@ -225,8 +234,13 @@ class Share implements \OCP\Share\IShare {
 	 */
 	public function getNodeType() {
 		if ($this->nodeType === null) {
-			$node = $this->getNode();
-			$this->nodeType = $node instanceof File ? 'file' : 'folder';
+			if ($this->getNodeCacheEntry()) {
+				$info = $this->getNodeCacheEntry();
+				$this->nodeType = $info->getMimeType() === FileInfo::MIMETYPE_FOLDER ? 'folder' : 'file';
+			} else {
+				$node = $this->getNode();
+				$this->nodeType = $node instanceof File ? 'file' : 'folder';
+			}
 		}
 
 		return $this->nodeType;
@@ -321,6 +335,21 @@ class Share implements \OCP\Share\IShare {
 	/**
 	 * @inheritdoc
 	 */
+	public function setStatus(int $status): IShare {
+		$this->status = $status;
+		return $this;
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function getStatus(): int {
+		return $this->status;
+	}
+
+	/**
+	 * @inheritdoc
+	 */
 	public function setNote($note) {
 		$this->note = $note;
 		return $this;
@@ -366,6 +395,14 @@ class Share implements \OCP\Share\IShare {
 	 */
 	public function getExpirationDate() {
 		return $this->expireDate;
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function isExpired() {
+		return $this->getExpirationDate() !== null &&
+			$this->getExpirationDate() <= new \DateTime();
 	}
 
 	/**

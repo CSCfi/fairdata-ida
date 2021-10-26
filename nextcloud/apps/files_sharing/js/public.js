@@ -37,8 +37,6 @@ OCA.Sharing.PublicApp = {
 		fileActions = new OCA.Files.FileActions();
 		// default actions
 		fileActions.registerDefaultActions();
-		// legacy actions
-		fileActions.merge(window.FileActions);
 		// regular actions
 		fileActions.merge(OCA.Files.fileActions);
 
@@ -115,9 +113,9 @@ OCA.Sharing.PublicApp = {
 			// Show file preview if previewer is available, images are already handled by the template
 			if (mimetype.substr(0, mimetype.indexOf('/')) !== 'image' && $('.publicpreview').length === 0) {
 				// Trigger default action if not download TODO
-				var action = FileActions.getDefault(mimetype, 'file', OC.PERMISSION_READ);
-				if (typeof action !== 'undefined') {
-					action($('#filename').val());
+				var spec = FileActions.getDefaultFileAction(mimetype, 'file', OC.PERMISSION_READ);
+				if (spec && spec.action) {
+					spec.action($('#filename').val());
 				}
 			}
 		}
@@ -138,7 +136,7 @@ OCA.Sharing.PublicApp = {
 
 		var imgcontainer = $('<img class="publicpreview" alt="">');
 		if (hideDownload === 'false') {
-			imgcontainer = $('<a href="' + $('#previewURL').val() + '" rel="noreferrer noopener" target="_blank"></a>').append(imgcontainer);
+			imgcontainer = $('<a href="' + $('#previewURL').val() + '" target="_blank"></a>').append(imgcontainer);
 		}
 		var img = imgcontainer.hasClass('publicpreview')? imgcontainer: imgcontainer.find('.publicpreview');
 		img.css({
@@ -154,7 +152,8 @@ OCA.Sharing.PublicApp = {
 			img.attr('src', $('#downloadURL').val());
 			imgcontainer.appendTo('#imgframe');
 		} else if (mimetype.substr(0, mimetype.indexOf('/')) === 'text' && window.btoa) {
-			if (oc_appswebroots['files_texteditor'] !== undefined) {
+			if (OC.appswebroots['files_texteditor'] !== undefined ||
+				OC.appswebroots['text'] !== undefined) {
 				// the text editor handles the previewing
 				return;
 			}
@@ -164,7 +163,7 @@ OCA.Sharing.PublicApp = {
 				url: url,
 				headers: {
 					Authorization: 'Basic ' + btoa(token + ':'),
-					Range: 'bytes=0-1000'
+					Range: 'bytes=0-10000'
 				}
 			}).then(function (data) {
 				self._showTextPreview(data, previewHeight);
@@ -177,7 +176,10 @@ OCA.Sharing.PublicApp = {
 		} else if (mimetype.substr(0, mimetype.indexOf('/')) !== 'video') {
 			img.attr('src', mimetypeIcon);
 			img.attr('width', 128);
-			imgcontainer.appendTo('#imgframe');
+			// "#imgframe" is either empty or it contains an audio preview that
+			// the icon should appear before, so the container should be
+			// prepended to the frame.
+			imgcontainer.prependTo('#imgframe');
 		}
 		else if (previewSupported === 'true') {
 			$('#imgframe > video').attr('poster', OC.generateUrl('/apps/files_sharing/publicpreview/' + token + '?' + OC.buildQueryString(params)));
@@ -203,10 +205,6 @@ OCA.Sharing.PublicApp = {
 				var $tr = OCA.Files.FileList.prototype._createRow.apply(this, arguments);
 				if (hideDownload === 'true') {
 					this.fileActions.currentFile = $tr.find('td');
-					var mime = this.fileActions.getCurrentMimeType();
-					var type = this.fileActions.getCurrentType();
-					var permissions = this.fileActions.getCurrentPermissions();
-					var action = this.fileActions.getDefault(mime, type, permissions);
 
 					// Remove the link. This means that files without a default action fail hard
 					$tr.find('a.name').attr('href', '#');
@@ -251,7 +249,7 @@ OCA.Sharing.PublicApp = {
 			};
 
 			this.fileList.linkTo = function (dir) {
-				return OC.generateUrl('/s/' + token + '', {dir: dir});
+				return OC.generateUrl('/s/' + token + '') + '?' + OC.buildQueryString({path: dir});
 			};
 
 			this.fileList.generatePreviewUrl = function (urlSpec) {
@@ -470,7 +468,7 @@ OCA.Sharing.PublicApp = {
 	}
 };
 
-$(document).ready(function () {
+window.addEventListener('DOMContentLoaded', function () {
 	// FIXME: replace with OC.Plugins.register()
 	if (window.TESTING) {
 		return;

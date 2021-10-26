@@ -4,6 +4,7 @@
  *
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
@@ -18,9 +19,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OCP\Files\ObjectStore;
 
 use OCP\Files\NotFoundException;
@@ -28,7 +30,6 @@ use OCP\Files\NotFoundException;
 /**
  * Interface IObjectStore
  *
- * @package OCP\Files\ObjectStore
  * @since 7.0.0
  */
 interface IObjectStore {
@@ -72,4 +73,12 @@ interface IObjectStore {
 	 * @since 16.0.0
 	 */
 	public function objectExists($urn);
+
+	/**
+	 * @param string $from the unified resource name used to identify the source object
+	 * @param string $to the unified resource name used to identify the target object
+	 * @return void
+	 * @since 21.0.0
+	 */
+	public function copyObject($from, $to);
 }

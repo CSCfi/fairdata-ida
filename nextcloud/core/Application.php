@@ -3,11 +3,15 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
- * @author Bernhard Posselt <dev@bernhard-posselt.com>
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Mario Danic <mario@lovelyhq.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Thomas Citharel <nextcloud@tcit.fr>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  *
  * @license AGPL-3.0
@@ -22,17 +26,33 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\Core;
 
-use OC\Core\Notification\RemoveLinkSharesNotifier;
+use OC\Authentication\Events\RemoteWipeFinished;
+use OC\Authentication\Events\RemoteWipeStarted;
+use OC\Authentication\Listeners\RemoteWipeActivityListener;
+use OC\Authentication\Listeners\RemoteWipeEmailListener;
+use OC\Authentication\Listeners\RemoteWipeNotificationsListener;
+use OC\Authentication\Listeners\UserDeletedFilesCleanupListener;
+use OC\Authentication\Listeners\UserDeletedStoreCleanupListener;
+use OC\Authentication\Listeners\UserDeletedTokenCleanupListener;
+use OC\Authentication\Listeners\UserDeletedWebAuthnCleanupListener;
+use OC\Authentication\Notifications\Notifier as AuthenticationNotifier;
+use OC\Core\Notification\CoreNotifier;
+use OC\DB\Connection;
+use OC\DB\MissingColumnInformation;
 use OC\DB\MissingIndexInformation;
+use OC\DB\MissingPrimaryKeyInformation;
 use OC\DB\SchemaWrapper;
 use OCP\AppFramework\App;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IDBConnection;
+use OCP\User\Events\BeforeUserDeletedEvent;
+use OCP\User\Events\UserDeletedEvent;
 use OCP\Util;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -42,7 +62,6 @@ use Symfony\Component\EventDispatcher\GenericEvent;
  * @package OC\Core
  */
 class Application extends App {
-
 	public function __construct() {
 		parent::__construct('core');
 
@@ -53,26 +72,21 @@ class Application extends App {
 		});
 
 		$server = $container->getServer();
-		$eventDispatcher = $server->getEventDispatcher();
+		/** @var IEventDispatcher $eventDispatcher */
+		$eventDispatcher = $server->query(IEventDispatcher::class);
 
 		$notificationManager = $server->getNotificationManager();
-		$notificationManager->registerNotifier(function() use ($server) {
-			return new RemoveLinkSharesNotifier(
-				$server->getL10NFactory()
-			);
-		},  function() use ($server) {
-			return [
-				'id' => 'core',
-				'name' => 'core',
-			];
-		});
+		$notificationManager->registerNotifierService(CoreNotifier::class);
+		$notificationManager->registerNotifierService(AuthenticationNotifier::class);
 
-		$eventDispatcher->addListener(IDBConnection::CHECK_MISSING_INDEXES_EVENT,
-			function(GenericEvent $event) use ($container) {
+		$oldEventDispatcher = $server->getEventDispatcher();
+
+		$oldEventDispatcher->addListener(IDBConnection::CHECK_MISSING_INDEXES_EVENT,
+			function (GenericEvent $event) use ($container) {
 				/** @var MissingIndexInformation $subject */
 				$subject = $event->getSubject();
 
-				$schema = new SchemaWrapper($container->query(IDBConnection::class));
+				$schema = new SchemaWrapper($container->query(Connection::class));
 
 				if ($schema->hasTable('share')) {
 					$table = $schema->getTable('share');
@@ -96,6 +110,10 @@ class Application extends App {
 
 					if (!$table->hasIndex('fs_mtime')) {
 						$subject->addHintForMissingSubject($table->getName(), 'fs_mtime');
+					}
+
+					if (!$table->hasIndex('fs_size')) {
+						$subject->addHintForMissingSubject($table->getName(), 'fs_size');
 					}
 				}
 
@@ -135,6 +153,10 @@ class Application extends App {
 					if (!$table->hasIndex('cards_abid')) {
 						$subject->addHintForMissingSubject($table->getName(), 'cards_abid');
 					}
+
+					if (!$table->hasIndex('cards_abiduri')) {
+						$subject->addHintForMissingSubject($table->getName(), 'cards_abiduri');
+					}
 				}
 
 				if ($schema->hasTable('cards_properties')) {
@@ -144,7 +166,115 @@ class Application extends App {
 						$subject->addHintForMissingSubject($table->getName(), 'cards_prop_abid');
 					}
 				}
+
+				if ($schema->hasTable('calendarobjects_props')) {
+					$table = $schema->getTable('calendarobjects_props');
+
+					if (!$table->hasIndex('calendarobject_calid_index')) {
+						$subject->addHintForMissingSubject($table->getName(), 'calendarobject_calid_index');
+					}
+				}
+
+				if ($schema->hasTable('schedulingobjects')) {
+					$table = $schema->getTable('schedulingobjects');
+					if (!$table->hasIndex('schedulobj_principuri_index')) {
+						$subject->addHintForMissingSubject($table->getName(), 'schedulobj_principuri_index');
+					}
+				}
+
+				if ($schema->hasTable('properties')) {
+					$table = $schema->getTable('properties');
+					if (!$table->hasIndex('properties_path_index')) {
+						$subject->addHintForMissingSubject($table->getName(), 'properties_path_index');
+					}
+				}
 			}
 		);
+
+		$oldEventDispatcher->addListener(IDBConnection::CHECK_MISSING_PRIMARY_KEYS_EVENT,
+			function (GenericEvent $event) use ($container) {
+				/** @var MissingPrimaryKeyInformation $subject */
+				$subject = $event->getSubject();
+
+				$schema = new SchemaWrapper($container->query(Connection::class));
+
+				if ($schema->hasTable('federated_reshares')) {
+					$table = $schema->getTable('federated_reshares');
+
+					if (!$table->hasPrimaryKey()) {
+						$subject->addHintForMissingSubject($table->getName());
+					}
+				}
+
+				if ($schema->hasTable('systemtag_object_mapping')) {
+					$table = $schema->getTable('systemtag_object_mapping');
+
+					if (!$table->hasPrimaryKey()) {
+						$subject->addHintForMissingSubject($table->getName());
+					}
+				}
+
+				if ($schema->hasTable('comments_read_markers')) {
+					$table = $schema->getTable('comments_read_markers');
+
+					if (!$table->hasPrimaryKey()) {
+						$subject->addHintForMissingSubject($table->getName());
+					}
+				}
+
+				if ($schema->hasTable('collres_resources')) {
+					$table = $schema->getTable('collres_resources');
+
+					if (!$table->hasPrimaryKey()) {
+						$subject->addHintForMissingSubject($table->getName());
+					}
+				}
+
+				if ($schema->hasTable('collres_accesscache')) {
+					$table = $schema->getTable('collres_accesscache');
+
+					if (!$table->hasPrimaryKey()) {
+						$subject->addHintForMissingSubject($table->getName());
+					}
+				}
+
+				if ($schema->hasTable('filecache_extended')) {
+					$table = $schema->getTable('filecache_extended');
+
+					if (!$table->hasPrimaryKey()) {
+						$subject->addHintForMissingSubject($table->getName());
+					}
+				}
+			}
+		);
+
+		$oldEventDispatcher->addListener(IDBConnection::CHECK_MISSING_COLUMNS_EVENT,
+			function (GenericEvent $event) use ($container) {
+				/** @var MissingColumnInformation $subject */
+				$subject = $event->getSubject();
+
+				$schema = new SchemaWrapper($container->query(Connection::class));
+
+				if ($schema->hasTable('comments')) {
+					$table = $schema->getTable('comments');
+
+					if (!$table->hasColumn('reference_id')) {
+						$subject->addHintForMissingColumn($table->getName(), 'reference_id');
+					}
+				}
+			}
+		);
+
+		$eventDispatcher->addServiceListener(RemoteWipeStarted::class, RemoteWipeActivityListener::class);
+		$eventDispatcher->addServiceListener(RemoteWipeStarted::class, RemoteWipeNotificationsListener::class);
+		$eventDispatcher->addServiceListener(RemoteWipeStarted::class, RemoteWipeEmailListener::class);
+		$eventDispatcher->addServiceListener(RemoteWipeFinished::class, RemoteWipeActivityListener::class);
+		$eventDispatcher->addServiceListener(RemoteWipeFinished::class, RemoteWipeNotificationsListener::class);
+		$eventDispatcher->addServiceListener(RemoteWipeFinished::class, RemoteWipeEmailListener::class);
+		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedStoreCleanupListener::class);
+		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedTokenCleanupListener::class);
+		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedWebAuthnCleanupListener::class);
+		$eventDispatcher->addServiceListener(BeforeUserDeletedEvent::class, UserDeletedFilesCleanupListener::class);
+		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedFilesCleanupListener::class);
 	}
 }

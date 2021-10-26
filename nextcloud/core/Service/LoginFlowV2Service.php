@@ -1,8 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2019, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -18,7 +21,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -131,10 +134,6 @@ class LoginFlowV2Service {
 			return false;
 		}
 
-		if ($data->getStarted() !== 0) {
-			return false;
-		}
-
 		$data->setStarted(1);
 		$this->mapper->update($data);
 
@@ -227,7 +226,10 @@ class LoginFlowV2Service {
 			throw new \RuntimeException('Could not initialize keys');
 		}
 
-		openssl_pkey_export($res, $privateKey);
+		if (openssl_pkey_export($res, $privateKey, null, $config) === false) {
+			$this->logOpensslError();
+			throw new \RuntimeException('OpenSSL reported a problem');
+		}
 
 		// Extract the public key from $res to $pubKey
 		$publicKey = openssl_pkey_get_details($res);

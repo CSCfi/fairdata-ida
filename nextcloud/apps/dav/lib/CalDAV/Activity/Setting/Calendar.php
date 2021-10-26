@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Robin Appelman <robin@icewind.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,28 +18,13 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCA\DAV\CalDAV\Activity\Setting;
 
-
-use OCP\Activity\ISetting;
-use OCP\IL10N;
-
-class Calendar implements ISetting {
-
-	/** @var IL10N */
-	protected $l;
-
-	/**
-	 * @param IL10N $l
-	 */
-	public function __construct(IL10N $l) {
-		$this->l = $l;
-	}
-
+class Calendar extends CalDAVSetting {
 	/**
 	 * @return string Lowercase a-z and underscore only identifier
 	 * @since 11.0.0
@@ -97,4 +83,3 @@ class Calendar implements ISetting {
 		return false;
 	}
 }
-

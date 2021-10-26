@@ -4,8 +4,8 @@ Database configuration
 
 Nextcloud requires a database in which administrative data is stored. The following databases are currently supported:
 
-* `MySQL <http://www.mysql.com/>`_ / `MariaDB <https://mariadb.org/>`_
-* `PostgreSQL <http://www.postgresql.org/>`_
+* `MySQL <https://www.mysql.com/>`_ / `MariaDB <https://mariadb.org/>`_
+* `PostgreSQL <https://www.postgresql.org/>`_
 * `Oracle <http://www.oracle.com/>`_
 
 The MySQL or MariaDB databases are the recommended database engines.
@@ -41,7 +41,7 @@ Configuring a MySQL or MariaDB database
 
 If you decide to use a MySQL or MariaDB database, ensure the following:
 
-* The transaction isolation level is set to "READ-COMMITED" in your MariaDB server configuration :file:`/etc/mysql/my.cnf` to persist even after a restart of your database server.
+* The transaction isolation level is set to "READ-COMMITTED" in your MariaDB server configuration :file:`/etc/mysql/my.cnf` to persist even after a restart of your database server.
 
   Verify the **transaction_isolation** and **binlog_format**:
 
@@ -58,7 +58,7 @@ Your :file:`/etc/mysql/my.cnf` could look like this:
 ::
 
   [server]
-  skip-name-resolve
+  skip_name_resolve = 1
   innodb_buffer_pool_size = 128M
   innodb_buffer_pool_instances = 1
   innodb_flush_log_at_trx_commit = 2
@@ -70,8 +70,8 @@ Your :file:`/etc/mysql/my.cnf` could look like this:
   query_cache_size = 64M
   tmp_table_size= 64M
   max_heap_table_size= 64M
-  slow-query-log = 1
-  slow-query-log-file = /var/log/mysql/slow.log
+  slow_query_log = 1
+  slow_query_log_file = /var/log/mysql/slow.log
   long_query_time = 1
 
   [client-server]
@@ -82,8 +82,8 @@ Your :file:`/etc/mysql/my.cnf` could look like this:
   default-character-set = utf8mb4
 
   [mysqld]
-  character-set-server = utf8mb4
-  collation-server = utf8mb4_general_ci
+  character_set_server = utf8mb4
+  collation_server = utf8mb4_general_ci
   transaction_isolation = READ-COMMITTED
   binlog_format = ROW
   innodb_large_prefix=on
@@ -132,19 +132,6 @@ Then a **mysql>** or **MariaDB [root]>** prompt will appear. Now enter the follo
 ::
 
   CREATE USER 'username'@'localhost' IDENTIFIED BY 'password';
-  CREATE DATABASE IF NOT EXISTS nextcloud;
-  GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES ON nextcloud.* TO 'username'@'localhost' IDENTIFIED BY 'password';
-  FLUSH privileges;
-
-You can quit the prompt by entering::
-
-  quit
-
-If you prefer UTF8MB4 as your database collation setting:
-
-::
-
-  CREATE USER 'username'@'localhost' IDENTIFIED BY 'password';
   CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
   GRANT ALL PRIVILEGES on nextcloud.* to 'username'@'localhost';
   FLUSH privileges;
@@ -153,7 +140,7 @@ You can quit the prompt by entering::
 
   quit;
 
-An Nextcloud instance configured with MySQL would contain the hostname on which
+A Nextcloud instance configured with MySQL would contain the hostname on which
 the database is running, a valid username and password to access it, and the
 name of the database. The :file:`config/config.php` as created by the
 :doc:`../installation/installation_wizard` would therefore contain entries like
@@ -174,6 +161,23 @@ In case of UTF8MB4 you will also find::
 
     "mysql.utf8mb4" => true,
 
+SSL for MySQL Database
+^^^^^^^^^^^^^^^^^^^^^^
+
+Enabling SSL is only necessary if your database does not reside on the same server as your Nextcloud instance.
+If you do not connect over localhost and need to allow remote connections then you should enable SSL.
+This just covers the SSL database configuration on the Nextcloud server. First you need to configure your database server accordingly.
+
+::
+
+  'dbdriveroptions' => [
+    \PDO::MYSQL_ATTR_SSL_KEY => '/../ssl-key.pem',
+    \PDO::MYSQL_ATTR_SSL_CERT => '/../ssl-cert.pem',
+    \PDO::MYSQL_ATTR_SSL_CA => '/../ca-cert.pem',
+    \PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => true,
+  ],
+
+Adjust the paths to the pem files for your environment.
 
 PostgreSQL database
 ^^^^^^^^^^^^^^^^^^^
@@ -330,7 +334,7 @@ the respective host name::
   +---------------+--------+
   | Variable_name | Value  |
   +---------------+--------+
-  | version       | 5.1.67 |
+  | version       | 8.0.22 |
   +---------------+--------+
   1 row in set (0.00 sec)
   mysql> quit

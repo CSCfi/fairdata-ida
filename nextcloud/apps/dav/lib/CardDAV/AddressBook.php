@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -17,12 +20,14 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OCA\DAV\CardDAV;
 
 use OCA\DAV\DAV\Sharing\IShareable;
+use OCA\DAV\Exception\UnsupportedLimitOnInitialSyncException;
 use OCP\IL10N;
 use Sabre\CardDAV\Backend\BackendInterface;
 use Sabre\CardDAV\Card;
@@ -100,7 +105,7 @@ class AddressBook extends \Sabre\CardDAV\AddressBook implements IShareable {
 	}
 
 	public function getACL() {
-		$acl =  [
+		$acl = [
 			[
 				'privilege' => '{DAV:}read',
 				'principal' => $this->getOwner(),
@@ -125,11 +130,11 @@ class AddressBook extends \Sabre\CardDAV\AddressBook implements IShareable {
 		}
 
 		if ($this->getOwner() !== parent::getOwner()) {
-			$acl[] =  [
-					'privilege' => '{DAV:}read',
-					'principal' => parent::getOwner(),
-					'protected' => true,
-				];
+			$acl[] = [
+				'privilege' => '{DAV:}read',
+				'principal' => parent::getOwner(),
+				'protected' => true,
+			];
 			if ($this->canWrite()) {
 				$acl[] = [
 					'privilege' => '{DAV:}write',
@@ -141,7 +146,7 @@ class AddressBook extends \Sabre\CardDAV\AddressBook implements IShareable {
 
 		$acl = $this->carddavBackend->applyShareAcl($this->getResourceId(), $acl);
 		$allowedPrincipals = [$this->getOwner(), parent::getOwner(), 'principals/system/system'];
-		return array_filter($acl, function($rule) use ($allowedPrincipals) {
+		return array_filter($acl, function ($rule) use ($allowedPrincipals) {
 			return \in_array($rule['principal'], $allowedPrincipals, true);
 		});
 	}
@@ -151,14 +156,12 @@ class AddressBook extends \Sabre\CardDAV\AddressBook implements IShareable {
 	}
 
 	public function getChild($name) {
-
 		$obj = $this->carddavBackend->getCard($this->addressBookInfo['id'], $name);
 		if (!$obj) {
 			throw new NotFound('Card not found');
 		}
 		$obj['acl'] = $this->getChildACL();
 		return new Card($this->carddavBackend, $this->addressBookInfo, $obj);
-
 	}
 
 	/**
@@ -179,7 +182,7 @@ class AddressBook extends \Sabre\CardDAV\AddressBook implements IShareable {
 		if (isset($this->addressBookInfo['{http://owncloud.org/ns}owner-principal'])) {
 			$principal = 'principal:' . parent::getOwner();
 			$shares = $this->carddavBackend->getShares($this->getResourceId());
-			$shares = array_filter($shares, function($share) use ($principal){
+			$shares = array_filter($shares, function ($share) use ($principal) {
 				return $share['href'] === $principal;
 			});
 			if (empty($shares)) {
@@ -218,5 +221,13 @@ class AddressBook extends \Sabre\CardDAV\AddressBook implements IShareable {
 			return !$this->addressBookInfo['{http://owncloud.org/ns}read-only'];
 		}
 		return true;
+	}
+
+	public function getChanges($syncToken, $syncLevel, $limit = null) {
+		if (!$syncToken && $limit) {
+			throw new UnsupportedLimitOnInitialSyncException();
+		}
+
+		return parent::getChanges($syncToken, $syncLevel, $limit);
 	}
 }

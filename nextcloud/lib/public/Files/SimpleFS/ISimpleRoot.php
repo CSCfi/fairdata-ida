@@ -18,9 +18,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCP\Files\SimpleFS;
 
 use OCP\Files\NotFoundException;
@@ -29,7 +30,6 @@ use OCP\Files\NotPermittedException;
 /**
  * Interface ISimpleRoot
  *
- * @package OCP\Files\SimpleFS
  * @since 11.0.0
  */
 interface ISimpleRoot {

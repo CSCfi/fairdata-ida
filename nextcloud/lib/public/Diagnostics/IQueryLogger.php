@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Piotr Mrówczyński <mrow4a@yahoo.com>
@@ -19,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -30,15 +31,14 @@ use Doctrine\DBAL\Logging\SQLLogger;
 /**
  * Interface IQueryLogger
  *
- * @package OCP\Diagnostics
  * @since 8.0.0
  */
 interface IQueryLogger extends SQLLogger {
 	/**
-	 * Mark the start of a query providing query SQL statement, its parameters and types. 
-	 * This method should be called as close to the DB as possible and after 
-	 * query is finished finalized with stopQuery() method. 
-	 * 
+	 * Mark the start of a query providing query SQL statement, its parameters and types.
+	 * This method should be called as close to the DB as possible and after
+	 * query is finished finalized with stopQuery() method.
+	 *
 	 * @param string $sql
 	 * @param array|null $params
 	 * @param array|null $types
@@ -49,7 +49,7 @@ interface IQueryLogger extends SQLLogger {
 	/**
 	 * Mark the end of the current active query. Ending query should store \OCP\Diagnostics\IQuery to
 	 * be returned with getQueries() method.
-	 * 
+	 *
 	 * @return mixed
 	 * @since 8.0.0
 	 */
@@ -58,7 +58,7 @@ interface IQueryLogger extends SQLLogger {
 	/**
 	 * This method should return all \OCP\Diagnostics\IQuery objects stored using
 	 * startQuery()/stopQuery() methods.
-	 * 
+	 *
 	 * @return \OCP\Diagnostics\IQuery[]
 	 * @since 8.0.0
 	 */
@@ -67,8 +67,8 @@ interface IQueryLogger extends SQLLogger {
 	/**
 	 * Activate the module for the duration of the request. Deactivated module
 	 * does not create and store \OCP\Diagnostics\IQuery objects.
-	 * Only activated module should create and store objects to be 
-	 * returned with getQueries() call. 
+	 * Only activated module should create and store objects to be
+	 * returned with getQueries() call.
 	 *
 	 * @since 12.0.0
 	 */

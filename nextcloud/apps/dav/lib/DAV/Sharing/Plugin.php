@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -17,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -26,6 +28,7 @@ namespace OCA\DAV\DAV\Sharing;
 use OCA\DAV\Connector\Sabre\Auth;
 use OCA\DAV\DAV\Sharing\Xml\Invite;
 use OCA\DAV\DAV\Sharing\Xml\ShareRequest;
+use OCP\IConfig;
 use OCP\IRequest;
 use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\INode;
@@ -36,9 +39,8 @@ use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
 
 class Plugin extends ServerPlugin {
-
-	const NS_OWNCLOUD = 'http://owncloud.org/ns';
-	const NS_NEXTCLOUD = 'http://nextcloud.com/ns';
+	public const NS_OWNCLOUD = 'http://owncloud.org/ns';
+	public const NS_NEXTCLOUD = 'http://nextcloud.com/ns';
 
 	/** @var Auth */
 	private $auth;
@@ -46,15 +48,20 @@ class Plugin extends ServerPlugin {
 	/** @var IRequest */
 	private $request;
 
+	/** @var IConfig */
+	private $config;
+
 	/**
 	 * Plugin constructor.
 	 *
 	 * @param Auth $authBackEnd
 	 * @param IRequest $request
+	 * @param IConfig $config
 	 */
-	public function __construct(Auth $authBackEnd, IRequest $request) {
+	public function __construct(Auth $authBackEnd, IRequest $request, IConfig $config) {
 		$this->auth = $authBackEnd;
 		$this->request = $request;
+		$this->config = $config;
 	}
 
 	/**
@@ -72,7 +79,7 @@ class Plugin extends ServerPlugin {
 	 *
 	 * @return string[]
 	 */
-	function getFeatures() {
+	public function getFeatures() {
 		return ['oc-resource-sharing'];
 	}
 
@@ -84,7 +91,7 @@ class Plugin extends ServerPlugin {
 	 *
 	 * @return string
 	 */
-	function getPluginName() {
+	public function getPluginName() {
 		return 'oc-resource-sharing';
 	}
 
@@ -99,7 +106,7 @@ class Plugin extends ServerPlugin {
 	 * @param Server $server
 	 * @return void
 	 */
-	function initialize(Server $server) {
+	public function initialize(Server $server) {
 		$this->server = $server;
 		$this->server->xml->elementMap['{' . Plugin::NS_OWNCLOUD . '}share'] = ShareRequest::class;
 		$this->server->xml->elementMap['{' . Plugin::NS_OWNCLOUD . '}invite'] = Invite::class;
@@ -115,14 +122,14 @@ class Plugin extends ServerPlugin {
 	 * @param ResponseInterface $response
 	 * @return null|false
 	 */
-	function httpPost(RequestInterface $request, ResponseInterface $response) {
-
+	public function httpPost(RequestInterface $request, ResponseInterface $response) {
 		$path = $request->getPath();
 
 		// Only handling xml
 		$contentType = $request->getHeader('Content-Type');
-		if (strpos($contentType, 'application/xml') === false && strpos($contentType, 'text/xml') === false)
+		if (strpos($contentType, 'application/xml') === false && strpos($contentType, 'text/xml') === false) {
 			return;
+		}
 
 		// Making sure the node exists
 		try {
@@ -148,7 +155,7 @@ class Plugin extends ServerPlugin {
 
 			// Dealing with the 'share' document, which modified invitees on a
 			// calendar.
-			case '{' . self::NS_OWNCLOUD . '}share' :
+			case '{' . self::NS_OWNCLOUD . '}share':
 
 				// We can only deal with IShareableCalendar objects
 				if (!$node instanceof IShareable) {
@@ -164,6 +171,12 @@ class Plugin extends ServerPlugin {
 				if ($acl) {
 					/** @var \Sabre\DAVACL\Plugin $acl */
 					$acl->checkPrivileges($path, '{DAV:}write');
+
+					$limitSharingToOwner = $this->config->getAppValue('dav', 'limitAddressBookAndCalendarSharingToOwner', 'no') === 'yes';
+					$isOwner = $acl->getCurrentUserPrincipal() === $node->getOwner();
+					if ($limitSharingToOwner && !$isOwner) {
+						return;
+					}
 				}
 
 				$node->updateShares($message->set, $message->remove);
@@ -188,16 +201,13 @@ class Plugin extends ServerPlugin {
 	 * @param INode $node
 	 * @return void
 	 */
-	function propFind(PropFind $propFind, INode $node) {
+	public function propFind(PropFind $propFind, INode $node) {
 		if ($node instanceof IShareable) {
-
-			$propFind->handle('{' . Plugin::NS_OWNCLOUD . '}invite', function() use ($node) {
+			$propFind->handle('{' . Plugin::NS_OWNCLOUD . '}invite', function () use ($node) {
 				return new Invite(
 					$node->getShares()
 				);
 			});
-
 		}
 	}
-
 }

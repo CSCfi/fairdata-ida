@@ -1,8 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -19,18 +22,18 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OC\Core\Controller;
 
 use OCP\AppFramework\Controller;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\Files\File;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\FileDisplayResponse;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\Files\File;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
@@ -48,9 +51,6 @@ class PreviewController extends Controller {
 	/** @var IPreview */
 	private $preview;
 
-	/** @var ITimeFactory */
-	private $timeFactory;
-
 	/**
 	 * PreviewController constructor.
 	 *
@@ -65,15 +65,13 @@ class PreviewController extends Controller {
 								IRequest $request,
 								IPreview $preview,
 								IRootFolder $root,
-								string $userId,
-								ITimeFactory $timeFactory
+								?string $userId
 	) {
 		parent::__construct($appName, $request);
 
 		$this->preview = $preview;
 		$this->root = $root;
 		$this->userId = $userId;
-		$this->timeFactory = $timeFactory;
 	}
 
 	/**
@@ -88,14 +86,13 @@ class PreviewController extends Controller {
 	 * @param string $mode
 	 * @return DataResponse|FileDisplayResponse
 	 */
-	public function getPreview (
+	public function getPreview(
 		string $file = '',
 		int $x = 32,
 		int $y = 32,
 		bool $a = false,
 		bool $forceIcon = true,
 		string $mode = 'fill'): Http\Response {
-
 		if ($file === '' || $x === 0 || $y === 0) {
 			return new DataResponse([], Http::STATUS_BAD_REQUEST);
 		}
@@ -130,7 +127,6 @@ class PreviewController extends Controller {
 		bool $a = false,
 		bool $forceIcon = true,
 		string $mode = 'fill') {
-
 		if ($fileId === -1 || $x === 0 || $y === 0) {
 			return new DataResponse([], Http::STATUS_BAD_REQUEST);
 		}
@@ -160,10 +156,9 @@ class PreviewController extends Controller {
 		Node $node,
 		int $x,
 		int $y,
-		bool $a = false,
-		bool $forceIcon = true,
+		bool $a,
+		bool $forceIcon,
 		string $mode) : Http\Response {
-
 		if (!($node instanceof File) || (!$forceIcon && !$this->preview->isAvailable($node))) {
 			return new DataResponse([], Http::STATUS_NOT_FOUND);
 		}
@@ -181,6 +176,5 @@ class PreviewController extends Controller {
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse([], Http::STATUS_BAD_REQUEST);
 		}
-
 	}
 }

@@ -1,11 +1,16 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Pavel Krasikov <klonishe@gmail.com>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sam Bull <aa6bs0@sambull.org>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -20,7 +25,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -57,8 +62,12 @@ class ContentSecurityPolicyNonceManager {
 	 * @return string
 	 */
 	public function getNonce(): string {
-		if($this->nonce === '') {
-			$this->nonce = base64_encode($this->csrfTokenManager->getToken()->getEncryptedValue());
+		if ($this->nonce === '') {
+			if (empty($this->request->server['CSP_NONCE'])) {
+				$this->nonce = base64_encode($this->csrfTokenManager->getToken()->getEncryptedValue());
+			} else {
+				$this->nonce = $this->request->server['CSP_NONCE'];
+			}
 		}
 
 		return $this->nonce;
@@ -75,10 +84,10 @@ class ContentSecurityPolicyNonceManager {
 			// Firefox 45+
 			'/^Mozilla\/5\.0 \([^)]+\) Gecko\/[0-9.]+ Firefox\/(4[5-9]|[5-9][0-9])\.[0-9.]+$/',
 			// Safari 12+
-			'/^Mozilla\/5\.0 \([^)]+\) AppleWebKit\/[0-9.]+ \(KHTML, like Gecko\) Version\/(1[2-9]|[2-9][0-9])\.[0-9]+ Safari\/[0-9.A-Z]+$/',
+			'/^Mozilla\/5\.0 \([^)]+\) AppleWebKit\/[0-9.]+ \(KHTML, like Gecko\) Version\/(?:1[2-9]|[2-9][0-9])\.[0-9]+(?:\.[0-9]+)? Safari\/[0-9.A-Z]+$/',
 		];
 
-		if($this->request->isUserAgent($browserWhitelist)) {
+		if ($this->request->isUserAgent($browserWhitelist)) {
 			return true;
 		}
 

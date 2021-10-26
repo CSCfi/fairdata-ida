@@ -40,6 +40,7 @@
 						'<d:propfind xmlns:d="DAV:">' +
 						'<d:prop><d:resourcetype/></d:prop>' +
 						'</d:propfind>',
+				contentType: 'application/xml; charset=utf-8',
 				complete: afterCall,
 				allowAuthErrors: true
 			});
@@ -50,12 +51,12 @@
 		 * Check whether the .well-known URLs works.
 		 *
 		 * @param url the URL to test
-		 * @param placeholderUrl the placeholder URL - can be found at oc_defaults.docPlaceholderUrl
+		 * @param placeholderUrl the placeholder URL - can be found at OC.theme.docPlaceholderUrl
 		 * @param {boolean} runCheck if this is set to false the check is skipped and no error is returned
 		 * @param {int|int[]} expectedStatus the expected HTTP status to be returned by the URL, 207 by default
 		 * @return $.Deferred object resolved with an array of error messages
 		 */
-		checkWellKnownUrl: function(url, placeholderUrl, runCheck, expectedStatus) {
+		checkWellKnownUrl: function(verb, url, placeholderUrl, runCheck, expectedStatus, checkCustomHeader) {
 			if (expectedStatus === undefined) {
 				expectedStatus = [207];
 			}
@@ -72,7 +73,8 @@
 			}
 			var afterCall = function(xhr) {
 				var messages = [];
-				if (expectedStatus.indexOf(xhr.status) === -1) {
+				var customWellKnown = xhr.getResponseHeader('X-NEXTCLOUD-WELL-KNOWN')
+				if (expectedStatus.indexOf(xhr.status) === -1 || (checkCustomHeader && !customWellKnown)) {
 					var docUrl = placeholderUrl.replace('PLACEHOLDER', 'admin-setup-well-known-URL');
 					messages.push({
 						msg: t('core', 'Your web server is not properly set up to resolve "{url}". Further information can be found in the <a target="_blank" rel="noreferrer noopener" href="{docLink}">documentation</a>.', { docLink: docUrl, url: url }),
@@ -83,7 +85,7 @@
 			};
 
 			$.ajax({
-				type: 'PROPFIND',
+				type: verb,
 				url: url,
 				complete: afterCall,
 				allowAuthErrors: true
@@ -96,7 +98,7 @@
 		 * Check whether the .well-known URLs works.
 		 *
 		 * @param url the URL to test
-		 * @param placeholderUrl the placeholder URL - can be found at oc_defaults.docPlaceholderUrl
+		 * @param placeholderUrl the placeholder URL - can be found at OC.theme.docPlaceholderUrl
 		 * @param {boolean} runCheck if this is set to false the check is skipped and no error is returned
 		 *
 		 * @return $.Deferred object resolved with an array of error messages
@@ -135,7 +137,7 @@
 		 * Check whether the WOFF2 URLs works.
 		 *
 		 * @param url the URL to test
-		 * @param placeholderUrl the placeholder URL - can be found at oc_defaults.docPlaceholderUrl
+		 * @param placeholderUrl the placeholder URL - can be found at OC.theme.docPlaceholderUrl
 		 * @return $.Deferred object resolved with an array of error messages
 		 */
 		checkWOFF2Loading: function(url, placeholderUrl) {
@@ -179,7 +181,7 @@
 									'core',
 									'Please check the <a target="_blank" rel="noreferrer noopener" href="{docLink}">installation documentation ↗</a> for PHP configuration notes and the PHP configuration of your server, especially when using php-fpm.',
 									{
-										docLink: oc_defaults.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-php-fpm')
+										docLink: OC.theme.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-php-fpm')
 									}
 								),
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
@@ -205,7 +207,7 @@
 					}
 					if(!data.hasWorkingFileLocking) {
 						messages.push({
-							msg: t('core', 'Transactional file locking is disabled, this might lead to issues with race conditions. Enable "filelocking.enabled" in config.php to avoid these problems. See the <a target="_blank" rel="noreferrer noopener" href="{docLink}">documentation ↗</a> for more information.', {docLink: oc_defaults.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-transactional-locking')}),
+							msg: t('core', 'Transactional file locking is disabled, this might lead to issues with race conditions. Enable "filelocking.enabled" in config.php to avoid these problems. See the <a target="_blank" rel="noreferrer noopener" href="{docLink}">documentation ↗</a> for more information.', {docLink: OC.theme.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-transactional-locking')}),
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 						});
 					}
@@ -213,6 +215,14 @@
 						messages.push({
 							msg: t('core', 'If your installation is not installed at the root of the domain and uses system cron, there can be issues with the URL generation. To avoid these problems, please set the "overwrite.cli.url" option in your config.php file to the webroot path of your installation (suggestion: "{suggestedOverwriteCliURL}")', {suggestedOverwriteCliURL: data.suggestedOverwriteCliURL}),
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
+						});
+					}
+					if (!data.isDefaultPhoneRegionSet) {
+						messages.push({
+							msg: t('core', 'Your installation has no default phone region set. This is required to validate phone numbers in the profile settings without a country code. To allow numbers without a country code, please add "default_phone_region" with the respective {linkstart}ISO 3166-1 code ↗{linkend} of the region to your config file.')
+								.replace('{linkstart}', '<a target="_blank" rel="noreferrer noopener" class="external" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements">')
+								.replace('{linkend}', '</a>'),
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						});
 					}
 					if (data.cronErrors.length > 0) {
@@ -263,17 +273,17 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 						});
 					}
-					if(data.phpSupported && data.phpSupported.eol) {
+					if (data.phpSupported && data.phpSupported.eol) {
 						messages.push({
-							msg: t('core', 'You are currently running PHP {version}. Upgrade your PHP version to take advantage of <a target="_blank" rel="noreferrer noopener" href="{phpLink}">performance and security updates provided by the PHP Group</a> as soon as your distribution supports it.', {version: data.phpSupported.version, phpLink: 'https://secure.php.net/supported-versions.php'}),
+							msg: t('core', 'You are currently running PHP {version}. Upgrade your PHP version to take advantage of <a target="_blank" rel="noreferrer noopener" href="{phpLink}">performance and security updates provided by the PHP Group</a> as soon as your distribution supports it.', { version: data.phpSupported.version, phpLink: 'https://secure.php.net/supported-versions.php' }),
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
-						});
+						})
 					}
-					if(data.phpSupported && data.phpSupported.version.substr(0, 3) === '5.6') {
+					if (data.phpSupported && data.phpSupported.version.substr(0, 3) === '7.2') {
 						messages.push({
-							msg: t('core', 'You are currently running PHP 5.6. The current major version of Nextcloud is the last that is supported on PHP 5.6. It is recommended to upgrade the PHP version to 7.0+ to be able to upgrade to Nextcloud 14.'),
+							msg: t('core', 'Nextcloud 20 is the last release supporting PHP 7.2. Nextcloud 21 requires at least PHP 7.3.'),
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
-						});
+						})
 					}
 					if(!data.forwardedForHeadersWorking) {
 						messages.push({
@@ -356,6 +366,36 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						})
 					}
+					if (data.missingPrimaryKeys.length > 0) {
+						var listOfMissingPrimaryKeys = "";
+						data.missingPrimaryKeys.forEach(function(element){
+							listOfMissingPrimaryKeys += "<li>";
+							listOfMissingPrimaryKeys += t('core', 'Missing primary key on table "{tableName}".', element);
+							listOfMissingPrimaryKeys += "</li>";
+						});
+						messages.push({
+							msg: t(
+								'core',
+								'The database is missing some primary keys. Due to the fact that adding primary keys on big tables could take some time they were not added automatically. By running "occ db:add-missing-primary-keys" those missing primary keys could be added manually while the instance keeps running.'
+							) + "<ul>" + listOfMissingPrimaryKeys + "</ul>",
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
+					if (data.missingColumns.length > 0) {
+						var listOfMissingColumns = "";
+						data.missingColumns.forEach(function(element){
+							listOfMissingColumns += "<li>";
+							listOfMissingColumns += t('core', 'Missing optional column "{columnName}" in table "{tableName}".', element);
+							listOfMissingColumns += "</li>";
+						});
+						messages.push({
+							msg: t(
+								'core',
+								'The database is missing some optional columns. Due to the fact that adding columns on big tables could take some time they were not added automatically when they can be optional. By running "occ db:add-missing-columns" those missing columns could be added manually while the instance keeps running. Once the columns are added some features might improve responsiveness or usability.'
+							) + "<ul>" + listOfMissingColumns + "</ul>",
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
 					if (data.recommendedPHPModules.length > 0) {
 						var listOfRecommendedPHPModules = "";
 						data.recommendedPHPModules.forEach(function(element){
@@ -369,6 +409,15 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						})
 					}
+					if (data.imageMagickLacksSVGSupport) {
+						messages.push({
+							msg: t(
+								'core',
+								'Module php-imagick in this instance has no SVG support. For better compatibility it is recommended to install it.'
+							),
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
 					if (data.pendingBigIntConversionColumns.length > 0) {
 						var listOfPendingBigIntConversionColumns = "";
 						data.pendingBigIntConversionColumns.forEach(function(element){
@@ -379,7 +428,7 @@
 								'core',
 								'Some columns in the database are missing a conversion to big int. Due to the fact that changing column types on big tables could take some time they were not changed automatically. By running \'occ db:convert-filecache-bigint\' those pending changes could be applied manually. This operation needs to be made while the instance is offline. For further details read <a target="_blank" rel="noreferrer noopener" href="{docLink}">the documentation page about this</a>.',
 								{
-									docLink: oc_defaults.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-bigint-conversion'),
+									docLink: OC.theme.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-bigint-conversion'),
 								}
 							) + "<ul>" + listOfPendingBigIntConversionColumns + "</ul>",
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
@@ -401,25 +450,13 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 						})
 					}
-					if (data.isPHPMailerUsed) {
-						messages.push({
-							msg: t(
-								'core',
-								'Use of the the built in php mailer is no longer supported. <a target="_blank" rel="noreferrer noopener" href="{docLink}">Please update your email server settings ↗<a/>.',
-								{
-									docLink: data.mailSettingsDocumentation,
-								}
-							),
-							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
-						});
-					}
 					if (!data.isMemoryLimitSufficient) {
 						messages.push({
 							msg: t(
 								'core',
 								'The PHP memory limit is below the recommended value of 512MB.'
 							),
-							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
+							type: OC.SetupChecks.MESSAGE_TYPE_ERROR
 						})
 					}
 
@@ -444,7 +481,7 @@
 								'core',
 								'MySQL is used as database but does not support 4-byte characters. To be able to handle 4-byte characters (like emojis) without issues in filenames or comments for example it is recommended to enable the 4-byte support in MySQL. For further details read <a target="_blank" rel="noreferrer noopener" href="{docLink}">the documentation page about this</a>.',
 								{
-									docLink: oc_defaults.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-mysql-utf8mb4'),
+									docLink: OC.theme.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-mysql-utf8mb4'),
 								}
 							),
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
@@ -459,6 +496,24 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 						})
 					}
+					if (window.location.protocol === 'http:' && data.reverseProxyGeneratedURL.split('/')[0] !== 'https:') {
+						messages.push({
+							msg: t(
+								'core',
+								'You are accessing your instance over a secure connection, however your instance is generating insecure URLs. This most likely means that you are behind a reverse proxy and the overwrite config variables are not set correctly. Please read <a target="_blank" rel="noreferrer noopener" href="{docLink}">the documentation page about this</a>.',
+								{
+									docLink: data.reverseProxyDocs
+								}
+							),
+							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
+						})
+					}
+
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\PhpDefaultCharset', messages)
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\PhpOutputBuffering', messages)
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\LegacySSEKeyFormat', messages)
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\CheckUserCertificates', messages)
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\SupportedDatabase', messages)
 
 				} else {
 					messages.push({
@@ -475,6 +530,38 @@
 				allowAuthErrors: true
 			}).then(afterCall, afterCall);
 			return deferred.promise();
+		},
+
+		addGenericSetupCheck: function(data, check, messages) {
+			var setupCheck = data[check] || { pass: true, description: '', severity: 'info', linkToDocumentation: null}
+
+			var type = OC.SetupChecks.MESSAGE_TYPE_INFO
+			if (setupCheck.severity === 'warning') {
+				type = OC.SetupChecks.MESSAGE_TYPE_WARNING
+			} else if (setupCheck.severity === 'error') {
+				type = OC.SetupChecks.MESSAGE_TYPE_ERROR
+			}
+
+			var message = setupCheck.description;
+			if (setupCheck.linkToDocumentation) {
+				message += ' ' + t('core', 'For more details see the <a target="_blank" rel="noreferrer noopener" href="{docLink}">documentation</a>.', {docLink: setupCheck.linkToDocumentation});
+			}
+			if (setupCheck.elements) {
+				message += '<br><ul>'
+				setupCheck.elements.forEach(function(element){
+					message += '<li>';
+					message += element
+					message += '</li>';
+				});
+				message += '</ul>'
+			}
+
+			if (!setupCheck.pass) {
+				messages.push({
+					msg: message,
+					type: type,
+				})
+			}
 		},
 
 		/**
@@ -572,12 +659,8 @@
 					});
 				}
 
-				if (!xhr.getResponseHeader('Referrer-Policy') ||
-					(xhr.getResponseHeader('Referrer-Policy').toLowerCase() !== 'no-referrer' &&
-					xhr.getResponseHeader('Referrer-Policy').toLowerCase() !== 'no-referrer-when-downgrade' &&
-					xhr.getResponseHeader('Referrer-Policy').toLowerCase() !== 'strict-origin' &&
-					xhr.getResponseHeader('Referrer-Policy').toLowerCase() !== 'strict-origin-when-cross-origin' &&
-					xhr.getResponseHeader('Referrer-Policy').toLowerCase() !== 'same-origin')) {
+				const referrerPolicy = xhr.getResponseHeader('Referrer-Policy')
+				if (referrerPolicy === null || !/(no-referrer(-when-downgrade)?|strict-origin(-when-cross-origin)?|same-origin)(,|$)/.test(referrerPolicy)) {
 					messages.push({
 						msg: t('core', 'The "{header}" HTTP header is not set to "{val1}", "{val2}", "{val3}", "{val4}" or "{val5}". This can leak referer information. See the <a target="_blank" rel="noreferrer noopener" href="{link}">W3C Recommendation ↗</a>.',
 							{
@@ -590,7 +673,7 @@
 								link: 'https://www.w3.org/TR/referrer-policy/'
 							}),
 						type: OC.SetupChecks.MESSAGE_TYPE_INFO
-					});
+					})
 				}
 			} else {
 				messages.push({
@@ -612,7 +695,7 @@
 			var messages = [];
 
 			if (xhr.status === 200) {
-				var tipsUrl = oc_defaults.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-security');
+				var tipsUrl = OC.theme.docPlaceholderUrl.replace('PLACEHOLDER', 'admin-security');
 				if(OC.getProtocol() === 'https') {
 					// Extract the value of 'Strict-Transport-Security'
 					var transportSecurityValidity = xhr.getResponseHeader('Strict-Transport-Security');
@@ -634,7 +717,7 @@
 					}
 				} else {
 					messages.push({
-						msg: t('core', 'Accessing site insecurely via HTTP. You are strongly adviced to set up your server to require HTTPS instead, as described in the <a href="{docUrl}">security tips ↗</a>.', {docUrl:  tipsUrl}),
+						msg: t('core', 'Accessing site insecurely via HTTP. You are strongly advised to set up your server to require HTTPS instead, as described in the <a href="{docUrl}">security tips ↗</a>.', {docUrl:  tipsUrl}),
 						type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 					});
 				}

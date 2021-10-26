@@ -16,6 +16,7 @@
     Header set X-Robots-Tag "none"
     Header set X-Download-Options "noopen"
     Header set X-Permitted-Cross-Domain-Policies "none"
+    Header set X-Frame-Options "sameorigin"
     SetEnv modHeadersAvailable true
   </IfModule>
 
@@ -59,8 +60,8 @@
   RewriteRule .* - [env=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
   RewriteRule ^\.well-known/host-meta /public.php?service=host-meta [QSA,L]
   RewriteRule ^\.well-known/host-meta\.json /public.php?service=host-meta-json [QSA,L]
-  RewriteRule ^\.well-known/carddav /remote.php/dav/ [R=301,L]
-  RewriteRule ^\.well-known/caldav /remote.php/dav/ [R=301,L]
+  RewriteRule ^\.well-known/carddav /remote.php/dav [R=301,L]
+  RewriteRule ^\.well-known/caldav /remote.php/dav [R=301,L]
   RewriteRule ^remote/(.*) remote.php [QSA,L]
   RewriteRule ^(?:build|tests|config|lib|3rdparty|templates)/.* - [R=404,L]
   RewriteCond %{REQUEST_URI} !^/.well-known/acme-challenge/.*
@@ -115,3 +116,6 @@ ErrorDocument 404 //
 </IfModule>
 Header always set Referrer-Policy "no-referrer"
 Header always set Strict-Transport-Security "max-age=15552000; includeSubDomains"
+<IfModule mod_headers.c>
+  Header set X-XSS-Protection "0"
+</IfModule>

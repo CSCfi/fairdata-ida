@@ -4,10 +4,12 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -22,7 +24,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -34,6 +36,7 @@
 
 // use OCP namespace for all classes that are considered public.
 // This means that they should be used by apps instead of the internal ownCloud classes
+
 namespace OCP;
 
 /**
@@ -43,6 +46,7 @@ namespace OCP;
  * It provides the following hooks:
  *  - post_shared
  * @since 5.0.0
+ * @deprecated 17.0.0
  */
 class Share extends \OC\Share\Constants {
 
@@ -54,6 +58,7 @@ class Share extends \OC\Share\Constants {
 	 * @param string $owner Owner of the share
 	 * @return array Return list of items with file_target, permissions and expiration
 	 * @since 6.0.0 - parameter $owner was added in 8.0.0
+	 * @deprecated 17.0.0
 	 */
 	public static function getItemSharedWithUser($itemType, $itemSource, $user, $owner = null) {
 		return \OC\Share\Share::getItemSharedWithUser($itemType, $itemSource, $user, $owner);
@@ -68,10 +73,11 @@ class Share extends \OC\Share\Constants {
 	 * @param bool $includeCollections
 	 * @return array
 	 * @since 5.0.0
+	 * @deprecated 17.0.0
 	 */
 	public static function getItemSharedWithBySource($itemType, $itemSource, $format = self::FORMAT_NONE,
 		$parameters = null, $includeCollections = false) {
-		return \OC\Share\Share::getItemSharedWithBySource($itemType, $itemSource, $format, $parameters, $includeCollections);
+		// not used by any app - only here to not break apps syntax
 	}
 
 	/**
@@ -80,9 +86,10 @@ class Share extends \OC\Share\Constants {
 	 * @param bool $checkPasswordProtection
 	 * @return array|bool false will be returned in case the token is unknown or unauthorized
 	 * @since 5.0.0 - parameter $checkPasswordProtection was added in 7.0.0
+	 * @deprecated 17.0.0
 	 */
 	public static function getShareByToken($token, $checkPasswordProtection = true) {
-		return \OC\Share\Share::getShareByToken($token, $checkPasswordProtection);
+		// not used by any app - only here to not break apps syntax
 	}
 
 
@@ -95,11 +102,12 @@ class Share extends \OC\Share\Constants {
 	 * @param bool $includeCollections
 	 * @return mixed Return depends on format
 	 * @since 5.0.0
+	 * @deprecated 17.0.0
 	 */
 	public static function getItemsShared($itemType, $format = self::FORMAT_NONE, $parameters = null,
 		$limit = -1, $includeCollections = false) {
 
-		return \OC\Share\Share::getItemsShared($itemType, $format, $parameters, $limit, $includeCollections);
+		// only used by AppVNCSafe app (https://github.com/vnc-biz/nextcloud-appvncsafe/issues/2) - only here to not break apps syntax
 	}
 
 	/**
@@ -111,11 +119,14 @@ class Share extends \OC\Share\Constants {
 	 * @param bool $includeCollections
 	 * @return mixed Return depends on format
 	 * @since 5.0.0
+	 * @deprecated 17.0.0
+	 *
+	 * Refactoring notes:
+	 *   * defacto $parameters and $format is always the default and therefore is removed in the subsequent call
 	 */
 	public static function getItemShared($itemType, $itemSource, $format = self::FORMAT_NONE,
-	                                     $parameters = null, $includeCollections = false) {
-
-		return \OC\Share\Share::getItemShared($itemType, $itemSource, $format, $parameters, $includeCollections);
+										 $parameters = null, $includeCollections = false) {
+		return \OC\Share\Share::getItemShared($itemType, $itemSource, self::FORMAT_NONE, null, $includeCollections);
 	}
 
 	/**
@@ -126,8 +137,9 @@ class Share extends \OC\Share\Constants {
 	 * @param string $recipient with whom was the item shared
 	 * @param bool $status
 	 * @since 6.0.0 - parameter $originIsSource was added in 8.0.0
+	 * @deprecated 17.0.0
 	 */
 	public static function setSendMailStatus($itemType, $itemSource, $shareType, $recipient, $status) {
-		return \OC\Share\Share::setSendMailStatus($itemType, $itemSource, $shareType, $recipient, $status);
+		// not used by any app - only here to not break apps syntax
 	}
 }

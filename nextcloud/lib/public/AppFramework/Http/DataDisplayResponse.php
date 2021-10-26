@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -18,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -29,7 +30,6 @@ use OCP\AppFramework\Http;
 /**
  * Class DataDisplayResponse
  *
- * @package OCP\AppFramework\Http
  * @since 8.1.0
  */
 class DataDisplayResponse extends Response {
@@ -47,8 +47,10 @@ class DataDisplayResponse extends Response {
 	 * @param array $headers additional key value based headers
 	 * @since 8.1.0
 	 */
-	public function __construct($data='', $statusCode=Http::STATUS_OK,
-	                            $headers=[]) {
+	public function __construct($data = '', $statusCode = Http::STATUS_OK,
+								$headers = []) {
+		parent::__construct();
+
 		$this->data = $data;
 		$this->setStatus($statusCode);
 		$this->setHeaders(array_merge($this->getHeaders(), $headers));
@@ -71,7 +73,7 @@ class DataDisplayResponse extends Response {
 	 * @return DataDisplayResponse Reference to this object
 	 * @since 8.1.0
 	 */
-	public function setData($data){
+	public function setData($data) {
 		$this->data = $data;
 
 		return $this;
@@ -83,8 +85,7 @@ class DataDisplayResponse extends Response {
 	 * @return string the data
 	 * @since 8.1.0
 	 */
-	public function getData(){
+	public function getData() {
 		return $this->data;
 	}
-
 }

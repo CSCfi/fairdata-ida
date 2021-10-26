@@ -51,12 +51,18 @@ class Resources
     const TABLE_ENDPOINT_NAME = 'TableEndpoint';
     const FILE_ENDPOINT_NAME = 'FileEndpoint';
     const SHARED_ACCESS_SIGNATURE_NAME = 'SharedAccessSignature';
+    const ENDPOINT_SUFFIX_NAME = 'EndpointSuffix';
+    const DEFAULT_ENDPOINT_SUFFIX = 'core.windows.net';
     const DEV_STORE_NAME = 'devstoreaccount1';
     const DEV_STORE_KEY = 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
     const BLOB_BASE_DNS_NAME = 'blob.core.windows.net';
+    const BLOB_DNS_PREFIX = 'blob.';
     const QUEUE_BASE_DNS_NAME = 'queue.core.windows.net';
+    const QUEUE_DNS_PREFIX = 'queue.';
     const TABLE_BASE_DNS_NAME = 'table.core.windows.net';
+    const TABLE_DNS_PREFIX = 'table.';
     const FILE_BASE_DNS_NAME = 'file.core.windows.net';
+    const FILE_DNS_PREFIX = 'file.';
     const DEV_STORE_CONNECTION_STRING = 'BlobEndpoint=127.0.0.1:10000;QueueEndpoint=127.0.0.1:10001;TableEndpoint=127.0.0.1:10002;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
     const SUBSCRIPTION_ID_NAME = 'SubscriptionID';
     const CERTIFICATE_PATH_NAME = 'CertificatePath';
@@ -83,6 +89,7 @@ class Resources
     const INVALID_CREATE_SERVICE_OPTIONS_MSG = 'Must provide valid location or affinity group.';
     const INVALID_UPDATE_SERVICE_OPTIONS_MSG = 'Must provide either description or label.';
     const INVALID_CONFIG_MSG = 'Config object must be of type Configuration';
+    const INVALID_CONFIG_HOSTNAME = "The provided hostname '%s' is invalid.";
     const INVALID_CONFIG_URI = "The provided URI '%s' is invalid. It has to pass the check 'filter_var(<user_uri>, FILTER_VALIDATE_URL)'.";
     const INVALID_CONFIG_VALUE = "The provided config value '%s' does not belong to the valid values subset:\n%s";
     const INVALID_ACCOUNT_KEY_FORMAT = "The provided account key '%s' is not a valid base64 string. It has to pass the check 'base64_decode(<user_account_key>, true)'.";
@@ -124,6 +131,7 @@ class Resources
     const INVALID_ACCEPT_CONTENT_TYPE = "The given accept content type is not valid.";
     const ERROR_CANNOT_PARSE_XML = "Cannot parse XML, reasons: %s";
     const INVALID_SCHEME = 'HTTP scheme can only be string \'http\' or \'https\'.';
+    const AAD_TOKEN_MUST_START_WITH_BEARER = 'AAD token is invalid, please make sure that it has format \'Bearer ################\'';
 
     // HTTP Headers
     const X_MS_HEADER_PREFIX                 = 'x-ms-';
@@ -150,6 +158,7 @@ class Resources
     const X_MS_CONTINUATION_NEXTPARTITIONKEY = 'x-ms-continuation-nextpartitionkey';
     const X_MS_CONTINUATION_NEXTROWKEY       = 'x-ms-continuation-nextrowkey';
     const X_MS_REQUEST_ID                    = 'x-ms-request-id';
+    const X_MS_CLIENT_REQUEST_ID             = 'x-ms-client-request-id';
     const X_MS_CONTINUATION_LOCATION_MODE    = 'x-ms-continuation-location-mode';
     const X_MS_TYPE                          = 'x-ms-type';
     const X_MS_CONTENT_LENGTH                = 'x-ms-content-length';
@@ -170,7 +179,8 @@ class Resources
     const CONTENT_LENGTH                     = 'content-length';
     const CONTENT_LENGTH_NO_SPACE            = 'contentlength';
     const CONTENT_MD5                        = 'content-md5';
-    const CONTENT_TYPE                       = 'content-type';
+    const CONTENT_TYPE_LOWER_CASE            = 'content-type';
+    const CONTENT_TYPE                       = 'Content-Type';
     const CONTENT_ID                         = 'content-id';
     const CONTENT_RANGE                      = 'content-range';
     const CACHE_CONTROL                      = 'cache-control';
@@ -228,18 +238,22 @@ class Resources
     const NUMBER_OF_CONCURRENCY = 25;//Guzzle's default value
     const DEFAULT_NUMBER_OF_RETRIES = 3;
     const DEFAULT_RETRY_INTERVAL = 1000;//Milliseconds
+    const BEARER = 'Bearer ';
 
     // Header values
-    const COMMON_SDK_VERSION                 = '1.2.0';
+    const COMMON_SDK_VERSION                 = '1.5.1';
     const INT32_MAX                          = 2147483647;
     const INT32_MIN                          = -2147483648;
 
     // Query parameter names
     const QP_ENTRIES            = 'Entries';
     const QP_PREFIX             = 'Prefix';
+    const QP_PREFIX_LOWERCASE   = 'prefix';
     const QP_MAX_RESULTS        = 'MaxResults';
-    const QP_METADATA           = 'Metadata';
+    const QP_MAX_RESULTS_LOWERCASE = 'maxresults';
     const QP_MARKER             = 'Marker';
+    const QP_MARKER_LOWERCASE   = 'marker';
+    const QP_METADATA           = 'Metadata';
     const QP_NEXT_MARKER        = 'NextMarker';
     const QP_COMP               = 'comp';
     const QP_INCLUDE            = 'include';

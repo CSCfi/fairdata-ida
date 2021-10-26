@@ -17,7 +17,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -28,7 +28,6 @@ namespace OCP\Collaboration\AutoComplete;
  *
  * Sorts the list of .e.g users for auto completion
  *
- * @package OCP\Collaboration\AutoComplete
  * @since 13.0.0
  */
 interface ISorter {

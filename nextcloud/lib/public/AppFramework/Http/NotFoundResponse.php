@@ -2,8 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -17,33 +19,25 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OCP\AppFramework\Http;
 
-use OCP\Template;
-
 /**
  * A generic 404 response showing an 404 error page as well to the end-user
  * @since 8.1.0
  */
-class NotFoundResponse extends Response {
+class NotFoundResponse extends TemplateResponse {
 
 	/**
 	 * @since 8.1.0
 	 */
 	public function __construct() {
-		$this->setStatus(404);
-	}
+		parent::__construct('core', '404', [], 'guest');
 
-	/**
-	 * @return string
-	 * @since 8.1.0
-	 */
-	public function render() {
-		$template = new Template('core', '404', 'guest');
-		return $template->fetchPage();
+		$this->setContentSecurityPolicy(new ContentSecurityPolicy());
+		$this->setStatus(404);
 	}
 }

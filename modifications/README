@@ -46,33 +46,60 @@ and the modified file with the same filename without the '.original' suffix.
 General aspects of server configuration are not covered here. Only those aspects which require addition to or
 modification of the /nextcloud directory tree after updating Nextcloud.
 
-The list of modified Nextcloud files, either modified in-place or overridden in the IDA theme
-can be easily obtained with the provided script list-modified-files, located in the same
-directory as this README file.
-
-The list of essential Nextcloud apps which cannot be removed from the official distribution are listed in
-the file essential-nextcloud-apps, located in the same directory as this README file.
-
 
 -- INSTALLING A NEWER VERSION OF NEXTCLOUD INTO AN EXISTING IDA SERVICE
 
+>> Execute /var/ida/utils/stop-all to halt apache and the postprocessing agents
 >> Rename the existing /nextcloud directory to /nextcloud-old
 >> Download and unzip the latest Nextcloud package as /nextcloud
->> Ensure the following are installed: php7*-intl php7*-pgsql php7*-zip php7*-gd
 >> Copy /nextcloud-old/themes/ida to /nextcloud/themes/ida
 >> Copy /nextcloud-old/apps/ida to /nextcloud/apps/ida
->> Copy /nextcloud-old/apps/user_saml to /nextcloud/apps/user_saml
+>> Copy /nextcloud-old/apps/idafirstrunwizard to /nextcloud/apps/idafirstrunwizard
 >> Copy /nextcloud-old/.htaccess to /nextcloud/.htaccess
 >> Copy /nextcloud-old/config/config.php to /nextcloud/config/config.php
+>> Edit /var/ida/nextcloud/apps/ida/appinfo/info.xml and update min-version and max-version to new Nextcloud major version
+>> Edit /var/ida/nextcloud/apps/idafirstrunwizard/appinfo/info.xml and update min-version and max-version to new Nextcloud major version
 >> Edit /nextcloud/config.php to update the Nextcloud version to the newly installed version (c.f. /nextcloud/version.php)
->> Restart apache
+>> Execute /var/ida/utils/fix-permissions
+>> Execute /var/ida/utils/restart-www
 >> Open Nextcloud in browser, and approve the update process when prompted
->> Log in as admin and disable all apps except Files sharing and First run wizard, and disable / do not enable IDA app
->> Run 'occ db:add-missing-indices' to fix database
+>> Log in as admin and do the following:
+   - Disable all apps except those listed in essential_nextcloud_apps
+   - Disable / do not enable the IDA app
+   - Update all settings to match production options as closely as possible
+   - Go to the admin/settings/overview page and follow guidance as recommended and relevant
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
->> Create new '.original' copies within /nextcloud of all in-place modified files listed below 
->> Copy all in-place modified files from /nextcloud-old to their equivalent locations in /nextcloud
->> Restart apache
->> Log in as admin and enable IDA app
->> UPDATE ALL OF THE MODIFIED FILES AND ANY NEW FILES, AS REQUIRED
+>> Execute /var/ida/utils/restart-www
+>> Log in as admin and enable IDA app and IDA First Run Wizard app
+>> Use the utility script list-modified-files to identify all files that were modified during the last upgrade
+>> Analyze all previously modified files and compare to existing new files, and modify accordingly
+>> IMPORTANT! Be sure to create new '.original' copies of new files BEFORE modifying them, for use during the next upgrade!!!
+>> Where previously modified files don't exist in the new codebase, determine where those modifications need to be made
+>> DEBUG, DEBUG, DEBUG...
+
+Note that not all files which were modified previously will necessarily exist in the new version of Nextcloud, in which 
+case the new code base will have to be analyzed to determine where the modifications made previously will have to be made
+per the changes between versions of Nextcloud.
+
+
+-- UTILITY SCRIPTS
+
+The utility scripts in this directory expect that the old version of nextcloud is accessible as
+$ROOT/nextcloud-old and the new version of nextcloud is accessible as $ROOT/nextcloud-new, either
+by renaming of directories or via symbolic links.
+
+The list of essential Nextcloud apps which cannot be removed from the official distribution are listed in
+the file essential_nextcloud_apps.
+
+A list of modified Nextcloud files can be easily obtained with the script list-modified-files.
+
+Diffs of all modified files in the old version of nextcloud can be generated using the script
+generate-diffs, and will be stored in the ./diffs/ subdirectory by their relative pathnames.
+
+A list of files modified in the old version of nextcloud which do not exist in the new version
+of nextcloud can be obtaind via the script list-missing-new-modified-files.
+
+Original copies of files modified in the old nextcloud can be created in the new nextcloud, for
+those that exist in the new nextcloud, using the script create-new-original-files.
+
 

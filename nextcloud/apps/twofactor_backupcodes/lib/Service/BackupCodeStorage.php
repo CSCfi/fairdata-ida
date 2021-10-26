@@ -1,7 +1,10 @@
 <?php
-
 /**
+ *
+ *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -16,25 +19,21 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCA\TwoFactorBackupCodes\Service;
 
-use BadMethodCallException;
 use OCA\TwoFactorBackupCodes\Db\BackupCode;
 use OCA\TwoFactorBackupCodes\Db\BackupCodeMapper;
 use OCA\TwoFactorBackupCodes\Event\CodesGenerated;
-use OCP\Activity\IManager;
-use OCP\ILogger;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IUser;
 use OCP\Security\IHasher;
 use OCP\Security\ISecureRandom;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class BackupCodeStorage {
-
 	private static $CODE_LENGTH = 16;
 
 	/** @var BackupCodeMapper */
@@ -46,13 +45,13 @@ class BackupCodeStorage {
 	/** @var ISecureRandom */
 	private $random;
 
-	/** @var EventDispatcherInterface */
+	/** @var IEventDispatcher */
 	private $eventDispatcher;
 
 	public function __construct(BackupCodeMapper $mapper,
 								ISecureRandom $random,
 								IHasher $hasher,
-								EventDispatcherInterface $eventDispatcher) {
+								IEventDispatcher $eventDispatcher) {
 		$this->mapper = $mapper;
 		$this->hasher = $hasher;
 		$this->random = $random;
@@ -71,7 +70,7 @@ class BackupCodeStorage {
 
 		$uid = $user->getUID();
 		foreach (range(1, min([$number, 20])) as $i) {
-			$code = $this->random->generate(self::$CODE_LENGTH, ISecureRandom::CHAR_UPPER . ISecureRandom::CHAR_DIGITS);
+			$code = $this->random->generate(self::$CODE_LENGTH, ISecureRandom::CHAR_HUMAN_READABLE);
 
 			$dbCode = new BackupCode();
 			$dbCode->setUserId($uid);
@@ -82,7 +81,7 @@ class BackupCodeStorage {
 			$result[] = $code;
 		}
 
-		$this->eventDispatcher->dispatch(CodesGenerated::class, new CodesGenerated($user));
+		$this->eventDispatcher->dispatchTyped(new CodesGenerated($user));
 
 		return $result;
 	}
@@ -133,5 +132,4 @@ class BackupCodeStorage {
 		}
 		return false;
 	}
-
 }

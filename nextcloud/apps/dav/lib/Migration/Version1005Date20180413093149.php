@@ -1,8 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright 2018, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -18,16 +21,16 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCA\DAV\Migration;
 
-use Doctrine\DBAL\Types\Type;
+use OCP\DB\Types;
 use OCP\DB\ISchemaWrapper;
-use OCP\Migration\SimpleMigrationStep;
 use OCP\Migration\IOutput;
+use OCP\Migration\SimpleMigrationStep;
 
 class Version1005Date20180413093149 extends SimpleMigrationStep {
 
@@ -45,26 +48,26 @@ class Version1005Date20180413093149 extends SimpleMigrationStep {
 		if (!$schema->hasTable('directlink')) {
 			$table = $schema->createTable('directlink');
 
-			$table->addColumn('id',Type::BIGINT, [
+			$table->addColumn('id',Types::BIGINT, [
 				'autoincrement' => true,
 				'notnull' => true,
 				'length' => 11,
 				'unsigned' => true,
 			]);
-			$table->addColumn('user_id', Type::STRING, [
+			$table->addColumn('user_id', Types::STRING, [
 				'notnull' => false,
 				'length' => 64,
 			]);
-			$table->addColumn('file_id', Type::BIGINT, [
+			$table->addColumn('file_id', Types::BIGINT, [
 				'notnull' => true,
 				'length' => 11,
 				'unsigned' => true,
 			]);
-			$table->addColumn('token', Type::STRING, [
+			$table->addColumn('token', Types::STRING, [
 				'notnull' => false,
 				'length' => 60,
 			]);
-			$table->addColumn('expiration', Type::BIGINT, [
+			$table->addColumn('expiration', Types::BIGINT, [
 				'notnull' => true,
 				'length' => 11,
 				'unsigned' => true,

@@ -3,7 +3,9 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -17,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -39,19 +41,21 @@ class DataResponse extends Response {
 
 	/**
 	 * response data
-	 * @var array|object
+	 * @var array|int|float|string|bool|object
 	 */
 	protected $data;
 
 
 	/**
-	 * @param array|object $data the object or array that should be transformed
+	 * @param array|int|float|string|bool|object $data the object or array that should be transformed
 	 * @param int $statusCode the Http status code, defaults to 200
 	 * @param array $headers additional key value based headers
 	 * @since 8.0.0
 	 */
-	public function __construct($data=array(), $statusCode=Http::STATUS_OK,
-	                            array $headers=array()) {
+	public function __construct($data = [], $statusCode = Http::STATUS_OK,
+								array $headers = []) {
+		parent::__construct();
+
 		$this->data = $data;
 		$this->setStatus($statusCode);
 		$this->setHeaders(array_merge($this->getHeaders(), $headers));
@@ -60,11 +64,11 @@ class DataResponse extends Response {
 
 	/**
 	 * Sets values in the data json array
-	 * @param array|object $data an array or object which will be transformed
+	 * @param array|int|float|string|object $data an array or object which will be transformed
 	 * @return DataResponse Reference to this object
 	 * @since 8.0.0
 	 */
-	public function setData($data){
+	public function setData($data) {
 		$this->data = $data;
 
 		return $this;
@@ -73,12 +77,10 @@ class DataResponse extends Response {
 
 	/**
 	 * Used to get the set parameters
-	 * @return array the data
+	 * @return array|int|float|string|bool|object the data
 	 * @since 8.0.0
 	 */
-	public function getData(){
+	public function getData() {
 		return $this->data;
 	}
-
-
 }

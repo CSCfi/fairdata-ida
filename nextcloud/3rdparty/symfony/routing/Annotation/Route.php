@@ -40,7 +40,7 @@ class Route
     public function __construct(array $data)
     {
         if (isset($data['localized_paths'])) {
-            throw new \BadMethodCallException(sprintf('Unknown property "localized_paths" on annotation "%s".', \get_class($this)));
+            throw new \BadMethodCallException(sprintf('Unknown property "localized_paths" on annotation "%s".', static::class));
         }
 
         if (isset($data['value'])) {
@@ -53,10 +53,25 @@ class Route
             unset($data['path']);
         }
 
+        if (isset($data['locale'])) {
+            $data['defaults']['_locale'] = $data['locale'];
+            unset($data['locale']);
+        }
+
+        if (isset($data['format'])) {
+            $data['defaults']['_format'] = $data['format'];
+            unset($data['format']);
+        }
+
+        if (isset($data['utf8'])) {
+            $data['options']['utf8'] = filter_var($data['utf8'], \FILTER_VALIDATE_BOOLEAN) ?: false;
+            unset($data['utf8']);
+        }
+
         foreach ($data as $key => $value) {
             $method = 'set'.str_replace('_', '', $key);
             if (!method_exists($this, $method)) {
-                throw new \BadMethodCallException(sprintf('Unknown property "%s" on annotation "%s".', $key, \get_class($this)));
+                throw new \BadMethodCallException(sprintf('Unknown property "%s" on annotation "%s".', $key, static::class));
             }
             $this->$method($value);
         }

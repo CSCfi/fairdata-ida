@@ -78,11 +78,7 @@
 				fileActions.getCurrentPermissions()
 			);
 
-			var defaultAction = fileActions.getDefaultFileAction(
-				fileActions.getCurrentMimeType(),
-				fileActions.getCurrentType(),
-				fileActions.getCurrentPermissions()
-			);
+			var defaultAction = fileActions.getCurrentDefaultFileAction();
 
 			var items = _.filter(actions, function(actionSpec) {
 				return !defaultAction || actionSpec.name !== defaultAction.name;

@@ -1,9 +1,13 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright 2018 Georg Ehrke <oc.list@georgehrke.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,9 +22,10 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCA\DAV\CalDAV\WebcalCaching;
 
 use OCA\DAV\CalDAV\CalendarHome;
@@ -39,12 +44,12 @@ class Plugin extends ServerPlugin {
 	 *
 	 * @var string[]
 	 */
-	const ENABLE_FOR_CLIENTS = [];
+	public const ENABLE_FOR_CLIENTS = [];
 
 	/**
 	 * @var bool
 	 */
-	private $enabled=false;
+	private $enabled = false;
 
 	/**
 	 * @var Server
@@ -79,7 +84,7 @@ class Plugin extends ServerPlugin {
 	 */
 	public function initialize(Server $server) {
 		$this->server = $server;
-		$server->on('beforeMethod', [$this, 'beforeMethod']);
+		$server->on('beforeMethod:*', [$this, 'beforeMethod']);
 	}
 
 	/**
@@ -107,7 +112,7 @@ class Plugin extends ServerPlugin {
 			}
 
 			$calendarHome->enableCachedSubscriptionsForThisRequest();
-		} catch(NotFound $ex) {
+		} catch (NotFound $ex) {
 			return;
 		}
 	}

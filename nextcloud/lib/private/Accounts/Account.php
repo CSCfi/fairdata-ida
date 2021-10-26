@@ -5,6 +5,7 @@ declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2018 Julius Härtl <jus@bitgrid.net>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Julius Härtl <jus@bitgrid.net>
  *
  * @license GNU AGPL version 3 or any later version
@@ -60,7 +61,7 @@ class Account implements IAccount {
 	}
 
 	public function getFilteredProperties(string $scope = null, string $verified = null): array {
-		return \array_filter($this->properties, function(IAccountProperty $obj) use ($scope, $verified){
+		return \array_filter($this->properties, function (IAccountProperty $obj) use ($scope, $verified) {
 			if ($scope !== null && $scope !== $obj->getScope()) {
 				return false;
 			}

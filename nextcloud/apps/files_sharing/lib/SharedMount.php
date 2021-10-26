@@ -3,12 +3,13 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Frédéric Fortier <frederic.fortier@oronospolytechnique.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -22,7 +23,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -33,7 +34,9 @@ use OC\Files\Filesystem;
 use OC\Files\Mount\MountPoint;
 use OC\Files\Mount\MoveableMount;
 use OC\Files\View;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\Storage\IStorageFactory;
+use OCP\Share\Events\VerifyMountPointEvent;
 
 /**
  * Shared mount points can be moved by the user
@@ -87,9 +90,14 @@ class SharedMount extends MountPoint implements MoveableMount {
 	 * @return string
 	 */
 	private function verifyMountPoint(\OCP\Share\IShare $share, array $mountpoints, CappedMemoryCache $folderExistCache) {
-
 		$mountPoint = basename($share->getTarget());
 		$parent = dirname($share->getTarget());
+
+		$event = new VerifyMountPointEvent($share, $this->recipientView, $parent);
+		/** @var IEventDispatcher $dispatcher */
+		$dispatcher = \OC::$server->query(IEventDispatcher::class);
+		$dispatcher->dispatchTyped($event);
+		$parent = $event->getParent();
 
 		if ($folderExistCache->hasKey($parent)) {
 			$parentExists = $folderExistCache->get($parent);
@@ -185,7 +193,6 @@ class SharedMount extends MountPoint implements MoveableMount {
 	 * @return bool
 	 */
 	public function moveMount($target) {
-
 		$relTargetPath = $this->stripUserFilesPath($target);
 		$share = $this->storage->getShare();
 
@@ -209,7 +216,7 @@ class SharedMount extends MountPoint implements MoveableMount {
 	 */
 	public function removeMount() {
 		$mountManager = \OC\Files\Filesystem::getMountManager();
-		/** @var $storage \OCA\Files_Sharing\SharedStorage */
+		/** @var \OCA\Files_Sharing\SharedStorage $storage */
 		$storage = $this->getStorage();
 		$result = $storage->unshareStorage();
 		$mountManager->removeMount($this->mountPoint);

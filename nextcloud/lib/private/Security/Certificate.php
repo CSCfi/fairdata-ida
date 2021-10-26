@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
@@ -18,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -54,12 +55,12 @@ class Certificate implements ICertificate {
 
 		// If string starts with "file://" ignore the certificate
 		$query = 'file://';
-		if(strtolower(substr($data, 0, strlen($query))) === $query) {
+		if (strtolower(substr($data, 0, strlen($query))) === $query) {
 			throw new \Exception('Certificate could not get parsed.');
 		}
 
 		$info = openssl_x509_parse($data);
-		if(!is_array($info)) {
+		if (!is_array($info)) {
 			throw new \Exception('Certificate could not get parsed.');
 		}
 

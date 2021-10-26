@@ -1,58 +1,45 @@
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Amazon S3 &#8212; Nextcloud latest Administration Manual latest documentation</title>
-    <link rel="stylesheet" href="../../_static/" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/main.min.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles.css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="../../_static/language_data.js"></script>
-    <script type="text/javascript" src="../../_static/js/jquery-1.11.0.min.js"></script>
-    <script type="text/javascript" src="../../_static/js/jquery-fix.js"></script>
-    <script type="text/javascript" src="../../_static/bootstrap-3.1.0/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amazon S3 &mdash; Nextcloud latest Administration Manual latest documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="FTP/FTPS" href="ftp.html" />
-    <link rel="prev" title="Configuring External Storage (GUI)" href="../external_storage_configuration_gui.html" />
-<meta charset='utf-8'>
-<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
-<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1d2d44">
+    <link rel="prev" title="Configuring External Storage (GUI)" href="../external_storage_configuration_gui.html" /> 
+</head>
 
-  </head><body>
-
-
-<div class="wrap container not-front">
-  <div class="content row">
-  <main class="main">
-    
-			<div class="row">
-				<div class="col-md-3">
-					<div class="sidebar">
-            <h1>Nextcloud latest Administration Manual</h1>
-            
-            <div class="sidebar-search">
-              <form class="headersearch" action="../../search.html" method="get">
-                <input type="text" value="" name="q" id="q" class="form-control" /> 
-                <button  class="btn btn-default" type="submit" id="searchsubmit">Search</button>
-              </form>
-            </div>
-            
-							<div class="menu-support-container">
-								<ul id="menu-support" class="menu">
-									<ul>
-                    <li><a href="../../contents.html">Table of Contents</a></li>
-									</ul>
-                  <ul class="current">
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../contents.html">
+            <img src="../../_static/logo-white.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release_notes.html">Release notes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../release_schedule.html">Maintenance and release schedule</a></li>
@@ -69,56 +56,76 @@
 <li class="toctree-l2 current"><a class="reference internal" href="../external_storage_configuration_gui.html">Configuring External Storage (GUI)</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#enabling-external-storage-support">Enabling External Storage Support</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#storage-configuration">Storage configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#usage-of-variables-for-mount-paths">Usage of variables for mount paths</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#user-and-group-permissions">User and group permissions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#mount-options">Mount options</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#using-self-signed-certificates">Using self-signed certificates</a></li>
-<li class="toctree-l3 current"><a class="reference internal" href="../external_storage_configuration_gui.html#available-storage-backends">Available storage backends</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="../external_storage_configuration_gui.html#available-storage-backends">Available storage backends</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Amazon S3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ftp.html">FTP/FTPS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="local.html">Local</a></li>
+<li class="toctree-l4"><a class="reference internal" href="nextcloud.html">Nextcloud</a></li>
+<li class="toctree-l4"><a class="reference internal" href="openstack.html">OpenStack Object Storage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="sftp.html">SFTP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="smb.html">SMB/CIFS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="webdav.html">WebDAV</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#allow-users-to-mount-external-storage">Allow users to mount external Storage</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../external_storage_configuration_gui.html#adding-files-to-external-storages">Adding files to external storages</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../external_storage_configuration.html">Configuring External Storage (configuration file)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="auth_mechanisms.html">External Storage authentication mechanisms</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../encryption_configuration.html">Encryption configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption_details.html">Encryption details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../encryption_migration.html">Encryption migration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../files_locking_transactional.html">Transactional file locking</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../previews_configuration.html">Previews configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../file_versioning.html">Controlling file versions and aging</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../file_workflows/index.html">File workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../groupware/index.html">Groupware</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../configuration_database/index.html">Database configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../configuration_mimetypes/index.html">Mimetypes management</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../maintenance/index.html">Maintenance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../issues/index.html">Issues and troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gdpr/index.html">GDPR</a></li>
 </ul>
 
-								</ul>
-							</div>
-					</div>
-				</div>
-        
+        </div>
+      </div>
+    </nav>
 
-				<div class="col-md-9">
-					<div class="page-content">
-            
-<ul class="prevnext-title list-unstyled list-inline">
-  <li class="prev">
-    <a href="../external_storage_configuration_gui.html" title="Previous Chapter: Configuring External Storage (GUI)"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Configuring External Storage (GUI)</span>
-    </a>
-  </li>
-  <li class="next">
-    <a href="ftp.html" title="Next Chapter: FTP/FTPS"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">FTP/FTPS &raquo;</span>
-    </a>
-  </li>
-</ul>
-						
-  <div class="section" id="amazon-s3">
-<h1>Amazon S3<a class="headerlink" href="#amazon-s3" title="Permalink to this headline">¶</a></h1>
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../contents.html">Nextcloud latest Administration Manual</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../contents.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">File sharing and management</a> &raquo;</li>
+          <li><a href="../external_storage_configuration_gui.html">Configuring External Storage (GUI)</a> &raquo;</li>
+      <li>Amazon S3</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/nextcloud/documentation/edit/master/admin_manual/configuration_files/external_storage/amazons3.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="amazon-s3">
+<h1>Amazon S3<a class="headerlink" href="#amazon-s3" title="Permalink to this headline"></a></h1>
 <p>To connect your Amazon S3 buckets to Nextcloud, you will need:</p>
 <ul class="simple">
-<li>S3 access key</li>
-<li>S3 secret key</li>
-<li>Bucket name</li>
+<li><p>S3 access key</p></li>
+<li><p>S3 secret key</p></li>
+<li><p>Bucket name</p></li>
 </ul>
 <p>In the <strong>Folder name</strong> field enter a local folder name for your S3 mountpoint.
 If this does not exist it will be created.</p>
@@ -126,9 +133,9 @@ If this does not exist it will be created.</p>
 access your S3 mount.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">Enable</span> <span class="pre">SSL</span></code> checkbox enables HTTPS connections; using HTTPS is always
 highly-recommended.</p>
-<div class="figure">
+<figure class="align-default">
 <img alt="" src="../../_images/amazons3.png" />
-</div>
+</figure>
 <p>Optionally, you can override the hostname, port and region of your S3 server,
 which is required for non-Amazon servers such as Ceph Object Gateway.</p>
 <p><strong>Enable path style</strong> is usually not required (and is, in fact, incompatible
@@ -141,25 +148,75 @@ by default version 4 authentication will be used.</p>
 <p>See <a class="reference internal" href="../external_storage_configuration_gui.html"><span class="doc">Configuring External Storage (GUI)</span></a> for additional mount
 options and information.</p>
 <p>See <a class="reference internal" href="auth_mechanisms.html"><span class="doc">External Storage authentication mechanisms</span></a> for more information on authentication schemes.</p>
-</div>
+</section>
 
 
-            
-<ul class="prevnext-title list-unstyled list-inline">
-  <li class="prev">
-    <a href="../external_storage_configuration_gui.html" title="Previous Chapter: Configuring External Storage (GUI)"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Configuring External Storage (GUI)</span>
-    </a>
-  </li>
-  <li class="next">
-    <a href="ftp.html" title="Next Chapter: FTP/FTPS"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">FTP/FTPS &raquo;</span>
-    </a>
-  </li>
-</ul>
-					</div>
-				</div>
-			</div>
-  </main>  
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../external_storage_configuration_gui.html" class="btn btn-neutral float-left" title="Configuring External Storage (GUI)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ftp.html" class="btn btn-neutral float-right" title="FTP/FTPS" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021 Nextcloud GmbH.</p>
   </div>
-</div>
-  </body>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="Versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: latest
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      <dl>
+        <dt>Versions</dt>
+        
+          <dd><a href="https://docs.nextcloud.com/server/17/admin_manual">17</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/18/admin_manual">18</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/19/admin_manual">19</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/20/admin_manual">20</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/stable/admin_manual">stable</a></dd>
+        
+          <dd><a href="https://docs.nextcloud.com/server/latest/admin_manual">latest</a></dd>
+        
+      </dl>
+      <dl>
+        <dt>Downloads</dt>
+        
+      </dl>
+      <dl>
+        
+        <dt>On Read the Docs</dt>
+          <dd>
+            <a href="///projects//?fromdocs=">Project Home</a>
+          </dd>
+          <dd>
+            <a href="///builds//?fromdocs=">Builds</a>
+          </dd>
+      </dl>
+    </div>
+  </div>
+<script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
 </html>

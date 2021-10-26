@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -35,14 +37,15 @@ use OCP\PreConditionNotMetException;
  * before the data structure is changed and the information is gone
  */
 class SaveAccountsTableData implements IRepairStep {
-
-	const BATCH_SIZE = 75;
+	public const BATCH_SIZE = 75;
 
 	/** @var IDBConnection */
 	protected $db;
 
 	/** @var IConfig */
 	protected $config;
+
+	protected $hasForeignKeyOnPersistentLocks = false;
 
 	/**
 	 * @param IDBConnection $db
@@ -76,7 +79,19 @@ class SaveAccountsTableData implements IRepairStep {
 			$numUsers = $this->runStep($offset);
 		}
 
+		// oc_persistent_locks will be removed later on anyways so we can just drop and ignore any foreign key constraints here
+		$tableName = $this->config->getSystemValue('dbtableprefix', 'oc_') . 'persistent_locks';
+		$schema = $this->db->createSchema();
+		$table = $schema->getTable($tableName);
+		foreach ($table->getForeignKeys() as $foreignKey) {
+			$table->removeForeignKey($foreignKey->getName());
+		}
+		$this->db->migrateToSchema($schema);
+
 		// Remove the table
+		if ($this->hasForeignKeyOnPersistentLocks) {
+			$this->db->dropTable('persistent_locks');
+		}
 		$this->db->dropTable('accounts');
 	}
 
@@ -85,14 +100,29 @@ class SaveAccountsTableData implements IRepairStep {
 	 */
 	protected function shouldRun() {
 		$schema = $this->db->createSchema();
+		$prefix = $this->config->getSystemValue('dbtableprefix', 'oc_');
 
-		$tableName = $this->config->getSystemValue('dbtableprefix', 'oc_') . 'accounts';
+		$tableName = $prefix . 'accounts';
 		if (!$schema->hasTable($tableName)) {
 			return false;
 		}
 
 		$table = $schema->getTable($tableName);
-		return $table->hasColumn('user_id');
+		if (!$table->hasColumn('user_id')) {
+			return false;
+		}
+
+		if ($schema->hasTable($prefix . 'persistent_locks')) {
+			$locksTable = $schema->getTable($prefix . 'persistent_locks');
+			$foreignKeys = $locksTable->getForeignKeys();
+			foreach ($foreignKeys as $foreignKey) {
+				if ($tableName === $foreignKey->getForeignTableName()) {
+					$this->hasForeignKeyOnPersistentLocks = true;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -157,7 +187,7 @@ class SaveAccountsTableData implements IRepairStep {
 		}
 		if ($state === 1) {
 			$this->config->setUserValue($userdata['user_id'], 'core', 'enabled', 'true');
-		} else if ($state === 2) {
+		} elseif ($state === 2) {
 			$this->config->setUserValue($userdata['user_id'], 'core', 'enabled', 'false');
 		}
 
@@ -166,7 +196,5 @@ class SaveAccountsTableData implements IRepairStep {
 				->setParameter('userid', $userdata['user_id']);
 			$update->execute();
 		}
-
 	}
 }
-

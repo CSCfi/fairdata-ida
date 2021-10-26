@@ -144,12 +144,12 @@
 
 #appmenu li a {
 	opacity: 1;
+    font-size: 11pt;
 }
 
-nav {
-	width: 250px;
-	color: white;
-	font-weight: bold;
+#appmenu li a:hover,
+#appmenu li a:focus {
+    font-size: 11pt;
 }
 
 .ida-app-title {
@@ -159,6 +159,13 @@ nav {
 	padding-right: 30px;
 	line-height: 20px;
 	text-align: center;
+	font-size: 11pt;
+}
+
+nav {
+	width: 250px;
+	color: white;
+	font-weight: bold;
 }
 
 #fileList a.action,
@@ -176,6 +183,7 @@ nav {
 #body-settings #header,
 #body-public #header {
 	background-color: #007FAD;
+	background-image: none;
 }
 
 /* log in screen background color */

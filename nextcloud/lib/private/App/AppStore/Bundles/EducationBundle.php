@@ -17,7 +17,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -29,7 +29,7 @@ class EducationBundle extends Bundle {
 	 * {@inheritDoc}
 	 */
 	public function getName() {
-		return (string)$this->l10n->t('Education Edition');
+		return $this->l10n->t('Education Edition');
 	}
 
 	/**
@@ -37,16 +37,12 @@ class EducationBundle extends Bundle {
 	 */
 	public function getAppIdentifiers() {
 		return [
-			'zenodo',
 			'dashboard',
 			'circles',
 			'groupfolders',
 			'announcementcenter',
-			'admin_notifications',
 			'quota_warning',
-			'orcid',
 			'user_saml',
 		];
 	}
-
 }

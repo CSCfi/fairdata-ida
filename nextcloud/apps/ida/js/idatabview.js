@@ -82,7 +82,7 @@
         '<div id="frozenFolder" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><td>' +
-        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFolderButton"/>' +
+        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFolderButton"/>' + '<br/>' +
         '<input type="button" value="' + t('ida', 'Delete') + '" id="deleteFolderButton"/>' +
         '</td></tr>' +
         '</table>' +
@@ -112,7 +112,7 @@
         '<tr><th>' + t('ida', 'Size') + ':</th><td id="frozenFileSize"></td></tr>' +
         '<tr><th>' + t('ida', 'Checksum') + ':</th><td id="frozenFileChecksum"></td></tr>' +
         '<tr><td colspan="2" align="center">' +
-        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFileButton"/>' +
+        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFileButton"/>' + '<br/>' +
         '<input type="button" value="' + t('ida', 'Delete') + '" id="deleteFileButton"/>' +
         '</td></tr>' +
         '</table>' +
@@ -145,7 +145,7 @@
             function (result) {
                 if (result) {
                     if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / FREEZE / FOLDER');
-                    $(freezeFolderButton).prop('disabled', true);
+                    $('#freezeFolderButton').prop('disabled', true);
                     executeAction(e.data.param, 'freeze');
                 }
             },
@@ -161,7 +161,7 @@
             function (result) {
                 if (result) {
                     if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / FREEZE / FILE');
-                    $(freezeFileButton).prop('disabled', true);
+                    $('#freezeFileButton').prop('disabled', true);
                     executeAction(e.data.param, 'freeze');
                 }
             },
@@ -178,8 +178,8 @@
             function (result) {
                 if (result) {
                     if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / UNFREEZE / FOLDER');
-                    $(unfreezeFolderButton).prop('disabled', true);
-                    $(deleteFolderButton).prop('disabled', true);
+                    $('#unfreezeFolderButton').prop('disabled', true);
+                    $('#deleteFolderButton').prop('disabled', true);
                     executeAction(e.data.param, 'unfreeze');
                 }
             },
@@ -196,8 +196,8 @@
             function (result) {
                 if (result) {
                     if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / UNFREEZE / FILE');
-                    $(unfreezeFileButton).prop('disabled', true);
-                    $(deleteFileButton).prop('disabled', true);
+                    $('#unfreezeFileButton').prop('disabled', true);
+                    $('#deleteFileButton').prop('disabled', true);
                     executeAction(e.data.param, 'unfreeze');
                 }
             },
@@ -214,7 +214,7 @@
             function (result) {
                 if (result) {
                     if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / DELETE / FOLDER');
-                    $(deleteFolderButton).prop('disabled', true);
+                    $('#deleteFolderButton').prop('disabled', true);
                     executeAction(e.data.param, 'delete');
                 }
             },
@@ -231,7 +231,7 @@
             function (result) {
                 if (result) {
                     if (typeof fdweRecordEvent != 'undefined') fdweRecordEvent(e, 'FILES / DELETE / FILE');
-                    $(deleteFileButton).prop('disabled', true);
+                    $('#deleteFileButton').prop('disabled', true);
                     executeAction(e.data.param, 'delete');
                 }
             },
@@ -284,7 +284,7 @@
     }
 
     function executeAction(fileInfo, action, datasetsChecked = false) {
-        $(spinner).show();
+        $('#spinner').show();
         var fullpath = fileInfo.getFullPath();
         var project = OCA.IDA.Util.extractProjectName(fullpath);
         var pathname = OCA.IDA.Util.stripRootFolder(fullpath);
@@ -297,7 +297,7 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ nextcloudNodeId: nodeId, project: project, pathname: pathname }),
                 success: function (data) {
-                    $(spinner).hide();
+                    $('#spinner').hide();
                     if (data['action'] === 'freeze') {
                         OC.dialogs.confirmHtml(
                             t('ida', 'The data has been successfully frozen and moved to the frozen project space.') + ' ' +
@@ -309,11 +309,11 @@
                             function (result) {
                                 if (result) {
                                     var url = '/apps/files/?dir=' + encodeURIComponent('/' + data['project'] + OCA.IDA.Util.getParentPathname(data['pathname']));
-                                    $(spinner).show();
+                                    $('#spinner').show();
                                     window.location.assign(url);
                                 }
                                 else {
-                                    $(spinner).show();
+                                    $('#spinner').show();
                                     window.location.reload(true);
                                 }
                             },
@@ -331,11 +331,11 @@
                             function (result) {
                                 if (result) {
                                     var url = '/apps/files/?dir=' + encodeURIComponent('/' + data['project'] + OCA.IDAConstants.STAGING_FOLDER_SUFFIX + OCA.IDA.Util.getParentPathname(data['pathname']));
-                                    $(spinner).show();
+                                    $('#spinner').show();
                                     window.location.assign(url);
                                 }
                                 else {
-                                    $(spinner).show();
+                                    $('#spinner').show();
                                     window.location.reload(true);
                                 }
                             },
@@ -350,9 +350,9 @@
                             t('ida', 'It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.'),
                             t('ida', 'Action initiated successfully. Files deleted.'),
                             'info',
-                            OCdialogs.OK_BUTTON,
+                            OC.OK_BUTTON,
                             function (result) {
-                                $(spinner).show();
+                                $('#spinner').show();
                                 window.location.reload(true);
                             },
                             true,
@@ -362,15 +362,15 @@
                     return true;
                 },
                 error: function (data) {
-                    $(spinner).hide();
+                    $('#spinner').hide();
                     if (action === 'freeze') {
                         OC.dialogs.alert(
                             t('ida', 'Unable to freeze the specified files:' + ' ' + data.responseJSON.message),
                             t('ida', 'Action Failed'),
                             function (result) {
-                                $(spinner).hide();
-                                $(freezeFileButton).prop('disabled', false);
-                                $(freezeFolderButton).prop('disabled', false);
+                                $('#spinner').hide();
+                                $('#freezeFileButton').prop('disabled', false);
+                                $('#freezeFolderButton').prop('disabled', false);
                             },
                             true
                         );
@@ -380,11 +380,11 @@
                             t('ida', 'Unable to unfreeze the specified files:' + ' ' + data.responseJSON.message),
                             t('ida', 'Action Failed'),
                             function (result) {
-                                $(spinner).hide();
-                                $(unfreezeFileButton).prop('disabled', false);
-                                $(unfreezeFolderButton).prop('disabled', false);
-                                $(deleteFileButton).prop('disabled', false);
-                                $(deleteFolderButton).prop('disabled', false);
+                                $('#spinner').hide();
+                                $('#unfreezeFileButton').prop('disabled', false);
+                                $('#unfreezeFolderButton').prop('disabled', false);
+                                $('#deleteFileButton').prop('disabled', false);
+                                $('#deleteFolderButton').prop('disabled', false);
                             },
                             true
                         );
@@ -394,11 +394,11 @@
                             t('ida', 'Unable to delete the specified files:' + ' ' + data.responseJSON.message),
                             t('ida', 'Action Failed'),
                             function (result) {
-                                $(spinner).hide();
-                                $(unfreezeFileButton).prop('disabled', false);
-                                $(unfreezeFolderButton).prop('disabled', false);
-                                $(deleteFileButton).prop('disabled', false);
-                                $(deleteFolderButton).prop('disabled', false);
+                                $('#spinner').hide();
+                                $('#unfreezeFileButton').prop('disabled', false);
+                                $('#unfreezeFolderButton').prop('disabled', false);
+                                $('#deleteFileButton').prop('disabled', false);
+                                $('#deleteFolderButton').prop('disabled', false);
                             },
                             true
                         );
@@ -417,11 +417,11 @@
                     t('ida', 'An error occurred when checking for datasets which may be deprecated by the requested action.'),
                     t('ida', 'Action Failed'),
                     function (result) {
-                        $(spinner).hide();
-                        $(unfreezeFileButton).prop('disabled', false);
-                        $(unfreezeFolderButton).prop('disabled', false);
-                        $(deleteFileButton).prop('disabled', false);
-                        $(deleteFolderButton).prop('disabled', false);
+                        $('#spinner').hide();
+                        $('#unfreezeFileButton').prop('disabled', false);
+                        $('#unfreezeFolderButton').prop('disabled', false);
+                        $('#deleteFileButton').prop('disabled', false);
+                        $('#deleteFolderButton').prop('disabled', false);
                     },
                     true
                 );
@@ -440,7 +440,7 @@
             // If user chooses to proceed, call function again indicating dataset check completed
             // Else if user chooses to cancel the action, do nothing
             else {
-                $(spinner).hide();
+                $('#spinner').hide();
                 var pasDatasets = [];
                 var pasDatasetsPending = false;
                 var max = affectedDatasets.length;
@@ -461,10 +461,10 @@
                         + '</span></span>',
                         t('ida', 'Action not allowed: Datasets would be deprecated!'),
                         function (result) {
-                            $(unfreezeFolderButton).prop('disabled', false);
-                            $(unfreezeFileButton).prop('disabled', false);
-                            $(deleteFolderButton).prop('disabled', false);
-                            $(deleteFileButton).prop('disabled', false);
+                            $('#unfreezeFolderButton').prop('disabled', false);
+                            $('#unfreezeFileButton').prop('disabled', false);
+                            $('#deleteFolderButton').prop('disabled', false);
+                            $('#deleteFileButton').prop('disabled', false);
                         },
                         true
                     );
@@ -483,14 +483,14 @@
                         t('ida', 'Warning: Datasets will be deprecated!'),
                         function (result) {
                             if (result) {
-                                $(spinner).show();
+                                $('#spinner').show();
                                 executeAction(fileInfo, action, true);
                             }
                             else {
-                                $(unfreezeFolderButton).prop('disabled', false);
-                                $(unfreezeFileButton).prop('disabled', false);
-                                $(deleteFolderButton).prop('disabled', false);
-                                $(deleteFileButton).prop('disabled', false);
+                                $('#unfreezeFolderButton').prop('disabled', false);
+                                $('#unfreezeFileButton').prop('disabled', false);
+                                $('#deleteFolderButton').prop('disabled', false);
+                                $('#deleteFileButton').prop('disabled', false);
                             }
                         },
                         true
@@ -519,6 +519,10 @@
 
             getLabel: function () {
                 return t('ida', 'Freezing');
+            },
+
+            getIcon: function () {
+                return (OC.imagePath('ida', 'appiconblue.png'));
             },
 
             nextPage: function () {
@@ -564,25 +568,25 @@
 
                 var fileInfo = this.fileInfo;
                 var fullPath = fileInfo.getFullPath();
+                var idaTabSegment = null;
 
-                $(spinner).hide();
-
-                $(freezeFolderButton).bind('click', { param: fileInfo }, freezeFolder);
-                $(freezeFileButton).bind('click', { param: fileInfo }, freezeFile);
-                $(unfreezeFolderButton).bind('click', { param: fileInfo }, unfreezeFolder);
-                $(unfreezeFileButton).bind('click', { param: fileInfo }, unfreezeFile);
-                $(deleteFolderButton).bind('click', { param: fileInfo }, deleteFolder);
-                $(deleteFileButton).bind('click', { param: fileInfo }, deleteFile);
+                this.$el.find('#spinner').hide();
+                this.$el.find('#freezeFolderButton').bind('click', { param: fileInfo }, freezeFolder);
+                this.$el.find('#freezeFileButton').bind('click', { param: fileInfo }, freezeFile);
+                this.$el.find('#unfreezeFolderButton').bind('click', { param: fileInfo }, unfreezeFolder);
+                this.$el.find('#unfreezeFileButton').bind('click', { param: fileInfo }, unfreezeFile);
+                this.$el.find('#deleteFolderButton').bind('click', { param: fileInfo }, deleteFolder);
+                this.$el.find('#deleteFileButton').bind('click', { param: fileInfo }, deleteFile);
 
                 var isFolder = this.fileInfo.isDirectory();
                 var isFrozen = OCA.IDA.Util.testIfFrozen(fullPath);
 
                 if (isFrozen) {
 
-
                     if (isFolder) {
-                        $(frozenFolder).show();
-                        $(frozenFolder).focus();
+                        idaTabSegment = this.$el.find('#frozenFolder');
+                        idaTabSegment.show();
+                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                     }
 
                     else {
@@ -616,47 +620,56 @@
                                     success: function (actionInfo) {
 
                                         var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
+                                        var idaTabSegment = null;
 
                                         if (isPending) {
-                                            $(frozenFilePendingAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            $(frozenFilePending).show();
-                                            $(frozenFilePending).focus();
+                                            $(document).find('#frozenFilePendingAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            idaTabSegment = $(document).find('#frozenFilePending');
+                                            idaTabSegment.show();
+                                            setTimeout(() => { idaTabSegment.focus(); }, 300);
                                         }
                                         else {
-                                            $(frozenFileAction).html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            $(frozenFileId).html(filePid);
-                                            $(frozenFileFrozen).html(fileFrozen);
-                                            $(frozenFileSize).html(fileSize);
-                                            $(frozenFileChecksum).html(fileChecksum);
-                                            $(frozenFile).show();
-                                            $(frozenFile).focus();
+                                            $(document).find('#frozenFileAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            $(document).find('#frozenFileId').html(filePid);
+                                            $(document).find('#frozenFileFrozen').html(fileFrozen);
+                                            $(document).find('#frozenFileSize').html(fileSize);
+                                            $(document).find('#frozenFileChecksum').html(fileChecksum);
+                                            idaTabSegment = $(document).find('#frozenFile');
+                                            idaTabSegment.show();
+                                            setTimeout(() => { idaTabSegment.focus(); }, 300);
                                         }
                                     },
 
                                     error: function (x) {
                                         // This shouldn't ever happen, but we'll fail gracefully...
-                                        $(frozenFile).show();
-                                        $(frozenFile).focus();
+                                        var idaTabSegment = null;
+                                        idaTabSegment = $(document).find('#frozenFile');
+                                        idaTabSegment.show();
+                                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                                     }
                                 });
                             },
 
                             error: function (x) {
                                 // This shouldn't ever happen, but we'll fail gracefully...
-                                $(frozenFile).show();
-                                $(frozenFile).focus();
+                                var idaTabSegment = null;
+                                idaTabSegment = $(document).find('#frozenFile');
+                                idaTabSegment.show();
+                                setTimeout(() => { idaTabSegment.focus(); }, 300);
                             }
                         });
                     }
                 }
                 else {
                     if (isFolder) {
-                        $(stagingFolder).show();
-                        $(stagingFolder).focus();
+                        idaTabSegment = this.$el.find('#stagingFolder');
+                        idaTabSegment.show();
+                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                     }
                     else {
-                        $(stagingFile).show();
-                        $(stagingFile).focus();
+                        idaTabSegment = this.$el.find('#stagingFile');
+                        idaTabSegment.show();
+                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                     }
                 }
 

@@ -2,6 +2,8 @@
 /**
  * @copyright 2016 Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,9 +19,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OC\Files\SimpleFS;
 
 use OCP\Files\File;
@@ -27,7 +30,7 @@ use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\Files\SimpleFS\ISimpleFile;
 
-class SimpleFile implements ISimpleFile  {
+class SimpleFile implements ISimpleFile {
 
 	/** @var File $file */
 	private $file;
@@ -178,4 +181,7 @@ class SimpleFile implements ISimpleFile  {
 		return $this->file->fopen('w');
 	}
 
+	public function getId(): int {
+		return $this->file->getId();
+	}
 }

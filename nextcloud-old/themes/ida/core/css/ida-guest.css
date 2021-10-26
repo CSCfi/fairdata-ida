@@ -1,0 +1,210 @@
+body {
+    justify-content: flex-start;
+    font: 500 16px/25px "Lato" !important;
+    color: black;
+    padding: 0 !important;
+    margin: 0 !important;
+	text-align: left;
+}
+
+a{
+    color:#0076a3;
+    display:inline;
+    text-decoration:underline
+}
+
+.align-center {
+	text-align: center;
+}
+
+.padding-top {
+	padding-top: 2rem;
+}
+
+.fd-button {
+	border-radius: 0;
+}
+
+.fd-content {
+	padding: 1rem 2rem 0 2rem;
+	justify-content: center;
+	max-width: 1050px;
+}
+
+.fd-header {
+	background-color: #007FAD;
+	color: white;
+	height: 50px;
+	min-height: 50px;
+}
+
+.fd-header img {
+	max-height: 35px;
+	width: auto !important;
+	max-width: none;
+	margin-top: 5px;
+}
+
+.fd-col {
+	padding-right: 20px;
+}
+
+.cards-wrapper {
+	margin-top: 3rem;
+}
+
+.cards-wrapper .row {
+	margin-bottom: 1rem;
+}
+
+img.fairdata-structure {
+	max-width: 100%;
+	margin-top: 1rem;
+}
+
+img.arrow {
+	opacity: .4;
+	height: 25px;
+}
+
+.language-selector-wrapper {
+    display: flex;
+    justify-content: flex-end;
+	align-items: center;
+}
+
+
+.language-selector-container {
+    display: flex;
+    justify-content: space-around;
+	padding-left: 20px;
+}
+
+.language-selector-mobile {
+	display: none;
+	width: 100%;
+	font-size: .75rem;
+	background-color: #EDEDED;
+	color: black;
+}
+
+.language-selector-mobile .language-choices {
+	display: none;
+}
+
+.language-selector-mobile .language-choice, .language-choice-toggle {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	text-align: center;
+	padding: .2rem 0;
+}
+
+.language-choice-toggle img {
+	cursor: pointer;
+	width: 20px;
+}
+
+.language-choice {
+	background-color: transparent;
+	color: white;
+	font-size: 1rem;
+}
+
+.language-choice:focus {
+	outline: 2px solid white;
+}
+
+.language-choice:hover {
+	outline: none;
+}
+
+.language-selector-mobile div.active {
+	text-decoration: underline;
+}
+
+@media only screen and (max-width: 576px) {
+	.language-selector-container {
+		display: none;
+	}
+
+	.language-selector-mobile {
+		display: block;
+	}
+
+	.align-right-sm{
+		text-align: right;
+	}
+	.align-left-sm{
+		text-align: left;
+	}
+}
+
+@media only screen and (max-width: 992px) {
+	.flex-center-md {
+		display: flex;
+		justify-content: center;
+	}
+}
+
+.language-selector-container .language-choice {
+	margin: 0 1rem;
+	cursor: pointer;
+	text-transform: uppercase;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1rem;
+	margin-bottom: 2rem;
+}
+
+p {
+	margin-bottom: 1rem;
+}
+
+.card-login {
+	margin: .5rem 0;
+	color: #4F4F4F;
+    padding: .75rem 1.5em;
+    align-items: center;
+    background-color: #FCFEFF;
+	border-radius: 10px;
+	box-shadow: 0px 3px 6px #00000029;
+}
+
+@media only screen and (max-width: 576px) {
+	.card-login {
+		padding-top: 0;
+		padding-bottom: 1.5rem;
+	}
+}
+
+.login-button {
+	font-size: 1rem;
+	color: black;
+	padding: .5rem 1rem;
+}
+
+.login-button:focus {
+	outline: 2px solid white;
+	outline-offset: 3px;
+}
+
+.login-button:hover {
+	outline: none;
+}
+
+.card-login img {
+	height: 50px;
+}
+
+.card-login p {
+	margin: 0;
+}
+
+.card-login.active {
+	color: #0075A3;
+	box-shadow: 0px 3px 6px #007FAD33;
+}

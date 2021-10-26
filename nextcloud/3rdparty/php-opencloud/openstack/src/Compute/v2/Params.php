@@ -356,6 +356,11 @@ EOL
                         'sentAs'      => 'volume_size',
                         'description' => 'Size of the volume created if we are doing vol creation',
                     ],
+                    'volumeType' => [
+                        'type'        => self::STRING_TYPE,
+                        'sentAs'      => 'volume_type',
+                        'description' => 'The type of volume which the compute service will create and attach to the server.',
+                    ],
                 ],
             ],
         ];
@@ -472,6 +477,25 @@ EOL
             'sentAs'      => 'user_id',
             'location'    => self::QUERY,
             'description' => 'This allows administrative users to operate key-pairs of specified user ID. Requires micro version 2.10.',
+        ];
+    }
+
+    public function keypairUserId(): array
+    {
+        return [
+            'type'        => self::STRING_TYPE,
+            'sentAs'      => 'user_id',
+            'location'    => self::JSON,
+            'description' => 'This allows administrative users to upload keys for other users than themselves. Requires micro version 2.10.',
+        ];
+    }
+
+    public function keypairType(): array
+    {
+        return [
+            'type'        => self::STRING_TYPE,
+            'location'    => self::JSON,
+            'description' => 'The type of the keypair. Allowed values are ssh or x509. Require micro version 2.2.',
         ];
     }
 

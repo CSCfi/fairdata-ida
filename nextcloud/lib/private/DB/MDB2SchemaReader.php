@@ -3,14 +3,14 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Oliver Gasser <oliver.gasser@gmail.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -24,7 +24,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -155,7 +155,7 @@ class MDB2SchemaReader {
 	 * @throws \DomainException
 	 */
 	private function loadField($table, $xml) {
-		$options = array( 'notnull' => false );
+		$options = [ 'notnull' => false ];
 		foreach ($xml->children() as $child) {
 			/**
 			 * @var \SimpleXMLElement $child
@@ -247,7 +247,7 @@ class MDB2SchemaReader {
 				$length = $options['length'];
 				if ($length < 4) {
 					$type = 'smallint';
-				} else if ($length > 4) {
+				} elseif ($length > 4) {
 					$type = 'bigint';
 				}
 			}
@@ -260,9 +260,17 @@ class MDB2SchemaReader {
 				$options['primary'] = true;
 			}
 
-			$table->addColumn($name, $type, $options);
+			# not used anymore in the options argument
+			# see https://github.com/doctrine/dbal/commit/138eb85234a1faeaa2e6a32cd7bcc66bb51c64e8#diff-300f55366adb50a32a40882ebdc95c163b141f64cba5f45f20bda04a907b3eb3L82
+			# therefore it's read before and then unset right before the addColumn call
+			$setPrimaryKey = false;
 			if (!empty($options['primary']) && $options['primary']) {
-				$table->setPrimaryKey(array($name));
+				$setPrimaryKey = true;
+			}
+			unset($options['primary']);
+			$table->addColumn($name, $type, $options);
+			if ($setPrimaryKey) {
+				$table->setPrimaryKey([$name]);
 			}
 		}
 	}
@@ -274,7 +282,7 @@ class MDB2SchemaReader {
 	 */
 	private function loadIndex($table, $xml) {
 		$name = null;
-		$fields = array();
+		$fields = [];
 		foreach ($xml->children() as $child) {
 			/**
 			 * @var \SimpleXMLElement $child
@@ -344,5 +352,4 @@ class MDB2SchemaReader {
 		}
 		return (bool)$result;
 	}
-
 }

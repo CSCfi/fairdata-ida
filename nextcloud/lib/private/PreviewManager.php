@@ -2,11 +2,15 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Steinmetz <462714+steiny2k@users.noreply.github.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -21,9 +25,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OC;
 
 use OC\Preview\Generator;
@@ -35,7 +40,7 @@ use OCP\Files\NotFoundException;
 use OCP\Files\SimpleFS\ISimpleFile;
 use OCP\IConfig;
 use OCP\IPreview;
-use OCP\Preview\IProvider;
+use OCP\Preview\IProviderV2;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class PreviewManager implements IPreview {
@@ -53,6 +58,9 @@ class PreviewManager implements IPreview {
 
 	/** @var Generator */
 	private $generator;
+
+	/** @var GeneratorHelper */
+	private $helper;
 
 	/** @var bool */
 	protected $providerListDirty = false;
@@ -85,11 +93,13 @@ class PreviewManager implements IPreview {
 								IRootFolder $rootFolder,
 								IAppData $appData,
 								EventDispatcherInterface $eventDispatcher,
+								GeneratorHelper $helper,
 								$userId) {
 		$this->config = $config;
 		$this->rootFolder = $rootFolder;
 		$this->appData = $appData;
 		$this->eventDispatcher = $eventDispatcher;
+		$this->helper = $helper;
 		$this->userId = $userId;
 	}
 
@@ -97,7 +107,7 @@ class PreviewManager implements IPreview {
 	 * In order to improve lazy loading a closure can be registered which will be
 	 * called in case preview providers are actually requested
 	 *
-	 * $callable has to return an instance of \OCP\Preview\IProvider
+	 * $callable has to return an instance of \OCP\Preview\IProvider or \OCP\Preview\IProviderV2
 	 *
 	 * @param string $mimeTypeRegex Regex with the mime types that are supported by this provider
 	 * @param \Closure $callable
@@ -143,32 +153,20 @@ class PreviewManager implements IPreview {
 		return !empty($this->providers);
 	}
 
-	/**
-	 * return a preview of a file
-	 *
-	 * @param string $file The path to the file where you want a thumbnail from
-	 * @param int $maxX The maximum X size of the thumbnail. It can be smaller depending on the shape of the image
-	 * @param int $maxY The maximum Y size of the thumbnail. It can be smaller depending on the shape of the image
-	 * @param boolean $scaleUp Scale smaller images up to the thumbnail size or not. Might look ugly
-	 * @return \OCP\IImage
-	 * @deprecated 11 Use getPreview
-	 */
-	public function createPreview($file, $maxX = 100, $maxY = 75, $scaleUp = false) {
-		try {
-			$userRoot = $this->rootFolder->getUserFolder($this->userId)->getParent();
-			$node = $userRoot->get($file);
-			if (!($file instanceof File)) {
-				throw new NotFoundException();
-			}
-
-			$preview = $this->getPreview($node, $maxX, $maxY);
-		} catch (\Exception $e) {
-			return new \OC_Image();
+	private function getGenerator(): Generator {
+		if ($this->generator === null) {
+			$this->generator = new Generator(
+				$this->config,
+				$this,
+				$this->appData,
+				new GeneratorHelper(
+					$this->rootFolder,
+					$this->config
+				),
+				$this->eventDispatcher
+			);
 		}
-
-		$previewImage = new \OC_Image();
-		$previewImage->loadFromData($preview->getContent());
-		return $previewImage;
+		return $this->generator;
 	}
 
 	/**
@@ -189,20 +187,22 @@ class PreviewManager implements IPreview {
 	 * @since 11.0.0 - \InvalidArgumentException was added in 12.0.0
 	 */
 	public function getPreview(File $file, $width = -1, $height = -1, $crop = false, $mode = IPreview::MODE_FILL, $mimeType = null) {
-		if ($this->generator === null) {
-			$this->generator = new Generator(
-				$this->config,
-				$this,
-				$this->appData,
-				new GeneratorHelper(
-					$this->rootFolder,
-					$this->config
-				),
-				$this->eventDispatcher
-			);
-		}
+		return $this->getGenerator()->getPreview($file, $width, $height, $crop, $mode, $mimeType);
+	}
 
-		return $this->generator->getPreview($file, $width, $height, $crop, $mode, $mimeType);
+	/**
+	 * Generates previews of a file
+	 *
+	 * @param File $file
+	 * @param array $specifications
+	 * @param string $mimeType
+	 * @return ISimpleFile the last preview that was generated
+	 * @throws NotFoundException
+	 * @throws \InvalidArgumentException if the preview would be invalid (in case the original image is invalid)
+	 * @since 19.0.0
+	 */
+	public function generatePreviews(File $file, array $specifications, $mimeType = null) {
+		return $this->getGenerator()->generatePreviews($file, $specifications, $mimeType);
 	}
 
 	/**
@@ -249,19 +249,18 @@ class PreviewManager implements IPreview {
 		}
 
 		$mount = $file->getMountPoint();
-		if ($mount and !$mount->getOption('previews', true)){
+		if ($mount and !$mount->getOption('previews', true)) {
 			return false;
 		}
 
 		foreach ($this->providers as $supportedMimeType => $providers) {
 			if (preg_match($supportedMimeType, $file->getMimetype())) {
-				foreach ($providers as $closure) {
-					$provider = $closure();
-					if (!($provider instanceof IProvider)) {
+				foreach ($providers as $providerClosure) {
+					$provider = $this->helper->getProvider($providerClosure);
+					if (!($provider instanceof IProviderV2)) {
 						continue;
 					}
 
-					/** @var $provider IProvider */
 					if ($provider->isAvailable($file)) {
 						return true;
 					}
@@ -279,7 +278,6 @@ class PreviewManager implements IPreview {
 	 *  - OC\Preview\JPEG
 	 *  - OC\Preview\GIF
 	 *  - OC\Preview\BMP
-	 *  - OC\Preview\HEIC
 	 *  - OC\Preview\XBitmap
 	 *  - OC\Preview\MarkDown
 	 *  - OC\Preview\MP3
@@ -287,6 +285,7 @@ class PreviewManager implements IPreview {
 	 *
 	 * The following providers are disabled by default due to performance or privacy concerns:
 	 *  - OC\Preview\Font
+	 *  - OC\Preview\HEIC
 	 *  - OC\Preview\Illustrator
 	 *  - OC\Preview\Movie
 	 *  - OC\Preview\MSOfficeDoc
@@ -312,14 +311,16 @@ class PreviewManager implements IPreview {
 			Preview\JPEG::class,
 			Preview\GIF::class,
 			Preview\BMP::class,
-			Preview\HEIC::class,
-			Preview\XBitmap::class
+			Preview\XBitmap::class,
+			Preview\Krita::class,
+			Preview\WebP::class,
 		];
 
 		$this->defaultProviders = $this->config->getSystemValue('enabledPreviewProviders', array_merge([
 			Preview\MarkDown::class,
 			Preview\MP3::class,
 			Preview\TXT::class,
+			Preview\OpenDocument::class,
 		], $imageProviders));
 
 		if (in_array(Preview\Image::class, $this->defaultProviders)) {
@@ -359,21 +360,26 @@ class PreviewManager implements IPreview {
 		$this->registerCoreProvider(Preview\GIF::class, '/image\/gif/');
 		$this->registerCoreProvider(Preview\BMP::class, '/image\/bmp/');
 		$this->registerCoreProvider(Preview\XBitmap::class, '/image\/x-xbitmap/');
+		$this->registerCoreProvider(Preview\WebP::class, '/image\/webp/');
+		$this->registerCoreProvider(Preview\Krita::class, '/application\/x-krita/');
 		$this->registerCoreProvider(Preview\MP3::class, '/audio\/mpeg/');
+		$this->registerCoreProvider(Preview\OpenDocument::class, '/application\/vnd.oasis.opendocument.*/');
 
 		// SVG, Office and Bitmap require imagick
 		if (extension_loaded('imagick')) {
 			$checkImagick = new \Imagick();
 
 			$imagickProviders = [
-				'SVG'	=> ['mimetype' => '/image\/svg\+xml/', 'class' => Preview\SVG::class],
-				'TIFF'	=> ['mimetype' => '/image\/tiff/', 'class' => Preview\TIFF::class],
-				'PDF'	=> ['mimetype' => '/application\/pdf/', 'class' => Preview\PDF::class],
-				'AI'	=> ['mimetype' => '/application\/illustrator/', 'class' => Preview\Illustrator::class],
-				'PSD'	=> ['mimetype' => '/application\/x-photoshop/', 'class' => Preview\Photoshop::class],
-				'EPS'	=> ['mimetype' => '/application\/postscript/', 'class' => Preview\Postscript::class],
-				'TTF'	=> ['mimetype' => '/application\/(?:font-sfnt|x-font$)/', 'class' => Preview\Font::class],
-				'HEIC'  => ['mimetype' => '/image\/hei(f|c)/', 'class' => Preview\HEIC::class],
+				'SVG' => ['mimetype' => '/image\/svg\+xml/', 'class' => Preview\SVG::class],
+				'TIFF' => ['mimetype' => '/image\/tiff/', 'class' => Preview\TIFF::class],
+				'PDF' => ['mimetype' => '/application\/pdf/', 'class' => Preview\PDF::class],
+				'AI' => ['mimetype' => '/application\/illustrator/', 'class' => Preview\Illustrator::class],
+				'PSD' => ['mimetype' => '/application\/x-photoshop/', 'class' => Preview\Photoshop::class],
+				'EPS' => ['mimetype' => '/application\/postscript/', 'class' => Preview\Postscript::class],
+				'TTF' => ['mimetype' => '/application\/(?:font-sfnt|x-font$)/', 'class' => Preview\Font::class],
+				'HEIC' => ['mimetype' => '/image\/hei(f|c)/', 'class' => Preview\HEIC::class],
+				'TGA' => ['mimetype' => '/image\/t(ar)?ga/', 'class' => Preview\TGA::class],
+				'SGI' => ['mimetype' => '/image\/sgi/', 'class' => Preview\SGI::class],
 			];
 
 			foreach ($imagickProviders as $queryFormat => $provider) {

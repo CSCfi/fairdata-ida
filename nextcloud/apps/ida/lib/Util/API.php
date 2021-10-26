@@ -109,6 +109,17 @@ class API
     }
     
     /**
+     * Log and return forbidden error data response.
+     *
+     * @param string $message the error message
+     *
+     * @return DataResponse
+     */
+    public static function forbiddenErrorResponse($message = 'Forbidden') {
+        return self::loggedErrorResponse($message, Http::STATUS_FORBIDDEN);
+    }
+    
+    /**
      * Log and return bad request error data response.
      *
      * @param string $message the error message

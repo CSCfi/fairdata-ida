@@ -2,11 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -23,7 +21,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -138,7 +136,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws OCSException
 	 */
 	public function createShare() {
-
 		$remote = isset($_POST['remote']) ? $_POST['remote'] : null;
 		$token = isset($_POST['token']) ? $_POST['token'] : null;
 		$name = isset($_POST['name']) ? $_POST['name'] : null;
@@ -199,7 +196,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws OCSForbiddenException
 	 */
 	public function reShare($id) {
-
 		$token = $this->request->getParam('token', null);
 		$shareWith = $this->request->getParam('shareWith', null);
 		$permission = (int)$this->request->getParam('permission', null);
@@ -253,7 +249,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws \OC\HintException
 	 */
 	public function acceptShare($id) {
-
 		$token = isset($_POST['token']) ? $_POST['token'] : null;
 
 		$notification = [
@@ -286,7 +281,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws OCSException
 	 */
 	public function declineShare($id) {
-
 		$token = isset($_POST['token']) ? $_POST['token'] : null;
 
 		$notification = [
@@ -319,7 +313,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws OCSException
 	 */
 	public function unshare($id) {
-
 		if (!$this->isS2SEnabled()) {
 			throw new OCSException('Server does not support federated cloud sharing', 503);
 		}
@@ -355,7 +348,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws OCSBadRequestException
 	 */
 	public function revoke($id) {
-
 		$token = $this->request->getParam('token');
 
 		try {
@@ -366,7 +358,6 @@ class RequestHandlerController extends OCSController {
 		} catch (\Exception $e) {
 			throw new OCSBadRequestException();
 		}
-
 	}
 
 	/**
@@ -376,7 +367,6 @@ class RequestHandlerController extends OCSController {
 	 * @return bool
 	 */
 	private function isS2SEnabled($incoming = false) {
-
 		$result = \OCP\App::isEnabled('files_sharing');
 
 		if ($incoming) {
@@ -422,7 +412,6 @@ class RequestHandlerController extends OCSController {
 	 * @return array
 	 */
 	protected function ncPermissions2ocmPermissions($ncPermissions) {
-
 		$ocmPermissions = [];
 
 		if ($ncPermissions & Constants::PERMISSION_SHARE) {
@@ -439,7 +428,6 @@ class RequestHandlerController extends OCSController {
 		}
 
 		return $ocmPermissions;
-
 	}
 
 	/**
@@ -454,7 +442,6 @@ class RequestHandlerController extends OCSController {
 	 * @throws OCSException
 	 */
 	public function move($id) {
-
 		if (!$this->isS2SEnabled()) {
 			throw new OCSException('Server does not support federated cloud sharing', 503);
 		}

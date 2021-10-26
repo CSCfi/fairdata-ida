@@ -1,12 +1,13 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
@@ -21,36 +22,35 @@ declare(strict_types = 1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\Authentication\TwoFactorAuth;
 
-use function array_diff;
-use function array_filter;
 use BadMethodCallException;
 use Exception;
-use OC\Authentication\Exceptions\ExpiredTokenException;
 use OC\Authentication\Exceptions\InvalidTokenException;
 use OC\Authentication\Token\IProvider as TokenProvider;
 use OCP\Activity\IManager;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\Authentication\TwoFactorAuth\IActivatableAtLogin;
 use OCP\Authentication\TwoFactorAuth\IProvider;
 use OCP\Authentication\TwoFactorAuth\IRegistry;
 use OCP\IConfig;
-use OCP\ILogger;
 use OCP\ISession;
 use OCP\IUser;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use function array_diff;
+use function array_filter;
 
 class Manager {
-
-	const SESSION_UID_KEY = 'two_factor_auth_uid';
-	const SESSION_UID_DONE = 'two_factor_auth_passed';
-	const REMEMBER_LOGIN = 'two_factor_remember_login';
-	const BACKUP_CODES_PROVIDER_ID = 'backup_codes';
+	public const SESSION_UID_KEY = 'two_factor_auth_uid';
+	public const SESSION_UID_DONE = 'two_factor_auth_passed';
+	public const REMEMBER_LOGIN = 'two_factor_remember_login';
+	public const BACKUP_CODES_PROVIDER_ID = 'backup_codes';
 
 	/** @var ProviderLoader */
 	private $providerLoader;
@@ -70,7 +70,7 @@ class Manager {
 	/** @var IManager */
 	private $activityManager;
 
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 
 	/** @var TokenProvider */
@@ -85,9 +85,13 @@ class Manager {
 	public function __construct(ProviderLoader $providerLoader,
 								IRegistry $providerRegistry,
 								MandatoryTwoFactor $mandatoryTwoFactor,
-								ISession $session, IConfig $config,
-								IManager $activityManager, ILogger $logger, TokenProvider $tokenProvider,
-								ITimeFactory $timeFactory, EventDispatcherInterface $eventDispatcher) {
+								ISession $session,
+								IConfig $config,
+								IManager $activityManager,
+								LoggerInterface $logger,
+								TokenProvider $tokenProvider,
+								ITimeFactory $timeFactory,
+								EventDispatcherInterface $eventDispatcher) {
 		$this->providerLoader = $providerLoader;
 		$this->providerRegistry = $providerRegistry;
 		$this->mandatoryTwoFactor = $mandatoryTwoFactor;
@@ -134,6 +138,18 @@ class Manager {
 	}
 
 	/**
+	 * @param IUser $user
+	 * @return IActivatableAtLogin[]
+	 * @throws Exception
+	 */
+	public function getLoginSetupProviders(IUser $user): array {
+		$providers = $this->providerLoader->getProviders($user);
+		return array_filter($providers, function (IProvider $provider) {
+			return ($provider instanceof IActivatableAtLogin);
+		});
+	}
+
+	/**
 	 * Check if the persistant mapping of enabled/disabled state of each available
 	 * provider is missing an entry and add it to the registry in that case.
 	 *
@@ -146,7 +162,6 @@ class Manager {
 	 */
 	private function fixMissingProviderStates(array $providerStates,
 		array $providers, IUser $user): array {
-
 		foreach ($providers as $provider) {
 			if (isset($providerStates[$provider->getId()])) {
 				// All good
@@ -167,7 +182,7 @@ class Manager {
 
 	/**
 	 * @param array $states
-	 * @param IProvider $providers
+	 * @param IProvider[] $providers
 	 */
 	private function isProviderMissing(array $states, array $providers): bool {
 		$indexed = [];
@@ -186,8 +201,8 @@ class Manager {
 				$missing[] = $providerId;
 				$this->logger->alert("two-factor auth provider '$providerId' failed to load",
 					[
-					'app' => 'core',
-				]);
+						'app' => 'core',
+					]);
 			}
 		}
 
@@ -285,8 +300,7 @@ class Manager {
 		try {
 			$this->activityManager->publish($activity);
 		} catch (BadMethodCallException $e) {
-			$this->logger->warning('could not publish activity', ['app' => 'core']);
-			$this->logger->logException($e, ['app' => 'core']);
+			$this->logger->warning('could not publish activity', ['app' => 'core', 'exception' => $e]);
 		}
 	}
 
@@ -325,7 +339,7 @@ class Manager {
 				$tokenId = $token->getId();
 				$tokensNeeding2FA = $this->config->getUserKeys($user->getUID(), 'login_token_2fa');
 
-				if (!\in_array($tokenId, $tokensNeeding2FA, true)) {
+				if (!\in_array((string) $tokenId, $tokensNeeding2FA, true)) {
 					$this->session->set(self::SESSION_UID_DONE, $user->getUID());
 					return false;
 				}
@@ -362,15 +376,14 @@ class Manager {
 
 		$id = $this->session->getId();
 		$token = $this->tokenProvider->getToken($id);
-		$this->config->setUserValue($user->getUID(), 'login_token_2fa', $token->getId(), $this->timeFactory->getTime());
+		$this->config->setUserValue($user->getUID(), 'login_token_2fa', (string) $token->getId(), $this->timeFactory->getTime());
 	}
 
 	public function clearTwoFactorPending(string $userId) {
 		$tokensNeeding2FA = $this->config->getUserKeys($userId, 'login_token_2fa');
 
 		foreach ($tokensNeeding2FA as $tokenId) {
-			$this->tokenProvider->invalidateTokenById($userId, $tokenId);
+			$this->tokenProvider->invalidateTokenById($userId, (int)$tokenId);
 		}
 	}
-
 }

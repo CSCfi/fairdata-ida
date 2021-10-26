@@ -3,7 +3,9 @@
  *
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,14 +20,15 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OC\Core\Migrations;
 
 use OCP\DB\ISchemaWrapper;
-use OCP\Migration\SimpleMigrationStep;
 use OCP\Migration\IOutput;
+use OCP\Migration\SimpleMigrationStep;
 
 /**
  * Auto-generated migration step: Please modify to your needs!
@@ -61,8 +64,17 @@ class Version13000Date20170919121250 extends SimpleMigrationStep {
 		$column->setUnsigned(true);
 		$column = $table->getColumn('type');
 		$column->setUnsigned(true);
-		$column = $table->getColumn('remember');
-		$column->setUnsigned(true);
+		if ($table->hasColumn('remember')) {
+			$column = $table->getColumn('remember');
+			$column->setUnsigned(true);
+		} else {
+			$table->addColumn('remember', 'smallint', [
+				'notnull' => false,
+				'length' => 1,
+				'default' => 0,
+				'unsigned' => true,
+			]);
+		}
 		$column = $table->getColumn('last_activity');
 		$column->setUnsigned(true);
 		$column = $table->getColumn('last_check');

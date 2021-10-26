@@ -1,9 +1,12 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,12 +21,11 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCA\Provisioning_API\Controller;
-
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -106,7 +108,7 @@ class AppConfigController extends OCSController {
 	public function setValue(string $app, string $key, string $value): DataResponse {
 		try {
 			$this->verifyAppId($app);
-			$this->verifyConfigKey($app, $key);
+			$this->verifyConfigKey($app, $key, $value);
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['data' => ['message' => $e->getMessage()]], Http::STATUS_FORBIDDEN);
 		}
@@ -124,7 +126,7 @@ class AppConfigController extends OCSController {
 	public function deleteKey(string $app, string $key): DataResponse {
 		try {
 			$this->verifyAppId($app);
-			$this->verifyConfigKey($app, $key);
+			$this->verifyConfigKey($app, $key, '');
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['data' => ['message' => $e->getMessage()]], Http::STATUS_FORBIDDEN);
 		}
@@ -146,14 +148,19 @@ class AppConfigController extends OCSController {
 	/**
 	 * @param string $app
 	 * @param string $key
+	 * @param string $value
 	 * @throws \InvalidArgumentException
 	 */
-	protected function verifyConfigKey(string $app, string $key) {
+	protected function verifyConfigKey(string $app, string $key, string $value) {
 		if (in_array($key, ['installed_version', 'enabled', 'types'])) {
 			throw new \InvalidArgumentException('The given key can not be set');
 		}
 
-		if ($app === 'core' && ($key === 'encryption_enabled' || strpos($key, 'public_') === 0 || strpos($key, 'remote_') === 0)) {
+		if ($app === 'core' && $key === 'encryption_enabled' && $value !== 'yes') {
+			throw new \InvalidArgumentException('The given key can not be set');
+		}
+
+		if ($app === 'core' && (strpos($key, 'public_') === 0 || strpos($key, 'remote_') === 0)) {
 			throw new \InvalidArgumentException('The given key can not be set');
 		}
 	}

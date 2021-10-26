@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Tobias Kaminsky <tobias@kaminsky.me>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -34,7 +37,7 @@ use OCP\Files\Search\ISearchOrder;
  * Tools for transforming search queries into database queries
  */
 class QuerySearchHelper {
-	static protected $searchOperatorMap = [
+	protected static $searchOperatorMap = [
 		ISearchComparison::COMPARE_LIKE => 'iLike',
 		ISearchComparison::COMPARE_EQUAL => 'eq',
 		ISearchComparison::COMPARE_GREATER_THAN => 'gt',
@@ -43,7 +46,7 @@ class QuerySearchHelper {
 		ISearchComparison::COMPARE_LESS_THAN_EQUAL => 'lte'
 	];
 
-	static protected $searchOperatorNegativeMap = [
+	protected static $searchOperatorNegativeMap = [
 		ISearchComparison::COMPARE_LIKE => 'notLike',
 		ISearchComparison::COMPARE_EQUAL => 'neq',
 		ISearchComparison::COMPARE_GREATER_THAN => 'lte',
@@ -52,7 +55,7 @@ class QuerySearchHelper {
 		ISearchComparison::COMPARE_LESS_THAN_EQUAL => 'lt'
 	];
 
-	const TAG_FAVORITE = '_$!<Favorite>!$_';
+	public const TAG_FAVORITE = '_$!<Favorite>!$_';
 
 	/** @var IMimeTypeLoader */
 	private $mimetypeLoader;
@@ -77,7 +80,7 @@ class QuerySearchHelper {
 			return array_reduce($operator->getArguments(), function ($shouldJoin, ISearchOperator $operator) {
 				return $shouldJoin || $this->shouldJoinTags($operator);
 			}, false);
-		} else if ($operator instanceof ISearchComparison) {
+		} elseif ($operator instanceof ISearchComparison) {
 			return $operator->getField() === 'tagname' || $operator->getField() === 'favorite';
 		}
 		return false;
@@ -88,14 +91,18 @@ class QuerySearchHelper {
 	 * @param ISearchOperator $operator
 	 */
 	public function searchOperatorArrayToDBExprArray(IQueryBuilder $builder, array $operators) {
-		return array_map(function ($operator) use ($builder) {
+		return array_filter(array_map(function ($operator) use ($builder) {
 			return $this->searchOperatorToDBExpr($builder, $operator);
-		}, $operators);
+		}, $operators));
 	}
 
 	public function searchOperatorToDBExpr(IQueryBuilder $builder, ISearchOperator $operator) {
 		$expr = $builder->expr();
 		if ($operator instanceof ISearchBinaryOperator) {
+			if (count($operator->getArguments()) === 0) {
+				return null;
+			}
+
 			switch ($operator->getType()) {
 				case ISearchBinaryOperator::OPERATOR_NOT:
 					$negativeOperator = $operator->getArguments()[0];
@@ -104,6 +111,7 @@ class QuerySearchHelper {
 					} else {
 						throw new \InvalidArgumentException('Binary operators inside "not" is not supported');
 					}
+					// no break
 				case ISearchBinaryOperator::OPERATOR_AND:
 					return call_user_func_array([$expr, 'andX'], $this->searchOperatorArrayToDBExprArray($builder, $operator->getArguments()));
 				case ISearchBinaryOperator::OPERATOR_OR:
@@ -111,7 +119,7 @@ class QuerySearchHelper {
 				default:
 					throw new \InvalidArgumentException('Invalid operator type: ' . $operator->getType());
 			}
-		} else if ($operator instanceof ISearchComparison) {
+		} elseif ($operator instanceof ISearchComparison) {
 			return $this->searchComparisonToDBExpr($builder, $operator, self::$searchOperatorMap);
 		} else {
 			throw new \InvalidArgumentException('Invalid operator type: ' . get_class($operator));
@@ -136,23 +144,31 @@ class QuerySearchHelper {
 		$type = $operator->getType();
 		if ($field === 'mimetype') {
 			if ($operator->getType() === ISearchComparison::COMPARE_EQUAL) {
-				$value = $this->mimetypeLoader->getId($value);
-			} else if ($operator->getType() === ISearchComparison::COMPARE_LIKE) {
+				$value = (int)$this->mimetypeLoader->getId($value);
+			} elseif ($operator->getType() === ISearchComparison::COMPARE_LIKE) {
 				// transform "mimetype='foo/%'" to "mimepart='foo'"
 				if (preg_match('|(.+)/%|', $value, $matches)) {
 					$field = 'mimepart';
-					$value = $this->mimetypeLoader->getId($matches[1]);
+					$value = (int)$this->mimetypeLoader->getId($matches[1]);
+					$type = ISearchComparison::COMPARE_EQUAL;
+				} elseif (strpos($value, '%') !== false) {
+					throw new \InvalidArgumentException('Unsupported query value for mimetype: ' . $value . ', only values in the format "mime/type" or "mime/%" are supported');
+				} else {
+					$field = 'mimetype';
+					$value = (int)$this->mimetypeLoader->getId($value);
 					$type = ISearchComparison::COMPARE_EQUAL;
 				}
-				if (strpos($value, '%') !== false) {
-					throw new \InvalidArgumentException('Unsupported query value for mimetype: ' . $value . ', only values in the format "mime/type" or "mime/%" are supported');
-				}
 			}
-		} else if ($field === 'favorite') {
+		} elseif ($field === 'favorite') {
 			$field = 'tag.category';
 			$value = self::TAG_FAVORITE;
-		} else if ($field === 'tagname') {
+		} elseif ($field === 'tagname') {
 			$field = 'tag.category';
+		} elseif ($field === 'fileid') {
+			$field = 'file.fileid';
+		} elseif ($field === 'path' && $type === ISearchComparison::COMPARE_EQUAL) {
+			$field = 'path_hash';
+			$value = md5((string)$value);
 		}
 		return [$field, $value, $type];
 	}
@@ -162,6 +178,7 @@ class QuerySearchHelper {
 			'mimetype' => 'string',
 			'mtime' => 'integer',
 			'name' => 'string',
+			'path' => 'string',
 			'size' => 'integer',
 			'tagname' => 'string',
 			'favorite' => 'boolean',
@@ -171,6 +188,7 @@ class QuerySearchHelper {
 			'mimetype' => ['eq', 'like'],
 			'mtime' => ['eq', 'gt', 'lt', 'gte', 'lte'],
 			'name' => ['eq', 'like'],
+			'path' => ['eq', 'like'],
 			'size' => ['eq', 'gt', 'lt', 'gte', 'lte'],
 			'tagname' => ['eq', 'like'],
 			'favorite' => ['eq'],

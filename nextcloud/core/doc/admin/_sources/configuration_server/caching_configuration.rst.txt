@@ -27,7 +27,7 @@ of memcache that best fits your needs. The supported caching backends are:
    A local cache for systems.
 * `Redis <http://redis.io/>`_, PHP module 2.2.6 and up required.
    For local and distributed caching as well as transactional file locking.
-* `Memcached <http://www.memcached.org/>`_
+* `Memcached <https://www.memcached.org/>`_
    For distributed caching.
    
 Memcaches must be explicitly configured in Nextcloud by installing
@@ -59,7 +59,7 @@ Refresh your Nextcloud admin page, and the cache warning should disappear.
 
 .. warning:: APCu is disabled by default on CLI which could cause issues with nextcloud's
    cron jobs. Please make sure you set the ``apc.enable_cli`` to ``1`` on your ``php.ini``
-   config file.
+   config file or append ``--define apc.enable_cli=1`` to the cron job call.
 
 Redis
 -----
@@ -107,7 +107,7 @@ recommended if Redis is running on the same system as Nextcloud) use this exampl
   'memcache.local' => '\OC\Memcache\APCu',
   'memcache.distributed' => '\OC\Memcache\Redis',
   'redis' => [
-       'host'     => '/var/run/redis/redis.sock',
+       'host'     => '/run/redis/redis-server.sock',
        'port'     => 0,
        'dbindex'  => 0,
        'password' => 'secret',
@@ -116,9 +116,38 @@ recommended if Redis is running on the same system as Nextcloud) use this exampl
 
 Only "host" and "port" variables are required, the other ones are optional.
 
+Update the redis configuration in ``/etc/redis/redis.conf`` accordingly: uncomment Unix socket options and ensure the "socket" and "port" settings match your Nextcloud configuration.
+
+Be sure to set the right permissions on redis.sock so that your webserver can
+read and write to it. For this you typically have to add the webserver user
+to the redis group::
+
+  usermod -a -G redis www-data
+
+You might need to restart apache for the changes to take effect::
+
+ systemctl restart apache2
+
 Redis is very configurable; consult `the Redis documentation 
 <http://redis.io/documentation>`_ to learn more.
 
+**Using the Redis session handler:** If you are using Redis for locking and/or caching,
+you may also wish to use Redis for session management. Redis can be used for centralized
+session management across multiple Nextcloud application servers, unlike the standard
+`files` handler. If you use the Redis handler, though, you *MUST* ensure that session
+locking is enabled. As of this writing, the Redis session handler does *NOT* enable
+session locking by default, which can lead to session corruption in some Nextcloud apps
+that make heavy use of session writes such as Talk. In addition, even when session locking
+is enabled, if the application fails to acquire a lock, the Redis session handler does not
+currently return an error. Adding the following settings in your `php.ini` file will
+prevent session corruption when using Redis as your session handler: ::
+
+  redis.session.locking_enabled=1
+  redis.session.lock_retries=-1
+  redis.session.lock_wait_time=10000
+
+More information on configuration of phpredis session handler can be found on the
+`PhpRedis GitHub page <https://github.com/phpredis/phpredis>`_
 
 Memcached
 ---------

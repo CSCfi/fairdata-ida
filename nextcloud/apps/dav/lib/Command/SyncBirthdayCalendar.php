@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -17,9 +20,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OCA\DAV\Command;
 
 use OCA\DAV\CalDAV\BirthdayService;
@@ -48,7 +52,7 @@ class SyncBirthdayCalendar extends Command {
 	 * @param IConfig $config
 	 * @param BirthdayService $birthdayService
 	 */
-	function __construct(IUserManager $userManager, IConfig $config,
+	public function __construct(IUserManager $userManager, IConfig $config,
 						 BirthdayService $birthdayService) {
 		parent::__construct();
 		$this->birthdayService = $birthdayService;
@@ -69,7 +73,7 @@ class SyncBirthdayCalendar extends Command {
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
 	 */
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$this->verifyEnabled();
 
 		$user = $input->getArgument('user');
@@ -87,12 +91,12 @@ class SyncBirthdayCalendar extends Command {
 
 			$output->writeln("Start birthday calendar sync for $user");
 			$this->birthdayService->syncUser($user);
-			return;
+			return 0;
 		}
 		$output->writeln("Start birthday calendar sync for all users ...");
 		$p = new ProgressBar($output);
 		$p->start();
-		$this->userManager->callForSeenUsers(function($user) use ($p)  {
+		$this->userManager->callForSeenUsers(function ($user) use ($p) {
 			$p->advance();
 
 			$userId = $user->getUID();
@@ -107,9 +111,10 @@ class SyncBirthdayCalendar extends Command {
 
 		$p->finish();
 		$output->writeln('');
+		return 0;
 	}
 
-	protected function verifyEnabled () {
+	protected function verifyEnabled() {
 		$isEnabled = $this->config->getAppValue('dav', 'generateBirthdayCalendar', 'yes');
 
 		if ($isEnabled !== 'yes') {

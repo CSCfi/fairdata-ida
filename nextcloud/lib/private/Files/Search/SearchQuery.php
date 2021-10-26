@@ -17,7 +17,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -37,8 +37,9 @@ class SearchQuery implements ISearchQuery {
 	private $offset;
 	/** @var  ISearchOrder[] */
 	private $order;
-	/** @var IUser */
+	/** @var ?IUser */
 	private $user;
+	private $limitToHome;
 
 	/**
 	 * SearchQuery constructor.
@@ -47,14 +48,23 @@ class SearchQuery implements ISearchQuery {
 	 * @param int $limit
 	 * @param int $offset
 	 * @param array $order
-	 * @param IUser $user
+	 * @param ?IUser $user
+	 * @param bool $limitToHome
 	 */
-	public function __construct(ISearchOperator $searchOperation, $limit, $offset, array $order, IUser $user) {
+	public function __construct(
+		ISearchOperator $searchOperation,
+		int $limit,
+		int $offset,
+		array $order,
+		?IUser $user = null,
+		bool $limitToHome = false
+	) {
 		$this->searchOperation = $searchOperation;
 		$this->limit = $limit;
 		$this->offset = $offset;
 		$this->order = $order;
 		$this->user = $user;
+		$this->limitToHome = $limitToHome;
 	}
 
 	/**
@@ -86,9 +96,13 @@ class SearchQuery implements ISearchQuery {
 	}
 
 	/**
-	 * @return IUser
+	 * @return ?IUser
 	 */
 	public function getUser() {
 		return $this->user;
+	}
+
+	public function limitToHome(): bool {
+		return $this->limitToHome;
 	}
 }

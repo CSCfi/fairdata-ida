@@ -1,9 +1,10 @@
 <?php
-
 /**
  * @copyright Copyright (c) 2018 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -31,7 +32,7 @@ class Version14000Date20180626223656 extends SimpleMigrationStep {
 	public function changeSchema(\OCP\Migration\IOutput $output, \Closure $schemaClosure, array $options) {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
-		if(!$schema->hasTable('whats_new')) {
+		if (!$schema->hasTable('whats_new')) {
 			$table = $schema->createTable('whats_new');
 			$table->addColumn('id', 'integer', [
 				'autoincrement' => true,

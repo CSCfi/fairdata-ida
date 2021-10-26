@@ -1,0 +1,97 @@
+/*
+ * This file is part of the IDA research data storage service
+ *
+ * Copyright (C) 2018 Ministry of Education and Culture, Finland
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @author    CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @license   GNU Affero General Public License, version 3
+ * @link      https://research.csc.fi/
+ */
+
+#idafirstrunwizard .idafirstrunwizard-content {
+	padding: 20px;
+	padding-top: 0px;
+	padding-bottom: 40px;
+	margin: 20px;
+    max-width: 400px;
+}
+
+#idafirstrunwizard h1 {
+	font-size: 40px;
+	font-weight: 300;
+	line-height: 120%;
+	padding: 0 0 10px
+}
+
+#idafirstrunwizard h2 {
+	padding-top: 20px;
+	margin: 35px 0 10px;
+	line-height: 120%;
+}
+
+#idafirstrunwizard p {
+	margin-top: 15px;
+	line-height: 120%;
+}
+
+#idafirstrunwizard .appsmall {
+	height: 32px;
+	width: 32px;
+	position: relative;
+	opacity: .5;
+	vertical-align: middle;
+}
+
+#idafirstrunwizard .button {
+	display: inline-block;
+	padding: 8px;
+	font-weight: normal;
+	font-size: 14px;
+}
+
+#idafirstrunwizard p a {
+	font-weight: bold;
+	color: #0082c9;
+}
+#idafirstrunwizard p a:hover,
+#idafirstrunwizard p a:focus {
+	color: #444;
+}
+#idafirstrunwizard .footnote {
+	margin-top: 40px;
+}
+
+#idafirstrunwizard .close {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 10px;
+}
+
+#idafirstrunwizard table {
+	margin: auto;
+	margin-top: 15px;
+}
+
+#idafirstrunwizard td {
+	vertical-align: top;
+	padding: 40px;
+	white-space: normal;
+}
+
+#idafirstrunwizard a {
+	color: #007FAD;
+}

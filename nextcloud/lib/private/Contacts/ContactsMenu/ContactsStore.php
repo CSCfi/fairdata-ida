@@ -3,9 +3,13 @@
  * @copyright 2017 Christoph Wurst <christoph@winzerhof-wurst.at>
  * @copyright 2017 Lukas Reschke <lukas@statuscode.ch>
  *
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Tobia De Koninck <tobia@ledfan.be>
  *
  * @license GNU AGPL version 3 or any later version
@@ -21,19 +25,20 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OC\Contacts\ContactsMenu;
 
+use OC\KnownUser\KnownUserService;
+use OCP\Contacts\ContactsMenu\IContactsStore;
 use OCP\Contacts\ContactsMenu\IEntry;
 use OCP\Contacts\IManager;
 use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IUser;
 use OCP\IUserManager;
-use OCP\Contacts\ContactsMenu\IContactsStore;
 
 class ContactsStore implements IContactsStore {
 
@@ -49,20 +54,19 @@ class ContactsStore implements IContactsStore {
 	/** @var IGroupManager */
 	private $groupManager;
 
-	/**
-	 * @param IManager $contactsManager
-	 * @param IConfig $config
-	 * @param IUserManager $userManager
-	 * @param IGroupManager $groupManager
-	 */
+	/** @var KnownUserService */
+	private $knownUserService;
+
 	public function __construct(IManager $contactsManager,
 								IConfig $config,
 								IUserManager $userManager,
-								IGroupManager $groupManager) {
+								IGroupManager $groupManager,
+								KnownUserService $knownUserService) {
 		$this->contactsManager = $contactsManager;
 		$this->config = $config;
 		$this->userManager = $userManager;
 		$this->groupManager = $groupManager;
+		$this->knownUserService = $knownUserService;
 	}
 
 	/**
@@ -70,13 +74,25 @@ class ContactsStore implements IContactsStore {
 	 * @param string|null $filter
 	 * @return IEntry[]
 	 */
-	public function getContacts(IUser $user, $filter) {
-		$allContacts = $this->contactsManager->search($filter ?: '', [
-			'FN',
-			'EMAIL'
-		]);
+	public function getContacts(IUser $user, $filter, ?int $limit = null, ?int $offset = null) {
+		$options = [];
+		if ($limit !== null) {
+			$options['limit'] = $limit;
+		}
+		if ($offset !== null) {
+			$options['offset'] = $offset;
+		}
 
-		$entries = array_map(function(array $contact) {
+		$allContacts = $this->contactsManager->search(
+			$filter ?: '',
+			[
+				'FN',
+				'EMAIL'
+			],
+			$options
+		);
+
+		$entries = array_map(function (array $contact) {
 			return $this->contactArrayToEntry($contact);
 		}, $allContacts);
 		return $this->filterContacts(
@@ -87,7 +103,7 @@ class ContactsStore implements IContactsStore {
 	}
 
 	/**
-	 * Filters the contacts. Applies 3 filters:
+	 * Filters the contacts. Applied filters:
 	 *  1. filter the current user
 	 *  2. if the `shareapi_allow_share_dialog_user_enumeration` config option is
 	 * enabled it will filter all local users
@@ -106,11 +122,14 @@ class ContactsStore implements IContactsStore {
 									array $entries,
 									$filter) {
 		$disallowEnumeration = $this->config->getAppValue('core', 'shareapi_allow_share_dialog_user_enumeration', 'yes') !== 'yes';
+		$restrictEnumerationGroup = $this->config->getAppValue('core', 'shareapi_restrict_user_enumeration_to_group', 'no') === 'yes';
+		$restrictEnumerationPhone = $this->config->getAppValue('core', 'shareapi_restrict_user_enumeration_to_phone', 'no') === 'yes';
+		$allowEnumerationFullMatch = $this->config->getAppValue('core', 'shareapi_restrict_user_enumeration_full_match', 'yes') === 'yes';
 		$excludedGroups = $this->config->getAppValue('core', 'shareapi_exclude_groups', 'no') === 'yes';
 
 		// whether to filter out local users
 		$skipLocal = false;
-		// whether to filter out all users which doesn't have the same group as the current user
+		// whether to filter out all users which don't have a common group as the current user
 		$ownGroupsOnly = $this->config->getAppValue('core', 'shareapi_only_share_with_group_members', 'no') === 'yes';
 
 		$selfGroups = $this->groupManager->getUserGroupIds($self);
@@ -118,7 +137,7 @@ class ContactsStore implements IContactsStore {
 		if ($excludedGroups) {
 			$excludedGroups = $this->config->getAppValue('core', 'shareapi_exclude_groups_list', '');
 			$decodedExcludeGroups = json_decode($excludedGroups, true);
-			$excludeGroupsList = ($decodedExcludeGroups !== null) ? $decodedExcludeGroups :  [];
+			$excludeGroupsList = $decodedExcludeGroups ?? [];
 
 			if (count(array_intersect($excludeGroupsList, $selfGroups)) !== 0) {
 				// a group of the current user is excluded -> filter all local users
@@ -128,47 +147,80 @@ class ContactsStore implements IContactsStore {
 
 		$selfUID = $self->getUID();
 
-		return array_values(array_filter($entries, function(IEntry $entry) use ($self, $skipLocal, $ownGroupsOnly, $selfGroups, $selfUID, $disallowEnumeration, $filter) {
-			if ($skipLocal && $entry->getProperty('isLocalSystemBook') === true) {
+		return array_values(array_filter($entries, function (IEntry $entry) use ($skipLocal, $ownGroupsOnly, $selfGroups, $selfUID, $disallowEnumeration, $restrictEnumerationGroup, $restrictEnumerationPhone, $allowEnumerationFullMatch, $filter) {
+			if ($entry->getProperty('UID') === $selfUID) {
 				return false;
 			}
 
-			// Prevent enumerating local users
-			if($disallowEnumeration && $entry->getProperty('isLocalSystemBook')) {
-				$filterUser = true;
+			if ($entry->getProperty('isLocalSystemBook')) {
+				if ($skipLocal) {
+					return false;
+				}
 
-				$mailAddresses = $entry->getEMailAddresses();
-				foreach($mailAddresses as $mailAddress) {
-					if($mailAddress === $filter) {
-						$filterUser = false;
-						break;
+				$checkedCommonGroupAlready = false;
+
+				// Prevent enumerating local users
+				if ($disallowEnumeration) {
+					if (!$allowEnumerationFullMatch) {
+						return false;
+					}
+
+					$filterOutUser = true;
+
+					$mailAddresses = $entry->getEMailAddresses();
+					foreach ($mailAddresses as $mailAddress) {
+						if ($mailAddress === $filter) {
+							$filterOutUser = false;
+							break;
+						}
+					}
+
+					if ($entry->getProperty('UID') && $entry->getProperty('UID') === $filter) {
+						$filterOutUser = false;
+					}
+
+					if ($filterOutUser) {
+						return false;
+					}
+				} elseif ($restrictEnumerationPhone || $restrictEnumerationGroup) {
+					$canEnumerate = false;
+					if ($restrictEnumerationPhone) {
+						$canEnumerate = $this->knownUserService->isKnownToUser($selfUID, $entry->getProperty('UID'));
+					}
+
+					if (!$canEnumerate && $restrictEnumerationGroup) {
+						$user = $this->userManager->get($entry->getProperty('UID'));
+
+						if ($user === null) {
+							return false;
+						}
+
+						$contactGroups = $this->groupManager->getUserGroupIds($user);
+						$canEnumerate = !empty(array_intersect($contactGroups, $selfGroups));
+						$checkedCommonGroupAlready = true;
+					}
+
+					if (!$canEnumerate) {
+						return false;
 					}
 				}
 
-				if($entry->getProperty('UID') && $entry->getProperty('UID') === $filter) {
-					$filterUser = false;
-				}
+				if ($ownGroupsOnly && !$checkedCommonGroupAlready) {
+					$user = $this->userManager->get($entry->getProperty('UID'));
 
-				if($filterUser) {
-					return false;
-				}
-			}
+					if (!$user instanceof IUser) {
+						return false;
+					}
 
-			if ($ownGroupsOnly && $entry->getProperty('isLocalSystemBook') === true) {
-				$uid = $this->userManager->get($entry->getProperty('UID'));
-
-				if ($uid === NULL) {
-					return false;
-				}
-
-				$contactGroups = $this->groupManager->getUserGroupIds($uid);
-				if (count(array_intersect($contactGroups, $selfGroups)) === 0) {
-					// no groups in common, so shouldn't see the contact
-					return false;
+					$contactGroups = $this->groupManager->getUserGroupIds($user);
+					if (empty(array_intersect($contactGroups, $selfGroups))) {
+						// no groups in common, so shouldn't see the contact
+						return false;
+					}
 				}
 			}
 
-			return $entry->getProperty('UID') !== $selfUID;
+			return true;
 		}));
 	}
 
@@ -179,7 +231,7 @@ class ContactsStore implements IContactsStore {
 	 * @return IEntry|null
 	 */
 	public function findOne(IUser $user, $shareType, $shareWith) {
-		switch($shareType) {
+		switch ($shareType) {
 			case 0:
 			case 6:
 				$filter = ['UID'];
@@ -193,7 +245,7 @@ class ContactsStore implements IContactsStore {
 
 		$userId = $user->getUID();
 		$allContacts = $this->contactsManager->search($shareWith, $filter);
-		$contacts = array_filter($allContacts, function($contact) use ($userId) {
+		$contacts = array_filter($allContacts, function ($contact) use ($userId) {
 			return $contact['UID'] !== $userId;
 		});
 		$match = null;
@@ -221,7 +273,6 @@ class ContactsStore implements IContactsStore {
 			} else {
 				$match = null;
 			}
-
 		}
 
 		return $match;
@@ -259,5 +310,4 @@ class ContactsStore implements IContactsStore {
 
 		return $entry;
 	}
-
 }

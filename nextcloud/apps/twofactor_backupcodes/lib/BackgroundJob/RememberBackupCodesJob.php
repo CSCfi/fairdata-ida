@@ -1,8 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2018, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -18,7 +21,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -57,7 +60,7 @@ class RememberBackupCodesJob extends TimedJob {
 		$this->notificationManager = $notificationManager;
 		$this->jobList = $jobList;
 
-		$this->setInterval(60*60*24*14);
+		$this->setInterval(60 * 60 * 24 * 14);
 	}
 
 	protected function run($argument) {
@@ -70,7 +73,7 @@ class RememberBackupCodesJob extends TimedJob {
 		}
 
 		$providers = $this->registry->getProviderStates($user);
-		$state2fa = array_reduce($providers, function(bool $carry, bool $state) {
+		$state2fa = array_reduce($providers, function (bool $carry, bool $state) {
 			return $carry || $state;
 		}, false);
 

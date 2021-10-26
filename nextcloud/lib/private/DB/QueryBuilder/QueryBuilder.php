@@ -2,10 +2,15 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -19,16 +24,18 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\DB\QueryBuilder;
 
-use Doctrine\DBAL\Platforms\MySqlPlatform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\OraclePlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
-use OC\DB\OracleConnection;
+use Doctrine\DBAL\Query\QueryException;
+use OC\DB\ConnectionAdapter;
 use OC\DB\QueryBuilder\ExpressionBuilder\ExpressionBuilder;
 use OC\DB\QueryBuilder\ExpressionBuilder\MySqlExpressionBuilder;
 use OC\DB\QueryBuilder\ExpressionBuilder\OCIExpressionBuilder;
@@ -38,16 +45,19 @@ use OC\DB\QueryBuilder\FunctionBuilder\FunctionBuilder;
 use OC\DB\QueryBuilder\FunctionBuilder\OCIFunctionBuilder;
 use OC\DB\QueryBuilder\FunctionBuilder\PgSqlFunctionBuilder;
 use OC\DB\QueryBuilder\FunctionBuilder\SqliteFunctionBuilder;
+use OC\DB\ResultAdapter;
 use OC\SystemConfig;
+use OCP\DB\IResult;
+use OCP\DB\QueryBuilder\ICompositeExpression;
+use OCP\DB\QueryBuilder\ILiteral;
+use OCP\DB\QueryBuilder\IParameter;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\DB\QueryBuilder\IQueryFunction;
-use OCP\DB\QueryBuilder\IParameter;
-use OCP\IDBConnection;
 use OCP\ILogger;
 
 class QueryBuilder implements IQueryBuilder {
 
-	/** @var \OCP\IDBConnection */
+	/** @var ConnectionAdapter */
 	private $connection;
 
 	/** @var SystemConfig */
@@ -71,15 +81,15 @@ class QueryBuilder implements IQueryBuilder {
 	/**
 	 * Initializes a new QueryBuilder.
 	 *
-	 * @param IDBConnection $connection
+	 * @param ConnectionAdapter $connection
 	 * @param SystemConfig $systemConfig
 	 * @param ILogger $logger
 	 */
-	public function __construct(IDBConnection $connection, SystemConfig $systemConfig, ILogger $logger) {
+	public function __construct(ConnectionAdapter $connection, SystemConfig $systemConfig, ILogger $logger) {
 		$this->connection = $connection;
 		$this->systemConfig = $systemConfig;
 		$this->logger = $logger;
-		$this->queryBuilder = new \Doctrine\DBAL\Query\QueryBuilder($this->connection);
+		$this->queryBuilder = new \Doctrine\DBAL\Query\QueryBuilder($this->connection->getInner());
 		$this->helper = new QuoteHelper();
 	}
 
@@ -111,17 +121,20 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return \OCP\DB\QueryBuilder\IExpressionBuilder
 	 */
 	public function expr() {
-		if ($this->connection instanceof OracleConnection) {
+		if ($this->connection->getDatabasePlatform() instanceof OraclePlatform) {
 			return new OCIExpressionBuilder($this->connection, $this);
-		} else if ($this->connection->getDatabasePlatform() instanceof PostgreSqlPlatform) {
-			return new PgSqlExpressionBuilder($this->connection, $this);
-		} else if ($this->connection->getDatabasePlatform() instanceof MySqlPlatform) {
-			return new MySqlExpressionBuilder($this->connection, $this);
-		} else if ($this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
-			return new SqliteExpressionBuilder($this->connection, $this);
-		} else {
-			return new ExpressionBuilder($this->connection, $this);
 		}
+		if ($this->connection->getDatabasePlatform() instanceof PostgreSQL94Platform) {
+			return new PgSqlExpressionBuilder($this->connection, $this);
+		}
+		if ($this->connection->getDatabasePlatform() instanceof MySQLPlatform) {
+			return new MySqlExpressionBuilder($this->connection, $this);
+		}
+		if ($this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
+			return new SqliteExpressionBuilder($this->connection, $this);
+		}
+
+		return new ExpressionBuilder($this->connection, $this);
 	}
 
 	/**
@@ -141,15 +154,17 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return \OCP\DB\QueryBuilder\IFunctionBuilder
 	 */
 	public function func() {
-		if ($this->connection instanceof OracleConnection) {
+		if ($this->connection->getDatabasePlatform() instanceof OraclePlatform) {
 			return new OCIFunctionBuilder($this->helper);
-		} else if ($this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
-			return new SqliteFunctionBuilder($this->helper);
-		} else if ($this->connection->getDatabasePlatform() instanceof PostgreSqlPlatform) {
-			return new PgSqlFunctionBuilder($this->helper);
-		} else {
-			return new FunctionBuilder($this->helper);
 		}
+		if ($this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
+			return new SqliteFunctionBuilder($this->helper);
+		}
+		if ($this->connection->getDatabasePlatform() instanceof PostgreSQL94Platform) {
+			return new PgSqlFunctionBuilder($this->helper);
+		}
+
+		return new FunctionBuilder($this->helper);
 	}
 
 	/**
@@ -185,33 +200,95 @@ class QueryBuilder implements IQueryBuilder {
 	 * Uses {@see Connection::executeQuery} for select statements and {@see Connection::executeUpdate}
 	 * for insert, update and delete statements.
 	 *
-	 * @return \Doctrine\DBAL\Driver\Statement|int
+	 * @return IResult|int
 	 */
 	public function execute() {
 		if ($this->systemConfig->getValue('log_query', false)) {
-			$params = [];
-			foreach ($this->getParameters() as $placeholder => $value) {
-				if (is_array($value)) {
-					$params[] = $placeholder . ' => (\'' . implode('\', \'', $value) . '\')';
-				} else {
-					$params[] = $placeholder . ' => \'' . $value . '\'';
+			try {
+				$params = [];
+				foreach ($this->getParameters() as $placeholder => $value) {
+					if ($value instanceof \DateTime) {
+						$params[] = $placeholder . ' => DateTime:\'' . $value->format('c') . '\'';
+					} elseif (is_array($value)) {
+						$params[] = $placeholder . ' => (\'' . implode('\', \'', $value) . '\')';
+					} else {
+						$params[] = $placeholder . ' => \'' . $value . '\'';
+					}
 				}
+				if (empty($params)) {
+					$this->logger->debug('DB QueryBuilder: \'{query}\'', [
+						'query' => $this->getSQL(),
+						'app' => 'core',
+					]);
+				} else {
+					$this->logger->debug('DB QueryBuilder: \'{query}\' with parameters: {params}', [
+						'query' => $this->getSQL(),
+						'params' => implode(', ', $params),
+						'app' => 'core',
+					]);
+				}
+			} catch (\Error $e) {
+				// likely an error during conversion of $value to string
+				$this->logger->debug('DB QueryBuilder: error trying to log SQL query');
+				$this->logger->logException($e);
 			}
-			if (empty($params)) {
-				$this->logger->debug('DB QueryBuilder: \'{query}\'', [
+		}
+
+		if (!empty($this->getQueryPart('select'))) {
+			$select = $this->getQueryPart('select');
+			$hasSelectAll = array_filter($select, static function ($s) {
+				return $s === '*';
+			});
+			$hasSelectSpecific = array_filter($select, static function ($s) {
+				return $s !== '*';
+			});
+
+			if (empty($hasSelectAll) === empty($hasSelectSpecific)) {
+				$exception = new QueryException('Query is selecting * and specific values in the same query. This is not supported in Oracle.');
+				$this->logger->logException($exception, [
+					'message' => 'Query is selecting * and specific values in the same query. This is not supported in Oracle.',
 					'query' => $this->getSQL(),
-					'app' => 'core',
-				]);
-			} else {
-				$this->logger->debug('DB QueryBuilder: \'{query}\' with parameters: {params}', [
-					'query' => $this->getSQL(),
-					'params' => implode(', ', $params),
+					'level' => ILogger::ERROR,
 					'app' => 'core',
 				]);
 			}
 		}
 
-		return $this->queryBuilder->execute();
+		$numberOfParameters = 0;
+		$hasTooLargeArrayParameter = false;
+		foreach ($this->getParameters() as $parameter) {
+			if (is_array($parameter)) {
+				$count = count($parameter);
+				$numberOfParameters += $count;
+				$hasTooLargeArrayParameter = $hasTooLargeArrayParameter || ($count > 1000);
+			}
+		}
+
+		if ($hasTooLargeArrayParameter) {
+			$exception = new QueryException('More than 1000 expressions in a list are not allowed on Oracle.');
+			$this->logger->logException($exception, [
+				'message' => 'More than 1000 expressions in a list are not allowed on Oracle.',
+				'query' => $this->getSQL(),
+				'level' => ILogger::ERROR,
+				'app' => 'core',
+			]);
+		}
+
+		if ($numberOfParameters > 65535) {
+			$exception = new QueryException('The number of parameters must not exceed 65535. Restriction by PostgreSQL.');
+			$this->logger->logException($exception, [
+				'message' => 'The number of parameters must not exceed 65535. Restriction by PostgreSQL.',
+				'query' => $this->getSQL(),
+				'level' => ILogger::ERROR,
+				'app' => 'core',
+			]);
+		}
+
+		$result = $this->queryBuilder->execute();
+		if (is_int($result)) {
+			return $result;
+		}
+		return new ResultAdapter($result);
 	}
 
 	/**
@@ -245,7 +322,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param mixed $value The parameter value.
 	 * @param string|null|int $type One of the IQueryBuilder::PARAM_* constants.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function setParameter($key, $value, $type = null) {
 		$this->queryBuilder->setParameter($key, $value, $type);
@@ -270,9 +347,9 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param array $params The query parameters to set.
 	 * @param array $types The query parameters types to set.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
-	public function setParameters(array $params, array $types = array()) {
+	public function setParameters(array $params, array $types = []) {
 		$this->queryBuilder->setParameters($params, $types);
 
 		return $this;
@@ -323,7 +400,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param integer $firstResult The first result to return.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function setFirstResult($firstResult) {
 		$this->queryBuilder->setFirstResult($firstResult);
@@ -350,7 +427,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param integer $maxResults The maximum number of results to retrieve.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function setMaxResults($maxResults) {
 		$this->queryBuilder->setMaxResults($maxResults);
@@ -362,7 +439,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * Gets the maximum number of results the query object was set to retrieve (the "limit").
 	 * Returns NULL if {@link setMaxResults} was not applied to this query builder.
 	 *
-	 * @return integer The maximum number of results.
+	 * @return int|null The maximum number of results.
 	 */
 	public function getMaxResults() {
 		return $this->queryBuilder->getMaxResults();
@@ -381,7 +458,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$selects The selection expressions.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * '@return $this This QueryBuilder instance.
 	 */
 	public function select(...$selects) {
 		if (count($selects) === 1 && is_array($selects[0])) {
@@ -408,10 +485,9 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param mixed $select The selection expressions.
 	 * @param string $alias The column alias used in the constructed query.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function selectAlias($select, $alias) {
-
 		$this->queryBuilder->addSelect(
 			$this->helper->quoteColumnName($select) . ' AS ' . $this->helper->quoteColumnName($alias)
 		);
@@ -430,12 +506,17 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed $select The selection expressions.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function selectDistinct($select) {
+		if (!is_array($select)) {
+			$select = [$select];
+		}
+
+		$quotedSelect = $this->helper->quoteColumnNames($select);
 
 		$this->queryBuilder->addSelect(
-			'DISTINCT ' . $this->helper->quoteColumnName($select)
+			'DISTINCT ' . implode(', ', $quotedSelect)
 		);
 
 		return $this;
@@ -454,7 +535,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$selects The selection expression.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function addSelect(...$selects) {
 		if (count($selects) === 1 && is_array($selects[0])) {
@@ -482,7 +563,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $delete The table whose rows are subject to the deletion.
 	 * @param string $alias The table alias used in the constructed query.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function delete($delete = null, $alias = null) {
 		$this->queryBuilder->delete(
@@ -507,7 +588,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $update The table whose rows are subject to the update.
 	 * @param string $alias The table alias used in the constructed query.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function update($update = null, $alias = null) {
 		$this->queryBuilder->update(
@@ -535,7 +616,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param string $insert The table into which the rows should be inserted.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function insert($insert = null) {
 		$this->queryBuilder->insert(
@@ -560,7 +641,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $from The table.
 	 * @param string|null $alias The alias of the table.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function from($from, $alias = null) {
 		$this->queryBuilder->from(
@@ -586,7 +667,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $alias The alias of the join table.
 	 * @param string $condition The condition for the join.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function join($fromAlias, $join, $alias, $condition = null) {
 		$this->queryBuilder->join(
@@ -614,7 +695,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $alias The alias of the join table.
 	 * @param string $condition The condition for the join.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function innerJoin($fromAlias, $join, $alias, $condition = null) {
 		$this->queryBuilder->innerJoin(
@@ -640,9 +721,9 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $fromAlias The alias that points to a from clause.
 	 * @param string $join The table name to join.
 	 * @param string $alias The alias of the join table.
-	 * @param string $condition The condition for the join.
+	 * @param string|null|ICompositeExpression $condition The condition for the join.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function leftJoin($fromAlias, $join, $alias, $condition = null) {
 		$this->queryBuilder->leftJoin(
@@ -670,7 +751,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $alias The alias of the join table.
 	 * @param string $condition The condition for the join.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function rightJoin($fromAlias, $join, $alias, $condition = null) {
 		$this->queryBuilder->rightJoin(
@@ -694,9 +775,9 @@ class QueryBuilder implements IQueryBuilder {
 	 * </code>
 	 *
 	 * @param string $key The column to set.
-	 * @param string $value The value, expression, placeholder, etc.
+	 * @param ILiteral|IParameter|IQueryFunction|string $value The value, expression, placeholder, etc.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function set($key, $value) {
 		$this->queryBuilder->set(
@@ -731,7 +812,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$predicates The restriction predicates.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function where(...$predicates) {
 		call_user_func_array(
@@ -756,7 +837,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$where The query restrictions.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 *
 	 * @see where()
 	 */
@@ -783,7 +864,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$where The WHERE statement.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 *
 	 * @see where()
 	 */
@@ -809,7 +890,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$groupBys The grouping expression.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function groupBy(...$groupBys) {
 		if (count($groupBys) === 1 && is_array($groupBys[0])) {
@@ -837,7 +918,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$groupBy The grouping expression.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function addGroupBy(...$groupBys) {
 		if (count($groupBys) === 1 && is_array($groupBys[0])) {
@@ -867,14 +948,14 @@ class QueryBuilder implements IQueryBuilder {
 	 * </code>
 	 *
 	 * @param string $column The column into which the value should be inserted.
-	 * @param string $value The value that should be inserted into the column.
+	 * @param IParameter|string $value The value that should be inserted into the column.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function setValue($column, $value) {
 		$this->queryBuilder->setValue(
 			$this->helper->quoteColumnName($column),
-			$value
+			(string) $value
 		);
 
 		return $this;
@@ -897,7 +978,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param array $values The values to specify for the insert query indexed by column names.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function values(array $values) {
 		$quotedValues = [];
@@ -916,7 +997,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$having The restriction over the groups.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function having(...$having) {
 		call_user_func_array(
@@ -933,7 +1014,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$having The restriction to append.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function andHaving(...$having) {
 		call_user_func_array(
@@ -950,7 +1031,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param mixed ...$having The restriction to add.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function orHaving(...$having) {
 		call_user_func_array(
@@ -968,7 +1049,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $sort The ordering expression.
 	 * @param string $order The ordering direction.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function orderBy($sort, $order = null) {
 		$this->queryBuilder->orderBy(
@@ -985,7 +1066,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * @param string $sort The ordering expression.
 	 * @param string $order The ordering direction.
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function addOrderBy($sort, $order = null) {
 		$this->queryBuilder->addOrderBy(
@@ -1021,7 +1102,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param array|null $queryPartNames
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function resetQueryParts($queryPartNames = null) {
 		$this->queryBuilder->resetQueryParts($queryPartNames);
@@ -1034,7 +1115,7 @@ class QueryBuilder implements IQueryBuilder {
 	 *
 	 * @param string $queryPartName
 	 *
-	 * @return \OCP\DB\QueryBuilder\IQueryBuilder This QueryBuilder instance.
+	 * @return $this This QueryBuilder instance.
 	 */
 	public function resetQueryPart($queryPartName) {
 		$this->queryBuilder->resetQueryPart($queryPartName);
@@ -1053,7 +1134,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * placeholder for you. An automatic placeholder will be of the name
 	 * ':dcValue1', ':dcValue2' etc.
 	 *
-	 * For more information see {@link http://php.net/pdostatement-bindparam}
+	 * For more information see {@link https://www.php.net/pdostatement-bindparam}
 	 *
 	 * Example:
 	 * <code>

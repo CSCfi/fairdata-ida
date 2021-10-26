@@ -1,0 +1,89 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license GNU Affero General Public License, version 3
+# @link https://research.csc.fi/
+#--------------------------------------------------------------------------------
+
+SCRIPT=`basename $0`
+
+USAGE="
+Usage: $SCRIPT project action 
+       $SCRIPT -h
+
+       project  = the project name
+       action   = the PID of the action to be marked as failed
+"
+
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$#" -ne 2 ]; then
+    echo "$USAGE" >&2
+    errorExit "Invalid number of arguments"
+fi
+
+ACTION="$2"
+
+#--------------------------------------------------------------------------------
+
+ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
+
+REQUEST_URL="https://localhost/apps/ida/api/actions/${ACTION}?project=${PROJECT}&error=Manually+marked+as+failed&failed=${TIMESTAMP}"
+
+echo "Marking action ${ACTION} in project ${PROJECT} as failed..."
+
+if [ "$DEBUG" = "true" ]; then
+    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+fi
+
+OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Update of action $ACTION failed in project $PROJECT"
+fi
+
+PID=`echo $OUT | grep '"pid":'`
+
+if [ "$PID" = "" ]; then
+    echoAndLog "$OUT"
+    errorExit "Update of action $ACTION failed in project $PROJECT"
+fi
+
+rm $ERR 2>/dev/null
+
+echoAndLog "Marked action $ACTION as failed successfully in project $PROJECT"
+
+addToLog "DONE"

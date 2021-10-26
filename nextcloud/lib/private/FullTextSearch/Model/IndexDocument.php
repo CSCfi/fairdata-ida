@@ -1,15 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
-
 /**
- * FullTextSearch - Full text search framework for Nextcloud
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
+ * @copyright 2018
  *
  * @author Maxence Lange <maxence@artificial-owl.com>
- * @copyright 2018
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,19 +20,16 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
-
 namespace OC\FullTextSearch\Model;
-
 
 use JsonSerializable;
 use OCP\FullTextSearch\Model\IDocumentAccess;
 use OCP\FullTextSearch\Model\IIndex;
 use OCP\FullTextSearch\Model\IIndexDocument;
-
 
 /**
  * Class IndexDocument
@@ -359,10 +353,15 @@ class IndexDocument implements IIndexDocument, JsonSerializable {
 	 * @return IIndexDocument
 	 */
 	final public function addSubTag(string $sub, string $tag): IIndexDocument {
-		$this->subTags[$sub] = $tag;
+		if (!array_key_exists($sub, $this->subTags)) {
+			$this->subTags[$sub] = [];
+		}
+
+		$this->subTags[$sub][] = $tag;
 
 		return $this;
 	}
+
 
 	/**
 	 * Set the list of sub tags assigned to the original document.
@@ -723,7 +722,7 @@ class IndexDocument implements IIndexDocument, JsonSerializable {
 	 * @param string $excerpt
 	 * @return string
 	 */
-	final private function cleanExcerpt(string $excerpt): string {
+	private function cleanExcerpt(string $excerpt): string {
 		$excerpt = str_replace("\\n", ' ', $excerpt);
 		$excerpt = str_replace("\\r", ' ', $excerpt);
 		$excerpt = str_replace("\\t", ' ', $excerpt);
@@ -923,7 +922,6 @@ class IndexDocument implements IIndexDocument, JsonSerializable {
 	 * @return array
 	 */
 	final public function getInfoAll(): array {
-
 		$info = [];
 		foreach ($this->info as $k => $v) {
 			if (substr($k, 0, 1) === '_') {
@@ -990,6 +988,4 @@ class IndexDocument implements IIndexDocument, JsonSerializable {
 			'score' => $this->getScore()
 		];
 	}
-
 }
-

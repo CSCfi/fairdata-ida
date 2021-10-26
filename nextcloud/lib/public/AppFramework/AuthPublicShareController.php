@@ -2,7 +2,10 @@
 /**
  * @copyright 2018, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Tim Obert <tobert@w-commerce.de>
+ * @author TimObert <tobert@w-commerce.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 declare(strict_types=1);
@@ -156,14 +159,17 @@ abstract class AuthPublicShareController extends PublicShareController {
 		);
 	}
 
+
 	/**
 	 * @since 14.0.0
 	 */
 	private function getRoute(string $function): string {
 		$app = strtolower($this->appName);
-		$class = strtolower((new \ReflectionClass($this))->getShortName());
-
-		return $app . '.' . $class . '.' . $function;
+		$class = (new \ReflectionClass($this))->getShortName();
+		if (substr($class, -10) === 'Controller') {
+			$class = substr($class, 0, -10);
+		}
+		return $app .'.'. $class .'.'. $function;
 	}
 
 	/**
@@ -184,6 +190,20 @@ abstract class AuthPublicShareController extends PublicShareController {
 			if (isset($params['_route'])) {
 				$route = $params['_route'];
 				unset($params['_route']);
+			}
+
+			// If the token doesn't match the rest of the arguments can't be trusted either
+			if (isset($params['token']) && $params['token'] !== $this->getToken()) {
+				$params = [
+					'token' => $this->getToken(),
+				];
+			}
+
+			// We need a token
+			if (!isset($params['token'])) {
+				$params = [
+					'token' => $this->getToken(),
+				];
 			}
 		}
 

@@ -18,9 +18,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCA\Files_Sharing\Controller;
 
 use OCA\Files_External\NotFoundException;
@@ -47,7 +48,7 @@ class ShareInfoController extends ApiController {
 	 * @param IRequest $request
 	 * @param IManager $shareManager
 	 */
-	public function __construct($appName,
+	public function __construct(string $appName,
 								IRequest $request,
 								IManager $shareManager) {
 		parent::__construct($appName, $request);
@@ -58,71 +59,72 @@ class ShareInfoController extends ApiController {
 	/**
 	 * @PublicPage
 	 * @NoCSRFRequired
+	 * @BruteForceProtection(action=shareinfo)
 	 *
 	 * @param string $t
 	 * @param null $password
 	 * @param null $dir
 	 * @return JSONResponse
-	 * @throws ShareNotFound
 	 */
 	public function info($t, $password = null, $dir = null) {
 		try {
 			$share = $this->shareManager->getShareByToken($t);
 		} catch (ShareNotFound $e) {
-			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+			$response = new JSONResponse([], Http::STATUS_NOT_FOUND);
+			$response->throttle(['token' => $t]);
+			return $response;
 		}
 
 		if ($share->getPassword() && !$this->shareManager->checkPassword($share, $password)) {
-			return new JSONResponse([], Http::STATUS_FORBIDDEN);
+			$response = new JSONResponse([], Http::STATUS_FORBIDDEN);
+			$response->throttle(['token' => $t]);
+			return $response;
 		}
 
 		if (!($share->getPermissions() & Constants::PERMISSION_READ)) {
-			return new JSONResponse([], Http::STATUS_FORBIDDEN);
+			$response = new JSONResponse([], Http::STATUS_FORBIDDEN);
+			$response->throttle(['token' => $t]);
+			return $response;
 		}
 
-		$isWritable = $share->getPermissions() & (\OCP\Constants::PERMISSION_UPDATE | \OCP\Constants::PERMISSION_CREATE);
-		if (!$isWritable) {
-			$this->addROWrapper();
-		}
-
+		$permissionMask = $share->getPermissions();
 		$node = $share->getNode();
 
 		if ($dir !== null && $node instanceof Folder) {
 			try {
 				$node = $node->get($dir);
 			} catch (NotFoundException $e) {
-
 			}
 		}
 
-		return new JSONResponse($this->parseNode($node));
+		return new JSONResponse($this->parseNode($node, $permissionMask));
 	}
 
-	private function parseNode(Node $node) {
+	private function parseNode(Node $node, int $permissionMask) {
 		if ($node instanceof File) {
-			return $this->parseFile($node);
+			return $this->parseFile($node, $permissionMask);
 		}
-		return $this->parseFolder($node);
+		return $this->parseFolder($node, $permissionMask);
 	}
 
-	private function parseFile(File $file) {
-		return $this->format($file);
+	private function parseFile(File $file, int $permissionMask) {
+		return $this->format($file, $permissionMask);
 	}
 
-	private function parseFolder(Folder $folder) {
-		$data = $this->format($folder);
+	private function parseFolder(Folder $folder, int $permissionMask) {
+		$data = $this->format($folder, $permissionMask);
 
 		$data['children'] = [];
 
 		$nodes = $folder->getDirectoryListing();
 		foreach ($nodes as $node) {
-			$data['children'][] = $this->parseNode($node);
+			$data['children'][] = $this->parseNode($node, $permissionMask);
 		}
 
 		return $data;
 	}
 
-	private function format(Node $node) {
+	private function format(Node $node, int $permissionMask) {
 		$entry = [];
 
 		$entry['id'] = $node->getId();
@@ -130,21 +132,12 @@ class ShareInfoController extends ApiController {
 		$entry['mtime'] = $node->getMTime();
 
 		$entry['name'] = $node->getName();
-		$entry['permissions'] = $node->getPermissions();
+		$entry['permissions'] = $node->getPermissions() & $permissionMask;
 		$entry['mimetype'] = $node->getMimetype();
 		$entry['size'] = $node->getSize();
 		$entry['type'] = $node->getType();
 		$entry['etag'] = $node->getEtag();
 
 		return $entry;
-	}
-
-	protected function addROWrapper() {
-		// FIXME: should not add storage wrappers outside of preSetup, need to find a better way
-		$previousLog = \OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(false);
-		\OC\Files\Filesystem::addStorageWrapper('readonly', function ($mountPoint, $storage) {
-			return new \OC\Files\Storage\Wrapper\PermissionsMask(array('storage' => $storage, 'mask' => \OCP\Constants::PERMISSION_READ + \OCP\Constants::PERMISSION_SHARE));
-		});
-		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper($previousLog);
 	}
 }

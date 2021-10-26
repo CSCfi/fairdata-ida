@@ -4,6 +4,7 @@
  *
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Jobst <mjobst+github@tecratech.de>
@@ -12,7 +13,8 @@
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Tobias Kaminsky <tobias@kaminsky.me>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -26,7 +28,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -35,42 +37,45 @@ namespace OCA\DAV\Connector\Sabre;
 use OC\AppFramework\Http\Request;
 use OCP\Constants;
 use OCP\Files\ForbiddenException;
+use OCP\Files\StorageNotAvailableException;
+use OCP\IConfig;
 use OCP\IPreview;
+use OCP\IRequest;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\IFile;
-use \Sabre\DAV\PropFind;
-use \Sabre\DAV\PropPatch;
+use Sabre\DAV\PropFind;
+use Sabre\DAV\PropPatch;
 use Sabre\DAV\ServerPlugin;
 use Sabre\DAV\Tree;
-use \Sabre\HTTP\RequestInterface;
-use \Sabre\HTTP\ResponseInterface;
-use OCP\Files\StorageNotAvailableException;
-use OCP\IConfig;
-use OCP\IRequest;
+use Sabre\HTTP\RequestInterface;
+use Sabre\HTTP\ResponseInterface;
 
 class FilesPlugin extends ServerPlugin {
 
 	// namespace
-	const NS_OWNCLOUD = 'http://owncloud.org/ns';
-	const NS_NEXTCLOUD = 'http://nextcloud.org/ns';
-	const FILEID_PROPERTYNAME = '{http://owncloud.org/ns}id';
-	const INTERNAL_FILEID_PROPERTYNAME = '{http://owncloud.org/ns}fileid';
-	const PERMISSIONS_PROPERTYNAME = '{http://owncloud.org/ns}permissions';
-	const SHARE_PERMISSIONS_PROPERTYNAME = '{http://open-collaboration-services.org/ns}share-permissions';
-	const OCM_SHARE_PERMISSIONS_PROPERTYNAME = '{http://open-cloud-mesh.org/ns}share-permissions';
-	const DOWNLOADURL_PROPERTYNAME = '{http://owncloud.org/ns}downloadURL';
-	const SIZE_PROPERTYNAME = '{http://owncloud.org/ns}size';
-	const GETETAG_PROPERTYNAME = '{DAV:}getetag';
-	const LASTMODIFIED_PROPERTYNAME = '{DAV:}lastmodified';
-	const OWNER_ID_PROPERTYNAME = '{http://owncloud.org/ns}owner-id';
-	const OWNER_DISPLAY_NAME_PROPERTYNAME = '{http://owncloud.org/ns}owner-display-name';
-	const CHECKSUMS_PROPERTYNAME = '{http://owncloud.org/ns}checksums';
-	const DATA_FINGERPRINT_PROPERTYNAME = '{http://owncloud.org/ns}data-fingerprint';
-	const HAS_PREVIEW_PROPERTYNAME = '{http://nextcloud.org/ns}has-preview';
-	const MOUNT_TYPE_PROPERTYNAME = '{http://nextcloud.org/ns}mount-type';
-	const IS_ENCRYPTED_PROPERTYNAME = '{http://nextcloud.org/ns}is-encrypted';
-	const SHARE_NOTE = '{http://nextcloud.org/ns}note';
+	public const NS_OWNCLOUD = 'http://owncloud.org/ns';
+	public const NS_NEXTCLOUD = 'http://nextcloud.org/ns';
+	public const FILEID_PROPERTYNAME = '{http://owncloud.org/ns}id';
+	public const INTERNAL_FILEID_PROPERTYNAME = '{http://owncloud.org/ns}fileid';
+	public const PERMISSIONS_PROPERTYNAME = '{http://owncloud.org/ns}permissions';
+	public const SHARE_PERMISSIONS_PROPERTYNAME = '{http://open-collaboration-services.org/ns}share-permissions';
+	public const OCM_SHARE_PERMISSIONS_PROPERTYNAME = '{http://open-cloud-mesh.org/ns}share-permissions';
+	public const DOWNLOADURL_PROPERTYNAME = '{http://owncloud.org/ns}downloadURL';
+	public const SIZE_PROPERTYNAME = '{http://owncloud.org/ns}size';
+	public const GETETAG_PROPERTYNAME = '{DAV:}getetag';
+	public const LASTMODIFIED_PROPERTYNAME = '{DAV:}lastmodified';
+	public const OWNER_ID_PROPERTYNAME = '{http://owncloud.org/ns}owner-id';
+	public const OWNER_DISPLAY_NAME_PROPERTYNAME = '{http://owncloud.org/ns}owner-display-name';
+	public const CHECKSUMS_PROPERTYNAME = '{http://owncloud.org/ns}checksums';
+	public const DATA_FINGERPRINT_PROPERTYNAME = '{http://owncloud.org/ns}data-fingerprint';
+	public const HAS_PREVIEW_PROPERTYNAME = '{http://nextcloud.org/ns}has-preview';
+	public const MOUNT_TYPE_PROPERTYNAME = '{http://nextcloud.org/ns}mount-type';
+	public const IS_ENCRYPTED_PROPERTYNAME = '{http://nextcloud.org/ns}is-encrypted';
+	public const METADATA_ETAG_PROPERTYNAME = '{http://nextcloud.org/ns}metadata_etag';
+	public const UPLOAD_TIME_PROPERTYNAME = '{http://nextcloud.org/ns}upload_time';
+	public const CREATION_TIME_PROPERTYNAME = '{http://nextcloud.org/ns}creation_time';
+	public const SHARE_NOTE = '{http://nextcloud.org/ns}note';
 
 	/**
 	 * Reference to main server object
@@ -169,13 +174,13 @@ class FilesPlugin extends ServerPlugin {
 		$server->protectedProperties = array_diff($server->protectedProperties, $allowedProperties);
 
 		$this->server = $server;
-		$this->server->on('propFind', array($this, 'handleGetProperties'));
-		$this->server->on('propPatch', array($this, 'handleUpdateProperties'));
-		$this->server->on('afterBind', array($this, 'sendFileIdHeader'));
-		$this->server->on('afterWriteContent', array($this, 'sendFileIdHeader'));
+		$this->server->on('propFind', [$this, 'handleGetProperties']);
+		$this->server->on('propPatch', [$this, 'handleUpdateProperties']);
+		$this->server->on('afterBind', [$this, 'sendFileIdHeader']);
+		$this->server->on('afterWriteContent', [$this, 'sendFileIdHeader']);
 		$this->server->on('afterMethod:GET', [$this,'httpGet']);
-		$this->server->on('afterMethod:GET', array($this, 'handleDownloadToken'));
-		$this->server->on('afterResponse', function($request, ResponseInterface $response) {
+		$this->server->on('afterMethod:GET', [$this, 'handleDownloadToken']);
+		$this->server->on('afterResponse', function ($request, ResponseInterface $response) {
 			$body = $response->getBody();
 			if (is_resource($body)) {
 				fclose($body);
@@ -192,7 +197,7 @@ class FilesPlugin extends ServerPlugin {
 	 * @throws Forbidden
 	 * @throws NotFound
 	 */
-	function checkMove($source, $destination) {
+	public function checkMove($source, $destination) {
 		$sourceNode = $this->tree->getNodeForPath($source);
 		if (!$sourceNode instanceof Node) {
 			return;
@@ -204,7 +209,7 @@ class FilesPlugin extends ServerPlugin {
 			$sourceNodeFileInfo = $sourceNode->getFileInfo();
 			if ($sourceNodeFileInfo === null) {
 				throw new NotFound($source . ' does not exist');
- 			}
+			}
 
 			if (!$sourceNodeFileInfo->isDeletable()) {
 				throw new Forbidden($source . " cannot be deleted");
@@ -220,7 +225,7 @@ class FilesPlugin extends ServerPlugin {
 	 * @param RequestInterface $request
 	 * @param ResponseInterface $response
 	 */
-	function handleDownloadToken(RequestInterface $request, ResponseInterface $response) {
+	public function handleDownloadToken(RequestInterface $request, ResponseInterface $response) {
 		$queryParams = $request->getQueryParameters();
 
 		/**
@@ -244,10 +249,12 @@ class FilesPlugin extends ServerPlugin {
 	 * @param RequestInterface $request
 	 * @param ResponseInterface $response
 	 */
-	function httpGet(RequestInterface $request, ResponseInterface $response) {
+	public function httpGet(RequestInterface $request, ResponseInterface $response) {
 		// Only handle valid files
 		$node = $this->tree->getNodeForPath($request->getPath());
-		if (!($node instanceof IFile)) return;
+		if (!($node instanceof IFile)) {
+			return;
+		}
 
 		// adds a 'Content-Disposition: attachment' header in case no disposition
 		// header has been set before
@@ -269,7 +276,6 @@ class FilesPlugin extends ServerPlugin {
 
 		if ($node instanceof \OCA\DAV\Connector\Sabre\File) {
 			//Add OC-Checksum header
-			/** @var $node File */
 			$checksum = $node->getChecksum();
 			if ($checksum !== null && $checksum !== '') {
 				$response->addHeader('OC-Checksum', $checksum);
@@ -285,7 +291,6 @@ class FilesPlugin extends ServerPlugin {
 	 * @return void
 	 */
 	public function handleGetProperties(PropFind $propFind, \Sabre\DAV\INode $node) {
-
 		$httpRequest = $this->server->httpRequest;
 
 		if ($node instanceof \OCA\DAV\Connector\Sabre\Node) {
@@ -294,21 +299,21 @@ class FilesPlugin extends ServerPlugin {
 			 * so users were unable to navigate into folders where one subitem
 			 * is blocked by the files_accesscontrol app, see:
 			 * https://github.com/nextcloud/files_accesscontrol/issues/65
-			if (!$node->getFileInfo()->isReadable()) {
-				// avoid detecting files through this means
-				throw new NotFound();
-			}
+			 * if (!$node->getFileInfo()->isReadable()) {
+			 *     // avoid detecting files through this means
+			 *     throw new NotFound();
+			 * }
 			 */
 
-			$propFind->handle(self::FILEID_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::FILEID_PROPERTYNAME, function () use ($node) {
 				return $node->getFileId();
 			});
 
-			$propFind->handle(self::INTERNAL_FILEID_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::INTERNAL_FILEID_PROPERTYNAME, function () use ($node) {
 				return $node->getInternalFileId();
 			});
 
-			$propFind->handle(self::PERMISSIONS_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::PERMISSIONS_PROPERTYNAME, function () use ($node) {
 				$perms = $node->getDavPermissions();
 				if ($this->isPublic) {
 					// remove mount information
@@ -317,13 +322,13 @@ class FilesPlugin extends ServerPlugin {
 				return $perms;
 			});
 
-			$propFind->handle(self::SHARE_PERMISSIONS_PROPERTYNAME, function() use ($node, $httpRequest) {
+			$propFind->handle(self::SHARE_PERMISSIONS_PROPERTYNAME, function () use ($node, $httpRequest) {
 				return $node->getSharePermissions(
 					$httpRequest->getRawServerValue('PHP_AUTH_USER')
 				);
 			});
 
-			$propFind->handle(self::OCM_SHARE_PERMISSIONS_PROPERTYNAME, function() use ($node, $httpRequest) {
+			$propFind->handle(self::OCM_SHARE_PERMISSIONS_PROPERTYNAME, function () use ($node, $httpRequest) {
 				$ncPermissions = $node->getSharePermissions(
 					$httpRequest->getRawServerValue('PHP_AUTH_USER')
 				);
@@ -331,11 +336,11 @@ class FilesPlugin extends ServerPlugin {
 				return json_encode($ocmPermissions);
 			});
 
-			$propFind->handle(self::GETETAG_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::GETETAG_PROPERTYNAME, function () use ($node) {
 				return $node->getETag();
 			});
 
-			$propFind->handle(self::OWNER_ID_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::OWNER_ID_PROPERTYNAME, function () use ($node) {
 				$owner = $node->getOwner();
 				if (!$owner) {
 					return null;
@@ -343,7 +348,7 @@ class FilesPlugin extends ServerPlugin {
 					return $owner->getUID();
 				}
 			});
-			$propFind->handle(self::OWNER_DISPLAY_NAME_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::OWNER_DISPLAY_NAME_PROPERTYNAME, function () use ($node) {
 				$owner = $node->getOwner();
 				if (!$owner) {
 					return null;
@@ -355,14 +360,14 @@ class FilesPlugin extends ServerPlugin {
 			$propFind->handle(self::HAS_PREVIEW_PROPERTYNAME, function () use ($node) {
 				return json_encode($this->previewManager->isAvailable($node->getFileInfo()));
 			});
-			$propFind->handle(self::SIZE_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::SIZE_PROPERTYNAME, function () use ($node) {
 				return $node->getSize();
 			});
 			$propFind->handle(self::MOUNT_TYPE_PROPERTYNAME, function () use ($node) {
 				return $node->getFileInfo()->getMountPoint()->getMountType();
 			});
 
-			$propFind->handle(self::SHARE_NOTE, function() use ($node, $httpRequest) {
+			$propFind->handle(self::SHARE_NOTE, function () use ($node, $httpRequest) {
 				return $node->getNoteFromShare(
 					$httpRequest->getRawServerValue('PHP_AUTH_USER')
 				);
@@ -370,14 +375,13 @@ class FilesPlugin extends ServerPlugin {
 		}
 
 		if ($node instanceof \OCA\DAV\Connector\Sabre\Node) {
-			$propFind->handle(self::DATA_FINGERPRINT_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::DATA_FINGERPRINT_PROPERTYNAME, function () use ($node) {
 				return $this->config->getSystemValue('data-fingerprint', '');
 			});
 		}
 
 		if ($node instanceof \OCA\DAV\Connector\Sabre\File) {
-			$propFind->handle(self::DOWNLOADURL_PROPERTYNAME, function() use ($node) {
-				/** @var $node \OCA\DAV\Connector\Sabre\File */
+			$propFind->handle(self::DOWNLOADURL_PROPERTYNAME, function () use ($node) {
 				try {
 					$directDownloadUrl = $node->getDirectDownload();
 					if (isset($directDownloadUrl['url'])) {
@@ -391,23 +395,30 @@ class FilesPlugin extends ServerPlugin {
 				return false;
 			});
 
-			$propFind->handle(self::CHECKSUMS_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::CHECKSUMS_PROPERTYNAME, function () use ($node) {
 				$checksum = $node->getChecksum();
-				if ($checksum === NULL || $checksum === '') {
+				if ($checksum === null || $checksum === '') {
 					return null;
 				}
 
 				return new ChecksumList($checksum);
 			});
 
+			$propFind->handle(self::CREATION_TIME_PROPERTYNAME, function () use ($node) {
+				return $node->getFileInfo()->getCreationTime();
+			});
+
+			$propFind->handle(self::UPLOAD_TIME_PROPERTYNAME, function () use ($node) {
+				return $node->getFileInfo()->getUploadTime();
+			});
 		}
 
 		if ($node instanceof \OCA\DAV\Connector\Sabre\Directory) {
-			$propFind->handle(self::SIZE_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::SIZE_PROPERTYNAME, function () use ($node) {
 				return $node->getSize();
 			});
 
-			$propFind->handle(self::IS_ENCRYPTED_PROPERTYNAME, function() use ($node) {
+			$propFind->handle(self::IS_ENCRYPTED_PROPERTYNAME, function () use ($node) {
 				return $node->getFileInfo()->isEncrypted() ? '1' : '0';
 			});
 		}
@@ -420,7 +431,6 @@ class FilesPlugin extends ServerPlugin {
 	 * @return array
 	 */
 	protected function ncPermissions2ocmPermissions($ncPermissions) {
-
 		$ocmPermissions = [];
 
 		if ($ncPermissions & Constants::PERMISSION_SHARE) {
@@ -437,7 +447,6 @@ class FilesPlugin extends ServerPlugin {
 		}
 
 		return $ocmPermissions;
-
 	}
 
 	/**
@@ -454,14 +463,14 @@ class FilesPlugin extends ServerPlugin {
 			return;
 		}
 
-		$propPatch->handle(self::LASTMODIFIED_PROPERTYNAME, function($time) use ($node) {
+		$propPatch->handle(self::LASTMODIFIED_PROPERTYNAME, function ($time) use ($node) {
 			if (empty($time)) {
 				return false;
 			}
 			$node->touch($time);
 			return true;
 		});
-		$propPatch->handle(self::GETETAG_PROPERTYNAME, function($etag) use ($node) {
+		$propPatch->handle(self::GETETAG_PROPERTYNAME, function ($etag) use ($node) {
 			if (empty($etag)) {
 				return false;
 			}
@@ -469,6 +478,13 @@ class FilesPlugin extends ServerPlugin {
 				return true;
 			}
 			return false;
+		});
+		$propPatch->handle(self::CREATION_TIME_PROPERTYNAME, function ($time) use ($node) {
+			if (empty($time)) {
+				return false;
+			}
+			$node->setCreationTime((int) $time);
+			return true;
 		});
 	}
 

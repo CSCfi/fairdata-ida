@@ -1,9 +1,15 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Konrad Bucheli <kb@open.ch>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Thomas Citharel <nextcloud@tcit.fr>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,7 +24,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -52,7 +58,7 @@ class IpAddress {
 		$binary = \inet_pton($ip);
 		for ($i = 32; $i > $maskBits; $i -= 8) {
 			$j = \intdiv($i, 8) - 1;
-			$k = (int) \min(8, $i - $maskBits);
+			$k = \min(8, $i - $maskBits);
 			$mask = (0xff - ((2 ** $k) - 1));
 			$int = \unpack('C', $binary[$j]);
 			$binary[$j] = \pack('C', $int[1] & $mask);
@@ -71,10 +77,14 @@ class IpAddress {
 		if ($ip[0] === '[' && $ip[-1] === ']') { // If IP is with brackets, for example [::1]
 			$ip = substr($ip, 1, strlen($ip) - 2);
 		}
+		$pos = strpos($ip, '%'); // if there is an explicit interface added to the IP, e.g. fe80::ae2d:d1e7:fe1e:9a8d%enp2s0
+		if ($pos !== false) {
+			$ip = substr($ip, 0, $pos - 1);
+		}
 		$binary = \inet_pton($ip);
 		for ($i = 128; $i > $maskBits; $i -= 8) {
 			$j = \intdiv($i, 8) - 1;
-			$k = (int) \min(8, $i - $maskBits);
+			$k = \min(8, $i - $maskBits);
 			$mask = (0xff - ((2 ** $k) - 1));
 			$int = \unpack('C', $binary[$j]);
 			$binary[$j] = \pack('C', $int[1] & $mask);
@@ -83,7 +93,7 @@ class IpAddress {
 	}
 
 	/**
-	 * Gets either the /32 (IPv4) or the /128 (IPv6) subnet of an IP address
+	 * Gets either the /32 (IPv4) or the /64 (IPv6) subnet of an IP address
 	 *
 	 * @return string
 	 */
@@ -96,7 +106,7 @@ class IpAddress {
 		}
 		return $this->getIPv6Subnet(
 			$this->ip,
-			128
+			64
 		);
 	}
 

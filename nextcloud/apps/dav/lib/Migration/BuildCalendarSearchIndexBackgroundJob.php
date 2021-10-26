@@ -3,6 +3,8 @@
  * @copyright 2017 Georg Ehrke <oc.list@georgehrke.com>
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,9 +19,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCA\DAV\Migration;
 
 use OC\BackgroundJob\QueuedJob;
@@ -66,12 +69,18 @@ class BuildCalendarSearchIndexBackgroundJob extends QueuedJob {
 	}
 
 	public function run($arguments) {
-		$offset = $arguments['offset'];
-		$stopAt = $arguments['stopAt'];
+		$offset = (int) $arguments['offset'];
+		$stopAt = (int) $arguments['stopAt'];
 
 		$this->logger->info('Building calendar index (' . $offset .'/' . $stopAt . ')');
 
-		$offset = $this->buildIndex($offset, $stopAt);
+		$startTime = $this->timeFactory->getTime();
+		while (($this->timeFactory->getTime() - $startTime) < 15) {
+			$offset = $this->buildIndex($offset, $stopAt);
+			if ($offset >= $stopAt) {
+				break;
+			}
+		}
 
 		if ($offset >= $stopAt) {
 			$this->logger->info('Building calendar index done');
@@ -89,18 +98,17 @@ class BuildCalendarSearchIndexBackgroundJob extends QueuedJob {
 	 * @param int $stopAt
 	 * @return int
 	 */
-	private function buildIndex($offset, $stopAt) {
-		$startTime = $this->timeFactory->getTime();
-
+	private function buildIndex(int $offset, int $stopAt): int {
 		$query = $this->db->getQueryBuilder();
 		$query->select(['id', 'calendarid', 'uri', 'calendardata'])
 			->from('calendarobjects')
 			->where($query->expr()->lte('id', $query->createNamedParameter($stopAt)))
 			->andWhere($query->expr()->gt('id', $query->createNamedParameter($offset)))
-			->orderBy('id', 'ASC');
+			->orderBy('id', 'ASC')
+			->setMaxResults(500);
 
-		$stmt = $query->execute();
-		while($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+		$result = $query->execute();
+		while ($row = $result->fetch(\PDO::FETCH_ASSOC)) {
 			$offset = $row['id'];
 
 			$calendarData = $row['calendardata'];
@@ -109,12 +117,8 @@ class BuildCalendarSearchIndexBackgroundJob extends QueuedJob {
 			}
 
 			$this->calDavBackend->updateProperties($row['calendarid'], $row['uri'], $calendarData);
-
-			if (($this->timeFactory->getTime() - $startTime) > 15) {
-				return $offset;
-			}
 		}
 
-		return $stopAt;
+		return $offset;
 	}
 }
