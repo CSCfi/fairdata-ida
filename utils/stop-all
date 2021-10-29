@@ -21,7 +21,11 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-DIR=`dirname $0`
+HTTPD_USER="httpd"
+
+if [ -d /etc/apache2 ]; then
+    HTTPD_USER="apache2"
+fi
 
 systemctl daemon-reload
 
