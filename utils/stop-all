@@ -29,13 +29,13 @@ fi
 
 systemctl daemon-reload
 
-systemctl stop $HTTPD_USER
-systemctl stop rabbitmq-server
-systemctl stop rabbitmq-metadata-agent
 systemctl stop rabbitmq-replication-agent
+systemctl stop rabbitmq-metadata-agent
+systemctl stop rabbitmq-server
+systemctl stop $HTTPD_USER
 
+systemctl status rabbitmq-replication-agent
+systemctl status rabbitmq-metadata-agent
 systemctl status $HTTPD_USER
 systemctl status rabbitmq-server
-systemctl status rabbitmq-metadata-agent
-systemctl status rabbitmq-replication-agent
 
