@@ -24,9 +24,11 @@
 
 source ../config/config.sh
 
-find $ROOT/nextcloud -type f | grep '.original' | sed -e 's/.original$//'
+NC_ROOT="$ROOT/nextcloud"
 
-find $ROOT/nextcloud/themes/ida -type f | \
-    grep -v "/var/ida/nextcloud/themes/ida/core/css/server.css" | \
-    grep -v "/var/ida/nextcloud/themes/ida/core/img/" | \
-    grep -v "/var/ida/nextcloud/themes/ida/defaults.php"
+if [ -d "$ROOT/nextcloud-old" ]; then
+    NC_ROOT="$ROOT/nextcloud-old"
+fi
+
+find "$NC_ROOT" -type f | grep '.original' | sed -e 's/.original$//'
+
