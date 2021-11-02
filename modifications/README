@@ -60,7 +60,7 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 >> Edit /nextcloud/config.php to update the Nextcloud version to the newly installed version (c.f. /nextcloud/version.php)
 >> Execute /var/ida/utils/restart
 >> Open Nextcloud in browser, and approve the update process when prompted
->> Log in as admin and disable all apps except Files sharing and First run wizard, and disable / do not enable IDA app
+>> Log in as admin and disable all apps except those listed in essential_nextcloud_apps, and disable / do not enable the IDA app
 >> Run 'occ db:add-missing-indices' to fix database
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
 >> Create new '.original' copies within /nextcloud of all modified files listed by the list-modified-files script (see below) 
