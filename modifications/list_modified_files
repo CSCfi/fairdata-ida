@@ -24,11 +24,5 @@
 
 source ../config/config.sh
 
-NC_ROOT="$ROOT/nextcloud"
-
-if [ -d "$ROOT/nextcloud-old" ]; then
-    NC_ROOT="$ROOT/nextcloud-old"
-fi
-
-find "$NC_ROOT" -type f | grep '.original' | sed -e 's/.original$//'
+find "$ROOT/nextcloud-old" -type f | grep '.original' | sed -e 's/.original$//'
 
