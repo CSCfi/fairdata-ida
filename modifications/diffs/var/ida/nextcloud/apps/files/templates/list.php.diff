@@ -1,0 +1,19 @@
+0a1,8
+> <!--
+> This file is part of the IDA research data storage service
+>  
+> @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+> @link     https://research.csc.fi/
+> -->
+> 
+> 
+7,8c15,16
+< 		<div class="notCreatable notPublic hidden">
+< 			<?php p($l->t('You don’t have permission to upload or create files here'))?>
+---
+> 		<div class="notCreatable notPublic hidden" tabindex="0">
+>             <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
+26c34
+< 	<p class="uploadmessage hidden"><?php p($l->t('Upload some content or sync with your devices!')); ?></p>
+---
+> 	<p class="uploadmessage hidden"><?php p($l->t('Upload some content!')); ?></p>

@@ -1,0 +1,29 @@
+17,34d16
+< body {
+< 	background-color: #ffffff;
+< 	font-weight: normal;
+< 	font-size: .8em;
+< 	line-height: 1.6em;
+< 	font-family: 'Nunito', 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
+< 	color: #000;
+< 	text-align: center;
+< 	background-color: #0082c9;
+< 	background-image: url('../img/background.png?v=2');
+< 	background-position: 50% 50%;
+< 	background-repeat: no-repeat;
+< 	background-size: cover;
+< 	background-attachment: fixed; /* fix background gradient */
+< 	min-height: 100%; /* fix sticky footer */
+< 	height: auto;
+< }
+< 
+36c18
+< #body-login a {
+---
+> #body-login #ida-login a {
+40,41c22,23
+< #body-login a:not(.button):hover,
+< #body-login a:not(.button):focus {
+---
+> #body-login #ida-login a:not(.button):hover,
+> #body-login #ida-login a:not(.button):focus {

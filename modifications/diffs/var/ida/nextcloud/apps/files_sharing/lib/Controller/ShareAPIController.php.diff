@@ -1,0 +1,13 @@
+1a2,8
+> /*
+>  * This file is part of the IDA research data storage service
+>  *
+>  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+>  * @link     https://research.csc.fi/
+>  */
+> 
+349c356,357
+< 			$this->shareManager->deleteFromSelf($share, $this->currentUser);
+---
+>             // If node is a shared project folder, do nothing and throw exception
+>             throw new OCSForbiddenException($this->l->t('Root project folders may not be modified.'));

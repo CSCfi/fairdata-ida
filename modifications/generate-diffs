@@ -22,7 +22,15 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
+# This script generates diffs for all of the modified files in the old nextcloud,
+# detailing what has been modified from the originals.
+
 source ../config/config.sh
 
-find "$ROOT/nextcloud-old" -type f | grep '.original' | sed -e 's/.original$//'
+for PATHNAME in `./list-modified-files`; do
+   DIRS=`dirname "${PATHNAME}"`
+   mkdir -p "./diffs${DIRS}"
+   diff "${PATHNAME}.original" "${PATHNAME}" > "./diffs${PATHNAME}.diff" 
+done
+
 

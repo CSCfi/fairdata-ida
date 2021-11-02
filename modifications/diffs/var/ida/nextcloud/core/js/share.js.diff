@@ -1,0 +1,5 @@
+213c213,214
+< 			var avatar = '<span class="avatar" data-username="' + escapeHTML(shareWith) + '" title="' + message + " " + escapeHTML(shareWithDisplayName) + '"></span>';
+---
+> 			//var avatar = '<span class="avatar" data-username="' + escapeHTML(shareWith) + '" title="' + message + " " + escapeHTML(shareWithDisplayName) + '"></span>';
+> 			var avatar = '<span class="avatar" data-username="' + escapeHTML(shareWith) + '" aria-label="Open sharing tab"></span>';

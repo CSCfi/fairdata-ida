@@ -1,0 +1,129 @@
+38a39
+> use \Firebase\JWT\JWT;
+57c58
+< 	protected $availableLanguages = [];
+---
+> 	protected $availableLanguages = ['en', 'fi', 'sv'];
+62c63
+< 	protected $availableLocales = [];
+---
+> 	protected $availableLocales = ['en_US', 'fi_FI', 'sv_FI'];
+70,71c71,73
+< 		'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
+< 		'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
+---
+> 		'en', 'fi', 'sv', 'en_US', 'en_UK', 'en_GB', 'fi_FI', 'sv_SV', 'sv_FI'
+> 		//'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
+> 		//'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
+151,154d152
+< 		$forceLang = $this->config->getSystemValue('force_language', false);
+< 		if (is_string($forceLang)) {
+< 			$this->requestLanguage = $forceLang;
+< 		}
+156,184c154,166
+< 		if ($this->requestLanguage !== '' && $this->languageExists($app, $this->requestLanguage)) {
+< 			return $this->requestLanguage;
+< 		}
+< 
+< 		/**
+< 		 * At this point Nextcloud might not yet be installed and thus the lookup
+< 		 * in the preferences table might fail. For this reason we need to check
+< 		 * whether the instance has already been installed
+< 		 *
+< 		 * @link https://github.com/owncloud/core/issues/21955
+< 		 */
+< 		if ($this->config->getSystemValue('installed', false)) {
+< 			$userId = !is_null($this->userSession->getUser()) ? $this->userSession->getUser()->getUID() :  null;
+< 			if (!is_null($userId)) {
+< 				$userLang = $this->config->getUserValue($userId, 'core', 'lang', null);
+< 			} else {
+< 				$userLang = null;
+< 			}
+< 		} else {
+< 			$userId = null;
+< 			$userLang = null;
+< 		}
+< 
+< 		if ($userLang) {
+< 			$this->requestLanguage = $userLang;
+< 			if ($this->languageExists($app, $userLang)) {
+< 				return $userLang;
+< 			}
+< 		}
+---
+>         if (array_key_exists('HTTP_HOST', $_SERVER)) {
+> 	        $hostname = $_SERVER['HTTP_HOST'];
+> 	        $domain = substr($hostname, strpos($hostname, ".") + 1);
+> 	        $prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+> 	        $cookie = $prefix . '_fd_sso_session';
+> 	        if (array_key_exists($cookie, $_COOKIE)) {
+>                 $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+> 		        $session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+> 				if ($session && $session->language) {
+> 		            return $session->language;
+>                 }
+> 	        }
+>         }
+187,199c169,173
+< 			// Try to get the language from the Request
+< 			$lang = $this->getLanguageFromRequest($app);
+< 			if ($userId !== null && $app === null && !$userLang) {
+< 				$this->config->setUserValue($userId, 'core', 'lang', $lang);
+< 			}
+< 			return $lang;
+< 		} catch (LanguageNotFoundException $e) {
+< 			// Finding language from request failed fall back to default language
+< 			$defaultLanguage = $this->config->getSystemValue('default_language', false);
+< 			if ($defaultLanguage !== false && $this->languageExists($app, $defaultLanguage)) {
+< 				return $defaultLanguage;
+< 			}
+< 		}
+---
+> 		    $lang = $this->getLanguageFromRequest($app);
+>             if ($lang == 'en' || $lang == 'fi' || $lang == 'sv') {
+> 		        return $lang;
+>             }
+> 		} catch (LanguageNotFoundException $e) { ; }
+201d174
+< 		// We could not find any language so fall back to english
+212,226d184
+< 		$forceLocale = $this->config->getSystemValue('force_locale', false);
+< 		if (is_string($forceLocale) && $this->localeExists($forceLocale)) {
+< 			return $forceLocale;
+< 		}
+< 
+< 		if ($this->config->getSystemValue('installed', false)) {
+< 			$userId = null !== $this->userSession->getUser() ? $this->userSession->getUser()->getUID() :  null;
+< 			$userLocale = null;
+< 			if (null !== $userId) {
+< 				$userLocale = $this->config->getUserValue($userId, 'core', 'locale', null);
+< 			}
+< 		} else {
+< 			$userId = null;
+< 			$userLocale = null;
+< 		}
+228,229c186,187
+< 		if ($userLocale && $this->localeExists($userLocale)) {
+< 			return $userLocale;
+---
+> 		if ($lang == 'fi') {
+> 			return 'fi_FI';
+232,235c190,191
+< 		// Default : use system default locale
+< 		$defaultLocale = $this->config->getSystemValue('default_locale', false);
+< 		if ($defaultLocale !== false && $this->localeExists($defaultLocale)) {
+< 			return $defaultLocale;
+---
+> 		if ($lang == 'sv'){
+> 			return 'sv_FI';
+238,243d193
+< 		// If no user locale set, use lang as locale
+< 		if (null !== $lang && $this->localeExists($lang)) {
+< 			return $lang;
+< 		}
+< 
+< 		// At last, return USA
+258c208
+< 		
+---
+> 

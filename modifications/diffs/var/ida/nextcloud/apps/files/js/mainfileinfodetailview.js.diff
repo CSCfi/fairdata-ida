@@ -1,0 +1,28 @@
+1a2,8
+>  * This file is part of the IDA research data storage service
+>  *
+>  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+>  * @link     https://research.csc.fi/
+>  */
+> 
+> /*
+46,47c53,54
+< 			'click a.permalink': '_onClickPermalink',
+< 			'focus .permalink-field>input': '_onFocusPermalink'
+---
+> 			//'click a.permalink': '_onClickPermalink',
+> 			//'focus .permalink-field>input': '_onFocusPermalink'
+69a77
+>             return;
+94c102
+< 			e.preventDefault();
+---
+> 			//e.preventDefault();
+98a107
+>             return;
+177,178c186,187
+< 					permalink: this._makePermalink(this.model.get('id')),
+< 					permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
+---
+> 					//permalink: this._makePermalink(this.model.get('id')),
+> 					//permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')

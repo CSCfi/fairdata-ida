@@ -1,0 +1,7 @@
+3a4,5
+>     "Note to recipient" : "Viesti vastaanottajalle",
+>     "Security" : "Turvallisuus",
+189c191
+<     "Username or\temail" : "Käyttäjätunnus tai\tsähköposti",
+---
+>     "Username or\temail" : "Käyttäjätunnus tai\tsähköpostiosoite",

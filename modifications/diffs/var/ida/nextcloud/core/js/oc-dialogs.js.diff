@@ -1,0 +1,34 @@
+85a86,104
+> 	* displays alert dialog
+> 	* @param text content of dialog
+> 	* @param title dialog title
+> 	* @param callback which will be triggered when user presses YES or NO
+> 	*        (true or false would be passed to callback respectively)
+> 	* @param modal make the dialog modal
+> 	*/
+> 	alertHtml:function(text, title, callback, modal) {
+> 		return this.message(
+> 			text,
+> 			title,
+> 			'alert',
+> 			OCdialogs.OK_BUTTON,
+> 			callback,
+> 			modal,
+> 			true
+> 		);
+> 	},
+> 	/**
+331a351,355
+>                     var targetDir = self.$filePicker.data('path');
+>                     if (targetDir == null || targetDir == '' || targetDir == '/' || OCA.IDA.Util.testIfFrozen(targetDir)) {
+>                         OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+>                         return;
+>                     }
+333c357
+< 						self._fillFilePicker(self.$filePicker.data('path') + newname );
+---
+> 						self._fillFilePicker(self.$filePicker.data('path') + '/' + newname );
+690c714
+< 			var path = original.directory + '/' +original.name;
+---
+> 			var path = original.directory + '/' + original.name;

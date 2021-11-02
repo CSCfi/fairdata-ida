@@ -1,0 +1,78 @@
+19a20
+>  * @author CSC <support@csc.fi>
+27c28
+<  * This program is distributed in the hope that it will be useful,
+---
+>  * This program is distributeo in the hope that it will be useful,
+119a121
+> 
+131a134,196
+>         // Special handling for zero size files
+>         $zero_size = false;
+>         try {
+>             $filesize   = false;
+>             $headers    = null;
+>             $firstbyte  = null;
+>             $test_basis = null;
+> 
+>             // Retrieve stream metadata
+>             $metadata = stream_get_meta_data($data);
+> 
+>             if ($metadata != null && is_array($metadata) && isset($metadata['uri'])) {
+>                 // First, we'll attempt to get the filesize based on the URI defined in the
+>                 // stream metadata, assuming the stream wrapper type supports os.filesize;
+>                 // which if not, it will either return false or throw an exception
+>                 $test_basis = 'filesize-stat';
+>                 $file_uri = $metadata['uri'];
+>                 try {
+>                     $filesize = filesize($file_uri);
+>                     if ($filesize === 0) {
+>                         $zero_size = true;
+>                     }
+>                 } catch (Exception $e) {
+>                     $filesize = false;
+>                 }
+>             }
+>             if ($filesize === false) {
+>                 // If we're here, then either no URI was defined or the stream wrapper type does not
+>                 // support os.filesize, so we'll try to get the size from the content length header,
+>                 // if it exists
+>                 $test_basis = 'content-length-header';
+>                 $headers = get_headers($data, 1);
+>                 if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
+>                     $filesize = (int)$headers['Content-Length'];
+>                     if ($filesize === 0) {
+>                         $zero_size = true;
+>                     }
+>                 }
+>             }
+>             if ($filesize === false) {
+>                 // OK, last recourse is to actually read from the stream, but only if it 
+>                 // is seekable and thus can be reset to the beginning so there is no loss
+>                 // of data during the actual copy operation...
+>                $test_basis = 'read-first-byte';
+>                 if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
+>                     $firstbyte = fread($data, 1);
+>                     fseek($data, 0);
+>                     if (strlen($firstbyte) === 0) {
+>                         $zero_size = true;
+>                     }
+>                 }
+>             }
+>             \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: '
+>                 . ' metadata: '   . json_encode($metadata)
+>                 . ' headers: '    . json_encode($headers)
+>                 . ' filesize: '   . json_encode($filesize)
+>                 . ' firstbyte: '  . json_encode(strlen($firstbyte))
+>                 . ' zero_size: '  . json_encode($zero_size)
+>                 . ' test_basis: ' . $test_basis);
+>         } catch (Exception $e) {
+>             \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: Error: ' . $e->getMessage());
+>         }
+> 
+209a275,279
+> 
+>             // Special handling for zero size files
+>             if ($zero_size === true && $count === 0) {
+>                 $result = true;
+>             }

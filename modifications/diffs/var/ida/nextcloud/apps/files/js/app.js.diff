@@ -1,0 +1,26 @@
+54c54,56
+< 			var showHidden = $('#showHiddenFiles').val() === "1";
+---
+>             // In IDA we always show hidden files
+> 			// var showHidden = $('#showHiddenFiles').val() === "1";
+> 			var showHidden = true;
+92a95
+> 						/*
+97a101
+> 						*/
+103a108
+> 						/*
+108a114
+> 						*/
+223c229,231
+< 			var show = this.$showHiddenFiles.is(':checked');
+---
+>             // In IDA hidden files are always shown
+> 			//var show = this.$showHiddenFiles.is(':checked');
+> 			var show = true;
+234c242,244
+< 			var show = this._filesConfig.get('showhidden');
+---
+>             // In IDA hidden files are always shown
+> 			//var show = this.$showHiddenFiles.is(':checked');
+> 			var show = true;

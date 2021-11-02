@@ -1,0 +1,24 @@
+1a2,15
+>     "Note to recipient" : "Viesti vastaanottajalle",
+>     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Julkinen linkki vanhenee viimeistään {days} päivän jälkeen sen luomisesta, ellei käyttäjä määritä voimassaoloaikaa lyhyemmäksi.",
+>     "Log in": "Kirjaudu",
+>     "Username" : "Käyttäjätunnus",
+>     "Password" : "Salasana",
+>     "Login with CSC account": "Kirjaudu CSC-tunnuksella",
+>     "Personal CSC accounts are created and managed in": "CSC-tiliä hallinnoidaan",
+>     "CSC Customer Portal": "CSC:n asiakasportaalissa",
+>     "CSC username" : "CSC-käyttäjätunnus",
+>     "CSC password" : "CSC-salasana",
+>     "Enter temporary share password:": "Syötä väliaikaisen jakolinkin salasana:",
+>     "Upload some content!" : "Lähetä tiedostoja!",
+>     "Web, desktop, mobile clients and app specific passwords that currently have access to your account." : "Selain-, työpöytä- ja mobiiliasiakasohjemat sekä sovelluskohtaiset salasanat joilla on tällä hetkellä pääsy tilillesi.",
+>     "Files can be added only in the Staging area (root folder ending in +)": "Tiedostoja voidaan lisätä ainoastaan Valmistelualueelle (juurikansio jonka päätteenä on +)",
+89c103
+<     "Upload file" : "Lähetä tiedosto",
+---
+>     "Upload file" : "Lisää tiedosto",
+163c177
+< }
+\ No newline at end of file
+---
+> }

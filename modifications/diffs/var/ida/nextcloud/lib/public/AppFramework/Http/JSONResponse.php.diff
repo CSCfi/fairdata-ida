@@ -1,0 +1,4 @@
+69c69
+< 		$response = json_encode($this->data, JSON_HEX_TAG);
+---
+> 		$response = json_encode($this->data, JSON_HEX_TAG | JSON_PRETTY_PRINT);

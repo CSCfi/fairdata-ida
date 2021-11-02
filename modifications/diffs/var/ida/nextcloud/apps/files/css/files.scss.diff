@@ -1,0 +1,57 @@
+0a1,7
+> /*
+>  * This file is part of the IDA research data storage service
+>  *
+>  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+>  * @link     https://research.csc.fi/
+>  */
+> 
+161,162c168,169
+< 	transition: background-color 0.3s ease;
+< 	background-color: var(--color-background-dark);
+---
+> 	transition: background-color 0.2s ease;
+>     background-color: #e5f2f7;
+425c432,433
+< 	opacity: 0.3;
+---
+> 	/* opacity: 0.3; */
+> 	opacity: 1; /* opacity of 0.3 was too light for Accessibility requirements */
+541c549
+< 		opacity: .3;
+---
+> 		opacity: 1;
+567c575
+< 				opacity: .3;
+---
+> 				opacity: 1;
+573c581
+< 				opacity: .3;
+---
+> 				opacity: 1;
+576c584
+< 				opacity: .7;
+---
+> 				opacity: 1;
+578c586
+< 					opacity: .7;
+---
+> 					opacity: 1;
+583c591
+< 			opacity: .7;
+---
+> 			opacity: 1;
+587c595
+< 		opacity: .7;
+---
+> 		opacity: 1;
+631c639,640
+< 	opacity: .3;
+---
+> 	/* opacity: .3; */
+> 	opacity: 1;  /* .3 is too light for Accessibility requirements */
+1093c1102
+< }
+---
+> }
+\ No newline at end of file

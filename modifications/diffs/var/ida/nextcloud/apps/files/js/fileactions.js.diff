@@ -1,0 +1,109 @@
+1a2,8
+>  * This file is part of the IDA research data storage service
+>  *
+>  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+>  * @link     https://research.csc.fi/
+>  */
+> 
+> /*
+627a635,652
+>                     if (context.$file.attr('data-mounttype') === 'shared-root') {
+>                         OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+>                         return;
+>                     }
+>                     var dir = context.dir || context.fileList.getCurrentDirectory();
+>                     var pathname = dir + '/' + filename;
+>                     var project = OCA.IDA.Util.extractProjectName(pathname);
+>                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
+>                     try {
+> 						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+>                         if (message !== false) {
+>                             OC.Notification.show(t('ida', message), {type: 'error'});
+>                             return;
+>                         }
+>                     } catch (error) {
+>                         OC.Notification.show(error, {type: 'error'});
+>                         return;
+>                     }
+645a671,688
+>                     if (context.$file.attr('data-mounttype') === 'shared-root') {
+>                         OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+>                         return;
+>                     }
+>                     var dir = context.dir || context.fileList.getCurrentDirectory();
+>                     var pathname = dir + '/' + filename;
+>                     var project = OCA.IDA.Util.extractProjectName(pathname);
+>                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
+>                     try {
+> 						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+>                         if (message !== false) {
+>                             OC.Notification.show(t('ida', message), {type: 'error'});
+>                             return;
+>                         }
+>                     } catch (error) {
+>                         OC.Notification.show(error, {type: 'error'});
+>                         return;
+>                     }
+656a700,715
+>                            if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+>                                 OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+>                                 return;
+>                             }
+>                             var project = OCA.IDA.Util.extractProjectName(targetPath);
+>                             var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+>                             try {
+> 						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+>                                 if (message !== false) {
+>                                     OC.Notification.show(t('ida', message), {type: 'error'});
+>                                     return;
+>                                 }
+>                             } catch (error) {
+>                                 OC.Notification.show(error, {type: 'error'});
+>                                 return;
+>                             }
+659a719,734
+>                            if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+>                                 OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+>                                 return;
+>                             }
+>                             var project = OCA.IDA.Util.extractProjectName(targetPath);
+>                             var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+>                             try {
+> 						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+>                                 if (message !== false) {
+>                                     OC.Notification.show(t('ida', message), {type: 'error'});
+>                                     return;
+>                                 }
+>                             } catch (error) {
+>                                 OC.Notification.show(error, {type: 'error'});
+>                                 return;
+>                             }
+701c776,794
+< 				actionHandler: function(fileName, context) {
+---
+> 				actionHandler: function(filename, context) {
+>                     if (context.$file.attr('data-mounttype') === 'shared-root') {
+>                         OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+>                         return;
+>                     }
+>                     var dir = context.dir || context.fileList.getCurrentDirectory();
+>                     var pathname = dir + '/' + filename;
+>                     var project = OCA.IDA.Util.extractProjectName(pathname);
+>                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
+>                     try {
+> 						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+>                         if (message !== false) {
+>                             OC.Notification.show(t('ida', message), {type: 'error'});
+>                             return;
+>                         }
+>                     } catch (error) {
+>                         OC.Notification.show(error, {type: 'error'});
+>                         return;
+>                     }
+706c799,802
+< 					context.fileList.do_delete(fileName, context.dir);
+---
+>                     var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
+>                     if (response) {
+> 					    context.fileList.do_delete(filename, context.dir);
+>                     }

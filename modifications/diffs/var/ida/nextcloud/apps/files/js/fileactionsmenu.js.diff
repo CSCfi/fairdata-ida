@@ -1,0 +1,16 @@
+73a74
+> 			var inRoot = this._context.dir === '/';
+87a89,101
+> 			});
+> 			items = items.filter(function(item) {
+> 				if (inRoot) {
+> 					if (
+> 						item.name === 'Remove'
+> 						|| item.name === 'MoveCopy'
+> 						|| item.name === 'Delete'
+> 						|| item.name === 'Unshare'
+> 						|| item.name === 'Rename'
+> 					)
+> 					return false;
+> 				}
+> 				return true;

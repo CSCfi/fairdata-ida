@@ -1,0 +1,11 @@
+61,63c61,66
+< $color-text-maxcontrast: nc-lighten($color-main-text, 46.2%) !default;
+< $color-text-light: nc-lighten($color-main-text, 15%) !default;
+< $color-text-lighter: nc-lighten($color-main-text, 30%) !default;
+---
+> //$color-text-maxcontrast: nc-lighten($color-main-text, 46.2%) !default;
+> //$color-text-light: nc-lighten($color-main-text, 15%) !default;
+> //$color-text-lighter: nc-lighten($color-main-text, 30%) !default;
+> $color-text-maxcontrast: #222 !default;
+> $color-text-light: #222 !default;
+> $color-text-lighter: #222 !default;

@@ -1,0 +1,44 @@
+3,5c3,4
+<     "accessibility",
+<     "activity",
+<     "admin_audit",
+---
+>     "files",
+>     "files_sharing",
+7d5
+<     "comments",
+9d6
+<     "encryption",
+11,22d7
+<     "federation",
+<     "files",
+<     "files_external",
+<     "files_pdfviewer",
+<     "files_sharing",
+<     "files_texteditor",
+<     "files_trashbin",
+<     "files_versions",
+<     "files_videoplayer",
+<     "firstrunwizard",
+<     "gallery",
+<     "logreader",
+24,28d8
+<     "nextcloud_announcements",
+<     "notifications",
+<     "oauth2",
+<     "password_policy",
+<     "privacy",
+30,36c10
+<     "recommendations",
+<     "serverinfo",
+<     "sharebymail",
+<     "support",
+<     "survey_client",
+<     "systemtags",
+<     "theming",
+---
+>     "oauth2",
+38,40d11
+<     "updatenotification",
+<     "user_ldap",
+<     "viewer",
