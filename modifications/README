@@ -72,15 +72,18 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 
 -- UTILITY SCRIPTS
 
-The utility scripts in this directory expect that the previous version of the nextcloud directory has
-been renamed $ROOT/nextcloud-old and that the new version of nextcloud is installed as $ROOT/nextcloud,
-per the instructions above.
+The utility scripts in this directory expect that the old version of nextcloud is accessible as
+$ROOT/nextcloud-old and the new version of nextcloud is accessible as $ROOT/nextcloud-new, either
+by renaming of directories or via symbolic links.
 
 The list of essential Nextcloud apps which cannot be removed from the official distribution are listed in
-the file essential-nextcloud-apps, located in the same directory as this README file.
+the file essential_nextcloud_apps.
 
-The list of modified Nextcloud files, either modified in-place or overridden in the IDA theme
-can be easily obtained with the provided script list-modified-files, located in the same
-directory as this README file.
+A list of modified Nextcloud files can be easily obtained with the script list-modified-files.
 
+Diffs of all modified files in the old version of nextcloud can be generated using the script
+generate-diffs, and will be stored in the ./diffs/ subdirectory by their relative pathnames.
+
+A list of files modified in the old version of nextcloud which do not exist in the new version
+of nextcloud can be obtaind via the script list-missing-new-modified-files.
 
