@@ -1,10 +1,6 @@
-<!--
-This file is part of the IDA research data storage service
- 
-@author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
-@link     https://research.csc.fi/
--->
-
+<?php
+script(\OCA\Files\AppInfo\Application::APP_ID, 'dist/files-app-settings');
+?>
 <div id="app-navigation">
 	<ul class="with-icon">
 
@@ -15,56 +11,26 @@ This file is part of the IDA research data storage service
 			$pinned = NavigationListElements($item, $l, $pinned);
 		}
 		?>
-	</ul>
 
-    <?php if($l->getLanguageCode() == 'fi') { ?>
-    <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
-        <p>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;pikaopas</a><br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;käyttöopas</a>
-        </p>
-    </div>
-    <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
-        <p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
-            <b>Huomaa:</b>&nbsp;Tiedostot&nbsp;ovat<br>
-            varsinaisessa&nbsp;säilytyksessä<br>
-            IDAssa&nbsp;vasta&nbsp;kun&nbsp;ne&nbsp;ovat<br>
-            Jäädytetyllä&nbsp;alueella.<br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas#projektin-datan-sailytysalueet" rel="noreferrer noopener" target="_blank">Lisätietoja&nbsp;...</a>
-        </p>
-    </div>
-    <?php } elseif($l->getLanguageCode() == 'sv') { ?>
-    <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
-        <p>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
-        </p>
-        </div>
-        <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
-            <p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
-            <b>Notera:</b>&nbsp;Filerna&nbsp;är&nbsp;i&nbsp;egentlig<br>
-            lagring&nbsp;först&nbsp;då&nbsp;de&nbsp;är&nbsp;frysta.<br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" rel="noreferrer noopener" target="_blank">Läs mer&nbsp;...</a>
-        </p>
-    </div>
-    <?php } else { ?>
-    <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
-        <p>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
-        </p>
-        </div>
-        <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
-            <p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
-            <b>Note:</b>&nbsp;Files&nbsp;are&nbsp;safely&nbsp;stored<br>
-            in&nbsp;the&nbsp;IDA&nbsp;service&nbsp;when&nbsp;they<br>
-            are&nbsp;in&nbsp;the&nbsp;Frozen&nbsp;area.<br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" rel="noreferrer noopener" target="_blank">More information&nbsp;...</a>
-        </p>
-    </div>
-	<?php } ?>
-	
-	<div id="app-settings" style="visibility: hidden">
+		<?php if ($_['quota'] === \OCP\Files\FileInfo::SPACE_UNLIMITED): ?>
+			<li id="quota" class="pinned <?php p($pinned === 0 ? 'first-pinned ' : '') ?>">
+				<a href="#" class="icon-quota svg">
+					<p><?php p($l->t('%s used', [$_['usage']])); ?></p>
+				</a>
+			</li>
+		<?php else: ?>
+			<li id="quota" class="has-tooltip pinned <?php p($pinned === 0 ? 'first-pinned ' : '') ?>"
+				title="<?php p($l->t('%s%% of %s used', [$_['usage_relative'], $_['total_space']])); ?>">
+				<a href="#" class="icon-quota svg">
+					<p id="quotatext"><?php p($l->t('%1$s of %2$s used', [$_['usage'], $_['total_space']])); ?></p>
+					<div class="quota-container">
+						<progress value="<?php p($_['usage_relative']); ?>" max="100" class="<?= ($_['usage_relative'] > 80) ? 'warn' : '' ?>"></progress>
+					</div>
+				</a>
+			</li>
+		<?php endif; ?>
+	</ul>
+	<div id="app-settings">
 		<div id="app-settings-header">
 			<button class="settings-button"
 					data-apps-slide-toggle="#app-settings-content">
@@ -72,11 +38,21 @@ This file is part of the IDA research data storage service
 			</button>
 		</div>
 		<div id="app-settings-content">
+			<div id="files-app-settings"></div>
 			<div id="files-setting-showhidden">
 				<input class="checkbox" id="showhiddenfilesToggle"
-					   checked="checked" type="checkbox" checked>
+					   checked="checked" type="checkbox">
 				<label for="showhiddenfilesToggle"><?php p($l->t('Show hidden files')); ?></label>
 			</div>
+			<div id="files-setting-cropimagepreviews">
+				<input class="checkbox" id="cropimagepreviewsToggle"
+					   checked="checked" type="checkbox">
+				<label for="cropimagepreviewsToggle"><?php p($l->t('Crop image previews')); ?></label>
+			</div>
+			<label for="webdavurl"><?php p($l->t('WebDAV')); ?></label>
+			<input id="webdavurl" type="text" readonly="readonly"
+				   value="<?php p($_['webdav_url']); ?>"/>
+			<em><a href="<?php echo link_to_docs('user-webdav') ?>" target="_blank" rel="noreferrer noopener"><?php p($l->t('Use this address to access your Files via WebDAV')) ?> ↗</a></em>
 		</div>
 	</div>
 
@@ -95,15 +71,16 @@ This file is part of the IDA research data storage service
  * @return int Returns the pinned value
  */
 function NavigationListElements($item, $l, $pinned) {
-	strpos($item['classes'] ?? '', 'pinned') !== false ? $pinned++ : '';
-	?>
+	strpos($item['classes'] ?? '', 'pinned') !== false ? $pinned++ : ''; ?>
 	<li
 		data-id="<?php p($item['id']) ?>"
 		<?php if (isset($item['dir'])) { ?> data-dir="<?php p($item['dir']); ?>" <?php } ?>
 		<?php if (isset($item['view'])) { ?> data-view="<?php p($item['view']); ?>" <?php } ?>
 		<?php if (isset($item['expandedState'])) { ?> data-expandedstate="<?php p($item['expandedState']); ?>" <?php } ?>
 		class="nav-<?php p($item['id']) ?>
-		<?php if (isset($item['classes'])) { p($item['classes']); } ?>
+		<?php if (isset($item['classes'])) {
+		p($item['classes']);
+	} ?>
 		<?php p($pinned === 1 ? 'first-pinned' : '') ?>
 		<?php if (isset($item['defaultExpandedState']) && $item['defaultExpandedState']) { ?> open<?php } ?>"
 		<?php if (isset($item['folderPosition'])) { ?> folderposition="<?php p($item['folderPosition']); ?>" <?php } ?>>
@@ -114,17 +91,20 @@ function NavigationListElements($item, $l, $pinned) {
 
 		<?php
 		NavigationElementMenu($item);
-		if (isset($item['sublist'])) {
-			?>
-			<button class="collapse app-navigation-noclose" aria-label="toggle submenu"<?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>></button>
+	if (isset($item['sublist'])) {
+		?>
+			<button class="collapse app-navigation-noclose"
+				aria-label="<?php p($l->t('Toggle %1$s sublist', $item['name'])) ?>"
+				<?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>>
+			</button>
 			<ul id="sublist-<?php p($item['id']); ?>">
 				<?php
 				foreach ($item['sublist'] as $item) {
 					$pinned = NavigationListElements($item, $l, $pinned);
-				}
-				?>
+				} ?>
 			</ul>
-		<?php } ?>
+		<?php
+	} ?>
 	</li>
 
 
@@ -156,5 +136,6 @@ function NavigationElementMenu($item) {
 
 			</ul>
 		</div>
-	<?php }
+	<?php
+	}
 }

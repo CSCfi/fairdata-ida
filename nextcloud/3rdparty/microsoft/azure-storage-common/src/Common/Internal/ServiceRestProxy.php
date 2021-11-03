@@ -108,7 +108,7 @@ class ServiceRestProxy extends RestProxy
             $options['proxy'] = $proxy;
         }
 
-        if (!empty($options['verify'])) {
+        if (isset($options['verify'])) {
             $verify = $options['verify'];
         }
 
@@ -120,6 +120,11 @@ class ServiceRestProxy extends RestProxy
                         "allow_redirects" => true,
                         "exceptions" => true,
                         "decode_content" => true,
+                        "config" => [
+                            "curl" => [
+                                CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2
+                            ]
+                        ]
                     ),
                     'cookies' => true,
                     'verify' => $verify,
@@ -296,11 +301,11 @@ class ServiceRestProxy extends RestProxy
             $uri = $uri->withQuery($queryString);
         }
 
-        // add post parameters into bodys
+        // add post parameters into bodies
         $actualBody = null;
         if (empty($body)) {
-            if (empty($headers['content-type'])) {
-                $headers['content-type'] = 'application/x-www-form-urlencoded';
+            if (empty($headers[Resources::CONTENT_TYPE])) {
+                $headers[Resources::CONTENT_TYPE] = Resources::URL_ENCODED_CONTENT_TYPE;
                 $actualBody = Psr7\build_query($postParameters);
             }
         } else {

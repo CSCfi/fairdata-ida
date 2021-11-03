@@ -1,7 +1,6 @@
 OC.L10N.register(
     "federatedfilesharing",
     {
-    "Federated sharing" : "Federated sharing",
     "Do you want to add the remote share {name} from {owner}@{remote}?" : "Do you want to add the remote share {name} from {owner}@{remote}?",
     "Remote share" : "Remote share",
     "Remote share password" : "Remote share password",
@@ -21,9 +20,8 @@ OC.L10N.register(
     "Not allowed to create a federated share with the same user" : "Not allowed to create a federated share with the same user",
     "File is already shared with %s" : "File is already shared with %s",
     "Could not find share" : "Could not find share",
-    "You received \"%3$s\" as a remote share from %1$s (on behalf of %2$s)" : "You received \"%3$s\" as a remote share from %1$s (on behalf of %2$s)",
+    "Federated sharing" : "Federated sharing",
     "You received {share} as a remote share from {user} (on behalf of {behalf})" : "You received {share} as a remote share from {user} (on behalf of {behalf})",
-    "You received \"%3$s\" as a remote share from %1$s" : "You received \"%3$s\" as a remote share from %1$s",
     "You received {share} as a remote share from {user}" : "You received {share} as a remote share from {user}",
     "Accept" : "Accept",
     "Decline" : "Decline",
@@ -31,10 +29,9 @@ OC.L10N.register(
     "Share with me through my #Nextcloud Federated Cloud ID" : "Share with me through my #Nextcloud Federated Cloud ID",
     "Sharing" : "Sharing",
     "Federated file sharing" : "Federated file sharing",
+    "Provide federated file sharing across servers" : "Provide federated file sharing across servers",
     "Federated Cloud Sharing" : "Federated Cloud Sharing",
     "Open documentation" : "Open documentation",
-    "Adjust how people can share between servers." : "Adjust how people can share between servers.",
-    "Allow users on this server to send shares to other servers" : "Allow users on this server to send shares to other servers",
     "Allow users on this server to receive shares from other servers" : "Allow users on this server to receive shares from other servers",
     "Search global and public address book for users" : "Search global and public address book for users",
     "Allow users to publish their data to a global and public address book" : "Allow users to publish their data to a global and public address book",
@@ -44,7 +41,6 @@ OC.L10N.register(
     "Add to your website" : "Add to your website",
     "Share with me via Nextcloud" : "Share with me via Nextcloud",
     "HTML Code:" : "HTML Code:",
-    "Sharing %s failed, because this item is already shared with %s" : "Sharing %s failed, because this item is already shared with %s",
-    "Sharing %s failed, could not find %s, maybe the server is currently unreachable or uses a self-signed certificate." : "Sharing %s failed, could not find %s, maybe the server is currently unreachable or uses a self-signed certificate."
+    "Adjust how people can share between servers." : "Adjust how people can share between servers."
 },
 "nplurals=2; plural=(n != 1);");

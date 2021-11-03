@@ -40,11 +40,12 @@ class RecursiveDirectoryIteratorWithoutData extends \RecursiveFilterIterator {
 	public function accept() {
 		/** @var \DirectoryIterator $this */
 		$excludes = [
+			'.rnd',
 			'.well-known',
 			'data',
 			'..',
 		];
-		return !(in_array($this->getFilename(), $excludes, true) || $this->isDir());
+		return !(in_array($this->current()->getFilename(), $excludes, true) || $this->current()->isDir());
 	}
 }
 
@@ -152,6 +153,8 @@ class Updater {
 	private $updateAvailable = false;
 	/** @var string */
 	private $requestID = null;
+	/** @var bool */
+	private $disabled = false;
 
 	/**
 	 * Updater constructor
@@ -173,6 +176,12 @@ class Updater {
 		/** @var array $CONFIG */
 		require_once $configFileName;
 		$this->configValues = $CONFIG;
+
+		if (php_sapi_name() !== 'cli' && ($this->configValues['upgrade.disable-web'] ?? false)) {
+			// updater disabled
+			$this->disabled = true;
+			return;
+		}
 
 		$dataDir = $this->getDataDirectoryLocation();
 		if(empty($dataDir) || !is_string($dataDir)) {
@@ -207,6 +216,15 @@ class Updater {
 
 		$this->currentVersion = implode('.', $splittedVersion);
 		$this->buildTime = $buildTime;
+	}
+
+	/**
+	 * Returns whether the web updater is disabled
+	 *
+	 * @return bool
+	 */
+	public function isDisabled() {
+		return $this->disabled;
 	}
 
 	/**
@@ -318,6 +336,7 @@ class Updater {
 			'themes',
 			'updater',
 			// Files
+			'.rnd',
 			'index.html',
 			'indie.json',
 			'.user.ini',
@@ -461,17 +480,15 @@ class Updater {
 		$this->silentLog('[info] createBackup()');
 
 		$excludedElements = [
+			'.rnd',
 			'.well-known',
 			'data',
 		];
 
 		// Create new folder for the backup
-		$backupFolderLocation = $this->getDataDirectoryLocation() . '/updater-'.$this->getConfigOption('instanceid').'/backups/nextcloud-'.$this->getConfigOption('version') . '/';
-		if(file_exists($backupFolderLocation)) {
-			$this->silentLog('[info] backup folder location exists');
+		$backupFolderLocation = $this->getDataDirectoryLocation() . '/updater-'.$this->getConfigOption('instanceid').'/backups/nextcloud-'.$this->getConfigOption('version') . '-' . time() . '/';
+		$this->silentLog('[info] backup folder location: ' . $backupFolderLocation);
 
-			$this->recursiveDelete($backupFolderLocation);
-		}
 		$state = mkdir($backupFolderLocation, 0750, true);
 		if($state === false) {
 			throw new \Exception('Could not create backup folder location');
@@ -691,12 +708,15 @@ class Updater {
 		$storageLocation = $this->getDataDirectoryLocation() . '/updater-'.$this->getConfigOption('instanceid') . '/downloads/';
 		$this->silentLog('[info] storage location: ' . $storageLocation);
 
-		$files = scandir($storageLocation);
-		// ., .. and downloaded zip archive
-		if(count($files) !== 3) {
-			throw new \Exception('Not exact 3 files existent in folder');
+		$filesInStorageLocation = scandir($storageLocation);
+		$files = array_values(array_filter($filesInStorageLocation, function($path){
+			return $path !== '.' && $path !== '..';
+		}));
+		// only the downloaded archive
+		if(count($files) !== 1) {
+			throw new \Exception('There are more files than the downloaded archive in the downloads/ folder.');
 		}
-		return $storageLocation . '/' . $files[2];
+		return $storageLocation . '/' . $files[0];
 	}
 
 	/**
@@ -904,9 +924,18 @@ EOF;
 		if(!file_exists($shippedAppsFile)) {
 			throw new \Exception('core/shipped.json is not available');
 		}
+
+		$newShippedAppsFile = $this->getDataDirectoryLocation() . '/updater-'.$this->getConfigOption('instanceid') . '/downloads/nextcloud/core/shipped.json';
+		if(!file_exists($newShippedAppsFile)) {
+			throw new \Exception('core/shipped.json is not available in the new release');
+		}
+
 		// Delete shipped apps
-		$shippedApps = json_decode(file_get_contents($shippedAppsFile), true);
-		foreach($shippedApps['shippedApps'] as $app) {
+		$shippedApps = array_merge(
+			json_decode(file_get_contents($shippedAppsFile), true)['shippedApps'],
+			json_decode(file_get_contents($newShippedAppsFile), true)['shippedApps']
+		);
+		foreach($shippedApps as $app) {
 			$this->recursiveDelete($this->baseDir . '/../apps/' . $app);
 		}
 
@@ -1267,8 +1296,13 @@ ini_set('log_errors', '1');
 // Check if the config.php is at the expected place
 try {
 	$updater = new Updater(__DIR__);
+	if ($updater->isDisabled()) {
+		http_response_code(403);
+		die('Updater is disabled, please use the command line');
+	}
 } catch (\Exception $e) {
 	// logging here is not possible because we don't know the data directory
+	http_response_code(500);
 	die($e->getMessage());
 }
 
@@ -1519,7 +1553,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 			white-space: nowrap;
 			text-overflow: ellipsis;
 			color: #000;
-			/* opacity: .57; */
+			opacity: .57;
 		}
 		#app-navigation li:hover > a, #app-navigation li:focus > a {
 			opacity: 1;
@@ -1542,7 +1576,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 
 		li.step, .light {
 			-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=57)";
-			/* opacity: .57; */
+			opacity: .57;
 		}
 
 		li.step h2 {
@@ -1550,7 +1584,7 @@ if(strpos($updaterUrl, 'index.php') === false) {
 			margin-top: 12px;
 			margin-bottom: 0;
 			-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=57)";
-			/* opacity: .57; */
+			opacity: .57;
 			background-position:8px 50%;
 			background-repeat: no-repeat;
 		}
@@ -1677,8 +1711,11 @@ if(strpos($updaterUrl, 'index.php') === false) {
 			margin: 0 auto;
 		}
 
-	</style>
+		pre {
+			word-wrap: break-word;
+		}
 
+	</style>
 </head>
 <body>
 <div id="header">
@@ -1754,10 +1791,9 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					<div class="output hidden"></div>
 				</li>
 				<li id="step-maintenance-mode" class="step <?php if($stepNumber >= 11) { echo 'passed-step'; }?>">
-					<h2>Keep maintenance mode active?</h2>
+					<h2>Continue with web based updater</h2>
 					<div class="output hidden">
-						<button id="maintenance-enable">Yes (for usage with command line tool)</button>
-						<button id="maintenance-disable">No (for usage of the web based updater)</button>
+						<button id="maintenance-disable">Disable maintenance mode and continue in the web based updater</button>
 					</div>
 				</li>
 				<li id="step-done" class="step <?php if($stepNumber >= 12) { echo 'passed-step'; }?>">
@@ -1877,7 +1913,8 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					// it seems that this is not a JSON object
 					var response = {
 						processed: false,
-						response: 'Parsing response failed. ' + httpRequest.responseText
+						response: 'Parsing response failed.',
+						detailedResponseText: httpRequest.responseText,
 					};
 					callback(response);
 				} else {
@@ -1906,6 +1943,8 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					var text = '';
 					if (typeof response['response'] === 'string') {
 						text = escapeHTML(response['response']);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response['detailedResponseText']) + '</code></pre></details>';
 					} else {
 						text = 'The following extra files have been found:<ul>';
 						response['response'].forEach(function(file) {
@@ -1927,6 +1966,8 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					var text = '';
 					if (typeof response['response'] === 'string') {
 						text = escapeHTML(response['response']);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response['detailedResponseText']) + '</code></pre></details>';
 					} else {
 						text = 'The following places can not be written to:<ul>';
 						response['response'].forEach(function(file) {
@@ -1946,7 +1987,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-backup', 3);
 
 					if(response.response) {
-						addStepText('step-backup', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-backup', text);
 					}
 				}
 			},
@@ -1959,7 +2003,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-download', 4);
 
 					if(response.response) {
-						addStepText('step-download', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-download', text);
 					}
 				}
 			},
@@ -1972,7 +2019,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-verify-integrity', 5);
 
 					if(response.response) {
-						addStepText('step-verify-integrity', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-verify-integrity', text);
 					}
 				}
 			},
@@ -1985,7 +2035,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-extract', 6);
 
 					if(response.response) {
-						addStepText('step-extract', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-extract', text);
 					}
 				}
 			},
@@ -1998,7 +2051,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-enable-maintenance', 7);
 
 					if(response.response) {
-						addStepText('step-enable-maintenance', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-enable-maintenance', text);
 					}
 				}
 			},
@@ -2011,7 +2067,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-entrypoints', 8);
 
 					if(response.response) {
-						addStepText('step-entrypoints', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-entrypoints', text);
 					}
 				}
 			},
@@ -2024,7 +2083,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-delete', 9);
 
 					if(response.response) {
-						addStepText('step-delete', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-delete', text);
 					}
 				}
 			},
@@ -2041,7 +2103,10 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-move', 10);
 
 					if(response.response) {
-						addStepText('step-move', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-move', text);
 					}
 				}
 			},
@@ -2054,11 +2119,16 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					errorStep('step-maintenance-mode', 11);
 
 					if(response.response) {
-						addStepText('step-maintenance-mode', escapeHTML(response.response));
+						var text = escapeHTML(response.response);
+						text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+							escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+						addStepText('step-maintenance-mode', text);
 					}
 				}
 			},
 			12: function (response) {
+				done = true;
+				window.removeEventListener('beforeunload', confirmExit);
 				if (response.proceed === true) {
 					successStep('step-done');
 
@@ -2066,10 +2136,16 @@ if(strpos($updaterUrl, 'index.php') === false) {
 					var el = document.getElementById('step-done')
 						.getElementsByClassName('output')[0];
 					el.classList.remove('hidden');
+
+					// above is the fallback if the Javascript redirect doesn't work
+					window.location.href = "<?php echo htmlspecialchars(str_replace('/index.php', '/../', $updaterUrl), ENT_QUOTES); ?>";
 				} else {
-					errorStep('step-done', 11);
+					errorStep('step-done', 12);
+					var text = escapeHTML(response.response);
+					text += '<br><details><summary>Show detailed response</summary><pre><code>' +
+						escapeHTML(response.detailedResponseText) + '</code></pre></details>';
+					addStepText('step-done', text);
 				}
-				done = true;
 			},
 		};
 
@@ -2100,19 +2176,12 @@ if(strpos($updaterUrl, 'index.php') === false) {
 			startUpdate();
 		}
 
-		function askForMaintenance(keepActive) {
+		function askForMaintenance() {
 			var el = document.getElementById('step-maintenance-mode')
 				.getElementsByClassName('output')[0];
-			if (keepActive) {
-				el.innerHTML = 'Maintenance mode will kept active.<br>Now trigger the migration via command line: <code>./occ upgrade</code><br>';
-				successStep('step-maintenance-mode');
-				currentStep('step-done');
-				performStep(12, performStepCallbacks[12]);
-			} else {
-				el.innerHTML = 'Maintenance mode will get disabled.<br>';
-				currentStep('step-maintenance-mode');
-				performStep(11, performStepCallbacks[11]);
-			}
+			el.innerHTML = 'Maintenance mode will get disabled.<br>';
+			currentStep('step-maintenance-mode');
+			performStep(11, performStepCallbacks[11]);
 		}
 
 		if(document.getElementById('startUpdateButton')) {
@@ -2128,26 +2197,21 @@ if(strpos($updaterUrl, 'index.php') === false) {
 				retryUpdate();
 			};
 		}
-		if(document.getElementById('maintenance-enable')) {
-			document.getElementById('maintenance-enable').onclick = function (e) {
-				e.preventDefault();
-				askForMaintenance(true);
-			};
-		}
 		if(document.getElementById('maintenance-disable')) {
 			document.getElementById('maintenance-disable').onclick = function (e) {
 				e.preventDefault();
-				askForMaintenance(false);
+				askForMaintenance();
 			};
 		}
 
 		// Show a popup when user tries to close page
-		window.onbeforeunload = confirmExit;
 		function confirmExit() {
 			if (done === false && started === true) {
 				return 'Update is in progress. Are you sure, you want to close?';
 			}
 		}
+		// this is unregistered in step 12
+		window.addEventListener('beforeunload', confirmExit);
 	</script>
 <?php endif; ?>
 

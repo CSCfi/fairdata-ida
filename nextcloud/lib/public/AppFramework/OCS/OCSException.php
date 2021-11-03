@@ -2,6 +2,7 @@
 /**
  *
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,9 +18,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCP\AppFramework\OCS;
 
 use Exception;
@@ -27,7 +29,7 @@ use Exception;
 /**
  * Class OCSException
  *
- * @package OCP\AppFramework
  * @since 9.1.0
  */
-class OCSException extends Exception {}
+class OCSException extends Exception {
+}

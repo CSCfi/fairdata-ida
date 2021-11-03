@@ -21,61 +21,108 @@
 
 namespace OCA\WorkflowEngine\AppInfo;
 
-use OCP\Template;
+use Closure;
 use OCA\WorkflowEngine\Controller\RequestTime;
-use OCA\WorkflowEngine\Controller\FlowOperations;
+use OCA\WorkflowEngine\Helper\LogContext;
+use OCA\WorkflowEngine\Listener\LoadAdditionalSettingsScriptsListener;
+use OCA\WorkflowEngine\Manager;
+use OCA\WorkflowEngine\Service\Logger;
+use OCP\AppFramework\App;
+use OCP\AppFramework\Bootstrap\IBootContext;
+use OCP\AppFramework\Bootstrap\IBootstrap;
+use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\AppFramework\QueryException;
+use OCP\EventDispatcher\Event;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\ILogger;
+use OCP\IServerContainer;
+use OCP\WorkflowEngine\Events\LoadSettingsScriptsEvent;
+use OCP\WorkflowEngine\IEntity;
+use OCP\WorkflowEngine\IEntityCompat;
+use OCP\WorkflowEngine\IOperation;
+use OCP\WorkflowEngine\IOperationCompat;
 
-class Application extends \OCP\AppFramework\App {
+class Application extends App implements IBootstrap {
+	public const APP_ID = 'workflowengine';
 
 	public function __construct() {
-		parent::__construct('workflowengine');
-
-		$this->getContainer()->registerAlias('FlowOperationsController', FlowOperations::class);
-		$this->getContainer()->registerAlias('RequestTimeController', RequestTime::class);
+		parent::__construct(self::APP_ID);
 	}
 
-	/**
-	 * Register all hooks and listeners
-	 */
-	public function registerHooksAndListeners() {
-		$dispatcher = $this->getContainer()->getServer()->getEventDispatcher();
-		$dispatcher->addListener(
-			'OCP\WorkflowEngine::loadAdditionalSettingScripts',
-			function() {
-				if (!function_exists('style')) {
-					// This is hacky, but we need to load the template class
-					class_exists(Template::class, true);
-				}
-
-				style('workflowengine', [
-					'admin',
-				]);
-
-				script('core', [
-					'files/fileinfo',
-					'files/client',
-					'systemtags/systemtags',
-					'systemtags/systemtagmodel',
-					'systemtags/systemtagscollection',
-				]);
-
-				script('workflowengine', [
-					'admin',
-					'templates',
-
-					// Check plugins
-					'filemimetypeplugin',
-					'filenameplugin',
-					'filesizeplugin',
-					'filesystemtagsplugin',
-					'requestremoteaddressplugin',
-					'requesttimeplugin',
-					'requesturlplugin',
-					'requestuseragentplugin',
-					'usergroupmembershipplugin',
-				]);
-			},
+	public function register(IRegistrationContext $context): void {
+		$context->registerServiceAlias('RequestTimeController', RequestTime::class);
+		$context->registerEventListener(
+			LoadSettingsScriptsEvent::class,
+			LoadAdditionalSettingsScriptsListener::class,
 			-100
 		);
+	}
+
+	public function boot(IBootContext $context): void {
+		$context->injectFn(Closure::fromCallable([$this, 'registerRuleListeners']));
+	}
+
+	private function registerRuleListeners(IEventDispatcher $dispatcher,
+										   IServerContainer $container,
+										   ILogger $logger): void {
+		/** @var Manager $manager */
+		$manager = $container->query(Manager::class);
+		$configuredEvents = $manager->getAllConfiguredEvents();
+
+		foreach ($configuredEvents as $operationClass => $events) {
+			foreach ($events as $entityClass => $eventNames) {
+				array_map(function (string $eventName) use ($manager, $container, $dispatcher, $logger, $operationClass, $entityClass) {
+					$dispatcher->addListener(
+						$eventName,
+						function ($event) use ($manager, $container, $eventName, $logger, $operationClass, $entityClass) {
+							$ruleMatcher = $manager->getRuleMatcher();
+							try {
+								/** @var IEntity $entity */
+								$entity = $container->query($entityClass);
+								/** @var IOperation $operation */
+								$operation = $container->query($operationClass);
+
+								$ruleMatcher->setEventName($eventName);
+								$ruleMatcher->setEntity($entity);
+								$ruleMatcher->setOperation($operation);
+
+								$ctx = new LogContext();
+								$ctx
+									->setOperation($operation)
+									->setEntity($entity)
+									->setEventName($eventName);
+
+								/** @var Logger $flowLogger */
+								$flowLogger = $container->query(Logger::class);
+								$flowLogger->logEventInit($ctx);
+
+								if ($event instanceof Event) {
+									$entity->prepareRuleMatcher($ruleMatcher, $eventName, $event);
+									$operation->onEvent($eventName, $event, $ruleMatcher);
+								} elseif ($entity instanceof IEntityCompat && $operation instanceof IOperationCompat) {
+									// TODO: Remove this block (and the compat classes) in the first major release in 2023
+									$entity->prepareRuleMatcherCompat($ruleMatcher, $eventName, $event);
+									$operation->onEventCompat($eventName, $event, $ruleMatcher);
+								} else {
+									$logger->debug(
+										'Cannot handle event {name} of {event} against entity {entity} and operation {operation}',
+										[
+											'app' => self::APP_ID,
+											'name' => $eventName,
+											'event' => get_class($event),
+											'entity' => $entityClass,
+											'operation' => $operationClass,
+										]
+									);
+								}
+								$flowLogger->logEventDone($ctx);
+							} catch (QueryException $e) {
+								// Ignore query exceptions since they might occur when an entity/operation were setup before by an app that is disabled now
+							}
+						}
+					);
+				}, $eventNames ?? []);
+			}
+		}
 	}
 }

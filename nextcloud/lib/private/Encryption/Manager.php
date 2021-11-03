@@ -3,7 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Björn Schießle <bjoern@schiessle.org>
- * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -20,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -69,7 +69,7 @@ class Manager implements IManager {
 	 * @param ArrayCache $arrayCache
 	 */
 	public function __construct(IConfig $config, ILogger $logger, IL10N $l10n, View $rootView, Util $util, ArrayCache $arrayCache) {
-		$this->encryptionModules = array();
+		$this->encryptionModules = [];
 		$this->config = $config;
 		$this->logger = $logger;
 		$this->l = $l10n;
@@ -84,7 +84,6 @@ class Manager implements IManager {
 	 * @return bool true if enabled, false if not
 	 */
 	public function isEnabled() {
-
 		$installed = $this->config->getSystemValue('installed', false);
 		if (!$installed) {
 			return false;
@@ -101,7 +100,6 @@ class Manager implements IManager {
 	 * @throws ServiceUnavailableException
 	 */
 	public function isReady() {
-
 		if ($this->isKeyStorageReady() === false) {
 			throw new ServiceUnavailableException('Key Storage is not ready');
 		}
@@ -128,7 +126,7 @@ class Manager implements IManager {
 		return true;
 	}
 
-		/**
+	/**
 	 * Registers an callback function which must return an encryption module instance
 	 *
 	 * @param string $id
@@ -137,7 +135,6 @@ class Manager implements IManager {
 	 * @throws Exceptions\ModuleAlreadyExistsException
 	 */
 	public function registerEncryptionModule($id, $displayName, callable $callback) {
-
 		if (isset($this->encryptionModules[$id])) {
 			throw new Exceptions\ModuleAlreadyExistsException($id, $displayName);
 		}
@@ -213,7 +210,6 @@ class Manager implements IManager {
 			$message = 'No default encryption module defined';
 			throw new Exceptions\ModuleDoesNotExistsException($message);
 		}
-
 	}
 
 	/**
@@ -249,7 +245,7 @@ class Manager implements IManager {
 		// If encryption is disabled and there are no loaded modules it makes no sense to load the wrapper
 		if (!empty($this->encryptionModules) || $this->isEnabled()) {
 			$encryptionWrapper = new EncryptionWrapper($this->arrayCache, $this, $this->logger);
-			Filesystem::addStorageWrapper('oc_encryption', array($encryptionWrapper, 'wrapStorage'), 2);
+			Filesystem::addStorageWrapper('oc_encryption', [$encryptionWrapper, 'wrapStorage'], 2);
 		}
 	}
 
@@ -260,7 +256,6 @@ class Manager implements IManager {
 	 * @return bool
 	 */
 	protected function isKeyStorageReady() {
-
 		$rootDir = $this->util->getKeyStorageRoot();
 
 		// the default root is always valid
@@ -275,6 +270,4 @@ class Manager implements IManager {
 
 		return false;
 	}
-
-
 }

@@ -1,0 +1,163 @@
+5,7d4
+<     "All files" : "Alla filer",
+<     "Recent" : "Senaste",
+<     "Favorites" : "Favoriter",
+10,11c7,8
+<     "Download" : "Ladda ned",
+<     "Delete" : "Radera",
+---
+>     "Download" : "Hämta",
+>     "Delete" : "Ta bort",
+13a11
+>     "Favorites" : "Favoriter",
+27a26
+>     "Operation is blocked by access control" : "Operationen blockeras av åtkomstkontroll",
+33a33,34
+>     "Delete file" : "Ta bort fil",
+>     "Delete folder" : "Ta bort mapp",
+35,36c36,37
+<     "Unshare" : "Sluta dela",
+<     "Could not load info for file \"{file}\"" : "Kunde inte ladda information för fil \"{file}\"",
+---
+>     "Leave this share" : "Lämna denna delning",
+>     "Could not load info for file \"{file}\"" : "Kunde inte läsa in information för filen \"{file}\"",
+43c44
+<     "This directory is unavailable, please check the logs or contact the administrator" : "Denna katalog är inte tillgänglig, kontrollera loggarna eller kontakta administratören",
+---
+>     "This directory is unavailable, please check the logs or contact the administrator" : "Denna katalog är inte tillgänglig, vänligen kontrollera loggarna eller kontakta administratören",
+57a59
+>     "Could not fetch file details \"{file}\"" : "Kunde inte hämta filinformation \"{file}\"",
+59a62
+>     "Enter more than two characters to search in other folders" : "Ange mer än två tecken för att söka i andra mappar",
+66,67c69,70
+<     "_including %n hidden_::_including %n hidden_" : ["inkluderar %n gömd","inkluderar %n gömda"],
+<     "You don’t have permission to upload or create files here" : "Du har ej tillåtelse att ladda upp eller skapa filer här",
+---
+>     "_including %n hidden_::_including %n hidden_" : ["inkluderar %n dold","inkluderar %n dolda"],
+>     "You don’t have permission to upload or create files here" : "Du har inte tillåtelse att ladda upp eller skapa filer här",
+77,81c80,88
+<     "Storage of {owner} is full, files can not be updated or synced anymore!" : "Lagring av {owner}  är full, filer kan inte uppdateras eller synkroniseras längre!",
+<     "Your storage is full, files can not be updated or synced anymore!" : "Ditt lagringsutrymme är fullt, filer kan inte längre uppdateras eller synkroniseras!",
+<     "Storage of {owner} is almost full ({usedSpacePercent}%)" : "Lagring av  {owner}  är nästan full  ({usedSpacePercent}%)",
+<     "Your storage is almost full ({usedSpacePercent}%)" : "Ditt lagringsutrymme är nästan fullt ({usedSpacePercent}%)",
+<     "_matches '{filter}'_::_match '{filter}'_" : ["matchar '{filter}'","matcha '{filter}'"],
+---
+>     "Storage of {owner} is full, files cannot be updated or synced anymore!" : "Lagring av {owner}  är full, filer kan inte uppdateras eller synkroniseras längre!",
+>     "Group folder \"{mountPoint}\" is full, files cannot be updated or synced anymore!" : "Gruppmapp \"{mountPoint}\" är full, filer kan inte uppdateras eller synkroniseras längre!",
+>     "External storage \"{mountPoint}\" is full, files cannot be updated or synced anymore!" : "Extern lagring \"{mountPoint}\" är full, filer kan inte uppdateras eller synkroniseras längre!",
+>     "Your storage is full, files cannot be updated or synced anymore!" : "Ditt lagringsutrymme är fullt, filer kan inte längre uppdateras eller synkroniseras!",
+>     "Storage of {owner} is almost full ({usedSpacePercent}%)." : "Lagring av  {owner}  är nästan full  ({usedSpacePercent}%).",
+>     "Group folder \"{mountPoint}\" is almost full ({usedSpacePercent}%)." : "Gruppmapp \"{mountPoint}\" är nästan full ({usedSpacePercent}%).",
+>     "External storage \"{mountPoint}\" is almost full ({usedSpacePercent}%)." : "Extern lagring \"{mountPoint}\" är nästan full ({usedSpacePercent}%).",
+>     "Your storage is almost full ({usedSpacePercent}%)." : "Ditt lagringsutrymme är nästan fullt ({usedSpacePercent}%).",
+>     "_matches \"{filter}\"_::_match \"{filter}\"_" : ["matcha \"{filter}\"","matcha \"{filter}\""],
+84,85c91,92
+<     "Copy direct link (only works for users who have access to this file/folder)" : "Kopiera direktlänk (fungerar endast för de användare som har tillgång till denna fil eller mapp)",
+<     "Path" : "sökväg",
+---
+>     "Copy direct link (only works for users who have access to this file/folder)" : "Kopiera direktlänk (fungerar endast för användare som har åtkomst till denna fil eller mapp)",
+>     "Path" : "Sökväg",
+92c99,100
+<     "Not favorited" : "Ej favoriserade",
+---
+>     "Recent" : "Senaste",
+>     "Not favorited" : "Inte favoriserade",
+117,120c125,128
+<     "You deleted {file}" : "Du raderade {file}",
+<     "You deleted an encrypted file in {file}" : "Du raderade en krypterad fil i {file}",
+<     "{user} deleted {file}" : "{user} raderade {file}",
+<     "{user} deleted an encrypted file in {file}" : "{user} raderade en krypterad fil i {file}",
+---
+>     "You deleted {file}" : "Du tog bort {file}",
+>     "You deleted an encrypted file in {file}" : "Du tog bort en krypterad fil i {file}",
+>     "{user} deleted {file}" : "{user} tog bort {file}",
+>     "{user} deleted an encrypted file in {file}" : "{user} tog bort en krypterad fil i {file}",
+122a131,133
+>     "You renamed {oldfile} (hidden) to {newfile} (hidden)" : "Du ändrade filnamn {oldfile} (dold) till {newfile} (dold)",
+>     "You renamed {oldfile} (hidden) to {newfile}" : "Du ändrade filnamn {oldfile} (dold) till {newfile}",
+>     "You renamed {oldfile} to {newfile} (hidden)" : "Du ändrade filnamn {oldfile} till {newfile} (dold)",
+123a135,137
+>     "{user} renamed {oldfile} (hidden) to {newfile} (hidden)" : "{user} ändrade filnamn {oldfile} (dold) till {newfile} (dold)",
+>     "{user} renamed {oldfile} (hidden) to {newfile}" : "{user} ändrade filnamn {oldfile} (dold) till {newfile}",
+>     "{user} renamed {oldfile} to {newfile} (hidden)" : "{user} ändrade filnamn {oldfile} till {newfile} (dold)",
+128,132c142,144
+<     "A file or folder has been <strong>changed</strong> or <strong>renamed</strong>" : "En fil har blivit <strong>ändrad</strong> eller <strong>bytt namn</strong>",
+<     "A new file or folder has been <strong>created</strong>" : "En ny fil eller mapp har blivit <strong>skapad</strong>",
+<     "A file or folder has been <strong>deleted</strong>" : "En fil eller mapp har <strong>tagits bort</strong>",
+<     "Limit notifications about creation and changes to your <strong>favorite files</strong> <em>(Stream only)</em>" : "Begränsa notiser om skapande och ändringar till dina <strong>favoritfiler</strong> <em>(Endast i flödet)</em>",
+<     "A file or folder has been <strong>restored</strong>" : "En fil eller mapp har <strong>återställts</strong>",
+---
+>     "A file or folder has been <strong>changed</strong>" : "En ny fil eller mapp har blivit <strong>ändrad</strong>",
+>     "A favorite file or folder has been <strong>changed</strong>" : "En favorit-fil eller mapp har blivit <strong>ändrad</strong>",
+>     "All files" : "Alla filer",
+134a147,157
+>     "Accept" : "Acceptera",
+>     "Reject" : "Avvisa",
+>     "Incoming ownership transfer from {user}" : "Inkommande ägaröverföring från {user}",
+>     "Do you want to accept {path}?\n\nNote: The transfer process after accepting may take up to 1 hour." : "Vill du acceptera {path}?\n\nNotera: Överföringen kan efter att du accepterat ta upp till 1 timme.",
+>     "Ownership transfer failed" : "Ägarskapsöverföring misslyckades",
+>     "Your ownership transfer of {path} to {user} failed." : "Din ägaröverföring av {path} till {user} misslyckades.",
+>     "The ownership transfer of {path} from {user} failed." : "Din ägaröverföring av {path} från {user} misslyckades.",
+>     "Ownership transfer done" : "Ägarskapsöverföring klar",
+>     "Your ownership transfer of {path} to {user} has completed." : "Din ägaröverföring av {path} till {user} är klar.",
+>     "The ownership transfer of {path} from {user} has completed." : "Ägaröverföringen av {path} från {user} är klar.",
+>     "in %s" : "om %s",
+135a159,182
+>     "Transfer ownership of a file or folder" : "Överför ägarskap av en fil eller mapp",
+>     "Choose file or folder to transfer" : "Välj fil eller mapp att överföra",
+>     "Change" : "Ändra",
+>     "New owner" : "Ny ägare",
+>     "Search users" : "Sök användare",
+>     "Choose a file or folder to transfer" : "Välj en fil eller mapp att överföra",
+>     "Transfer" : "Överför",
+>     "Transfer {path} to {userid}" : "Överför {path} till {userid}",
+>     "Invalid path selected" : "Ogiltig sökväg vald",
+>     "Ownership transfer request sent" : "Förfrågan om ägaröverföring skickad",
+>     "Cannot transfer ownership of a file or folder you don't own" : "Det går inte att överföra ägarskap av en fil eller mapp som du inte äger",
+>     "Tags" : "Taggar",
+>     "Unable to change the favourite state of the file" : "Kan inte ändra filens favoritstatus",
+>     "Error while loading the file data" : "Fel vid inläsning av fildata",
+>     "Pick a template for {name}" : "Välj en mall för {name}",
+>     "Cancel" : "Avbryt",
+>     "Create" : "Skapa",
+>     "Create a new file with the selected template" : "Skapa en ny fil med den valda mallen",
+>     "Creating file" : "Skapar fil",
+>     "Blank" : "Tom",
+>     "Unable to create new file from template" : "Kunde inte skapa fil från mall",
+>     "Set up templates folder" : "Skapa en mapp för mallar",
+>     "Templates" : "Mallar",
+>     "Unable to initialize the templates directory" : "Kunde inte initialisera mall-mappen",
+140a188
+>     "Crop image previews" : "Beskär förhandsgranskningar för bilder",
+142c190,191
+<     "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer noopener\">access your Files via WebDAV</a>" : "Använd denna adress för att <a href=\"%s\" target=\"_blank\" rel=\"noreferrer noopener\">komma åt dina filer med WebDAV</a>",
+---
+>     "Use this address to access your Files via WebDAV" : "Använd denna adress för att komma åt dina filer med WebDAV",
+>     "Toggle %1$s sublist" : "Växla %1$s sublista",
+152,153c201
+<     "Tags" : "Taggar",
+<     "Deleted files" : "Raderade filer",
+---
+>     "Deleted files" : "Borttagna filer",
+158c206,207
+<     "Deleted shares" : "Raderade delningar",
+---
+>     "Deleted shares" : "Borttagna delningar",
+>     "Pending shares" : "Väntande delningar",
+161,170c210,214
+<     "Target folder" : "Målmapp",
+<     "File handling" : "Filhantering",
+<     "Maximum upload size" : "Största storlek att ladda upp",
+<     "max. possible: " : "max. möjligt:",
+<     "Save" : "Spara",
+<     "With PHP-FPM it might take 5 minutes for changes to be applied." : "Med PHP-FPM kan det ta cirka 5 minuter för ändringarna att träda i kraft.",
+<     "Missing permissions to edit from here." : "Saknar rättigheter att ändra härifrån.",
+<     "%s of %s used" : "%s av %s använt",
+<     "Cancel upload" : "Avbryt uppladdning",
+<     "%1$s%% of %2$s used" : "%1$s%% av %2$s använt"
+---
+>     "Storage of {owner} is full, files can not be updated or synced anymore!" : "Lagring av {owner}  är full, filer kan inte uppdateras eller synkroniseras längre!",
+>     "Group folder \"{mountPoint}\" is full, files can not be updated or synced anymore!" : "Gruppmapp \"{mountPoint}\" är full, filer kan inte uppdateras eller synkroniseras längre!",
+>     "External storage \"{mountPoint}\" is full, files can not be updated or synced anymore!" : "Extern lagring \"{mountPoint}\" är full, filer kan inte uppdateras eller synkroniseras längre!",
+>     "Your storage is full, files can not be updated or synced anymore!" : "Ditt lagringsutrymme är fullt, filer kan inte längre uppdateras eller synkroniseras!",
+>     "_matches '{filter}'_::_match '{filter}'_" : ["matchar '{filter}'","matcha '{filter}'"]

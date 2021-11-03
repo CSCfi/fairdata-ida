@@ -1,0 +1,79 @@
+42a43,44
+> 		currentFileList: null,
+> 
+56a59,62
+> 			// crop image previews
+> 			this.$cropImagePreviews = $('input#cropimagepreviewsToggle');
+> 			var cropImagePreviews = $('#cropImagePreviews').val() === "1";
+> 			this.$cropImagePreviews.prop('checked', cropImagePreviews);
+63c69,70
+< 				showhidden: showHidden
+---
+> 				showhidden: showHidden,
+> 				cropimagepreviews: cropImagePreviews,
+70,71d76
+< 			// legacy actions
+< 			fileActions.merge(window.FileActions);
+78,79d82
+< 			window.FileActions.on('setDefault.app-files', this._onActionsUpdated);
+< 			window.FileActions.on('registerAction.app-files', this._onActionsUpdated);
+118a122
+> 			this.updateCurrentFileList(this.fileList)
+135a140
+> 			this._debouncedPersistCropImagePreviewsState = _.debounce(this._persistCropImagePreviewsState, 1200);
+153,154d157
+< 			window.FileActions.off('setDefault.app-files', this._onActionsUpdated);
+< 			window.FileActions.off('registerAction.app-files', this._onActionsUpdated);
+169a173,194
+> 		 * Set the currently active file list
+> 		 *
+> 		 * Due to the file list implementations being registered after clicking the
+> 		 * navigation item for the first time, OCA.Files.App is not aware of those until
+> 		 * they have initialized themselves. Therefore the files list needs to call this
+> 		 * method manually
+> 		 *
+> 		 * @param {OCA.Files.FileList} newFileList
+> 		 */
+> 		updateCurrentFileList: function(newFileList) {
+> 			this.currentFileList = newFileList;
+> 		},
+> 
+> 		/**
+> 		 * Return the currently active file list
+> 		 * @return {?OCA.Files.FileList}
+> 		 */
+> 		getCurrentFileList: function () {
+> 			return this.currentFileList;
+> 		},
+> 
+> 		/**
+214a240
+> 			this.$cropImagePreviews.on('change', _.bind(this._onCropImagePreviewsChange, this));
+240a267,289
+> 		 * Toggle cropping image previews according to the settings checkbox
+> 		 *
+> 		 * @returns void
+> 		 */
+> 		_onCropImagePreviewsChange: function() {
+> 			var crop = this.$cropImagePreviews.is(':checked');
+> 			this._filesConfig.set('cropimagepreviews', crop);
+> 			this._debouncedPersistCropImagePreviewsState();
+> 		},
+> 
+> 		/**
+> 		 * Persist crop image previews preference on the server
+> 		 *
+> 		 * @returns void
+> 		 */
+> 		_persistCropImagePreviewsState: function() {
+> 			var crop = this._filesConfig.get('cropimagepreviews');
+> 			$.post(OC.generateUrl('/apps/files/api/v1/cropimagepreviews'), {
+> 				crop: crop
+> 			});
+> 		},
+> 
+> 		/**
+340c389
+< $(document).ready(function() {
+---
+> window.addEventListener('DOMContentLoaded', function() {

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Installation and server configuration &#8212; Nextcloud latest Administration Manual latest documentation</title>
+    <link rel="stylesheet" href="../_static/" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/main.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script type="text/javascript" src="../_static/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="../_static/js/jquery-fix.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-3.1.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="System requirements" href="system_requirements.html" />
+    <link rel="prev" title="Maintenance and release schedule" href="../release_schedule.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1d2d44">
+
+  </head><body>
+
+
+<div class="wrap container not-front">
+  <div class="content row">
+  <main class="main">
+    
+			<div class="row">
+				<div class="col-md-3">
+					<div class="sidebar">
+            <h1>Nextcloud latest Administration Manual</h1>
+            
+            <div class="sidebar-search">
+              <form class="headersearch" action="../search.html" method="get">
+                <input type="text" value="" name="q" id="q" class="form-control" /> 
+                <button  class="btn btn-default" type="submit" id="searchsubmit">Search</button>
+              </form>
+            </div>
+            
+							<div class="menu-support-container">
+								<ul id="menu-support" class="menu">
+									<ul>
+                    <li><a href="../contents.html">Table of Contents</a></li>
+									</ul>
+                  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release_schedule.html">Maintenance and release schedule</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation and server configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="system_requirements.html">System requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment_recommendations.html">Deployment recommendations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html">Installation on Linux</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation_wizard.html">Installation wizard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="command_line_installation.html">Installing from command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apps_supported.html">Supported apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="php_72_installation.html">Installing PHP 7.2 on RHEL 7 and CentOS 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html">SELinux configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nginx.html">Nginx configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html">Hardening and security guidance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html">Server tuning</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_server/index.html">Nextcloud configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../apps_management.html">Apps management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_user/index.html">User management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_files/index.html">File sharing and management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../file_workflows/index.html">File workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_database/index.html">Database configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration_mimetypes/index.html">Mimetypes management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maintenance/index.html">Maintenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../issues/index.html">Issues and troubleshooting</a></li>
+</ul>
+
+								</ul>
+							</div>
+					</div>
+				</div>
+        
+
+				<div class="col-md-9">
+					<div class="page-content">
+            
+<ul class="prevnext-title list-unstyled list-inline">
+  <li class="prev">
+    <a href="../release_schedule.html" title="Previous Chapter: Maintenance and release schedule"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Maintenance and release schedule</span>
+    </a>
+  </li>
+  <li class="next">
+    <a href="system_requirements.html" title="Next Chapter: System requirements"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">System requirements &raquo;</span>
+    </a>
+  </li>
+</ul>
+						
+  <div class="section" id="installation-and-server-configuration">
+<h1>Installation and server configuration<a class="headerlink" href="#installation-and-server-configuration" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System requirements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="system_requirements.html#server">Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="system_requirements.html#desktop-client">Desktop client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="system_requirements.html#mobile-apps">Mobile apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="system_requirements.html#web-browser">Web browser</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deployment_recommendations.html">Deployment recommendations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="source_installation.html">Installation on Linux</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#installing-on-windows-virtual-machine">Installing on Windows (virtual machine)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#installing-via-snap-packages">Installing via Snap packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#prerequisites-for-manual-installation">Prerequisites for manual installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#example-installation-on-ubuntu-18-04-lts-server">Example installation on Ubuntu 18.04 LTS server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#example-installation-on-centos-7-server">Example installation on CentOS 7 server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#apache-web-server-configuration">Apache Web server configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#pretty-urls">Pretty URLs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#enabling-ssl">Enabling SSL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#installation-wizard">Installation wizard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#selinux-configuration-tips">SELinux configuration tips</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#php-ini-configuration-notes">php.ini configuration notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#php-fpm-configuration-notes">php-fpm configuration notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_installation.html#other-web-servers">Other Web servers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation_wizard.html">Installation wizard</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation_wizard.html#quick-start">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation_wizard.html#data-directory-location">Data directory location</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation_wizard.html#database-choice">Database choice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation_wizard.html#trusted-domains">Trusted domains</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="command_line_installation.html">Installing from command line</a></li>
+<li class="toctree-l1"><a class="reference internal" href="apps_supported.html">Supported apps</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="apps_supported.html#nextcloud-files">Nextcloud Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apps_supported.html#nextcloud-groupware">Nextcloud Groupware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apps_supported.html#nextcloud-talk">Nextcloud Talk</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="php_72_installation.html">Installing PHP 7.2 on RHEL 7 and CentOS 7</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="php_72_installation.html#rhel-7-upgrade-to-php-7-2">RHEL 7 Upgrade to PHP 7.2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="php_72_installation.html#centos-7-upgrade-to-php-7-2">CentOS 7 Upgrade to PHP 7.2</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="selinux_configuration.html">SELinux configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#enable-updates-via-the-web-interface">Enable updates via the web interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#disallow-write-access-to-the-whole-web-directory">Disallow write access to the whole web directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-a-remote-database">Allow access to a remote database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-ldap-server">Allow access to LDAP server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-remote-network">Allow access to remote network</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-network-memcache">Allow access to network memcache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-smtp-sendmail">Allow access to SMTP/sendmail</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-cifs-smb">Allow access to CIFS/SMB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-fusefs">Allow access to FuseFS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#allow-access-to-gpg-for-rainloop">Allow access to GPG for Rainloop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="selinux_configuration.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nginx.html">Nginx configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nginx.html#nextcloud-in-the-webroot-of-nginx">Nextcloud in the webroot of nginx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nginx.html#nextcloud-in-a-subdir-of-nginx">Nextcloud in a subdir of nginx</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nginx.html#tips-and-tricks">Tips and tricks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="harden_server.html">Hardening and security guidance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#limit-on-password-length">Limit on password length</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#operating-system">Operating system</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#deployment">Deployment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#use-https">Use HTTPS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#use-a-dedicated-domain-for-nextcloud">Use a dedicated domain for Nextcloud</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#ensure-that-your-nextcloud-instance-is-installed-in-a-dmz">Ensure that your Nextcloud instance is installed in a DMZ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#serve-security-related-headers-by-the-web-server">Serve security related headers by the Web server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="harden_server.html#connections-to-remote-servers">Connections to remote servers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="server_tuning.html">Server tuning</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#using-cron-to-perform-background-jobs">Using cron to perform background jobs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#reducing-system-load">Reducing system load</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#using-mariadb-mysql-instead-of-sqlite">Using MariaDB/MySQL instead of SQLite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#using-redis-based-transactional-file-locking">Using Redis-based transactional file locking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#ssl-encryption-app">SSL / encryption app</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#enable-http2-for-faster-loading">Enable HTTP2 for faster loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#tune-php-fpm">Tune PHP-FPM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server_tuning.html#enable-php-opcache">Enable PHP OPcache</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+            
+<ul class="prevnext-title list-unstyled list-inline">
+  <li class="prev">
+    <a href="../release_schedule.html" title="Previous Chapter: Maintenance and release schedule"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; Maintenance and release schedule</span>
+    </a>
+  </li>
+  <li class="next">
+    <a href="system_requirements.html" title="Next Chapter: System requirements"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">System requirements &raquo;</span>
+    </a>
+  </li>
+</ul>
+					</div>
+				</div>
+			</div>
+  </main>  
+  </div>
+</div>
+  </body>
+</html>

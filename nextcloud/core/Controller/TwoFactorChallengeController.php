@@ -2,7 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Cornelius Kölbel <cornelius.koelbel@netknights.it>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
@@ -20,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -32,6 +32,7 @@ use OC_Util;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\StandaloneTemplateResponse;
+use OCP\Authentication\TwoFactorAuth\IActivatableAtLogin;
 use OCP\Authentication\TwoFactorAuth\IProvider;
 use OCP\Authentication\TwoFactorAuth\IProvidesCustomCSP;
 use OCP\Authentication\TwoFactorAuth\TwoFactorException;
@@ -98,6 +99,7 @@ class TwoFactorChallengeController extends Controller {
 	/**
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
+	 * @TwoFactorSetUpDoneRequired
 	 *
 	 * @param string $redirect_url
 	 * @return StandaloneTemplateResponse
@@ -107,6 +109,7 @@ class TwoFactorChallengeController extends Controller {
 		$providerSet = $this->twoFactorManager->getProviderSet($user);
 		$allProviders = $providerSet->getProviders();
 		list($providers, $backupProvider) = $this->splitProvidersAndBackupCodes($allProviders);
+		$setupProviders = $this->twoFactorManager->getLoginSetupProviders($user);
 
 		$data = [
 			'providers' => $providers,
@@ -114,6 +117,7 @@ class TwoFactorChallengeController extends Controller {
 			'providerMissing' => $providerSet->isProviderMissing(),
 			'redirect_url' => $redirect_url,
 			'logout_url' => $this->getLogoutUrl(),
+			'hasSetupProviders' => !empty($setupProviders),
 		];
 		return new StandaloneTemplateResponse($this->appName, 'twofactorselectchallenge', $data, 'guest');
 	}
@@ -122,6 +126,7 @@ class TwoFactorChallengeController extends Controller {
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 * @UseSession
+	 * @TwoFactorSetUpDoneRequired
 	 *
 	 * @param string $challengeProviderId
 	 * @param string $redirect_url
@@ -131,6 +136,7 @@ class TwoFactorChallengeController extends Controller {
 		$user = $this->userSession->getUser();
 		$providerSet = $this->twoFactorManager->getProviderSet($user);
 		$provider = $providerSet->getProvider($challengeProviderId);
+
 		if (is_null($provider)) {
 			return new RedirectResponse($this->urlGenerator->linkToRoute('core.TwoFactorChallenge.selectChallenge'));
 		}
@@ -171,6 +177,7 @@ class TwoFactorChallengeController extends Controller {
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 * @UseSession
+	 * @TwoFactorSetUpDoneRequired
 	 *
 	 * @UserRateThrottle(limit=5, period=100)
 	 *
@@ -209,4 +216,66 @@ class TwoFactorChallengeController extends Controller {
 		]));
 	}
 
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 */
+	public function setupProviders() {
+		$user = $this->userSession->getUser();
+		$setupProviders = $this->twoFactorManager->getLoginSetupProviders($user);
+
+		$data = [
+			'providers' => $setupProviders,
+			'logout_url' => $this->getLogoutUrl(),
+		];
+
+		$response = new StandaloneTemplateResponse($this->appName, 'twofactorsetupselection', $data, 'guest');
+		return $response;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 */
+	public function setupProvider(string $providerId) {
+		$user = $this->userSession->getUser();
+		$providers = $this->twoFactorManager->getLoginSetupProviders($user);
+
+		$provider = null;
+		foreach ($providers as $p) {
+			if ($p->getId() === $providerId) {
+				$provider = $p;
+				break;
+			}
+		}
+
+		if ($provider === null) {
+			return new RedirectResponse($this->urlGenerator->linkToRoute('core.TwoFactorChallenge.selectChallenge'));
+		}
+
+		/** @var IActivatableAtLogin $provider */
+		$tmpl = $provider->getLoginSetup($user)->getBody();
+		$data = [
+			'provider' => $provider,
+			'logout_url' => $this->getLogoutUrl(),
+			'template' => $tmpl->fetchPage(),
+		];
+		$response = new StandaloneTemplateResponse($this->appName, 'twofactorsetupchallenge', $data, 'guest');
+		return $response;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @todo handle the extreme edge case of an invalid provider ID and redirect to the provider selection page
+	 */
+	public function confirmProviderSetup(string $providerId) {
+		return new RedirectResponse($this->urlGenerator->linkToRoute(
+			'core.TwoFactorChallenge.showChallenge',
+			[
+				'challengeProviderId' => $providerId,
+			]
+		));
+	}
 }

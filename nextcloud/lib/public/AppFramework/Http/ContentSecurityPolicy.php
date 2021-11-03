@@ -4,8 +4,9 @@
  *
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author sualko <klaus@jsxc.org>
- * @author Thomas Citharel <tcit@tcit.fr>
+ * @author Thomas Citharel <nextcloud@tcit.fr>
  *
  * @license AGPL-3.0
  *
@@ -19,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -35,9 +36,8 @@ namespace OCP\AppFramework\Http;
  * notice that Nextcloud ships already with sensible defaults and those policies
  * should require no modification at all for most use-cases.
  *
- * This class allows unsafe-eval of javascript and unsafe-inline of CSS.
+ * This class allows unsafe-inline of CSS.
  *
- * @package OCP\AppFramework\Http
  * @since 8.1.0
  */
 class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
@@ -48,16 +48,6 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains from which scripts can get loaded */
 	protected $allowedScriptDomains = [
 		'\'self\'',
-		'metrics.fairdata.fi',
-		'metrics.fd-test.csc.fi',
-		'matomo.fairdata.fi',
-		'matomo.fd-test.csc.fi',
-		'sso.fairdata.fi',
-		'sso.demo.fairdata.fi',
-		'sso.fd-test.csc.fi',
-		'sso.fd-stable.csc.fi',
-		'sso.fd-dev.csc.fi',
-		'psdev.fd-dev.csc.fi:4443'
 	];
 	/**
 	 * @var bool Whether inline CSS is allowed
@@ -68,15 +58,6 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains from which CSS can get loaded */
 	protected $allowedStyleDomains = [
 		'\'self\'',
-		'metrics.fairdata.fi',
-		'metrics.fd-test.csc.fi',
-		'matomo.fd-test.csc.fi',
-		'sso.fairdata.fi',
-		'sso.demo.fairdata.fi',
-		'sso.fd-test.csc.fi',
-		'sso.fd-stable.csc.fi',
-		'sso.fd-dev.csc.fi',
-		'psdev.fd-dev.csc.fi:4443'
 	];
 	/** @var array Domains from which images can get loaded */
 	protected $allowedImageDomains = [
@@ -87,9 +68,6 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 	/** @var array Domains to which connections can be done */
 	protected $allowedConnectDomains = [
 		'\'self\'',
-		'metrics.fairdata.fi',
-		'metrics.fd-test.csc.fi',
-		'matomo.fd-test.csc.fi',
 	];
 	/** @var array Domains from which media elements can be loaded */
 	protected $allowedMediaDomains = [
@@ -114,6 +92,11 @@ class ContentSecurityPolicy extends EmptyContentSecurityPolicy {
 
 	/** @var array Domains from which web-workers can be loaded */
 	protected $allowedWorkerSrcDomains = [];
+
+	/** @var array Domains which can be used as target for forms */
+	protected $allowedFormActionDomains = [
+		'\'self\'',
+	];
 
 	/** @var array Locations to report violations to */
 	protected $reportTo = [];

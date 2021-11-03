@@ -1,0 +1,8 @@
+80,84c80
+< 			var defaultAction = fileActions.getDefaultFileAction(
+< 				fileActions.getCurrentMimeType(),
+< 				fileActions.getCurrentType(),
+< 				fileActions.getCurrentPermissions()
+< 			);
+---
+> 			var defaultAction = fileActions.getCurrentDefaultFileAction();

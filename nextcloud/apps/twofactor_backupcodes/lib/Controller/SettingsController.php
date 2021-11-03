@@ -1,7 +1,9 @@
 <?php
-
 /**
+ *
+ *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -16,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -50,15 +52,6 @@ class SettingsController extends Controller {
 
 	/**
 	 * @NoAdminRequired
-	 * @return JSONResponse
-	 */
-	public function state() {
-		$user = $this->userSession->getUser();
-		return $this->storage->getBackupCodesState($user);
-	}
-
-	/**
-	 * @NoAdminRequired
 	 * @PasswordConfirmationRequired
 	 *
 	 * @return JSONResponse
@@ -71,5 +64,4 @@ class SettingsController extends Controller {
 			'state' => $this->storage->getBackupCodesState($user),
 		]);
 	}
-
 }

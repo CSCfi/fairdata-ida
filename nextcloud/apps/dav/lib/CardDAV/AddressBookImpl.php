@@ -2,9 +2,15 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arne Hamann <kontakt+github@arne.email>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author call-me-matt <nextcloud@matthiasheinisch.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -19,7 +25,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -60,7 +66,6 @@ class AddressBookImpl implements IAddressBook {
 			array $addressBookInfo,
 			CardDavBackend $backend,
 			IURLGenerator $urlGenerator) {
-
 		$this->addressBook = $addressBook;
 		$this->addressBookInfo = $addressBookInfo;
 		$this->backend = $backend;
@@ -78,7 +83,6 @@ class AddressBookImpl implements IAddressBook {
 	/**
 	 * @return string defining the unique uri
 	 * @since 16.0.0
-	 * @return string
 	 */
 	public function getUri(): string {
 		return $this->addressBookInfo['uri'];
@@ -97,20 +101,22 @@ class AddressBookImpl implements IAddressBook {
 	/**
 	 * @param string $pattern which should match within the $searchProperties
 	 * @param array $searchProperties defines the properties within the query pattern should match
-	 * @param array $options Options to define the output format
-	 * 	- types boolean (since 15.0.0) If set to true, fields that come with a TYPE property will be an array
+	 * @param array $options Options to define the output format and search behavior
+	 * 	- 'types' boolean (since 15.0.0) If set to true, fields that come with a TYPE property will be an array
 	 *    example: ['id' => 5, 'FN' => 'Thomas Tanghus', 'EMAIL' => ['type => 'HOME', 'value' => 'g@h.i']]
+	 * 	- 'escape_like_param' - If set to false wildcards _ and % are not escaped
+	 * 	- 'limit' - Set a numeric limit for the search results
+	 * 	- 'offset' - Set the offset for the limited search results
 	 * @return array an array of contacts which are arrays of key-value-pairs
 	 *  example result:
 	 *  [
 	 *		['id' => 0, 'FN' => 'Thomas Müller', 'EMAIL' => 'a@b.c', 'GEO' => '37.386013;-122.082932'],
 	 *		['id' => 5, 'FN' => 'Thomas Tanghus', 'EMAIL' => ['d@e.f', 'g@h.i']]
 	 *	]
-	 * @return array an array of contacts which are arrays of key-value-pairs
 	 * @since 5.0.0
 	 */
 	public function search($pattern, $searchProperties, $options) {
-		$results = $this->backend->search($this->getKey(), $pattern, $searchProperties);
+		$results = $this->backend->search($this->getKey(), $pattern, $searchProperties, $options);
 
 		$withTypes = \array_key_exists('types', $options) && $options['types'] === true;
 
@@ -141,7 +147,26 @@ class AddressBookImpl implements IAddressBook {
 		}
 
 		foreach ($properties as $key => $value) {
-			$vCard->$key = $vCard->createProperty($key, $value);
+			if (is_array($value)) {
+				$vCard->remove($key);
+				foreach ($value as $entry) {
+					if (is_string($entry)) {
+						$property = $vCard->createProperty($key, $entry);
+					} else {
+						if (($key === "ADR" || $key === "PHOTO") && is_string($entry["value"])) {
+							$entry["value"] = stripslashes($entry["value"]);
+							$entry["value"] = explode(';', $entry["value"]);
+						}
+						$property = $vCard->createProperty($key, $entry["value"]);
+						if (isset($entry["type"])) {
+							$property->add('TYPE', $entry["type"]);
+						}
+					}
+					$vCard->add($property);
+				}
+			} elseif ($key !== 'URI') {
+				$vCard->$key = $vCard->createProperty($key, $value);
+			}
 		}
 
 		if ($update) {
@@ -151,7 +176,6 @@ class AddressBookImpl implements IAddressBook {
 		}
 
 		return $this->vCard2Array($uri, $vCard);
-
 	}
 
 	/**
@@ -162,7 +186,7 @@ class AddressBookImpl implements IAddressBook {
 		$permissions = $this->addressBook->getACL();
 		$result = 0;
 		foreach ($permissions as $permission) {
-			switch($permission['privilege']) {
+			switch ($permission['privilege']) {
 				case '{DAV:}read':
 					$result |= Constants::PERMISSION_READ;
 					break;
@@ -237,6 +261,7 @@ class AddressBookImpl implements IAddressBook {
 	 *
 	 * @param string $uri
 	 * @param VCard $vCard
+	 * @param boolean $withTypes (optional) return the values as arrays of value/type pairs
 	 * @return array
 	 */
 	protected function vCard2Array($uri, VCard $vCard, $withTypes = false) {
@@ -256,20 +281,7 @@ class AddressBookImpl implements IAddressBook {
 				]) . '?photo';
 
 				$result['PHOTO'] = 'VALUE=uri:' . $url;
-
-			} else if ($property->name === 'X-SOCIALPROFILE') {
-				$type = $this->getTypeFromProperty($property);
-
-				// Type is the social network, when it's empty we don't need this.
-				if ($type !== null) {
-					if (!isset($result[$property->name])) {
-						$result[$property->name] = [];
-					}
-					$result[$property->name][$type] = $property->getValue();
-				}
-
-			// The following properties can be set multiple times
-			} else if (in_array($property->name, ['CLOUD', 'EMAIL', 'IMPP', 'TEL', 'URL'])) {
+			} elseif (in_array($property->name, ['URL', 'GEO', 'CLOUD', 'ADR', 'EMAIL', 'IMPP', 'TEL', 'X-SOCIALPROFILE', 'RELATED', 'LANG', 'X-ADDRESSBOOKSERVER-MEMBER'])) {
 				if (!isset($result[$property->name])) {
 					$result[$property->name] = [];
 				}
@@ -279,23 +291,16 @@ class AddressBookImpl implements IAddressBook {
 					$result[$property->name][] = [
 						'type' => $type,
 						'value' => $property->getValue()
-						];
+					];
 				} else {
 					$result[$property->name][] = $property->getValue();
 				}
-
-
 			} else {
 				$result[$property->name] = $property->getValue();
 			}
 		}
 
-		if (
-			$this->addressBookInfo['principaluri'] === 'principals/system/system' && (
-				$this->addressBookInfo['uri'] === 'system' ||
-				$this->addressBookInfo['{DAV:}displayname'] === $this->urlGenerator->getBaseUrl()
-			)
-		) {
+		if ($this->isSystemAddressBook()) {
 			$result['isLocalSystemBook'] = true;
 		}
 		return $result;
@@ -317,5 +322,27 @@ class AddressBookImpl implements IAddressBook {
 		}
 
 		return null;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function isShared(): bool {
+		if (!isset($this->addressBookInfo['{http://owncloud.org/ns}owner-principal'])) {
+			return false;
+		}
+
+		return $this->addressBookInfo['principaluri']
+			!== $this->addressBookInfo['{http://owncloud.org/ns}owner-principal'];
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function isSystemAddressBook(): bool {
+		return $this->addressBookInfo['principaluri'] === 'principals/system/system' && (
+			$this->addressBookInfo['uri'] === 'system' ||
+			$this->addressBookInfo['{DAV:}displayname'] === $this->urlGenerator->getBaseUrl()
+		);
 	}
 }

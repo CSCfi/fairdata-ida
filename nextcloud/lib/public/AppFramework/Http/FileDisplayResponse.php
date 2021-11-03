@@ -2,6 +2,7 @@
 /**
  * @copyright 2016 Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,9 +18,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCP\AppFramework\Http;
 
 use OCP\AppFramework\Http;
@@ -27,7 +29,6 @@ use OCP\AppFramework\Http;
 /**
  * Class FileDisplayResponse
  *
- * @package OCP\AppFramework\Http
  * @since 11.0.0
  */
 class FileDisplayResponse extends Response implements ICallbackResponse {
@@ -43,8 +44,10 @@ class FileDisplayResponse extends Response implements ICallbackResponse {
 	 * @param array $headers
 	 * @since 11.0.0
 	 */
-	public function __construct($file, $statusCode=Http::STATUS_OK,
-								$headers=[]) {
+	public function __construct($file, $statusCode = Http::STATUS_OK,
+								$headers = []) {
+		parent::__construct();
+
 		$this->file = $file;
 		$this->setStatus($statusCode);
 		$this->setHeaders(array_merge($this->getHeaders(), $headers));

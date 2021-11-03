@@ -52,22 +52,22 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 >> Execute /var/ida/utils/stop-all to halt apache and the postprocessing agents
 >> Rename the existing /nextcloud directory to /nextcloud-old
 >> Download and unzip the latest Nextcloud package as /nextcloud
->> Ensure the following are installed: php7*-intl php7*-pgsql php7*-zip php7*-gd
 >> Copy /nextcloud-old/themes/ida to /nextcloud/themes/ida
 >> Copy /nextcloud-old/apps/ida to /nextcloud/apps/ida
 >> Copy /nextcloud-old/.htaccess to /nextcloud/.htaccess
 >> Copy /nextcloud-old/config/config.php to /nextcloud/config/config.php
+>> Edit /var/ida/nextcloud/apps/ida/appinfo/info.xml and update max-version to new Nextcloud major version
 >> Edit /nextcloud/config.php to update the Nextcloud version to the newly installed version (c.f. /nextcloud/version.php)
->> Execute /var/ida/utils/restart
+>> Execute /var/ida/utils/fix-permissions
+>> Execute /var/ida/utils/restart-www
 >> Open Nextcloud in browser, and approve the update process when prompted
 >> Log in as admin and disable all apps except those listed in essential_nextcloud_apps, and disable / do not enable the IDA app
->> Run 'occ db:add-missing-indices' to fix database
+>> Go to the admin/settings/overview page and follow guidance as recommended, except do not enable filelocking.
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
->> Create new '.original' copies within /nextcloud of all modified files listed by the list-modified-files script (see below) 
->> Copy all in-place modified files from /nextcloud-old to their equivalent locations in /nextcloud
->> Restart apache
+>> Execute /var/ida/utils/restart-www
 >> Log in as admin and enable IDA app
->> UPDATE ALL OF THE MODIFIED FILES AND ANY NEW FILES, AS REQUIRED, DEBUG, DEBUG, DEBUG...
+>> Create new '.original' copies within /nextcloud of all modified files listed by the list-modified-files script (see below) 
+>> ANALYZE AND UPDATE ALL OF THE MODIFIED FILES AND ANY NEW FILES, AS REQUIRED, DEBUG, DEBUG, DEBUG...
 
 
 -- UTILITY SCRIPTS

@@ -21,8 +21,6 @@
 
 namespace OCA\WorkflowEngine\Check;
 
-
-use OCP\Files\Storage\IStorage;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\WorkflowEngine\ICheck;
@@ -45,14 +43,6 @@ class RequestRemoteAddress implements ICheck {
 	}
 
 	/**
-	 * @param IStorage $storage
-	 * @param string $path
-	 */
-	public function setFileInfo(IStorage $storage, $path) {
-		// A different path doesn't change time, so nothing to do here.
-	}
-
-	/**
 	 * @param string $operator
 	 * @param string $value
 	 * @return bool
@@ -63,9 +53,9 @@ class RequestRemoteAddress implements ICheck {
 
 		if ($operator === 'matchesIPv4') {
 			return $this->matchIPv4($actualValue, $decodedValue[0], $decodedValue[1]);
-		} else if ($operator === '!matchesIPv4') {
+		} elseif ($operator === '!matchesIPv4') {
 			return !$this->matchIPv4($actualValue, $decodedValue[0], $decodedValue[1]);
-		} else if ($operator === 'matchesIPv6') {
+		} elseif ($operator === 'matchesIPv6') {
 			return $this->matchIPv6($actualValue, $decodedValue[0], $decodedValue[1]);
 		} else {
 			return !$this->matchIPv6($actualValue, $decodedValue[0], $decodedValue[1]);
@@ -105,7 +95,7 @@ class RequestRemoteAddress implements ICheck {
 	}
 
 	/**
-	 * Based on http://stackoverflow.com/a/594134
+	 * Based on https://stackoverflow.com/a/594134
 	 * @param string $ip
 	 * @param string $rangeIp
 	 * @param int $bits
@@ -119,7 +109,7 @@ class RequestRemoteAddress implements ICheck {
 	}
 
 	/**
-	 * Based on http://stackoverflow.com/a/7951507
+	 * Based on https://stackoverflow.com/a/7951507
 	 * @param string $ip
 	 * @param string $rangeIp
 	 * @param int $bits
@@ -138,7 +128,7 @@ class RequestRemoteAddress implements ICheck {
 	}
 
 	/**
-	 * Based on http://stackoverflow.com/a/7951507
+	 * Based on https://stackoverflow.com/a/7951507
 	 * @param string $packedIp
 	 * @return string
 	 */
@@ -150,5 +140,33 @@ class RequestRemoteAddress implements ICheck {
 			$binaryIp .= str_pad(decbin(ord($char)), 8, '0', STR_PAD_LEFT);
 		}
 		return str_pad($binaryIp, 128, '0', STR_PAD_RIGHT);
+	}
+
+	/**
+	 * returns a list of Entities the checker supports. The values must match
+	 * the class name of the entity.
+	 *
+	 * An empty result means the check is universally available.
+	 *
+	 * @since 18.0.0
+	 */
+	public function supportedEntities(): array {
+		return [];
+	}
+
+	/**
+	 * returns whether the operation can be used in the requested scope.
+	 *
+	 * Scope IDs are defined as constants in OCP\WorkflowEngine\IManager. At
+	 * time of writing these are SCOPE_ADMIN and SCOPE_USER.
+	 *
+	 * For possibly unknown future scopes the recommended behaviour is: if
+	 * user scope is permitted, the default behaviour should return `true`,
+	 * otherwise `false`.
+	 *
+	 * @since 18.0.0
+	 */
+	public function isAvailableForScope(int $scope): bool {
+		return true;
 	}
 }

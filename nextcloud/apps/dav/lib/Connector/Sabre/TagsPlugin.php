@@ -2,10 +2,13 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sergio Bertolín <sbertolin@solidgear.es>
- * @author Thomas Citharel <tcit@tcit.fr>
+ * @author Thomas Citharel <nextcloud@tcit.fr>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -19,9 +22,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OCA\DAV\Connector\Sabre;
 
 /**
@@ -45,17 +49,16 @@ namespace OCA\DAV\Connector\Sabre;
  *
  */
 
-use \Sabre\DAV\PropFind;
-use \Sabre\DAV\PropPatch;
+use Sabre\DAV\PropFind;
+use Sabre\DAV\PropPatch;
 
-class TagsPlugin extends \Sabre\DAV\ServerPlugin
-{
+class TagsPlugin extends \Sabre\DAV\ServerPlugin {
 
 	// namespace
-	const NS_OWNCLOUD = 'http://owncloud.org/ns';
-	const TAGS_PROPERTYNAME = '{http://owncloud.org/ns}tags';
-	const FAVORITE_PROPERTYNAME = '{http://owncloud.org/ns}favorite';
-	const TAG_FAVORITE = '_$!<Favorite>!$_';
+	public const NS_OWNCLOUD = 'http://owncloud.org/ns';
+	public const TAGS_PROPERTYNAME = '{http://owncloud.org/ns}tags';
+	public const FAVORITE_PROPERTYNAME = '{http://owncloud.org/ns}favorite';
+	public const TAG_FAVORITE = '_$!<Favorite>!$_';
 
 	/**
 	 * Reference to main server object
@@ -95,7 +98,7 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 		$this->tree = $tree;
 		$this->tagManager = $tagManager;
 		$this->tagger = null;
-		$this->cachedTags = array();
+		$this->cachedTags = [];
 	}
 
 	/**
@@ -110,13 +113,12 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 	 * @return void
 	 */
 	public function initialize(\Sabre\DAV\Server $server) {
-
 		$server->xml->namespaceMap[self::NS_OWNCLOUD] = 'oc';
 		$server->xml->elementMap[self::TAGS_PROPERTYNAME] = TagList::class;
 
 		$this->server = $server;
-		$this->server->on('propFind', array($this, 'handleGetProperties'));
-		$this->server->on('propPatch', array($this, 'handleUpdateProperties'));
+		$this->server->on('propFind', [$this, 'handleGetProperties']);
+		$this->server->on('propPatch', [$this, 'handleUpdateProperties']);
 	}
 
 	/**
@@ -148,7 +150,7 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 				unset($tags[$favPos]);
 			}
 		}
-		return array($tags, $isFav);
+		return [$tags, $isFav];
 	}
 
 	/**
@@ -161,10 +163,10 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 		if (isset($this->cachedTags[$fileId])) {
 			return $this->cachedTags[$fileId];
 		} else {
-			$tags = $this->getTagger()->getTagsForObjects(array($fileId));
+			$tags = $this->getTagger()->getTagsForObjects([$fileId]);
 			if ($tags !== false) {
 				if (empty($tags)) {
-					return array();
+					return [];
 				}
 				return current($tags);
 			}
@@ -229,7 +231,7 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 			$tags = $this->getTagger()->getTagsForObjects($fileIds);
 			if ($tags === false) {
 				// the tags API returns false on error...
-				$tags = array();
+				$tags = [];
 			}
 
 			$this->cachedTags = $this->cachedTags + $tags;
@@ -242,12 +244,12 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 
 		$isFav = null;
 
-		$propFind->handle(self::TAGS_PROPERTYNAME, function() use (&$isFav, $node) {
+		$propFind->handle(self::TAGS_PROPERTYNAME, function () use (&$isFav, $node) {
 			list($tags, $isFav) = $this->getTagsAndFav($node->getId());
 			return new TagList($tags);
 		});
 
-		$propFind->handle(self::FAVORITE_PROPERTYNAME, function() use ($isFav, $node) {
+		$propFind->handle(self::FAVORITE_PROPERTYNAME, function () use ($isFav, $node) {
 			if (is_null($isFav)) {
 				list(, $isFav) = $this->getTagsAndFav($node->getId());
 			}
@@ -273,12 +275,12 @@ class TagsPlugin extends \Sabre\DAV\ServerPlugin
 			return;
 		}
 
-		$propPatch->handle(self::TAGS_PROPERTYNAME, function($tagList) use ($node) {
+		$propPatch->handle(self::TAGS_PROPERTYNAME, function ($tagList) use ($node) {
 			$this->updateTags($node->getId(), $tagList->getTags());
 			return true;
 		});
 
-		$propPatch->handle(self::FAVORITE_PROPERTYNAME, function($favState) use ($node) {
+		$propPatch->handle(self::FAVORITE_PROPERTYNAME, function ($favState) use ($node) {
 			if ((int)$favState === 1 || $favState === 'true') {
 				$this->getTagger()->tagAs($node->getId(), self::TAG_FAVORITE);
 			} else {

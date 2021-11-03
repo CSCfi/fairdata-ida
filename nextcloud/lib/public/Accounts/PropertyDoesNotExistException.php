@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2018 Julius Härtl <jus@bitgrid.net>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Julius Härtl <jus@bitgrid.net>
  *
  * @license GNU AGPL version 3 or any later version
@@ -28,7 +29,6 @@ namespace OCP\Accounts;
  *
  * @since 15.0.0
  *
- * @package OCP\Accounts
  */
 class PropertyDoesNotExistException extends \Exception {
 
@@ -37,8 +37,7 @@ class PropertyDoesNotExistException extends \Exception {
 	 * @param string $msg the error message
 	 * @since 15.0.0
 	 */
-	public function __construct($property){
+	public function __construct($property) {
 		parent::__construct('Property ' . $property . ' does not exist.');
 	}
-
 }

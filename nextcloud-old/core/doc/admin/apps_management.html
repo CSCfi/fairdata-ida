@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Apps management &#8212; Nextcloud latest Administration Manual latest documentation</title>
+    <link rel="stylesheet" href="_static/" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/main.min.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script type="text/javascript" src="_static/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="_static/js/jquery-fix.js"></script>
+    <script type="text/javascript" src="_static/bootstrap-3.1.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="_static/bootstrap-sphinx.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="User management" href="configuration_user/index.html" />
+    <link rel="prev" title="OAuth2" href="configuration_server/oauth2.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1d2d44">
+
+  </head><body>
+
+
+<div class="wrap container not-front">
+  <div class="content row">
+  <main class="main">
+    
+			<div class="row">
+				<div class="col-md-3">
+					<div class="sidebar">
+            <h1>Nextcloud latest Administration Manual</h1>
+            
+            <div class="sidebar-search">
+              <form class="headersearch" action="search.html" method="get">
+                <input type="text" value="" name="q" id="q" class="form-control" /> 
+                <button  class="btn btn-default" type="submit" id="searchsubmit">Search</button>
+              </form>
+            </div>
+            
+							<div class="menu-support-container">
+								<ul id="menu-support" class="menu">
+									<ul>
+                    <li><a href="contents.html">Table of Contents</a></li>
+									</ul>
+                  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release_schedule.html">Maintenance and release schedule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation/index.html">Installation and server configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration_server/index.html">Nextcloud configuration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Apps management</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#apps">Apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#managing-apps">Managing apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-private-api">Using private API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-custom-app-directories">Using custom app directories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-your-own-appstore">Using your own appstore</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration_user/index.html">User management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration_files/index.html">File sharing and management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="file_workflows/index.html">File workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration_database/index.html">Database configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration_mimetypes/index.html">Mimetypes management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="maintenance/index.html">Maintenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues/index.html">Issues and troubleshooting</a></li>
+</ul>
+
+								</ul>
+							</div>
+					</div>
+				</div>
+        
+
+				<div class="col-md-9">
+					<div class="page-content">
+            
+<ul class="prevnext-title list-unstyled list-inline">
+  <li class="prev">
+    <a href="configuration_server/oauth2.html" title="Previous Chapter: OAuth2"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; OAuth2</span>
+    </a>
+  </li>
+  <li class="next">
+    <a href="configuration_user/index.html" title="Next Chapter: User management"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">User management &raquo;</span>
+    </a>
+  </li>
+</ul>
+						
+  <div class="section" id="apps-management">
+<h1>Apps management<a class="headerlink" href="#apps-management" title="Permalink to this headline">¶</a></h1>
+<p>Nextcloud apps can enhance, customize or even restrict the features and experience
+you and your users has with the Nextcloud server. Next to default enabled functions
+like Files, Activity and Gallery there are other apps like Calendar, Contacts,
+Talk and more which are enhancing the features of your Nextcloud server.</p>
+<p>After installing the Nextcloud server, you might want to consider about enabling,
+disabling or even restricting some apps to groups depending on your and your users
+needs.</p>
+<div class="section" id="apps">
+<h2>Apps<a class="headerlink" href="#apps" title="Permalink to this headline">¶</a></h2>
+<div class="figure">
+<img alt="Apps page for enabling and disabling apps." src="_images/apps_overview.png" />
+</div>
+<p>During the Nextcloud server installation, some apps are enabled by default.
+To see which apps are enabled go to your Apps page.</p>
+<p>Those apps are supported and developed by Nextcloud GmbH directly and
+have an <strong>Official</strong>-tag. See <a class="reference internal" href="installation/apps_supported.html"><span class="doc">Supported apps</span></a> for a list of supported apps.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">To get access to work-arounds, long-term-support, priority bug fixing
+and custom consulting for supported apps, contact our <a class="reference external" href="https://nextcloud.com/enterprise/">sales team</a>.</p>
+</div>
+<p>Apps with <strong>Approved</strong> tag are community-developed and were uploaded in the
+<a class="reference external" href="https://apps.nextcloud.com">Nextcloud App Store</a>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you would like to develop your own Nextcloud app, you can find out
+more information in our <a class="reference external" href="https://docs.nextcloud.com/server/14/go.php?to=developer-manual">developer manual</a>.</p>
+</div>
+<p>All apps need to be licensed under AGPLv3+ or any compatible license.</p>
+</div>
+<div class="section" id="managing-apps">
+<h2>Managing apps<a class="headerlink" href="#managing-apps" title="Permalink to this headline">¶</a></h2>
+<div class="figure">
+<img alt="App store page for installing, enabling and disabling apps." src="_images/apps_store.png" />
+</div>
+<p>You will see which apps are enabled, disabled and available. You’ll also
+see additional app bundles and filters, such as Customization, Security and
+Monitoring for finding more apps quickly.</p>
+<p>In the Apps page you can enable or disable applications. Some apps have
+configurable options on the Apps page, such as <strong>Enable only for specific
+groups</strong>, but mainly they are enabled or disabled here, and are configured in
+your Nextcloud settings (admin and/or user-settings) or in the <code class="docutils literal notranslate"><span class="pre">config.php</span></code>.</p>
+<p>Click the app name to view a description of the app and any of the app settings
+in the Application View field. Clicking the <strong>Enable</strong> button will enable the app.
+If the app is not part of the Nextcloud installation, it will be downloaded from
+the app store, installed and enabled.</p>
+</div>
+<div class="section" id="using-private-api">
+<h2>Using private API<a class="headerlink" href="#using-private-api" title="Permalink to this headline">¶</a></h2>
+<p>If private API, rather than the public APIs are used in a third-party app, the
+installation fails, if <code class="docutils literal notranslate"><span class="pre">'appcodechecker'</span> <span class="pre">=&gt;</span> <span class="pre">true,</span></code> is set in <code class="docutils literal notranslate"><span class="pre">config.php</span></code>.</p>
+</div>
+<div class="section" id="using-custom-app-directories">
+<h2>Using custom app directories<a class="headerlink" href="#using-custom-app-directories" title="Permalink to this headline">¶</a></h2>
+<p>Use the <strong>apps_paths</strong> array in <code class="docutils literal notranslate"><span class="pre">config.php</span></code> to set any custom apps directory
+locations. The key <strong>path</strong> defines the absolute file system path to the app
+folder. The key <strong>url</strong> defines the HTTP web path to that folder, starting at
+the Nextcloud web root. The key <strong>writable</strong> indicates if a user can install apps
+in that folder.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">To ensure that the default <strong>/apps/</strong> folder only contains apps
+shipped with Nextcloud, follow this example to setup an <strong>/apps2/</strong> folder
+which will be used to store all other apps.</p>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>&quot;apps_paths&quot; =&gt; [
+    [
+            &quot;path&quot;     =&gt; OC::$SERVERROOT . &quot;/apps&quot;,
+            &quot;url&quot;      =&gt; &quot;/apps&quot;,
+            &quot;writable&quot; =&gt; false,
+    ],
+    [
+            &quot;path&quot;     =&gt; OC::$SERVERROOT . &quot;/apps2&quot;,
+            &quot;url&quot;      =&gt; &quot;/apps2&quot;,
+            &quot;writable&quot; =&gt; true,
+    ],
+],
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-your-own-appstore">
+<h2>Using your own appstore<a class="headerlink" href="#using-your-own-appstore" title="Permalink to this headline">¶</a></h2>
+<p>You can enable the installation of apps from your own apps store. This requires that you
+can write to at least one of the configured apps directories.</p>
+<p>To enable installation from your own apps store:</p>
+<ol class="arabic">
+<li><p class="first">Set the <strong>appstoreenabled</strong> parameter to “true”.</p>
+<p>This parameter is used to enable your apps store in Nextcloud.</p>
+</li>
+<li><p class="first">Set the <strong>appstoreurl</strong> to the URL of your Nextcloud apps store.</p>
+<p>This parameter is used to set the http path to the Nextcloud apps store. The appstore
+server must use <abbr title="Open Collaboration Services">OCS</abbr>.</p>
+</li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;appstoreenabled&quot;</span> <span class="o">=&gt;</span> <span class="n">true</span><span class="p">,</span>
+<span class="s2">&quot;appstoreurl&quot;</span> <span class="o">=&gt;</span> <span class="s2">&quot;https://api.nextcloud.com/v1&quot;</span><span class="p">,</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+            
+<ul class="prevnext-title list-unstyled list-inline">
+  <li class="prev">
+    <a href="configuration_server/oauth2.html" title="Previous Chapter: OAuth2"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm">&laquo; OAuth2</span>
+    </a>
+  </li>
+  <li class="next">
+    <a href="configuration_user/index.html" title="Next Chapter: User management"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm">User management &raquo;</span>
+    </a>
+  </li>
+</ul>
+					</div>
+				</div>
+			</div>
+  </main>  
+  </div>
+</div>
+  </body>
+</html>

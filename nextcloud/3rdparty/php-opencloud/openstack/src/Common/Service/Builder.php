@@ -36,9 +36,9 @@ class Builder
     private $defaults = ['urlType' => 'publicURL'];
 
     /**
-     * @param array  $globalOptions Options that will be applied to every service created by this builder.
+     * @param array  $globalOptions options that will be applied to every service created by this builder.
      *                              Eventually they will be merged (and if necessary overridden) by the
-     *                              service-specific options passed in.
+     *                              service-specific options passed in
      * @param string $rootNamespace API classes' root namespace
      */
     public function __construct(array $globalOptions = [], $rootNamespace = 'OpenStack')
@@ -119,8 +119,6 @@ class Builder
     }
 
     /**
-     * @param array $options
-     *
      * @codeCoverageIgnore
      */
     private function stockAuthHandler(array &$options)
@@ -167,10 +165,7 @@ class Builder
         }
 
         if (!isset($options['identityService']) || !($options['identityService'] instanceof IdentityService)) {
-            throw new \InvalidArgumentException(sprintf(
-                '"identityService" must be specified and implement %s',
-                IdentityService::class
-            ));
+            throw new \InvalidArgumentException(sprintf('"identityService" must be specified and implement %s', IdentityService::class));
         }
 
         return $options;

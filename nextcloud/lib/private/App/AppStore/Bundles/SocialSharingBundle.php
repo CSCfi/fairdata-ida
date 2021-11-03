@@ -17,7 +17,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -29,7 +29,7 @@ class SocialSharingBundle extends Bundle {
 	 * {@inheritDoc}
 	 */
 	public function getName() {
-		return (string)$this->l10n->t('Social sharing bundle');
+		return $this->l10n->t('Social sharing bundle');
 	}
 
 	/**
@@ -43,5 +43,4 @@ class SocialSharingBundle extends Bundle {
 			'socialsharing_diaspora',
 		];
 	}
-
 }

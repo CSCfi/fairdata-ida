@@ -60,10 +60,12 @@ never use it.
 ::
 
 	'trusted_domains' =>
-	  array (
+	   [
 	    'demo.example.org',
 	    'otherdomain.example.org',
-	  ),
+	    '10.111.112.113',
+	    '[2001:db8::1]'
+	  ],
 
 Your list of trusted domains that users can log into. Specifying trusted
 domains prevents host header poisoning. Do not remove this, as it performs
@@ -76,6 +78,8 @@ You can specify:
   This disallows all other ports on this host
 - use * as a wildcard, e.g. ubos-raspberry-pi*.local will allow
   ubos-raspberry-pi.local and ubos-raspberry-pi-2.local
+- the IP address with or without permitted port, e.g. [2001:db8::1]:8080
+  Using TLS certificates where commonName=<IP address> is deprecated
 
 ::
 
@@ -262,6 +266,17 @@ Defaults to ``en``
 
 ::
 
+	'default_phone_region' => 'GB',
+
+This sets the default region for phone numbers on your Nextcloud server,
+using ISO 3166-1 country codes such as ``DE`` for Germany, ``FR`` for France, …
+It is required to allow inserting phone numbers in the user profiles starting
+without the country code (e.g. +49 for Germany).
+
+No default value!
+
+::
+
 	'force_locale' => 'en_US',
 
 With this setting a locale can be forced for all users. If a locale is
@@ -274,15 +289,15 @@ Defaults to ``false``
 
 ::
 
-	'defaultapp' => 'files',
+	'defaultapp' => 'dashboard,files',
 
 Set the default app to open on login. Use the app names as they appear in the
 URL after clicking them in the Apps menu, such as documents, calendar, and
 gallery. You can use a comma-separated list of app names, so if the first
 app is not enabled for a user then Nextcloud will try the second one, and so
-on. If no enabled apps are found it defaults to the Files app.
+on. If no enabled apps are found it defaults to the dashboard app.
 
-Defaults to ``files``
+Defaults to ``dashboard,files``
 
 ::
 
@@ -327,6 +342,16 @@ Defaults to ``true``
 
 ::
 
+	'auto_logout' => false,
+
+Enable or disable the automatic logout after session_lifetime, even if session
+keepalive is enabled. This will make sure that an inactive browser will be logged out
+even if requests to the server might extend the session lifetime.
+
+Defaults to ``false``
+
+::
+
 	'token_auth_enforced' => false,
 
 Enforce token authentication for clients, which blocks requests using the user
@@ -337,6 +362,20 @@ Defaults to ``false``
 
 ::
 
+	'token_auth_activity_update' => 60,
+
+The interval at which token activity should be updated.
+
+Increasing this value means that the last activty on the security page gets
+more outdated.
+
+Tokens are still checked every 5 minutes for validity
+max value: 300
+
+Defaults to ``300``
+
+::
+
 	'auth.bruteforce.protection.enabled' => true,
 
 Whether the bruteforce protection shipped with Nextcloud should be enabled or not.
@@ -344,6 +383,12 @@ Whether the bruteforce protection shipped with Nextcloud should be enabled or no
 Disabling this is discouraged for security reasons.
 
 Defaults to ``true``
+
+::
+
+	'auth.webauthn.enabled' => true,
+
+By default WebAuthn is available but it can be explicitly disabled by admins
 
 ::
 
@@ -358,6 +403,22 @@ If the directory does not exist, it falls back to non dialect (from ``de_DE``
 to ``de``). If that does not exist either, it falls back to ``default``
 
 Defaults to ``core/skeleton`` in the Nextcloud directory.
+
+::
+
+	'templatedirectory' => '/path/to/nextcloud/templates',
+
+The directory where the template files are located. These files will be
+copied to the template directory of new users. Leave empty to not copy any
+template files.
+
+``{lang}`` can be used as a placeholder for the language of the user.
+If the directory does not exist, it falls back to non dialect (from ``de_DE``
+to ``de``). If that does not exist either, it falls back to ``default``
+
+If this is not set creating a template directory will only happen if no custom
+``skeletondirectory`` is defined, otherwise the shipped templates will be used
+to create a template directory for the user.
 
 ::
 
@@ -451,8 +512,8 @@ Defaults to ``10`` seconds
 
 	'mail_smtpsecure' => '',
 
-This depends on ``mail_smtpmode``. Specify when you are using ``ssl`` or
-``tls``, or leave empty for no encryption.
+This depends on ``mail_smtpmode``. Specify when you are using ``ssl`` for SSL/TLS or
+``tls`` for STARTTLS, or leave empty for no encryption.
 
 Defaults to ``''`` (empty string)
 
@@ -510,7 +571,7 @@ allows to only send plain text emails.
 
 ::
 
-	'mail_smtpstreamoptions' => array(),
+	'mail_smtpstreamoptions' => [],
 
 This depends on ``mail_smtpmode``. Array of additional streams options that
 will be passed to underlying Swift mailer implementation.
@@ -634,6 +695,12 @@ For example, try accessing resources by leaving out `index.php` in the URL.
 
 The URL of your proxy server, for example ``proxy.example.com:8081``.
 
+Note: Guzzle (the http library used by Nextcloud) is reading the environment
+variables HTTP_PROXY (only for cli request), HTTPS_PROXY, and NO_PROXY by default.
+
+If you configure proxy with Nextcloud any default configuration by Guzzle
+is overwritten. Make sure to set ``proxyexclude`` accordingly if necessary.
+
 Defaults to ``''`` (empty string)
 
 ::
@@ -645,6 +712,27 @@ The optional authentication for the proxy to use to connect to the internet.
 The format is: ``username:password``.
 
 Defaults to ``''`` (empty string)
+
+::
+
+	'proxyexclude' => [],
+
+List of host names that should not be proxied to.
+
+For example: ``['.mit.edu', 'foo.com']``.
+
+Hint: Use something like ``explode(',', getenv('NO_PROXY'))`` to sync this
+value with the global NO_PROXY option.
+
+Defaults to empty array.
+
+::
+
+	'allow_local_remote_servers' => true,
+
+Allow remote servers with local addresses e.g. in federated shares, webcal services and more
+
+Defaults to false
 
 Deleted Items (trash bin)
 -------------------------
@@ -683,7 +771,7 @@ Available values:
     automatically, delete other files anytime if space needed
 * ``D1, D2``
     keep files and folders in the trash bin for at least D1 days and
-    delete when exceeds D2 days
+    delete when exceeds D2 days (note: files will not be deleted automatically if space is needed)
 * ``disabled``
     trash bin auto clean disabled, files and folders will be kept forever
 
@@ -775,7 +863,6 @@ Supported values:
   - ``daily``
   - ``beta``
   - ``stable``
-  - ``production``
 
 ::
 
@@ -787,12 +874,12 @@ Defaults to ``true``
 
 ::
 
-	'connectivity_check_domains' => array(
+	'connectivity_check_domains' => [
 		'www.nextcloud.com',
 		'www.startpage.com',
 		'www.eff.org',
 		'www.edri.org'
-	),
+	],
 
 Which domains to request to determine the availability of an Internet
 connection. If none of these hosts are reachable, the administration panel
@@ -941,17 +1028,17 @@ Defaults to an empty array.
 
 	'logdateformat' => 'F d, Y H:i:s',
 
-This uses PHP.date formatting; see http://php.net/manual/en/function.date.php
+This uses PHP.date formatting; see https://www.php.net/manual/en/function.date.php
 
 Defaults to ISO 8601 ``2005-08-15T15:52:01+00:00`` - see \DateTime::ATOM
-(https://secure.php.net/manual/en/class.datetime.php#datetime.constants.atom)
+(https://www.php.net/manual/en/class.datetime.php#datetime.constants.atom)
 
 ::
 
 	'logtimezone' => 'Europe/Berlin',
 
 The timezone for logfiles. You may change this; see
-http://php.net/manual/en/timezones.php
+https://www.php.net/manual/en/timezones.php
 
 Defaults to ``UTC``
 
@@ -966,8 +1053,8 @@ debugging, as your logfile will become huge.
 
 	'log_rotate_size' => 100 * 1024 * 1024,
 
-Enables log rotation and limits the total size of logfiles. The default is 0,
-or no rotation. Specify a size in bytes, for example 104857600 (100 megabytes
+Enables log rotation and limits the total size of logfiles. Set it to 0 for
+no rotation. Specify a size in bytes, for example 104857600 (100 megabytes
 = 100 * 1024 * 1024 bytes). A new logfile is created with a new name when the
 old logfile reaches your limit. If a rotated log file is already present, it
 will be overwritten.
@@ -1016,13 +1103,23 @@ Defaults to ``true``
 
 ::
 
-	'apps_paths' => array(
-		array(
+	'appstoreurl' => 'https://apps.nextcloud.com/api/v1',
+
+Enables the installation of apps from a self hosted apps store.
+
+Requires that at least one of the configured apps directories is writeable.
+
+Defaults to ``https://apps.nextcloud.com/api/v1``
+
+::
+
+	'apps_paths' => [
+		[
 			'path'=> '/var/www/nextcloud/apps',
 			'url' => '/apps',
 			'writable' => true,
-		),
-	),
+		],
+	],
 
 Use the ``apps_paths`` parameter to set the location of the Apps directory,
 which should be scanned for available apps, and where user-specific apps
@@ -1116,17 +1213,18 @@ Defaults to ``''`` (empty string)
 
 ::
 
-	'enabledPreviewProviders' => array(
+	'enabledPreviewProviders' => [
 		'OC\Preview\PNG',
 		'OC\Preview\JPEG',
 		'OC\Preview\GIF',
-		'OC\Preview\HEIC',
 		'OC\Preview\BMP',
 		'OC\Preview\XBitmap',
 		'OC\Preview\MP3',
 		'OC\Preview\TXT',
-		'OC\Preview\MarkDown'
-	),
+		'OC\Preview\MarkDown',
+		'OC\Preview\OpenDocument',
+		'OC\Preview\Krita',
+	],
 
 Only register providers that have been explicitly enabled
 
@@ -1134,11 +1232,11 @@ The following providers are disabled by default due to performance or privacy
 concerns:
 
  - OC\\Preview\\Illustrator
+ - OC\\Preview\\HEIC
  - OC\\Preview\\Movie
  - OC\\Preview\\MSOffice2003
  - OC\\Preview\\MSOffice2007
  - OC\\Preview\\MSOfficeDoc
- - OC\\Preview\\OpenDocument
  - OC\\Preview\\PDF
  - OC\\Preview\\Photoshop
  - OC\\Preview\\Postscript
@@ -1147,26 +1245,19 @@ concerns:
  - OC\\Preview\\TIFF
  - OC\\Preview\\Font
 
-The following providers are not available in Microsoft Windows:
-
- - OC\\Preview\\Movie
- - OC\\Preview\\MSOfficeDoc
- - OC\\Preview\\MSOffice2003
- - OC\\Preview\\MSOffice2007
- - OC\\Preview\\OpenDocument
- - OC\\Preview\\StarOffice
 
 Defaults to the following providers:
 
  - OC\\Preview\\BMP
  - OC\\Preview\\GIF
- - OC\\Preview\\HEIC
  - OC\\Preview\\JPEG
  - OC\\Preview\\MarkDown
  - OC\\Preview\\MP3
  - OC\\Preview\\PNG
  - OC\\Preview\\TXT
  - OC\\Preview\\XBitmap
+ - OC\\Preview\\OpenDocument
+ - OC\\Preview\\Krita
 
 LDAP
 ----
@@ -1246,9 +1337,9 @@ SSL
 
 ::
 
-	'openssl' => array(
+	'openssl' => [
 		'config' => '/absolute/location/of/openssl.cnf',
-	),
+	],
 
 Extra SSL options to be used for configuration.
 
@@ -1348,19 +1439,19 @@ https://github.com/phpredis/phpredis/commit/c5994f2a42b8a348af92d3acb4edff1328ad
 
 ::
 
-	'memcached_servers' => array(
+	'memcached_servers' => [
 		// hostname, port and optional weight. Also see:
-		// http://www.php.net/manual/en/memcached.addservers.php
-		// http://www.php.net/manual/en/memcached.addserver.php
-		array('localhost', 11211),
+		// https://www.php.net/manual/en/memcached.addservers.php
+		// https://www.php.net/manual/en/memcached.addserver.php
+		['localhost', 11211],
 		//array('other.host.local', 11211),
-	),
+	],
 
 Server details for one or more memcached servers to use for memory caching.
 
 ::
 
-	'memcached_options' => array(
+	'memcached_options' => [
 		// Set timeouts to 50ms
 		\Memcached::OPT_CONNECT_TIMEOUT => 50,
 		\Memcached::OPT_RETRY_TIMEOUT =>   50,
@@ -1379,9 +1470,9 @@ Server details for one or more memcached servers to use for memory caching.
 	
 		// Binary serializer vill be enabled if the igbinary PECL module is available
 		//\Memcached::OPT_SERIALIZER => \Memcached::SERIALIZER_IGBINARY,
-	),
+	],
 
-Connection options for memcached, see http://apprize.info/php/scaling/15.html
+Connection options for memcached
 
 ::
 
@@ -1486,6 +1577,24 @@ One way to test is applying for a trystack account at http://trystack.org/
 
 To use swift V3
 
+::
+
+	'objectstore.multibucket.preview-distribution' => false,
+
+If this is set to true and a multibucket object store is configured then
+newly created previews are put into 256 dedicated buckets.
+
+Those buckets are named like the mulibucket version but with the postfix
+``-preview-NUMBER`` where NUMBER is between 0 and 255.
+
+Keep in mind that only previews of files are put in there that don't have
+some already. Otherwise the old bucket will be used.
+
+To migrate existing previews to this new multibucket distribution of previews
+use the occ command ``preview:repair``. For now this will only migrate
+previews that were generated before Nextcloud 19 in the flat
+``appdata_INSTANCEID/previews/FILEID`` folder structure.
+
 Sharing
 -------
 
@@ -1504,10 +1613,17 @@ Defaults to ``\OC\Share20\ProviderFactory``
 
 ::
 
-	'sharing.maxAutocompleteResults' => 0,
+	'sharing.maxAutocompleteResults' => 25,
 
-Define max number of results returned by the user search for auto-completion
-Default is unlimited (value set to 0).
+Define max number of results returned by the search for auto-completion of
+users, groups, etc. The value must not be lower than 0 (for unlimited).
+
+If more, different sources are requested (e.g. different user backends; or
+both users and groups), the value is applied per source and might not be
+truncated after collecting the results. I.e. more results can appear than
+configured here.
+
+Default is 25.
 
 ::
 
@@ -1516,16 +1632,36 @@ Default is unlimited (value set to 0).
 Define the minimum length of the search string before we start auto-completion
 Default is no limit (value set to 0)
 
+::
+
+	'sharing.enable_share_accept' => false,
+
+Set to true to enable that internal shares need to be accepted by the users by default.
+
+Users can change this for their account in their personal sharing settings
+
+::
+
+	'sharing.force_share_accept' => false,
+
+Set to true to enforce that internal shares need to be accepted
+
+::
+
+	'sharing.enable_share_mail' => true,
+
+Set to false to stop sending a mail when users receive a share
+
 All other configuration options
 -------------------------------
 
 
 ::
 
-	'dbdriveroptions' => array(
+	'dbdriveroptions' => [
 		PDO::MYSQL_ATTR_SSL_CA => '/file/path/to/ca_cert.pem',
 		PDO::MYSQL_ATTR_INIT_COMMAND => 'SET wait_timeout = 28800'
-	),
+	],
 
 Additional driver options for the database connection, eg. to enable SSL
 encryption in MySQL or specify a custom wait timeout on a cheap hoster.
@@ -1573,12 +1709,12 @@ http://mechanics.flite.com/blog/2014/07/29/using-innodb-large-prefix-to-avoid-er
 
 ::
 
-	'supportedDatabases' => array(
+	'supportedDatabases' => [
 		'sqlite',
 		'mysql',
 		'pgsql',
 		'oci',
-	),
+	],
 
 Database types that are supported for installation.
 
@@ -1604,6 +1740,53 @@ use.
 
 The Web server user must have write access to this directory.
 
+Hashing
+-------
+
+
+::
+
+	'hashing_default_password' => false,
+
+By default Nextcloud will use the Argon2 password hashing if available.
+
+However if for whatever reason you want to stick with the PASSWORD_DEFAULT
+of your php version. Then set the setting to true.
+
+Nextcloud uses the Argon2 algorithm (with PHP >= 7.2) to create hashes by its
+own and exposes its configuration options as following. More information can
+be found at: https://www.php.net/manual/en/function.password-hash.php
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+::
+
+	'hashingThreads' => PASSWORD_ARGON2_DEFAULT_THREADS,
+
+The number of CPU threads to be used by the algorithm for computing a hash.
+
+The value must be an integer, and the minimum value is 1. Rationally it does
+not help to provide a number higher than the available threads on the machine.
+Values that undershoot the minimum will be ignored in favor of the minimum.
+
+::
+
+	'hashingMemoryCost' => PASSWORD_ARGON2_DEFAULT_MEMORY_COST,
+
+The memory in KiB to be used by the algorithm for computing a hash. The value
+must be an integer, and the minimum value is 8 times the number of CPU threads.
+
+Values that undershoot the minimum will be ignored in favor of the minimum.
+
+::
+
+	'hashingTimeCost' => PASSWORD_ARGON2_DEFAULT_TIME_COST,
+
+The number of iterations that are used by the algorithm for computing a hash.
+
+The value must be an integer, and the minimum value is 1. Values that
+undershoot the minimum will be ignored in favor of the minimum.
+
 ::
 
 	'hashingCost' => 10,
@@ -1613,7 +1796,7 @@ Using a higher value requires more time and CPU power to calculate the hashes
 
 ::
 
-	'blacklisted_files' => array('.htaccess'),
+	'blacklisted_files' => ['.htaccess'],
 
 Blacklist a specific file or files and disallow the upload of files
 with this name. ``.htaccess`` is blocked by default.
@@ -1627,6 +1810,8 @@ Defaults to ``array('.htaccess')``
 	'share_folder' => '/',
 
 Define a default folder for shared files and folders other than root.
+
+Changes to this value will only have effect on new shares.
 
 Defaults to ``/``
 
@@ -1642,10 +1827,15 @@ Defaults to the theming app which is shipped since Nextcloud 9
 
 ::
 
-	'cipher' => 'AES-256-CFB',
+	'cipher' => 'AES-256-CTR',
 
-The default cipher for encrypting files. Currently AES-128-CFB and
-AES-256-CFB are supported.
+The default cipher for encrypting files. Currently supported are:
+ - AES-256-CTR
+ - AES-128-CTR
+ - AES-256-CFB
+ - AES-128-CFB
+
+Defaults to ``AES-256-CTR``
 
 ::
 
@@ -1664,12 +1854,35 @@ Defaults to ``2.0.0``
 
 ::
 
+	'localstorage.allowsymlinks' => false,
+
+Option to allow local storage to contain symlinks.
+
+WARNING: Not recommended. This would make it possible for Nextcloud to access
+files outside the data directory and could be considered a security risk.
+
+Defaults to ``false``
+
+::
+
 	'quota_include_external_storage' => false,
 
 EXPERIMENTAL: option whether to include external storage in quota
 calculation, defaults to false.
 
 Defaults to ``false``
+
+::
+
+	'external_storage.auth_availability_delay' => 1800,
+
+When an external storage is unavailable for some reasons, it will be flagged
+as such for 10 minutes. When the trigger is a failed authentication attempt
+the delay is higher and can be controlled with this option. The motivation
+is to make account lock outs at Active Directories (and compatible) more
+unlikely.
+
+Defaults to ``1800`` (seconds)
 
 ::
 
@@ -1726,7 +1939,7 @@ lose this string there will be data corruption.
 
 ::
 
-	'trusted_proxies' => array('203.0.113.45', '198.51.100.128', '192.168.2.0/24'),
+	'trusted_proxies' => ['203.0.113.45', '198.51.100.128', '192.168.2.0/24'],
 
 List of trusted proxy servers
 
@@ -1751,7 +1964,7 @@ Defaults to an empty array.
 
 ::
 
-	'forwarded_for_headers' => array('HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR'),
+	'forwarded_for_headers' => ['HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR'],
 
 Headers that should be trusted as client IP address in combination with
 `trusted_proxies`. If the HTTP header looks like 'X-Forwarded-For', then use
@@ -1889,10 +2102,10 @@ If you want to allow federation outside of your environment set it to 'global'
 
 ::
 
-	'csrf.optout' => array(
+	'csrf.optout' => [
 		'/^WebDAVFS/', // OS X Finder
 		'/^Microsoft-WebDAV-MiniRedir/', // Windows webdav drive
-	),
+	],
 
 List of incompatible user agents opted out from Same Site Cookie Protection.
 
@@ -1927,6 +2140,11 @@ Simply set this property to "false", if you want to turn this feature off.
 App config options
 ------------------
 
+.. _label-activity-app-config:
+
+Activity app
+^^^^^^^^^^^^
+
 Retention for activities of the activity app:
 
 
@@ -1939,6 +2157,21 @@ which are older then the number of days that is set for ``activity_expire_days``
 
 ::
 
-	'wnd.logging.enable' => true,
+	'activity_use_cached_mountpoints' => false,
 
-This enables debug logs for the windows_network_drive app.
+Before enabling this, read the warning in :ref:`label-activities-groupfolders`
+
+Settings app
+^^^^^^^^^^^^
+
+If an email address of a user is changed by an admin, then it triggers an email
+to the user that states "Your email address on URL was changed by an
+administrator.". In some cases this should not be triggered, because it was a
+normal maintenance change. To disable this specific email the appconfig option
+``disable_email.email_address_changed_by_admin`` can be set to ``yes``::
+
+	occ config:app:set settings disable_activity.email_address_changed_by_admin --value yes
+
+To disable this behaviour change it to any other value or delete the app config::
+
+	occ config:app:delete settings disable_activity.email_address_changed_by_admin

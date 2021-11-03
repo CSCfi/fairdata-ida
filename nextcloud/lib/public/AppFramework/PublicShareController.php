@@ -17,7 +17,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 declare(strict_types=1);
@@ -109,7 +109,7 @@ abstract class PublicShareController extends Controller {
 	 *
 	 * @since 14.0.0
 	 */
-	final public function isAuthenticated(): bool {
+	public function isAuthenticated(): bool {
 		// Always authenticated against non password protected shares
 		if (!$this->isPasswordProtected()) {
 			return true;
@@ -133,6 +133,5 @@ abstract class PublicShareController extends Controller {
 	 * @since 14.0.0
 	 */
 	public function shareNotFound() {
-
 	}
 }

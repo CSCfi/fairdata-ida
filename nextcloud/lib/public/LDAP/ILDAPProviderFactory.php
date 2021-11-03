@@ -19,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -33,7 +33,6 @@ use OCP\IServerContainer;
  * This class is responsible for instantiating and returning an ILDAPProvider
  * instance.
  *
- * @package OCP\LDAP
  * @since 11.0.0
  */
 interface ILDAPProviderFactory {
@@ -45,7 +44,7 @@ interface ILDAPProviderFactory {
 	 * @since 11.0.0
 	 */
 	public function __construct(IServerContainer $serverContainer);
-	
+
 	/**
 	 * creates and returns an instance of the ILDAPProvider
 	 *

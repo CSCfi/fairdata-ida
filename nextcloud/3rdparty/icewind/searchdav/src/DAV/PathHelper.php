@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
@@ -37,7 +37,7 @@ class PathHelper {
 		$this->server = $server;
 	}
 
-	public function getPathFromUri($uri) {
+	public function getPathFromUri($uri): ?string {
 		if (strpos($uri, '://') === false) {
 			return $uri;
 		}

@@ -1,0 +1,395 @@
+7,8c7,8
+<  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+<  * @author Christoph Wurst <christoph@owncloud.com>
+---
+>  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+>  * @author Daniel Kesselberg <mail@danielkesselberg.de>
+9a10
+>  * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+11d11
+<  * @author justin-sleep <justin@quarterfull.com>
+13,16c13,15
+<  * @author Morris Jobke <hey@morrisjobke.de>
+<  * @author Sandro Lutz <sandro.lutz@temparus.ch>
+<  * @author Thomas Müller <thomas.mueller@tmit.eu>
+<  * @author Ujjwal Bhardwaj <ujjwalb1996@gmail.com>
+---
+>  * @author Michael Weimann <mail@michael-weimann.eu>
+>  * @author Rayn0r <andrew@ilpss8.myfirewall.org>
+>  * @author Roeland Jago Douma <roeland@famdouma.nl>
+30c29
+<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
+---
+>  * along with this program. If not, see <http://www.gnu.org/licenses/>
+36,37c35,38
+< use OC\Authentication\Token\IToken;
+< use OC\Authentication\TwoFactorAuth\Manager;
+---
+> use OC\AppFramework\Http\Request;
+> use OC\Authentication\Login\Chain;
+> use OC\Authentication\Login\LoginData;
+> use OC\Authentication\WebAuthn\Manager as WebAuthnManager;
+47d47
+< use OCP\Authentication\TwoFactorAuth\IProvider;
+49a50
+> use OCP\IInitialStateService;
+57d57
+< use OC\Hooks\PublicEmitter;
+61,63c61,62
+< 
+< 	const LOGIN_MSG_INVALIDPASSWORD = 'invalidpassword';
+< 	const LOGIN_MSG_USERDISABLED = 'userdisabled';
+---
+> 	public const LOGIN_MSG_INVALIDPASSWORD = 'invalidpassword';
+> 	public const LOGIN_MSG_USERDISABLED = 'userdisabled';
+77,78d75
+< 	/** @var Manager */
+< 	private $twoFactorManager;
+82a80,85
+> 	/** @var Chain */
+> 	private $loginChain;
+> 	/** @var IInitialStateService */
+> 	private $initialStateService;
+> 	/** @var WebAuthnManager */
+> 	private $webAuthnManager;
+84,97c87
+< 	/**
+< 	 * @param string $appName
+< 	 * @param IRequest $request
+< 	 * @param IUserManager $userManager
+< 	 * @param IConfig $config
+< 	 * @param ISession $session
+< 	 * @param IUserSession $userSession
+< 	 * @param IURLGenerator $urlGenerator
+< 	 * @param ILogger $logger
+< 	 * @param Manager $twoFactorManager
+< 	 * @param Defaults $defaults
+< 	 * @param Throttler $throttler
+< 	 */
+< 	public function __construct($appName,
+---
+> 	public function __construct(?string $appName,
+105d94
+< 								Manager $twoFactorManager,
+107c96,99
+< 								Throttler $throttler) {
+---
+> 								Throttler $throttler,
+> 								Chain $loginChain,
+> 								IInitialStateService $initialStateService,
+> 								WebAuthnManager $webAuthnManager) {
+115d106
+< 		$this->twoFactorManager = $twoFactorManager;
+117a109,111
+> 		$this->loginChain = $loginChain;
+> 		$this->initialStateService = $initialStateService;
+> 		$this->webAuthnManager = $webAuthnManager;
+140c134,138
+< 		$response->addHeader('Clear-Site-Data', '"cache", "storage", "executionContexts"');
+---
+> 
+> 		if (!$this->request->isUserAgent([Request::USER_AGENT_CHROME, Request::USER_AGENT_ANDROID_MOBILE_CHROME])) {
+> 			$response->addHeader('Clear-Site-Data', '"cache", "storage"');
+> 		}
+> 
+159d156
+< 		$parameters = array();
+161,162d157
+< 		$errors = [];
+< 		$messages = [];
+164a160,161
+> 			$this->initialStateService->provideInitialState('core', 'loginMessages', $messages);
+> 			$this->initialStateService->provideInitialState('core', 'loginErrors', $errors);
+167,169d163
+< 		foreach ($errors as $value) {
+< 			$parameters[$value] = true;
+< 		}
+171d164
+< 		$parameters['messages'] = $messages;
+173,174c166
+< 			$parameters['loginName'] = $user;
+< 			$parameters['user_autofocus'] = false;
+---
+> 			$this->initialStateService->provideInitialState('core', 'loginUsername', $user);
+176,177c168
+< 			$parameters['loginName'] = '';
+< 			$parameters['user_autofocus'] = true;
+---
+> 			$this->initialStateService->provideInitialState('core', 'loginUsername', '');
+180,185c171,175
+< 		$autocomplete = $this->config->getSystemValue('login_form_autocomplete', true);
+< 		if ($autocomplete){
+< 			$parameters['login_form_autocomplete'] = 'on';
+< 		} else {
+< 			$parameters['login_form_autocomplete'] = 'off';
+< 		}
+---
+> 		$this->initialStateService->provideInitialState(
+> 			'core',
+> 			'loginAutocomplete',
+> 			$this->config->getSystemValue('login_form_autocomplete', true) === true
+> 		);
+188c178,181
+< 			$parameters['redirect_url'] = $redirect_url;
+---
+> 			[$url, ] = explode('?', $redirect_url);
+> 			if ($url !== $this->urlGenerator->linkToRoute('core.login.logout')) {
+> 				$this->initialStateService->provideInitialState('core', 'loginRedirectUrl', $redirect_url);
+> 			}
+191,192c184,188
+< 		$parameters = $this->setPasswordResetParameters($user, $parameters);
+< 		$parameters['alt_login'] = OC_App::getAlternativeLogIns();
+---
+> 		$this->initialStateService->provideInitialState(
+> 			'core',
+> 			'loginThrottleDelay',
+> 			$this->throttler->getDelay($this->request->getRemoteAddress())
+> 		);
+194,200c190
+< 		if ($user !== null && $user !== '') {
+< 			$parameters['loginName'] = $user;
+< 			$parameters['user_autofocus'] = false;
+< 		} else {
+< 			$parameters['loginName'] = '';
+< 			$parameters['user_autofocus'] = true;
+< 		}
+---
+> 		$this->setPasswordResetInitialState($user);
+202c192
+< 		$parameters['throttle_delay'] = $this->throttler->getDelay($this->request->getRemoteAddress());
+---
+> 		$this->initialStateService->provideInitialState('core', 'webauthn-available', $this->webAuthnManager->isWebAuthnAvailable());
+211a202,204
+> 		$parameters = [
+> 			'alt_login' => OC_App::getAlternativeLogIns(),
+> 		];
+218c211,239
+< 	 * Sets the password reset params.
+---
+> 	 * Sets the password reset state
+> 	 *
+> 	 * @param string $username
+> 	 */
+> 	private function setPasswordResetInitialState(?string $username): void {
+> 		if ($username !== null && $username !== '') {
+> 			$user = $this->userManager->get($username);
+> 		} else {
+> 			$user = null;
+> 		}
+> 
+> 		$passwordLink = $this->config->getSystemValue('lost_password_link', '');
+> 
+> 		$this->initialStateService->provideInitialState(
+> 			'core',
+> 			'loginResetPasswordLink',
+> 			$passwordLink
+> 		);
+> 
+> 		$this->initialStateService->provideInitialState(
+> 			'core',
+> 			'loginCanResetPassword',
+> 			$this->canResetPassword($passwordLink, $user)
+> 		);
+> 	}
+> 
+> 	/**
+> 	 * @param string|null $passwordLink
+> 	 * @param IUser|null $user
+225,227c246
+< 	 * @param string $user
+< 	 * @param array $parameters
+< 	 * @return array
+---
+> 	 * @return bool
+229,234c248,250
+< 	private function setPasswordResetParameters(
+< 		string $user = null, array $parameters): array {
+< 		if ($user !== null && $user !== '') {
+< 			$userObj = $this->userManager->get($user);
+< 		} else {
+< 			$userObj = null;
+---
+> 	private function canResetPassword(?string $passwordLink, ?IUser $user): bool {
+> 		if ($passwordLink === 'disabled') {
+> 			return false;
+237,238c253,255
+< 		$parameters['resetPasswordLink'] = $this->config
+< 			->getSystemValue('lost_password_link', '');
+---
+> 		if (!$passwordLink && $user !== null) {
+> 			return $user->canChangePassword();
+> 		}
+240,247c257,258
+< 		if ($parameters['resetPasswordLink'] === 'disabled') {
+< 			$parameters['canResetPassword'] = false;
+< 		} else if (!$parameters['resetPasswordLink'] && $userObj !== null) {
+< 			$parameters['canResetPassword'] = $userObj->canChangePassword();
+< 		} else if ($userObj !== null && $userObj->isEnabled() === false) {
+< 			$parameters['canResetPassword'] = false;
+< 		} else {
+< 			$parameters['canResetPassword'] = true;
+---
+> 		if ($user !== null && $user->isEnabled() === false) {
+> 			return false;
+250c261
+< 		return $parameters;
+---
+> 		return true;
+253,259c264,266
+< 	/**
+< 	 * @param string $redirectUrl
+< 	 * @return RedirectResponse
+< 	 */
+< 	private function generateRedirect($redirectUrl) {
+< 		if (!is_null($redirectUrl) && $this->userSession->isLoggedIn()) {
+< 			$location = $this->urlGenerator->getAbsoluteURL(urldecode($redirectUrl));
+---
+> 	private function generateRedirect(?string $redirectUrl): RedirectResponse {
+> 		if ($redirectUrl !== null && $this->userSession->isLoggedIn()) {
+> 			$location = $this->urlGenerator->getAbsoluteURL($redirectUrl);
+278d284
+< 	 * @param boolean $remember_login
+280a287
+> 	 *
+283,287c290,294
+< 	public function tryLogin($user, $password, $redirect_url, $remember_login = true, $timezone = '', $timezone_offset = '') {
+< 		if(!is_string($user)) {
+< 			throw new \InvalidArgumentException('Username must be string');
+< 		}
+< 
+---
+> 	public function tryLogin(string $user,
+> 							 string $password,
+> 							 string $redirect_url = null,
+> 							 string $timezone = '',
+> 							 string $timezone_offset = ''): RedirectResponse {
+291c298
+< 		if(!$this->request->passesCSRFCheck()) {
+---
+> 		if (!$this->request->passesCSRFCheck()) {
+295,378c302,317
+< 		if ($this->userManager instanceof PublicEmitter) {
+< 			$this->userManager->emit('\OC\User', 'preLogin', array($user, $password));
+< 		}
+< 
+< 		$originalUser = $user;
+< 
+< 		$userObj = $this->userManager->get($user);
+< 
+< 		if ($userObj !== null && $userObj->isEnabled() === false) {
+< 			$this->logger->warning('Login failed: \''. $user . '\' disabled' .
+< 				' (Remote IP: \''. $this->request->getRemoteAddress(). '\')',
+< 				['app' => 'core']);
+< 			return $this->createLoginFailedResponse($user, $originalUser,
+< 				$redirect_url, self::LOGIN_MSG_USERDISABLED);
+< 		}
+< 
+< 		// TODO: Add all the insane error handling
+< 		/* @var $loginResult IUser */
+< 		$loginResult = $this->userManager->checkPasswordNoLogging($user, $password);
+< 		if ($loginResult === false) {
+< 			$users = $this->userManager->getByEmail($user);
+< 			// we only allow login by email if unique
+< 			if (count($users) === 1) {
+< 				$previousUser = $user;
+< 				$user = $users[0]->getUID();
+< 				if($user !== $previousUser) {
+< 					$loginResult = $this->userManager->checkPassword($user, $password);
+< 				}
+< 			}
+< 		}
+< 
+< 		if ($loginResult === false) {
+< 			$this->logger->warning('Login failed: \''. $user .
+< 				'\' (Remote IP: \''. $this->request->getRemoteAddress(). '\')',
+< 				['app' => 'core']);
+< 			return $this->createLoginFailedResponse($user, $originalUser,
+< 				$redirect_url, self::LOGIN_MSG_INVALIDPASSWORD);
+< 		}
+< 
+< 		// TODO: remove password checks from above and let the user session handle failures
+< 		// requires https://github.com/owncloud/core/pull/24616
+< 		$this->userSession->completeLogin($loginResult, ['loginName' => $user, 'password' => $password]);
+< 
+< 		$tokenType = IToken::REMEMBER;
+< 		if ((int)$this->config->getSystemValue('remember_login_cookie_lifetime', 60*60*24*15) === 0) {
+< 			$remember_login = false;
+< 			$tokenType = IToken::DO_NOT_REMEMBER;
+< 		}
+< 
+< 		$this->userSession->createSessionToken($this->request, $loginResult->getUID(), $user, $password, $tokenType);
+< 		$this->userSession->updateTokens($loginResult->getUID(), $password);
+< 
+< 		// User has successfully logged in, now remove the password reset link, when it is available
+< 		$this->config->deleteUserValue($loginResult->getUID(), 'core', 'lostpassword');
+< 
+< 		$this->session->set('last-password-confirm', $loginResult->getLastLogin());
+< 
+< 		if ($timezone_offset !== '') {
+< 			$this->config->setUserValue($loginResult->getUID(), 'core', 'timezone', $timezone);
+< 			$this->session->set('timezone', $timezone_offset);
+< 		}
+< 
+< 		if ($this->twoFactorManager->isTwoFactorAuthenticated($loginResult)) {
+< 			$this->twoFactorManager->prepareTwoFactorLogin($loginResult, $remember_login);
+< 
+< 			$providers = $this->twoFactorManager->getProviderSet($loginResult)->getPrimaryProviders();
+< 			if (count($providers) === 1) {
+< 				// Single provider, hence we can redirect to that provider's challenge page directly
+< 				/* @var $provider IProvider */
+< 				$provider = array_pop($providers);
+< 				$url = 'core.TwoFactorChallenge.showChallenge';
+< 				$urlParams = [
+< 					'challengeProviderId' => $provider->getId(),
+< 				];
+< 			} else {
+< 				$url = 'core.TwoFactorChallenge.selectChallenge';
+< 				$urlParams = [];
+< 			}
+< 
+< 			if (!is_null($redirect_url)) {
+< 				$urlParams['redirect_url'] = $redirect_url;
+< 			}
+< 
+< 			return new RedirectResponse($this->urlGenerator->linkToRoute($url, $urlParams));
+---
+> 		$data = new LoginData(
+> 			$this->request,
+> 			trim($user),
+> 			$password,
+> 			$redirect_url,
+> 			$timezone,
+> 			$timezone_offset
+> 		);
+> 		$result = $this->loginChain->process($data);
+> 		if (!$result->isSuccess()) {
+> 			return $this->createLoginFailedResponse(
+> 				$data->getUsername(),
+> 				$user,
+> 				$redirect_url,
+> 				$result->getErrorMessage()
+> 			);
+381,382c320,321
+< 		if ($remember_login) {
+< 			$this->userSession->createRememberMeToken($loginResult);
+---
+> 		if ($result->getRedirectUrl() !== null) {
+> 			return new RedirectResponse($result->getRedirectUrl());
+384d322
+< 
+394a333
+> 	 *
+401,402c340,341
+< 		$args = !is_null($user) ? ['user' => $originalUser] : [];
+< 		if (!is_null($redirect_url)) {
+---
+> 		$args = $user !== null ? ['user' => $originalUser, 'direct' => 1] : [];
+> 		if ($redirect_url !== null) {
+420,421d358
+< 	 * @license GNU AGPL version 3 or any later version
+< 	 *
+422a360
+> 	 *
+423a362,363
+> 	 * @license GNU AGPL version 3 or any later version
+> 	 *

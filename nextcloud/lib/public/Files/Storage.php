@@ -2,14 +2,17 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Michael Roth <michael.roth@rz.uni-augsburg.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+ * @author Vincent Petry <vincent@nextcloud.com>
  * @author Vinicius Cubas Brand <vinicius@eita.org.br>
  *
  * @license AGPL-3.0
@@ -24,7 +27,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -35,6 +38,7 @@
 
 // use OCP namespace for all classes that are considered public.
 // This means that they should be used by apps instead of the internal ownCloud classes
+
 namespace OCP\Files;
 
 use OCP\Files\Storage\IStorage;
@@ -68,7 +72,7 @@ interface Storage extends IStorage {
 	public function getId();
 
 	/**
-	 * see http://php.net/manual/en/function.mkdir.php
+	 * see https://www.php.net/manual/en/function.mkdir.php
 	 * implementations need to implement a recursive mkdir
 	 *
 	 * @param string $path
@@ -78,7 +82,7 @@ interface Storage extends IStorage {
 	public function mkdir($path);
 
 	/**
-	 * see http://php.net/manual/en/function.rmdir.php
+	 * see https://www.php.net/manual/en/function.rmdir.php
 	 *
 	 * @param string $path
 	 * @return bool
@@ -87,16 +91,16 @@ interface Storage extends IStorage {
 	public function rmdir($path);
 
 	/**
-	 * see http://php.net/manual/en/function.opendir.php
+	 * see https://www.php.net/manual/en/function.opendir.php
 	 *
 	 * @param string $path
-	 * @return resource|false
+	 * @return resource|bool
 	 * @since 6.0.0
 	 */
 	public function opendir($path);
 
 	/**
-	 * see http://php.net/manual/en/function.is-dir.php
+	 * see https://www.php.net/manual/en/function.is-dir.php
 	 *
 	 * @param string $path
 	 * @return bool
@@ -105,7 +109,7 @@ interface Storage extends IStorage {
 	public function is_dir($path);
 
 	/**
-	 * see http://php.net/manual/en/function.is-file.php
+	 * see https://www.php.net/manual/en/function.is-file.php
 	 *
 	 * @param string $path
 	 * @return bool
@@ -114,30 +118,30 @@ interface Storage extends IStorage {
 	public function is_file($path);
 
 	/**
-	 * see http://php.net/manual/en/function.stat.php
+	 * see https://www.php.net/manual/en/function.stat.php
 	 * only the following keys are required in the result: size and mtime
 	 *
 	 * @param string $path
-	 * @return array|false
+	 * @return array|bool
 	 * @since 6.0.0
 	 */
 	public function stat($path);
 
 	/**
-	 * see http://php.net/manual/en/function.filetype.php
+	 * see https://www.php.net/manual/en/function.filetype.php
 	 *
 	 * @param string $path
-	 * @return string|false
+	 * @return string|bool
 	 * @since 6.0.0
 	 */
 	public function filetype($path);
 
 	/**
-	 * see http://php.net/manual/en/function.filesize.php
+	 * see https://www.php.net/manual/en/function.filesize.php
 	 * The result for filesize when called on a folder is required to be 0
 	 *
 	 * @param string $path
-	 * @return int|false
+	 * @return int|bool
 	 * @since 6.0.0
 	 */
 	public function filesize($path);
@@ -198,7 +202,7 @@ interface Storage extends IStorage {
 	public function getPermissions($path);
 
 	/**
-	 * see http://php.net/manual/en/function.file_exists.php
+	 * see https://www.php.net/manual/en/function.file_exists.php
 	 *
 	 * @param string $path
 	 * @return bool
@@ -207,35 +211,35 @@ interface Storage extends IStorage {
 	public function file_exists($path);
 
 	/**
-	 * see http://php.net/manual/en/function.filemtime.php
+	 * see https://www.php.net/manual/en/function.filemtime.php
 	 *
 	 * @param string $path
-	 * @return int|false
+	 * @return int|bool
 	 * @since 6.0.0
 	 */
 	public function filemtime($path);
 
 	/**
-	 * see http://php.net/manual/en/function.file_get_contents.php
+	 * see https://www.php.net/manual/en/function.file_get_contents.php
 	 *
 	 * @param string $path
-	 * @return string|false
+	 * @return string|bool
 	 * @since 6.0.0
 	 */
 	public function file_get_contents($path);
 
 	/**
-	 * see http://php.net/manual/en/function.file_put_contents.php
+	 * see https://www.php.net/manual/en/function.file_put_contents.php
 	 *
 	 * @param string $path
-	 * @param string $data
-	 * @return bool
+	 * @param mixed $data
+	 * @return int|false
 	 * @since 6.0.0
 	 */
 	public function file_put_contents($path, $data);
 
 	/**
-	 * see http://php.net/manual/en/function.unlink.php
+	 * see https://www.php.net/manual/en/function.unlink.php
 	 *
 	 * @param string $path
 	 * @return bool
@@ -244,7 +248,7 @@ interface Storage extends IStorage {
 	public function unlink($path);
 
 	/**
-	 * see http://php.net/manual/en/function.rename.php
+	 * see https://www.php.net/manual/en/function.rename.php
 	 *
 	 * @param string $path1
 	 * @param string $path2
@@ -254,7 +258,7 @@ interface Storage extends IStorage {
 	public function rename($path1, $path2);
 
 	/**
-	 * see http://php.net/manual/en/function.copy.php
+	 * see https://www.php.net/manual/en/function.copy.php
 	 *
 	 * @param string $path1
 	 * @param string $path2
@@ -264,11 +268,11 @@ interface Storage extends IStorage {
 	public function copy($path1, $path2);
 
 	/**
-	 * see http://php.net/manual/en/function.fopen.php
+	 * see https://www.php.net/manual/en/function.fopen.php
 	 *
 	 * @param string $path
 	 * @param string $mode
-	 * @return resource|false
+	 * @return resource|bool
 	 * @since 6.0.0
 	 */
 	public function fopen($path, $mode);
@@ -278,27 +282,27 @@ interface Storage extends IStorage {
 	 * The mimetype for a folder is required to be "httpd/unix-directory"
 	 *
 	 * @param string $path
-	 * @return string|false
+	 * @return string|bool
 	 * @since 6.0.0
 	 */
 	public function getMimeType($path);
 
 	/**
-	 * see http://php.net/manual/en/function.hash-file.php
+	 * see https://www.php.net/manual/en/function.hash-file.php
 	 *
 	 * @param string $type
 	 * @param string $path
 	 * @param bool $raw
-	 * @return string|false
+	 * @return string|bool
 	 * @since 6.0.0
 	 */
 	public function hash($type, $path, $raw = false);
 
 	/**
-	 * see http://php.net/manual/en/function.free_space.php
+	 * see https://www.php.net/manual/en/function.free_space.php
 	 *
 	 * @param string $path
-	 * @return int|false
+	 * @return int|bool
 	 * @since 6.0.0
 	 */
 	public function free_space($path);
@@ -307,13 +311,13 @@ interface Storage extends IStorage {
 	 * search for occurrences of $query in file names
 	 *
 	 * @param string $query
-	 * @return array|false
+	 * @return array|bool
 	 * @since 6.0.0
 	 */
 	public function search($query);
 
 	/**
-	 * see http://php.net/manual/en/function.touch.php
+	 * see https://www.php.net/manual/en/function.touch.php
 	 * If the backend does not support the operation, false should be returned
 	 *
 	 * @param string $path
@@ -328,7 +332,7 @@ interface Storage extends IStorage {
 	 * The local version of the file can be temporary and doesn't have to be persistent across requests
 	 *
 	 * @param string $path
-	 * @return string|false
+	 * @return string|bool
 	 * @since 6.0.0
 	 */
 	public function getLocalFile($path);
@@ -350,7 +354,7 @@ interface Storage extends IStorage {
 	 * get the ETag for a file or folder
 	 *
 	 * @param string $path
-	 * @return string|false
+	 * @return string|bool
 	 * @since 6.0.0
 	 */
 	public function getETag($path);
@@ -382,7 +386,7 @@ interface Storage extends IStorage {
 	 * For now the returned array can hold the parameter url - in future more attributes might follow.
 	 *
 	 * @param string $path
-	 * @return array|false
+	 * @return array|bool
 	 * @since 8.0.0
 	 */
 	public function getDirectDownload($path);

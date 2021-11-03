@@ -4,6 +4,7 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
@@ -24,7 +25,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -63,13 +64,12 @@ class L10NString implements \JsonSerializable {
 		$translations = $this->l10n->getTranslations();
 
 		$text = $this->text;
-		if(array_key_exists($this->text, $translations)) {
-			if(is_array($translations[$this->text])) {
+		if (array_key_exists($this->text, $translations)) {
+			if (is_array($translations[$this->text])) {
 				$fn = $this->l10n->getPluralFormFunction();
 				$id = $fn($this->count);
 				$text = $translations[$this->text][$id];
-			}
-			else{
+			} else {
 				$text = $translations[$this->text];
 			}
 		}

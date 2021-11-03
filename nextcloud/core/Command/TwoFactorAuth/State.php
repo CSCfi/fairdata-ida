@@ -5,7 +5,8 @@ declare(strict_types=1);
 /**
  * @copyright 2018 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
- * @author 2018 Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -20,7 +21,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -52,7 +53,7 @@ class State extends Base {
 		$this->addArgument('uid', InputArgument::REQUIRED);
 	}
 
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$uid = $input->getArgument('uid');
 		$user = $this->userManager->get($uid);
 		if (is_null($user)) {
@@ -62,7 +63,7 @@ class State extends Base {
 
 		$providerStates = $this->registry->getProviderStates($user);
 		$filtered = $this->filterEnabledDisabledUnknownProviders($providerStates);
-		list ($enabled, $disabled) = $filtered;
+		list($enabled, $disabled) = $filtered;
 
 		if (!empty($enabled)) {
 			$output->writeln("Two-factor authentication is enabled for user $uid");
@@ -104,5 +105,4 @@ class State extends Base {
 			$output->writeln("- " . $provider);
 		}
 	}
-
 }

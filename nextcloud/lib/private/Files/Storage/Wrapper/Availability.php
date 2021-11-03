@@ -2,9 +2,12 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -18,12 +21,16 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OC\Files\Storage\Wrapper;
 
 use OCP\Files\Storage\IStorage;
+use OCP\Files\StorageAuthException;
+use OCP\Files\StorageNotAvailableException;
+use OCP\IConfig;
 
 /**
  * Availability checker for storages
@@ -31,7 +38,15 @@ use OCP\Files\Storage\IStorage;
  * Throws a StorageNotAvailableException for storages with known failures
  */
 class Availability extends Wrapper {
-	const RECHECK_TTL_SEC = 600; // 10 minutes
+	public const RECHECK_TTL_SEC = 600; // 10 minutes
+
+	/** @var IConfig */
+	protected $config;
+
+	public function __construct($parameters) {
+		$this->config = $parameters['config'] ?? \OC::$server->getConfig();
+		parent::__construct($parameters);
+	}
 
 	public static function shouldRecheck($availability) {
 		if (!$availability['available']) {
@@ -72,11 +87,11 @@ class Availability extends Wrapper {
 	}
 
 	/**
-	 * @throws \OCP\Files\StorageNotAvailableException
+	 * @throws StorageNotAvailableException
 	 */
 	private function checkAvailability() {
 		if (!$this->isAvailable()) {
-			throw new \OCP\Files\StorageNotAvailableException();
+			throw new StorageNotAvailableException();
 		}
 	}
 
@@ -85,9 +100,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::mkdir($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -96,9 +110,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::rmdir($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -107,9 +120,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::opendir($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -118,9 +130,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::is_dir($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -129,9 +140,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::is_file($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -140,9 +150,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::stat($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -151,9 +160,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::filetype($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -162,9 +170,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::filesize($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -173,9 +180,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::isCreatable($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -184,9 +190,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::isReadable($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -195,9 +200,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::isUpdatable($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -206,9 +210,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::isDeletable($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -217,9 +220,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::isSharable($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -228,9 +230,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::getPermissions($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -242,9 +243,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::file_exists($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -253,9 +253,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::filemtime($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -264,9 +263,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::file_get_contents($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -275,9 +273,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::file_put_contents($path, $data);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -286,9 +283,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::unlink($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -297,9 +293,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::rename($path1, $path2);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -308,9 +303,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::copy($path1, $path2);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -319,9 +313,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::fopen($path, $mode);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -330,9 +323,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::getMimeType($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -341,9 +333,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::hash($type, $path, $raw);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -352,9 +343,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::free_space($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -363,9 +353,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::search($query);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -374,9 +363,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::touch($path, $mtime);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -385,9 +373,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::getLocalFile($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -396,9 +383,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::hasUpdated($path, $time);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -406,9 +392,8 @@ class Availability extends Wrapper {
 	public function getOwner($path) {
 		try {
 			return parent::getOwner($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -417,9 +402,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::getETag($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -428,9 +412,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::getDirectDownload($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -439,9 +422,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::copyFromStorage($sourceStorage, $sourceInternalPath, $targetInternalPath);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -450,9 +432,8 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::moveFromStorage($sourceStorage, $sourceInternalPath, $targetInternalPath);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 
@@ -461,9 +442,35 @@ class Availability extends Wrapper {
 		$this->checkAvailability();
 		try {
 			return parent::getMetaData($path);
-		} catch (\OCP\Files\StorageNotAvailableException $e) {
-			$this->setAvailability(false);
-			throw $e;
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
+		}
+	}
+
+	/**
+	 * @throws StorageNotAvailableException
+	 */
+	protected function setUnavailable(StorageNotAvailableException $e) {
+		$delay = self::RECHECK_TTL_SEC;
+		if ($e instanceof StorageAuthException) {
+			$delay = max(
+				// 30min
+				$this->config->getSystemValueInt('external_storage.auth_availability_delay', 1800),
+				self::RECHECK_TTL_SEC
+			);
+		}
+		$this->getStorageCache()->setAvailability(false, $delay);
+		throw $e;
+	}
+
+
+
+	public function getDirectoryContent($directory): \Traversable {
+		$this->checkAvailability();
+		try {
+			return parent::getDirectoryContent($directory);
+		} catch (StorageNotAvailableException $e) {
+			$this->setUnavailable($e);
 		}
 	}
 }

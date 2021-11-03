@@ -2,8 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -18,12 +21,11 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OCP\DB\QueryBuilder;
-
 
 use Doctrine\DBAL\Query\Expression\ExpressionBuilder;
 
@@ -35,27 +37,27 @@ interface IExpressionBuilder {
 	/**
 	 * @since 9.0.0
 	 */
-	const EQ  = ExpressionBuilder::EQ;
+	public const EQ = ExpressionBuilder::EQ;
 	/**
 	 * @since 9.0.0
 	 */
-	const NEQ = ExpressionBuilder::NEQ;
+	public const NEQ = ExpressionBuilder::NEQ;
 	/**
 	 * @since 9.0.0
 	 */
-	const LT  = ExpressionBuilder::LT;
+	public const LT = ExpressionBuilder::LT;
 	/**
 	 * @since 9.0.0
 	 */
-	const LTE = ExpressionBuilder::LTE;
+	public const LTE = ExpressionBuilder::LTE;
 	/**
 	 * @since 9.0.0
 	 */
-	const GT  = ExpressionBuilder::GT;
+	public const GT = ExpressionBuilder::GT;
 	/**
 	 * @since 9.0.0
 	 */
-	const GTE = ExpressionBuilder::GTE;
+	public const GTE = ExpressionBuilder::GTE;
 
 	/**
 	 * Creates a conjunction of the given boolean expressions.
@@ -243,7 +245,7 @@ interface IExpressionBuilder {
 	/**
 	 * Creates a LIKE() comparison expression with the given arguments.
 	 *
-	 * @param string $x Field in string format to be inspected by LIKE() comparison.
+	 * @param ILiteral|IParameter|IQueryFunction|string $x Field in string format to be inspected by LIKE() comparison.
 	 * @param mixed $y Argument to be used in LIKE() comparison.
 	 * @param mixed|null $type one of the IQueryBuilder::PARAM_* constants
 	 *                  required when comparing text fields for oci compatibility
@@ -256,7 +258,7 @@ interface IExpressionBuilder {
 	/**
 	 * Creates a NOT LIKE() comparison expression with the given arguments.
 	 *
-	 * @param string $x Field in string format to be inspected by NOT LIKE() comparison.
+	 * @param ILiteral|IParameter|IQueryFunction|string $x Field in string format to be inspected by NOT LIKE() comparison.
 	 * @param mixed $y Argument to be used in NOT LIKE() comparison.
 	 * @param mixed|null $type one of the IQueryBuilder::PARAM_* constants
 	 *                  required when comparing text fields for oci compatibility
@@ -282,8 +284,8 @@ interface IExpressionBuilder {
 	/**
 	 * Creates a IN () comparison expression with the given arguments.
 	 *
-	 * @param string $x The field in string format to be inspected by IN() comparison.
-	 * @param string|array $y The placeholder or the array of values to be used by IN() comparison.
+	 * @param ILiteral|IParameter|IQueryFunction|string $x The field in string format to be inspected by IN() comparison.
+	 * @param ILiteral|IParameter|IQueryFunction|string|array $y The placeholder or the array of values to be used by IN() comparison.
 	 * @param mixed|null $type one of the IQueryBuilder::PARAM_* constants
 	 *                  required when comparing text fields for oci compatibility
 	 *
@@ -295,8 +297,8 @@ interface IExpressionBuilder {
 	/**
 	 * Creates a NOT IN () comparison expression with the given arguments.
 	 *
-	 * @param string $x The field in string format to be inspected by NOT IN() comparison.
-	 * @param string|array $y The placeholder or the array of values to be used by NOT IN() comparison.
+	 * @param ILiteral|IParameter|IQueryFunction|string $x The field in string format to be inspected by NOT IN() comparison.
+	 * @param ILiteral|IParameter|IQueryFunction|string|array $y The placeholder or the array of values to be used by NOT IN() comparison.
 	 * @param mixed|null $type one of the IQueryBuilder::PARAM_* constants
 	 *                  required when comparing text fields for oci compatibility
 	 *

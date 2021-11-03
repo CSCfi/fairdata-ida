@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -18,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -35,15 +36,14 @@ use RegexIterator;
 use SplFileInfo;
 
 class CodeChecker extends BasicEmitter {
-
-	const CLASS_EXTENDS_NOT_ALLOWED = 1000;
-	const CLASS_IMPLEMENTS_NOT_ALLOWED = 1001;
-	const STATIC_CALL_NOT_ALLOWED = 1002;
-	const CLASS_CONST_FETCH_NOT_ALLOWED = 1003;
-	const CLASS_NEW_NOT_ALLOWED =  1004;
-	const OP_OPERATOR_USAGE_DISCOURAGED =  1005;
-	const CLASS_USE_NOT_ALLOWED =  1006;
-	const CLASS_METHOD_CALL_NOT_ALLOWED =  1007;
+	public const CLASS_EXTENDS_NOT_ALLOWED = 1000;
+	public const CLASS_IMPLEMENTS_NOT_ALLOWED = 1001;
+	public const STATIC_CALL_NOT_ALLOWED = 1002;
+	public const CLASS_CONST_FETCH_NOT_ALLOWED = 1003;
+	public const CLASS_NEW_NOT_ALLOWED = 1004;
+	public const OP_OPERATOR_USAGE_DISCOURAGED = 1005;
+	public const CLASS_USE_NOT_ALLOWED = 1006;
+	public const CLASS_METHOD_CALL_NOT_ALLOWED = 1007;
 
 	/** @var Parser */
 	private $parser;
@@ -57,7 +57,7 @@ class CodeChecker extends BasicEmitter {
 	public function __construct(ICheck $checkList, $checkMigrationSchema) {
 		$this->checkList = $checkList;
 		$this->checkMigrationSchema = $checkMigrationSchema;
-		$this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+		$this->parser = (new ParserFactory)->create(ParserFactory::ONLY_PHP7);
 	}
 
 	/**
@@ -87,14 +87,14 @@ class CodeChecker extends BasicEmitter {
 			$excludedDirectories[] = 'lists';
 		}
 
-		$excludes = array_map(function($item) use ($folder) {
+		$excludes = array_map(function ($item) use ($folder) {
 			return $folder . '/' . $item;
 		}, $excludedDirectories);
 
 		$iterator = new RecursiveDirectoryIterator($folder, RecursiveDirectoryIterator::SKIP_DOTS);
-		$iterator = new RecursiveCallbackFilterIterator($iterator, function($item) use ($folder, $excludes){
+		$iterator = new RecursiveCallbackFilterIterator($iterator, function ($item) use ($excludes) {
 			/** @var SplFileInfo $item */
-			foreach($excludes as $exclude) {
+			foreach ($excludes as $exclude) {
 				if (substr($item->getPath(), 0, strlen($exclude)) === $exclude) {
 					return false;
 				}

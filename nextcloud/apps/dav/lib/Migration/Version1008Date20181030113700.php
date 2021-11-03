@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2018, John Molakvoæ (skjnldsv@protonmail.com)
  *
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 declare(strict_types=1);
@@ -26,10 +28,10 @@ namespace OCA\DAV\Migration;
 
 use Closure;
 
-use Doctrine\DBAL\Types\Type;
+use OCP\DB\Types;
 use OCP\DB\ISchemaWrapper;
-use OCP\Migration\SimpleMigrationStep;
 use OCP\Migration\IOutput;
+use OCP\Migration\SimpleMigrationStep;
 
 class Version1008Date20181030113700 extends SimpleMigrationStep {
 
@@ -44,7 +46,7 @@ class Version1008Date20181030113700 extends SimpleMigrationStep {
 		$schema = $schemaClosure();
 
 		$table = $schema->getTable('cards');
-		$table->addColumn('uid', Type::STRING, [
+		$table->addColumn('uid', Types::STRING, [
 			'notnull' => false,
 			'length' => 255
 		]);

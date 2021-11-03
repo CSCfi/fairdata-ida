@@ -2,7 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -19,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -36,6 +36,7 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Middleware;
 use OCP\AppFramework\Utility\IControllerMethodReflector;
+use OCP\Authentication\TwoFactorAuth\ALoginSetupController;
 use OCP\IRequest;
 use OCP\ISession;
 use OCP\IURLGenerator;
@@ -82,9 +83,24 @@ class TwoFactorMiddleware extends Middleware {
 	 * @param string $methodName
 	 */
 	public function beforeController($controller, $methodName) {
-		if ($this->reflector->hasAnnotation('PublicPage')) {
-			// Don't block public pages
-			return;
+		if ($controller instanceof TwoFactorChallengeController
+			&& $this->userSession->getUser() !== null
+			&& !$this->reflector->hasAnnotation('TwoFactorSetUpDoneRequired')) {
+			$providers = $this->twoFactorManager->getProviderSet($this->userSession->getUser());
+
+			if (!($providers->getPrimaryProviders() === [] && !$providers->isProviderMissing())) {
+				throw new TwoFactorAuthRequiredException();
+			}
+		}
+
+		if ($controller instanceof ALoginSetupController
+			&& $this->userSession->getUser() !== null
+			&& $this->twoFactorManager->needsSecondFactor($this->userSession->getUser())) {
+			$providers = $this->twoFactorManager->getProviderSet($this->userSession->getUser());
+
+			if ($providers->getProviders() === [] && !$providers->isProviderMissing()) {
+				return;
+			}
 		}
 
 		if ($controller instanceof LoginController && $methodName === 'logout') {
@@ -95,10 +111,9 @@ class TwoFactorMiddleware extends Middleware {
 		if ($this->userSession->isLoggedIn()) {
 			$user = $this->userSession->getUser();
 
-
 			if ($this->session->exists('app_password') || $this->twoFactorManager->isTwoFactorAuthenticated($user)) {
 				$this->checkTwoFactor($controller, $methodName, $user);
-			} else if ($controller instanceof TwoFactorChallengeController) {
+			} elseif ($controller instanceof TwoFactorChallengeController) {
 				// Allow access to the two-factor controllers only if two-factor authentication
 				// is in progress.
 				throw new UserAlreadyLoggedInException();
@@ -139,5 +154,4 @@ class TwoFactorMiddleware extends Middleware {
 
 		throw $exception;
 	}
-
 }

@@ -40,6 +40,8 @@
 		 */
 		fileList: null,
 
+		currentFileList: null,
+
 		/**
 		 * Backbone model for storing files preferences
 		 */
@@ -54,29 +56,30 @@
 			var showHidden = $('#showHiddenFiles').val() === "1";
 			this.$showHiddenFiles.prop('checked', showHidden);
 
+			// crop image previews
+			this.$cropImagePreviews = $('input#cropimagepreviewsToggle');
+			var cropImagePreviews = $('#cropImagePreviews').val() === "1";
+			this.$cropImagePreviews.prop('checked', cropImagePreviews);
 
 			if ($('#fileNotFound').val() === "1") {
 				OC.Notification.show(t('files', 'File could not be found'), {type: 'error'});
 			}
 
 			this._filesConfig = new OC.Backbone.Model({
-				showhidden: showHidden
+				showhidden: showHidden,
+				cropimagepreviews: cropImagePreviews,
 			});
 
 			var urlParams = OC.Util.History.parseUrlQuery();
 			var fileActions = new OCA.Files.FileActions();
 			// default actions
 			fileActions.registerDefaultActions();
-			// legacy actions
-			fileActions.merge(window.FileActions);
 			// regular actions
 			fileActions.merge(OCA.Files.fileActions);
 
 			this._onActionsUpdated = _.bind(this._onActionsUpdated, this);
 			OCA.Files.fileActions.on('setDefault.app-files', this._onActionsUpdated);
 			OCA.Files.fileActions.on('registerAction.app-files', this._onActionsUpdated);
-			window.FileActions.on('setDefault.app-files', this._onActionsUpdated);
-			window.FileActions.on('registerAction.app-files', this._onActionsUpdated);
 
 			this.files = OCA.Files.Files;
 
@@ -116,6 +119,7 @@
 					maxChunkSize: OC.appConfig.files && OC.appConfig.files.max_chunk_size
 				}
 			);
+			this.updateCurrentFileList(this.fileList)
 			this.files.initialize();
 
 			// for backward compatibility, the global FileList will
@@ -133,6 +137,7 @@
 			});
 
 			this._debouncedPersistShowHiddenFilesState = _.debounce(this._persistShowHiddenFilesState, 1200);
+			this._debouncedPersistCropImagePreviewsState = _.debounce(this._persistCropImagePreviewsState, 1200);
 
 			if (sessionStorage.getItem('WhatsNewServerCheck') < (Date.now() - 3600*1000)) {
 				OCP.WhatsNew.query(); // for Nextcloud server
@@ -150,8 +155,6 @@
 			this.files = null;
 			OCA.Files.fileActions.off('setDefault.app-files', this._onActionsUpdated);
 			OCA.Files.fileActions.off('registerAction.app-files', this._onActionsUpdated);
-			window.FileActions.off('setDefault.app-files', this._onActionsUpdated);
-			window.FileActions.off('registerAction.app-files', this._onActionsUpdated);
 		},
 
 		_onActionsUpdated: function(ev) {
@@ -164,6 +167,28 @@
 					ev.defaultAction.name
 				);
 			}
+		},
+
+		/**
+		 * Set the currently active file list
+		 *
+		 * Due to the file list implementations being registered after clicking the
+		 * navigation item for the first time, OCA.Files.App is not aware of those until
+		 * they have initialized themselves. Therefore the files list needs to call this
+		 * method manually
+		 *
+		 * @param {OCA.Files.FileList} newFileList
+		 */
+		updateCurrentFileList: function(newFileList) {
+			this.currentFileList = newFileList;
+		},
+
+		/**
+		 * Return the currently active file list
+		 * @return {?OCA.Files.FileList}
+		 */
+		getCurrentFileList: function () {
+			return this.currentFileList;
 		},
 
 		/**
@@ -212,6 +237,7 @@
 
 			$('#app-navigation').on('itemChanged', _.bind(this._onNavigationChanged, this));
 			this.$showHiddenFiles.on('change', _.bind(this._onShowHiddenFilesChange, this));
+			this.$cropImagePreviews.on('change', _.bind(this._onCropImagePreviewsChange, this));
 		},
 
 		/**
@@ -234,6 +260,29 @@
 			var show = this._filesConfig.get('showhidden');
 			$.post(OC.generateUrl('/apps/files/api/v1/showhidden'), {
 				show: show
+			});
+		},
+
+		/**
+		 * Toggle cropping image previews according to the settings checkbox
+		 *
+		 * @returns void
+		 */
+		_onCropImagePreviewsChange: function() {
+			var crop = this.$cropImagePreviews.is(':checked');
+			this._filesConfig.set('cropimagepreviews', crop);
+			this._debouncedPersistCropImagePreviewsState();
+		},
+
+		/**
+		 * Persist crop image previews preference on the server
+		 *
+		 * @returns void
+		 */
+		_persistCropImagePreviewsState: function() {
+			var crop = this._filesConfig.get('cropimagepreviews');
+			$.post(OC.generateUrl('/apps/files/api/v1/cropimagepreviews'), {
+				crop: crop
 			});
 		},
 
@@ -337,7 +386,7 @@
 	};
 })();
 
-$(document).ready(function() {
+window.addEventListener('DOMContentLoaded', function() {
 	// wait for other apps/extensions to register their event handlers and file actions
 	// in the "ready" clause
 	_.defer(function() {

@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -10,7 +11,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -24,39 +25,27 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\DB;
 
-use Doctrine\DBAL\Platforms\MySqlPlatform;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Platforms\OraclePlatform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Doctrine\DBAL\Schema\Schema;
-use OCP\IDBConnection;
 
 class MDB2SchemaManager {
-	/** @var \OC\DB\Connection $conn */
+	/** @var Connection $conn */
 	protected $conn;
 
 	/**
-	 * @param IDBConnection $conn
+	 * @param Connection $conn
 	 */
 	public function __construct($conn) {
 		$this->conn = $conn;
-	}
-
-	/**
-	 * saves database scheme to xml file
-	 * @param string $file name of file
-	 * @return bool
-	 *
-	 * TODO: write more documentation
-	 */
-	public function getDbStructure($file) {
-		return \OC\DB\MDB2SchemaWriter::saveSchemaToFile($file, $this->conn);
 	}
 
 	/**
@@ -83,11 +72,11 @@ class MDB2SchemaManager {
 		$dispatcher = \OC::$server->getEventDispatcher();
 		if ($platform instanceof SqlitePlatform) {
 			return new SQLiteMigrator($this->conn, $random, $config, $dispatcher);
-		} else if ($platform instanceof OraclePlatform) {
+		} elseif ($platform instanceof OraclePlatform) {
 			return new OracleMigrator($this->conn, $random, $config, $dispatcher);
-		} else if ($platform instanceof MySqlPlatform) {
+		} elseif ($platform instanceof MySQLPlatform) {
 			return new MySQLMigrator($this->conn, $random, $config, $dispatcher);
-		} else if ($platform instanceof PostgreSqlPlatform) {
+		} elseif ($platform instanceof PostgreSQL94Platform) {
 			return new PostgreSqlMigrator($this->conn, $random, $config, $dispatcher);
 		} else {
 			return new Migrator($this->conn, $random, $config, $dispatcher);
@@ -144,7 +133,6 @@ class MDB2SchemaManager {
 		$toSchema = new Schema([], [], $this->conn->getSchemaManager()->createSchemaConfig());
 		$fromSchema = $schemaReader->loadSchemaFromFile($file, $toSchema);
 		$toSchema = clone $fromSchema;
-		/** @var $table \Doctrine\DBAL\Schema\Table */
 		foreach ($toSchema->getTables() as $table) {
 			$toSchema->dropTable($table->getName());
 		}

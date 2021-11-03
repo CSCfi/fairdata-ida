@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license AGPL-3.0
  *
@@ -16,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -32,7 +34,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Import extends Command implements CompletionAwareInterface  {
+class Import extends Command implements CompletionAwareInterface {
 	protected $validRootKeys = ['system', 'apps'];
 
 	/** @var IConfig */
@@ -58,7 +60,7 @@ class Import extends Command implements CompletionAwareInterface  {
 		;
 	}
 
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$importFile = $input->getArgument('file');
 		if ($importFile !== null) {
 			$content = $this->getArrayFromFile($importFile);
@@ -70,7 +72,7 @@ class Import extends Command implements CompletionAwareInterface  {
 			$configs = $this->validateFileContent($content);
 		} catch (\UnexpectedValueException $e) {
 			$output->writeln('<error>' . $e->getMessage(). '</error>');
-			return;
+			return 1;
 		}
 
 		if (!empty($configs['system'])) {
@@ -90,6 +92,7 @@ class Import extends Command implements CompletionAwareInterface  {
 		}
 
 		$output->writeln('<info>Config successfully imported from: ' . $importFile . '</info>');
+		return 0;
 	}
 
 	/**

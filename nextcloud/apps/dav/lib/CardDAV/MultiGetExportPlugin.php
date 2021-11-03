@@ -1,9 +1,12 @@
 <?php
-declare (strict_types = 1);
+
+declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2018 John Molakvoæ <skjnldsv@protonmail.com>
  *
- * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -53,7 +56,6 @@ class MultiGetExportPlugin extends DAV\ServerPlugin {
 	 * @return bool
 	 */
 	public function httpReport(RequestInterface $request, ResponseInterface $response) {
-
 		$queryParams = $request->getQueryParameters();
 		if (!array_key_exists('export', $queryParams)) {
 			return;
@@ -69,11 +71,11 @@ class MultiGetExportPlugin extends DAV\ServerPlugin {
 
 		// Get the xml response
 		$responseBody = $response->getBodyAsString();
-		$responseXml  = $this->server->xml->parse($responseBody);
+		$responseXml = $this->server->xml->parse($responseBody);
 
 		// Reduce the vcards into one string
 		$output = array_reduce($responseXml->getResponses(), function ($vcf, $card) {
-			$vcf .= $card->getResponseProperties()[200]['{urn:ietf:params:xml:ns:carddav}address-data'];
+			$vcf .= $card->getResponseProperties()[200]['{urn:ietf:params:xml:ns:carddav}address-data'] . PHP_EOL;
 			return $vcf;
 		}, '');
 
@@ -113,10 +115,8 @@ class MultiGetExportPlugin extends DAV\ServerPlugin {
 	 */
 	public function getPluginInfo() {
 		return [
-			'name'        => $this->getPluginName(),
+			'name' => $this->getPluginName(),
 			'description' => 'Intercept a multi-get request and return a single vcf file instead.'
 		];
-
 	}
-
 }

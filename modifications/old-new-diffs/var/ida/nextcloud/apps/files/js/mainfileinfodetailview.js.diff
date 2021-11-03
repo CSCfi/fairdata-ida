@@ -1,0 +1,4 @@
+188a189,191
+> 					if (typeof this.model.get('mountType') !== 'undefined') {
+> 						iconUrl = OC.MimeType.getIconUrl('dir-' + this.model.get('mountType'))
+> 					}

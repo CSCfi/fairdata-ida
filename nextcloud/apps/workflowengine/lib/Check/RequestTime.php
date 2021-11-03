@@ -21,16 +21,13 @@
 
 namespace OCA\WorkflowEngine\Check;
 
-
 use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\Files\Storage\IStorage;
 use OCP\IL10N;
 use OCP\WorkflowEngine\ICheck;
 
 class RequestTime implements ICheck {
-
-	const REGEX_TIME = '([0-1][0-9]|2[0-3]):([0-5][0-9])';
-	const REGEX_TIMEZONE = '([a-zA-Z]+(?:\\/[a-zA-Z\-\_]+)+)';
+	public const REGEX_TIME = '([0-1][0-9]|2[0-3]):([0-5][0-9])';
+	public const REGEX_TIMEZONE = '([a-zA-Z]+(?:\\/[a-zA-Z\-\_]+)+)';
 
 	/** @var bool[] */
 	protected $cachedResults;
@@ -47,14 +44,6 @@ class RequestTime implements ICheck {
 	public function __construct(IL10N $l, ITimeFactory $timeFactory) {
 		$this->l = $l;
 		$this->timeFactory = $timeFactory;
-	}
-
-	/**
-	 * @param IStorage $storage
-	 * @param string $path
-	 */
-	public function setFileInfo(IStorage $storage, $path) {
-		// A different path doesn't change time, so nothing to do here.
 	}
 
 	/**
@@ -125,5 +114,21 @@ class RequestTime implements ICheck {
 		if ($time2 === false) {
 			throw new \UnexpectedValueException($this->l->t('The given end time is invalid'), 4);
 		}
+	}
+
+	public function isAvailableForScope(int $scope): bool {
+		return true;
+	}
+
+	/**
+	 * returns a list of Entities the checker supports. The values must match
+	 * the class name of the entity.
+	 *
+	 * An empty result means the check is universally available.
+	 *
+	 * @since 18.0.0
+	 */
+	public function supportedEntities(): array {
+		return [];
 	}
 }

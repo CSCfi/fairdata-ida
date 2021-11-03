@@ -59,7 +59,7 @@ class UndefinedConstraint extends Constraint
      * @param JsonPointer $path
      * @param string      $i
      */
-    public function validateTypes(&$value, $schema = null, JsonPointer $path, $i = null)
+    public function validateTypes(&$value, $schema, JsonPointer $path, $i = null)
     {
         // check array
         if ($this->getTypeCheck()->isArray($value)) {
@@ -105,7 +105,7 @@ class UndefinedConstraint extends Constraint
      * @param JsonPointer $path
      * @param string      $i
      */
-    protected function validateCommonProperties(&$value, $schema = null, JsonPointer $path, $i = '')
+    protected function validateCommonProperties(&$value, $schema, JsonPointer $path, $i = '')
     {
         // if it extends another schema, it must pass that schema as well
         if (isset($schema->extends)) {
@@ -149,6 +149,12 @@ class UndefinedConstraint extends Constraint
                         'The property ' . $propertyName . ' is required',
                         'required'
                     );
+                }
+            } else {
+                // if the value is both undefined and not required, skip remaining checks
+                // in this method which assume an actual, defined instance when validating.
+                if ($value instanceof self) {
+                    return;
                 }
             }
         }
@@ -243,6 +249,7 @@ class UndefinedConstraint extends Constraint
         if (isset($schema->properties) && LooseTypeCheck::isObject($value)) {
             // $value is an object or assoc array, and properties are defined - treat as an object
             foreach ($schema->properties as $currentProperty => $propertyDefinition) {
+                $propertyDefinition = $this->factory->getSchemaStorage()->resolveRefSchema($propertyDefinition);
                 if (
                     !LooseTypeCheck::propertyExists($value, $currentProperty)
                     && property_exists($propertyDefinition, 'default')
@@ -266,6 +273,7 @@ class UndefinedConstraint extends Constraint
             }
             // $value is an array, and items are defined - treat as plain array
             foreach ($items as $currentItem => $itemDefinition) {
+                $itemDefinition = $this->factory->getSchemaStorage()->resolveRefSchema($itemDefinition);
                 if (
                     !array_key_exists($currentItem, $value)
                     && property_exists($itemDefinition, 'default')

@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright 2018, Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -18,7 +20,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -29,7 +31,6 @@ use OCP\AppFramework\Db\Mapper;
 use OCP\IDBConnection;
 
 class DirectMapper extends Mapper {
-
 	public function __construct(IDBConnection $db) {
 		parent::__construct($db, 'directlink', Direct::class);
 	}

@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2018 Robin Appelman <robin@icewind.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -15,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,7 +29,7 @@ use Doctrine\DBAL\Configuration;
 use Doctrine\DBAL\Driver;
 
 class ReconnectWrapper extends \Doctrine\DBAL\Connection {
-	const CHECK_CONNECTION_INTERVAL = 60;
+	public const CHECK_CONNECTION_INTERVAL = 60;
 
 	private $lastConnectionCheck = null;
 
@@ -41,12 +44,12 @@ class ReconnectWrapper extends \Doctrine\DBAL\Connection {
 
 		if ($this->lastConnectionCheck > $checkTime || $this->isTransactionActive()) {
 			return parent::connect();
-		} else {
-			$this->lastConnectionCheck = $now;
-			if (!$this->ping()) {
-				$this->close();
-			}
-			return parent::connect();
 		}
+
+		$this->lastConnectionCheck = $now;
+		if (!$this->isConnected()) {
+			$this->close();
+		}
+		return parent::connect();
 	}
 }

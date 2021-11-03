@@ -2,6 +2,7 @@
 /**
  * @copyright 2018, Georg Ehrke <oc.list@georgehrke.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Georg Ehrke <oc.list@georgehrke.com>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -30,8 +31,7 @@ use Sabre\DAV\IProperties;
 use Sabre\DAV\PropPatch;
 
 class AppleProvisioningNode implements INode, IProperties {
-
-	const FILENAME = 'apple-provisioning.mobileconfig';
+	public const FILENAME = 'apple-provisioning.mobileconfig';
 
 	protected $timeFactory;
 

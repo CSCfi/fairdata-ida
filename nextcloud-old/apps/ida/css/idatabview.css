@@ -1,0 +1,101 @@
+/*
+ * This file is part of the IDA research data storage service
+ *
+ * Copyright (C) 2018 Ministry of Education and Culture, Finland
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @author    CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+ * @license   GNU Affero General Public License, version 3
+ * @link      https://research.csc.fi/
+ */
+
+.idaWarning {
+    color: #b70c00;
+}
+
+#frozenFile:focus {
+  outline-offset: 5px;
+}
+
+#frozenFolder:focus {
+  outline-offset: 5px;
+}
+
+#stagingFile:focus {
+  outline-offset: 5px;
+}
+
+#stagingFolder:focus {
+  outline-offset: 5px;
+}
+
+#idaTabView input {
+    width: 200px;
+    margin: 15px;
+    margin-bottom: 10px;
+}
+
+#idaTabView table {
+    margin-bottom: 20px;
+}
+
+#idaTabView hr {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+#idaTabView p {
+    margin-bottom: 10px;
+}
+
+#idaTabView th {
+    width: 100px;
+    border: 0px;
+    font-size: smaller;
+    padding-top: 0px;
+}
+
+#idaTabView td {
+    border: 0px;
+    font-size: smaller;
+    padding-top: 0px;
+}
+
+#idaTabView a {
+    color: #007FAD;
+}
+
+#spinnerWrapper {
+    position:relative;
+    left:-50%;
+    top:-50%;
+}
+
+#spinner {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    border: 5px solid #f3f3f3; /* Light grey */
+    border-top: 5px solid #007FAD; /* IDA Blue */
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
@@ -108,7 +108,7 @@ class SearchPlugin extends ServerPlugin {
 
 		try {
 			$xml = $this->queryParser->parse(
-				$request->getBody(),
+				$request->getBodyAsString(),
 				$request->getUrl(),
 				$documentType
 			);

@@ -4,8 +4,11 @@
  *
  * @author Andreas Fischer <bantu@owncloud.com>
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Bernhard Ostertag <bernieo.code@gmx.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Łukasz Buśko <busko.lukasz@pm.me>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sander Ruitenbeek <sander@grids.be>
@@ -24,20 +27,21 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\Core\Command\Db;
 
-use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\Schema\AbstractAsset;
 use Doctrine\DBAL\Schema\Table;
-use Doctrine\DBAL\Types\Type;
-use OC\DB\MigrationService;
-use OCP\DB\QueryBuilder\IQueryBuilder;
-use \OCP\IConfig;
+use OCP\DB\Types;
 use OC\DB\Connection;
 use OC\DB\ConnectionFactory;
+use OC\DB\MigrationService;
+use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IConfig;
 use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
 use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Command\Command;
@@ -49,6 +53,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
+use function preg_match;
+use function preg_quote;
 
 class ConvertType extends Command implements CompletionAwareInterface {
 	/**
@@ -185,11 +191,12 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		}
 	}
 
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$this->validateInput($input, $output);
 		$this->readPassword($input, $output);
 
-		$fromDB = \OC::$server->getDatabaseConnection();
+		/** @var Connection $fromDB */
+		$fromDB = \OC::$server->get(Connection::class);
 		$toDB = $this->getToDBConnection($input, $output);
 
 		if ($input->getOption('clear-schema')) {
@@ -211,16 +218,19 @@ class ConvertType extends Command implements CompletionAwareInterface {
 				$output->writeln('<comment>can be included by specifying the --all-apps option.</comment>');
 			}
 
+			$continueConversion = !$input->isInteractive(); // assume yes for --no-interaction and no otherwise.
+			$question = new ConfirmationQuestion('Continue with the conversion (y/n)? [n] ', $continueConversion);
+
 			/** @var QuestionHelper $helper */
 			$helper = $this->getHelper('question');
-			$question = new ConfirmationQuestion('Continue with the conversion (y/n)? [n] ', false);
 
 			if (!$helper->ask($input, $output, $question)) {
-				return;
+				return 1;
 			}
 		}
 		$intersectingTables = array_intersect($toTables, $fromTables);
 		$this->convertDB($fromDB, $toDB, $intersectingTables, $input, $output);
+		return 0;
 	}
 
 	protected function createSchema(Connection $fromDB, Connection $toDB, InputInterface $input, OutputInterface $output) {
@@ -235,7 +245,7 @@ class ConvertType extends Command implements CompletionAwareInterface {
 
 		$schemaManager = new \OC\DB\MDB2SchemaManager($toDB);
 		$apps = $input->getOption('all-apps') ? \OC_App::getAllApps() : \OC_App::getEnabledApps();
-		foreach($apps as $app) {
+		foreach ($apps as $app) {
 			if (file_exists(\OC_App::getAppPath($app).'/appinfo/database.xml')) {
 				$schemaManager->createDbFromStructure(\OC_App::getAppPath($app).'/appinfo/database.xml');
 			} else {
@@ -271,15 +281,20 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		if (!empty($toTables)) {
 			$output->writeln('<info>Clearing schema in new database</info>');
 		}
-		foreach($toTables as $table) {
+		foreach ($toTables as $table) {
 			$db->getSchemaManager()->dropTable($table);
 		}
 	}
 
 	protected function getTables(Connection $db) {
-		$filterExpression = '/^' . preg_quote($this->config->getSystemValue('dbtableprefix', 'oc_')) . '/';
-		$db->getConfiguration()->
-			setFilterSchemaAssetsExpression($filterExpression);
+		$db->getConfiguration()->setSchemaAssetsFilter(function ($asset) {
+			/** @var string|AbstractAsset $asset */
+			$filterExpression = '/^' . preg_quote($this->config->getSystemValue('dbtableprefix', 'oc_')) . '/';
+			if ($asset instanceof AbstractAsset) {
+				return preg_match($filterExpression, $asset->getName()) !== false;
+			}
+			return preg_match($filterExpression, $asset) !== false;
+		});
 		return $db->getSchemaManager()->listTableNames();
 	}
 
@@ -289,7 +304,6 @@ class ConvertType extends Command implements CompletionAwareInterface {
 	 * @param Table $table
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
-	 * @suppress SqlInjectionChecker
 	 */
 	protected function copyTable(Connection $fromDB, Connection $toDB, Table $table, InputInterface $input, OutputInterface $output) {
 		if ($table->getName() === $toDB->getPrefix() . 'migrations') {
@@ -304,10 +318,10 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		$query->select($query->func()->count('*', 'num_entries'))
 			->from($table->getName());
 		$result = $query->execute();
-		$count = $result->fetchColumn();
+		$count = $result->fetchOne();
 		$result->closeCursor();
 
-		$numChunks = ceil($count/$chunkSize);
+		$numChunks = ceil($count / $chunkSize);
 		if ($numChunks > 1) {
 			$output->writeln('chunked query, ' . $numChunks . ' chunks');
 		}
@@ -325,15 +339,12 @@ class ConvertType extends Command implements CompletionAwareInterface {
 
 		try {
 			$orderColumns = $table->getPrimaryKeyColumns();
-		} catch (DBALException $e) {
-			$orderColumns = [];
-			foreach ($table->getColumns() as $column) {
-				$orderColumns[] = $column->getName();
-			}
+		} catch (Exception $e) {
+			$orderColumns = $table->getColumns();
 		}
 
 		foreach ($orderColumns as $column) {
-			$query->addOrderBy($column);
+			$query->addOrderBy($column->getName());
 		}
 
 		$insertQuery = $toDB->getQueryBuilder();
@@ -379,9 +390,12 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		$type = $table->getColumn($columnName)->getType()->getName();
 
 		switch ($type) {
-			case Type::BLOB:
-			case Type::TEXT:
+			case Types::BLOB:
+			case Types::TEXT:
 				$this->columnTypes[$tableName][$columnName] = IQueryBuilder::PARAM_LOB;
+				break;
+			case Types::BOOLEAN:
+				$this->columnTypes[$tableName][$columnName] = IQueryBuilder::PARAM_BOOL;
 				break;
 			default:
 				$this->columnTypes[$tableName][$columnName] = false;
@@ -396,7 +410,7 @@ class ConvertType extends Command implements CompletionAwareInterface {
 
 		try {
 			// copy table rows
-			foreach($tables as $table) {
+			foreach ($tables as $table) {
 				$output->writeln($table);
 				$this->copyTable($fromDB, $toDB, $schema->getTable($table), $input, $output);
 			}
@@ -406,7 +420,7 @@ class ConvertType extends Command implements CompletionAwareInterface {
 			}
 			// save new database config
 			$this->saveDBInfo($input);
-		} catch(\Exception $e) {
+		} catch (\Exception $e) {
 			$this->config->setSystemValue('maintenance', false);
 			throw $e;
 		}
@@ -424,11 +438,11 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		}
 
 		$this->config->setSystemValues([
-			'dbtype'		=> $type,
-			'dbname'		=> $dbName,
-			'dbhost'		=> $dbHost,
-			'dbuser'		=> $username,
-			'dbpassword'	=> $password,
+			'dbtype' => $type,
+			'dbname' => $dbName,
+			'dbhost' => $dbHost,
+			'dbuser' => $username,
+			'dbpassword' => $password,
 		]);
 	}
 

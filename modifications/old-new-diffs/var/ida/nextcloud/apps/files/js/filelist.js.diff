@@ -1,0 +1,415 @@
+60a61,66
+> 		$header: null,
+> 		headers: [],
+> 
+> 		$footer: null,
+> 		footers: [],
+> 
+127a134,141
+> 		 * Whether to prevent or to execute the default file actions when the
+> 		 * file name is clicked.
+> 		 *
+> 		 * @type boolean
+> 		 */
+> 		_defaultFileActionsDisabled: false,
+> 
+> 		/**
+241c255,256
+< 					'showhidden': false
+---
+> 					'showhidden': false,
+> 					'cropimagepreviews': true
+264a280,281
+> 			this.$header = $el.find('#filelist-header');
+> 			this.$footer = $el.find('#filelist-footer');
+277a295,298
+> 				this._filesConfig.on('change:cropimagepreviews', function() {
+> 					self.reload();
+> 				});
+> 
+286a308,311
+> 			if (options && options.defaultFileActionsDisabled) {
+> 				this._defaultFileActionsDisabled = options.defaultFileActionsDisabled
+> 			}
+> 
+359c384,389
+< 			this.updateSearch();
+---
+> 			// reload files list on share accept
+> 			$('body').on('OCA.Notification.Action', function(eventObject) {
+> 				if (eventObject.notification.app === 'files_sharing' && eventObject.action.type === 'POST') {
+> 					self.reload()
+> 				}
+> 			});
+408c438
+< 
+---
+> 			this.triedActionOnce = false;
+410a441,482
+> 
+> 			OCA.Files.App && OCA.Files.App.updateCurrentFileList(this);
+> 
+> 			this.initHeadersAndFooters()
+> 		},
+> 
+> 		initHeadersAndFooters: function() {
+> 			this.headers.sort(function(a, b) {
+> 				return a.order - b.order;
+> 			})
+> 			this.footers.sort(function(a, b) {
+> 				return a.order - b.order;
+> 			})
+> 			var uniqueIds = [];
+> 			var self = this;
+> 			this.headers.forEach(function(header) {
+> 				if (header.id) {
+> 					if (uniqueIds.indexOf(header.id) !== -1) {
+> 						return
+> 					}
+> 					uniqueIds.push(header.id)
+> 				}
+> 				self.$header.append(header.el)
+> 
+> 				setTimeout(function() {
+> 					header.render(self)
+> 				}, 0)
+> 			})
+> 
+> 			uniqueIds = [];
+> 			this.footers.forEach(function(footer) {
+> 				if (footer.id) {
+> 					if (uniqueIds.indexOf(footer.id) !== -1) {
+> 						return
+> 					}
+> 					uniqueIds.push(footer.id)
+> 				}
+> 				self.$footer.append(footer.el)
+> 				setTimeout(function() {
+> 					footer.render(self)
+> 				}, 0)
+> 			})
+564a637
+> 			console.warn('showDetailsView is deprecated! Use OCA.Files.Sidebar.activeTab. It will be removed in nextcloud 20.');
+567c640
+< 				this._detailsView.selectTab(tabId);
+---
+> 				OCA.Files.Sidebar.setActiveTab(tabId);
+569d641
+< 			OC.Apps.showAppSidebar(this._detailsView.$el);
+579c651,652
+< 			if (!this._detailsView) {
+---
+> 			if (!(OCA.Files && OCA.Files.Sidebar)) {
+> 				console.error('No sidebar available');
+583,599c656,660
+< 			// show defaults to true
+< 			show = _.isUndefined(show) || !!show;
+< 			var oldFileInfo = this._detailsView.getFileInfo();
+< 			if (oldFileInfo) {
+< 				// TODO: use more efficient way, maybe track the highlight
+< 				this.$fileList.children().filterAttr('data-id', '' + oldFileInfo.get('id')).removeClass('highlighted');
+< 				oldFileInfo.off('change', this._onSelectedModelChanged, this);
+< 			}
+< 
+< 			if (!fileName) {
+< 				this._detailsView.setFileInfo(null);
+< 				if (this._currentFileModel) {
+< 					this._currentFileModel.off();
+< 				}
+< 				this._currentFileModel = null;
+< 				OC.Apps.hideAppSidebar(this._detailsView.$el);
+< 				return;
+---
+> 			if (!fileName && OCA.Files.Sidebar.close) {
+> 				OCA.Files.Sidebar.close()
+> 				return
+> 			} else if (typeof fileName !== 'string') {
+> 				fileName = ''
+602,604c663,668
+< 			if (show && this._detailsView.$el.hasClass('disappear')) {
+< 				OC.Apps.showAppSidebar(this._detailsView.$el);
+< 			}
+---
+> 			// this is the old (terrible) way of getting the context.
+> 			// don't use it anywhere else. Just provide the full path
+> 			// of the file to the sidebar service
+> 			var tr = this.findFileEl(fileName)
+> 			var model = this.getModelForFile(tr)
+> 			var path = model.attributes.path + '/' + model.attributes.name
+606,611c670,672
+< 			if (fileName instanceof OCA.Files.FileInfoModel) {
+< 				var model = fileName;
+< 			} else {
+< 				var $tr = this.findFileEl(fileName);
+< 				var model = this.getModelForFile($tr);
+< 				$tr.addClass('highlighted');
+---
+> 			// make sure the file list has the correct context available
+> 			if (this._currentFileModel) {
+> 				this._currentFileModel.off();
+613c674,675
+< 
+---
+> 			this.$fileList.children().removeClass('highlighted');
+> 			tr.addClass('highlighted');
+616,619c678,681
+< 			this._replaceDetailsViewElementIfNeeded();
+< 
+< 			this._detailsView.setFileInfo(model);
+< 			this._detailsView.$el.scrollTop(0);
+---
+> 			// open sidebar and set file
+> 			if (typeof show === 'undefined' || !!show || (OCA.Files.Sidebar.file !== '')) {
+> 				OCA.Files.Sidebar.open(path.replace('//', '/'))
+> 			}
+655,656d716
+< 
+< 			this.$table.find('>thead').width($('#app-content').width() - OC.Util.getScrollBarWidth());
+675c735
+< 				
+---
+> 
+676a737,741
+> 			if (show) {
+> 				// If switching into grid view from list view, too few files might be displayed
+> 				// Try rendering the next page
+> 				this._onScroll();
+> 			}
+682a748
+> 			OCA.Files.App && OCA.Files.App.updateCurrentFileList(this);
+817c883
+< 			if (this._allowSelection && (event.ctrlKey || event.shiftKey)) {
+---
+> 			if (this._allowSelection && event.shiftKey) {
+819,823c885
+< 				if (event.shiftKey) {
+< 					this._selectRange($tr);
+< 				} else {
+< 					this._selectSingle($tr);
+< 				}
+---
+> 				this._selectRange($tr);
+826c888
+< 			} else {
+---
+> 			} else if (!event.ctrlKey) {
+828c890
+< 				if (!this._detailsView || $(event.target).is('.nametext, .name') || $(event.target).closest('.nametext').length) {
+---
+> 				if (!this._detailsView || $(event.target).is('.nametext, .name, .thumbnail') || $(event.target).closest('.nametext').length) {
+831c893,895
+< 					if (!renaming) {
+---
+> 					if (this._defaultFileActionsDisabled) {
+> 						event.preventDefault();
+> 					} else if (!renaming) {
+833,837c897,898
+< 						var mime = this.fileActions.getCurrentMimeType();
+< 						var type = this.fileActions.getCurrentType();
+< 						var permissions = this.fileActions.getCurrentPermissions();
+< 						var action = this.fileActions.getDefault(mime,type, permissions);
+< 						if (action) {
+---
+> 						var spec = this.fileActions.getCurrentDefaultFileAction();
+> 						if (spec && spec.action) {
+839,841c900
+< 							// also set on global object for legacy apps
+< 							window.FileActions.currentFile = this.fileActions.currentFile;
+< 							action(filename, {
+---
+> 							spec.action(filename, {
+865,866d923
+< 						// also set on global object for legacy apps
+< 						window.FileActions.currentFile = this.fileActions.currentFile;
+1022c1079
+< 				self.dirInfo.dirLastCopiedTo = targetPath; 
+---
+> 				self.dirInfo.dirLastCopiedTo = targetPath;
+1078d1134
+< 				this.updateSearch();
+1146c1202
+< 			window.document.title = title + ' - ' + oc_defaults.title;
+---
+> 			window.document.title = title + ' - ' + OC.theme.title;
+1187a1244
+> 				quotaAvailableBytes: $el.attr('data-quota'),
+1267a1325,1349
+> 			if(!this.triedActionOnce) {
+> 				var id = OC.Util.History.parseUrlQuery().openfile;
+> 				if (id) {
+> 					var $tr = this.$fileList.children().filterAttr('data-id', '' + id);
+> 					var filename = $tr.attr('data-file');
+> 					this.fileActions.currentFile = $tr.find('td');
+> 					var dir = $tr.attr('data-path') || this.getCurrentDirectory();
+> 					var spec = this.fileActions.getCurrentDefaultFileAction();
+> 					if (spec && spec.action) {
+> 						spec.action(filename, {
+> 							$file: $tr,
+> 							fileList: this,
+> 							fileActions: this.fileActions,
+> 							dir: dir
+> 						});
+> 
+> 					}
+> 					else {
+> 						var url = this.getDownloadUrl(filename, dir, true);
+> 						OCA.Files.Files.handleDownload(url);
+> 					}
+> 				}
+> 				this.triedActionOnce = true;
+> 			}
+> 
+1359a1442,1448
+> 				} else if (fileInfo.shareTypes && (
+> 					fileInfo.shareTypes.indexOf(OC.Share.SHARE_TYPE_LINK) > -1
+> 					|| fileInfo.shareTypes.indexOf(OC.Share.SHARE_TYPE_EMAIL) > -1)
+> 				) {
+> 					return OC.MimeType.getIconUrl('dir-public')
+> 				} else if (fileInfo.shareTypes && fileInfo.shareTypes.length > 0) {
+> 					return OC.MimeType.getIconUrl('dir-shared')
+1414a1504
+> 				"data-quota": fileData.quotaAvailableBytes,
+1464a1555
+> 			var spec = this.fileActions.getDefaultFileAction(mime, type, permissions);
+1468a1560,1562
+> 			else if (spec && spec.action) {
+> 				linkUrl = this.getDefaultActionUrl(path, fileData.id);
+> 			}
+1475a1570,1572
+> 			if (this._defaultFileActionsDisabled) {
+> 				linkElem.addClass('disabled');
+> 			}
+1542a1640,1641
+> 			var isDarkTheme = OCA.Accessibility && OCA.Accessibility.theme === 'dark'
+> 
+1545c1644,1647
+< 					.getPropertyValue('--color-text-maxcontrast')
+---
+> 					.getPropertyValue('--color-text-maxcontrast').trim()
+> 				if (maxContrastHex.length < 4) {
+> 					throw Error();
+> 				}
+1548,1551c1650
+< 				var maxContrast = OCA.Accessibility
+< 					&& OCA.Accessibility.theme === 'themedark'
+< 						? '130'
+< 						: '118'
+---
+> 				var maxContrast = isDarkTheme ? 130 : 118
+1556c1655
+< 				simpleSize = humanFileSize(parseInt(fileData.size, 10), true);
+---
+> 				simpleSize = OC.Util.humanFileSize(parseInt(fileData.size, 10), true);
+1567c1666
+< 				if (OCA.Accessibility && OCA.Accessibility.theme === 'themedark') {
+---
+> 				if (isDarkTheme) {
+1595c1694
+< 			if (OCA.Accessibility && OCA.Accessibility.theme === 'themedark') {
+---
+> 			if (isDarkTheme) {
+2079a2179,2182
+> 		getDefaultActionUrl: function(path, id) {
+> 			return this.linkTo(path) + "&openfile="+id;
+> 		},
+> 
+2119a2223,2228
+> 			/**
+> 			 * Images are cropped to a square by default. Append a=1 to the URL
+> 			 *  if the user wants to see images with original aspect ratio.
+> 			 */
+> 			urlSpec.a = this._filesConfig.get('cropimagepreviews') ? 0 : 1;
+> 
+2740c2849
+< 		createFile: function(name) {
+---
+> 		createFile: function(name, options) {
+2764c2873,2874
+< 					self.addAndFetchFileInfo(targetPath, '', {scrollTo: true}).then(function(status, data) {
+---
+> 					options = _.extend({scrollTo: true}, options || {});
+> 					self.addAndFetchFileInfo(targetPath, '', options).then(function(status, data) {
+2898,2899c3008,3009
+< 					OC.Notification.show(t('files', 'Could not create file "{file}"',
+< 						{file: name}), {type: 'error'}
+---
+> 					OCP.Toast.error(
+> 						t('files', 'Could not fetch file details "{file}"', { file: fileName })
+3138c3248,3253
+< 					var error = t('files', 'No search results in other folders for {tag}{filter}{endtag}', {filter:this._filter});
+---
+> 					var error;
+> 					if (this._filter.length > 2) {
+> 						error = t('files', 'No search results in other folders for {tag}{filter}{endtag}', {filter:this._filter});
+> 					} else {
+> 						error = t('files', 'Enter more than two characters to search in other folders');
+> 					}
+3159,3169c3274
+< 		/**
+< 		 * update the search object to use this filelist when filtering
+< 		 */
+< 		updateSearch:function() {
+< 			if (OCA.Search.files) {
+< 				OCA.Search.files.setFileList(this);
+< 			}
+< 			if (OC.Search) {
+< 				OC.Search.clear();
+< 			}
+< 		},
+---
+> 
+3269c3374
+< 		 * 
+---
+> 		 *
+3606,3607c3711,3729
+< 			if (this._detailsView) {
+< 				this._detailsView.addTabView(tabView);
+---
+> 			console.warn('registerTabView is deprecated! It will be removed in nextcloud 20.');
+> 			const enabled = tabView.canDisplay || undefined
+> 			if (tabView.id) {
+> 				OCA.Files.Sidebar.registerTab(new OCA.Files.Sidebar.Tab({
+> 					id: tabView.id,
+> 					name: tabView.getLabel(),
+> 					icon: tabView.getIcon(),
+> 					mount: function(el, fileInfo) {
+> 						tabView.setFileInfo(new OCA.Files.FileInfoModel(fileInfo))
+> 						el.appendChild(tabView.el)
+> 					},
+> 					update: function(fileInfo) {
+> 						tabView.setFileInfo(new OCA.Files.FileInfoModel(fileInfo))
+> 					},
+> 					destroy: function() {
+> 						tabView.el.remove()
+> 					},
+> 					enabled: enabled
+> 				}))
+3615,3616c3737,3739
+< 			if (this._detailsView) {
+< 				this._detailsView.addDetailView(detailView);
+---
+> 			console.warn('registerDetailView is deprecated! It will be removed in nextcloud 20.');
+> 			if (detailView.el) {
+> 				OCA.Files.Sidebar.registerSecondaryView(detailView)
+3641a3765,3776
+> 		},
+> 
+> 		registerHeader: function(header) {
+> 			this.headers.push(
+> 				_.defaults(header, { order: 0 })
+> 			);
+> 		},
+> 
+> 		registerFooter: function(footer) {
+> 			this.footers.push(
+> 				_.defaults(footer, { order: 0 })
+> 			);
+3723c3858
+< $(document).ready(function() {
+---
+> window.addEventListener('DOMContentLoaded', function() {
+3730,3732d3864
+< 	});
+< 	$(window).on('unload', function () {
+< 		$(window).trigger('beforeunload');

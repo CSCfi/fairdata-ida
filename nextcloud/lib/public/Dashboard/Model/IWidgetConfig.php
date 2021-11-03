@@ -1,15 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
-
 /**
- * Nextcloud - Dashboard App
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Maxence Lange <maxence@artificial-owl.com>
  * @copyright 2018, Maxence Lange <maxence@artificial-owl.com>
+ *
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Maxence Lange <maxence@artificial-owl.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,12 +21,11 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCP\Dashboard\Model;
-
 
 use OCP\Dashboard\IDashboardWidget;
 
@@ -40,8 +37,8 @@ use OCP\Dashboard\IDashboardWidget;
  * @see IDashboardWidget::loadWidget
  *
  * @since 15.0.0
+ * @deprecated 20.0.0
  *
- * @package OCP\Dashboard\Model
  */
 interface IWidgetConfig {
 
@@ -50,6 +47,7 @@ interface IWidgetConfig {
 	 * Returns the userId
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return string
 	 */
@@ -60,6 +58,7 @@ interface IWidgetConfig {
 	 * Returns the widgetId
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return string
 	 */
@@ -79,6 +78,7 @@ interface IWidgetConfig {
 	 * ]
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -109,6 +109,7 @@ interface IWidgetConfig {
 	 * Dashboard app.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -119,11 +120,9 @@ interface IWidgetConfig {
 	 * Returns if the widget is enabled/displayed in this user's dashboard.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return bool
 	 */
 	public function isEnabled(): bool;
-
-
 }
-

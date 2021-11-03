@@ -1,0 +1,18 @@
+7a8
+> 			<div class="icon-alert-outline"></div>
+15c16
+< 	<?php if(isset($_['dirToken'])):?>
+---
+> 	<?php if (isset($_['dirToken'])):?>
+21a23
+> <div id="filelist-header"></div>
+46c48
+<                         <span><?php p($l->t( 'Name' )); ?></span>
+---
+>                         <span><?php p($l->t('Name')); ?></span>
+62c64
+< 				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t( 'Modified' )); ?></span><span class="sort-indicator"></span></a>
+---
+> 				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t('Modified')); ?></span><span class="sort-indicator"></span></a>
+70a73
+> <div id="filelist-footer"></div>

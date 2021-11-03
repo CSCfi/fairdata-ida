@@ -16,7 +16,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -24,6 +24,7 @@ namespace OC\Files\Cache;
 
 use OCP\Constants;
 use OCP\Files\Cache\ICache;
+use OCP\Files\Cache\ICacheEntry;
 use OCP\Files\Search\ISearchQuery;
 
 /**
@@ -115,10 +116,6 @@ class FailedCache implements ICache {
 		return [];
 	}
 
-	public function searchByTag($tag, $userId) {
-		return [];
-	}
-
 	public function searchQuery(ISearchQuery $query) {
 		return [];
 	}
@@ -137,5 +134,9 @@ class FailedCache implements ICache {
 
 	public function normalize($path) {
 		return $path;
+	}
+
+	public function copyFromCache(ICache $sourceCache, ICacheEntry $sourceEntry, string $targetPath): int {
+		throw new \Exception("Invalid cache");
 	}
 }

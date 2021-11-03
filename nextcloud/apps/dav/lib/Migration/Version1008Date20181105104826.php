@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2018 Georg Ehrke
  *
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +19,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,13 +27,12 @@ declare(strict_types=1);
 
 namespace OCA\DAV\Migration;
 
-
 use Closure;
-use Doctrine\DBAL\Types\Type;
+use OCP\DB\Types;
 use OCP\DB\ISchemaWrapper;
 use OCP\IDBConnection;
-use OCP\Migration\SimpleMigrationStep;
 use OCP\Migration\IOutput;
+use OCP\Migration\SimpleMigrationStep;
 
 class Version1008Date20181105104826 extends SimpleMigrationStep {
 
@@ -58,7 +59,7 @@ class Version1008Date20181105104826 extends SimpleMigrationStep {
 		$schema = $schemaClosure();
 		$table = $schema->getTable('calendarsubscriptions');
 
-		$table->addColumn('source_copy', Type::TEXT, [
+		$table->addColumn('source_copy', Types::TEXT, [
 			'notnull' => false,
 			'length' => null,
 		]);

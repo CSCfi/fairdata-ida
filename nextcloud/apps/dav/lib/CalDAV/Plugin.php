@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud GmbH.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -17,15 +19,14 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OCA\DAV\CalDAV;
 
 class Plugin extends \Sabre\CalDAV\Plugin {
-
-	const SYSTEM_CALENDAR_ROOT = 'system-calendars';
+	public const SYSTEM_CALENDAR_ROOT = 'system-calendars';
 
 	/**
 	 * Returns the path to a principal's calendar home.
@@ -37,7 +38,7 @@ class Plugin extends \Sabre\CalDAV\Plugin {
 	 * @param string $principalUrl
 	 * @return string|null
 	 */
-	function getCalendarHomeForPrincipal($principalUrl) {
+	public function getCalendarHomeForPrincipal($principalUrl) {
 		if (strrpos($principalUrl, 'principals/users', -strlen($principalUrl)) !== false) {
 			list(, $principalId) = \Sabre\Uri\split($principalUrl);
 			return self::CALENDAR_ROOT . '/' . $principalId;
@@ -51,5 +52,4 @@ class Plugin extends \Sabre\CalDAV\Plugin {
 			return self::SYSTEM_CALENDAR_ROOT . '/calendar-rooms/' . $principalId;
 		}
 	}
-
 }

@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -15,12 +18,11 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OC\Remote\Api;
-
 
 use GuzzleHttp\Exception\ClientException;
 use OC\ForbiddenException;
@@ -47,7 +49,7 @@ class OCS extends ApiBase implements ICapabilitiesApi, IUserApi {
 		} catch (ClientException $e) {
 			if ($e->getResponse()->getStatusCode() === 404) {
 				throw new NotFoundException();
-			} else if ($e->getResponse()->getStatusCode() === 403 || $e->getResponse()->getStatusCode() === 401) {
+			} elseif ($e->getResponse()->getStatusCode() === 403 || $e->getResponse()->getStatusCode() === 401) {
 				throw new ForbiddenException();
 			} else {
 				throw $e;

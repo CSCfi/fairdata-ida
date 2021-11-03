@@ -1,9 +1,13 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright 2018 Georg Ehrke <oc.list@georgehrke.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,11 +22,13 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCA\DAV\CalDAV;
 
+use OCA\DAV\Exception\UnsupportedLimitOnInitialSyncException;
 use Sabre\CalDAV\Backend\BackendInterface;
 use Sabre\DAV\Exception\MethodNotAllowed;
 use Sabre\DAV\Exception\NotFound;
@@ -106,9 +112,7 @@ class CachedSubscription extends \Sabre\CalDAV\Calendar {
 		return parent::getOwner();
 	}
 
-	/**
-	 *
-	 */
+	
 	public function delete() {
 		$this->caldavBackend->deleteSubscription($this->calendarInfo['id']);
 	}
@@ -132,8 +136,7 @@ class CachedSubscription extends \Sabre\CalDAV\Calendar {
 		}
 
 		$obj['acl'] = $this->getChildACL();
-		return new CachedSubscriptionObject	($this->caldavBackend, $this->calendarInfo, $obj);
-
+		return new CachedSubscriptionObject($this->caldavBackend, $this->calendarInfo, $obj);
 	}
 
 	/**
@@ -143,7 +146,7 @@ class CachedSubscription extends \Sabre\CalDAV\Calendar {
 		$objs = $this->caldavBackend->getCalendarObjects($this->calendarInfo['id'], CalDavBackend::CALENDAR_TYPE_SUBSCRIPTION);
 
 		$children = [];
-		foreach($objs as $obj) {
+		foreach ($objs as $obj) {
 			$children[] = new CachedSubscriptionObject($this->caldavBackend, $this->calendarInfo, $obj);
 		}
 
@@ -158,7 +161,7 @@ class CachedSubscription extends \Sabre\CalDAV\Calendar {
 		$objs = $this->caldavBackend->getMultipleCalendarObjects($this->calendarInfo['id'], $paths, CalDavBackend::CALENDAR_TYPE_SUBSCRIPTION);
 
 		$children = [];
-		foreach($objs as $obj) {
+		foreach ($objs as $obj) {
 			$children[] = new CachedSubscriptionObject($this->caldavBackend, $this->calendarInfo, $obj);
 		}
 
@@ -194,5 +197,16 @@ class CachedSubscription extends \Sabre\CalDAV\Calendar {
 	 */
 	public function calendarQuery(array $filters):array {
 		return $this->caldavBackend->calendarQuery($this->calendarInfo['id'], $filters, CalDavBackend::CALENDAR_TYPE_SUBSCRIPTION);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function getChanges($syncToken, $syncLevel, $limit = null) {
+		if (!$syncToken && $limit) {
+			throw new UnsupportedLimitOnInitialSyncException();
+		}
+
+		return parent::getChanges($syncToken, $syncLevel, $limit);
 	}
 }

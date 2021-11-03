@@ -1,10 +1,17 @@
 <?php
+
 declare(strict_types=1);
+
 /**
- * @author Thomas Müller <thomas.mueller@tmit.eu>
- *
  * @copyright Copyright (c) 2018, ownCloud GmbH
  * @copyright Copyright (c) 2018, Sebastian Steinmetz (me@sebastiansteinmetz.ch)
+ *
+ * @author J0WI <J0WI@users.noreply.github.com>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Steinmetz <462714+steiny2k@users.noreply.github.com>
+ * @author Sebastian Steinmetz <me@sebastiansteinmetz.ch>
+ *
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -17,12 +24,14 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\Preview;
 
+use OCP\Files\File;
+use OCP\IImage;
 use OCP\ILogger;
 
 /**
@@ -30,7 +39,7 @@ use OCP\ILogger;
  *
  * @package OC\Preview
  */
-class HEIC extends Provider {
+class HEIC extends ProviderV2 {
 	/**
 	 * {@inheritDoc}
 	 */
@@ -48,11 +57,8 @@ class HEIC extends Provider {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function getThumbnail($path, $maxX, $maxY, $scalingup, $fileview) {
-		$tmpPath = $fileview->toTmpFile($path);
-		if (!$tmpPath) {
-			return false;
-		}
+	public function getThumbnail(File $file, int $maxX, int $maxY): ?IImage {
+		$tmpPath = $this->getLocalFile($file);
 
 		// Creates \Imagick object from the heic file
 		try {
@@ -60,20 +66,20 @@ class HEIC extends Provider {
 			$bp->setFormat('jpg');
 		} catch (\Exception $e) {
 			\OC::$server->getLogger()->logException($e, [
-				'message' => 'File: ' . $fileview->getAbsolutePath($path) . ' Imagick says:',
+				'message' => 'File: ' . $file->getPath() . ' Imagick says:',
 				'level' => ILogger::ERROR,
 				'app' => 'core',
 			]);
-			return false;
+			return null;
 		}
 
-		unlink($tmpPath);
+		$this->cleanTmpFiles();
 
 		//new bitmap image object
 		$image = new \OC_Image();
 		$image->loadFromData($bp);
 		//check if image object is valid
-		return $image->valid() ? $image : false;
+		return $image->valid() ? $image : null;
 	}
 
 	/**
@@ -128,7 +134,7 @@ class HEIC extends Provider {
 				// A bigger image calls for some better resizing algorithm
 				// According to http://www.imagemagick.org/Usage/filter/#lanczos
 				// the catrom filter is almost identical to Lanczos2, but according
-				// to http://php.net/manual/en/imagick.resizeimage.php it is
+				// to https://www.php.net/manual/en/imagick.resizeimage.php it is
 				// significantly faster
 				$bp->resizeImage($maxX, $maxY, \Imagick::FILTER_CATROM, 1, true);
 			}
@@ -136,5 +142,4 @@ class HEIC extends Provider {
 
 		return $bp;
 	}
-
 }

@@ -1,0 +1,226 @@
+6a7
+>  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+7a9,12
+>  * @author Bjoern Schiessle <bjoern@schiessle.org>
+>  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+>  * @author Georg Ehrke <oc.list@georgehrke.com>
+>  * @author GretaD <gretadoci@gmail.com>
+8a14
+>  * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+13a20
+>  * @author Thomas Citharel <nextcloud@tcit.fr>
+27c34
+<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
+---
+>  * along with this program. If not, see <http://www.gnu.org/licenses/>
+61a69,73
+> 	protected $localeCache = [];
+> 
+> 	/**
+> 	 * @var array
+> 	 */
+69c81
+< 	const COMMON_LANGUAGE_CODES = [
+---
+> 	public const COMMON_LANGUAGE_CODES = [
+111,114c123,127
+< 		$app = \OC_App::cleanAppId($app);
+< 		if ($lang !== null) {
+< 			$lang = str_replace(array('\0', '/', '\\', '..'), '', (string) $lang);
+< 		}
+---
+> 		return new LazyL10N(function () use ($app, $lang, $locale) {
+> 			$app = \OC_App::cleanAppId($app);
+> 			if ($lang !== null) {
+> 				$lang = str_replace(['\0', '/', '\\', '..'], '', $lang);
+> 			}
+116,119c129,132
+< 		$forceLang = $this->config->getSystemValue('force_language', false);
+< 		if (is_string($forceLang)) {
+< 			$lang = $forceLang;
+< 		}
+---
+> 			$forceLang = $this->config->getSystemValue('force_language', false);
+> 			if (is_string($forceLang)) {
+> 				$lang = $forceLang;
+> 			}
+121,124c134,137
+< 		$forceLocale = $this->config->getSystemValue('force_locale', false);
+< 		if (is_string($forceLocale)) {
+< 			$locale = $forceLocale;
+< 		}
+---
+> 			$forceLocale = $this->config->getSystemValue('force_locale', false);
+> 			if (is_string($forceLocale)) {
+> 				$locale = $forceLocale;
+> 			}
+126,128c139,141
+< 		if ($lang === null || !$this->languageExists($app, $lang)) {
+< 			$lang = $this->findLanguage($app);
+< 		}
+---
+> 			if ($lang === null || !$this->languageExists($app, $lang)) {
+> 				$lang = $this->findLanguage($app);
+> 			}
+130,132c143,145
+< 		if ($locale === null || !$this->localeExists($locale)) {
+< 			$locale = $this->findLocale($lang);
+< 		}
+---
+> 			if ($locale === null || !$this->localeExists($locale)) {
+> 				$locale = $this->findLocale($lang);
+> 			}
+134,139c147,152
+< 		if (!isset($this->instances[$lang][$app])) {
+< 			$this->instances[$lang][$app] = new L10N(
+< 				$this, $app, $lang, $locale,
+< 				$this->getL10nFilesForApp($app, $lang)
+< 			);
+< 		}
+---
+> 			if (!isset($this->instances[$lang][$app])) {
+> 				$this->instances[$lang][$app] = new L10N(
+> 					$this, $app, $lang, $locale,
+> 					$this->getL10nFilesForApp($app, $lang)
+> 				);
+> 			}
+141c154,155
+< 		return $this->instances[$lang][$app];
+---
+> 			return $this->instances[$lang][$app];
+> 		});
+258c272
+< 		
+---
+> 
+347c361
+< 		if($user === null) {
+---
+> 		if ($user === null) {
+353a368,390
+> 	 * Return the language to use when sending something to a user
+> 	 *
+> 	 * @param IUser|null $user
+> 	 * @return string
+> 	 * @since 20.0.0
+> 	 */
+> 	public function getUserLanguage(IUser $user = null): string {
+> 		$language = $this->config->getSystemValue('force_language', false);
+> 		if ($language !== false) {
+> 			return $language;
+> 		}
+> 
+> 		if ($user instanceof IUser) {
+> 			$language = $this->config->getUserValue($user->getUID(), 'core', 'lang', null);
+> 			if ($language !== null) {
+> 				return $language;
+> 			}
+> 		}
+> 
+> 		return $this->config->getSystemValue('default_language', 'en');
+> 	}
+> 
+> 	/**
+362,365c399,404
+< 		$locales = $this->findAvailableLocales();
+< 		$userLocale = array_filter($locales, function($value) use ($locale) {
+< 			return $locale === $value['code'];
+< 		});
+---
+> 		if ($this->localeCache === []) {
+> 			$locales = $this->findAvailableLocales();
+> 			foreach ($locales as $l) {
+> 				$this->localeCache[$l['code']] = true;
+> 			}
+> 		}
+367c406
+< 		return !empty($userLocale);
+---
+> 		return isset($this->localeCache[$locale]);
+469d507
+< 				|| $this->isSubDirectory($transFile, $this->serverRoot . '/settings/l10n/')
+496c534
+< 		if (in_array($app, ['core', 'lib', 'settings'])) {
+---
+> 		if (in_array($app, ['core', 'lib'])) {
+500c538
+< 		} else if ($app && \OC_App::getAppPath($app) !== false) {
+---
+> 		} elseif ($app && \OC_App::getAppPath($app) !== false) {
+521c559
+< 		if (preg_match( '/^\s*nplurals\s*=\s*(\d+)\s*;\s*plural=(.*)$/u', $string, $matches)) {
+---
+> 		if (preg_match('/^\s*nplurals\s*=\s*(\d+)\s*;\s*plural=(.*)$/u', $string, $matches)) {
+523,524c561,562
+< 			$nplurals = preg_replace( '/[^0-9]/', '', $matches[1] );
+< 			$plural = preg_replace( '#[^n0-9:\(\)\?\|\&=!<>+*/\%-]#', '', $matches[2] );
+---
+> 			$nplurals = preg_replace('/[^0-9]/', '', $matches[1]);
+> 			$plural = preg_replace('#[^n0-9:\(\)\?\|\&=!<>+*/\%-]#', '', $matches[2]);
+527,528c565,566
+< 				array( 'plural', 'n', '$n$plurals', ),
+< 				array( '$plural', '$n', '$nplurals', ),
+---
+> 				[ 'plural', 'n', '$n$plurals', ],
+> 				[ '$plural', '$n', '$nplurals', ],
+538c576
+< 			for($i = 0; $i < $length; $i++) {
+---
+> 			for ($i = 0; $i < $length; $i++) {
+540c578
+< 				switch ( $ch ) {
+---
+> 				switch ($ch) {
+549c587
+< 						$res .= str_repeat( ')', $p ) . ';';
+---
+> 						$res .= str_repeat(')', $p) . ';';
+581c619,628
+< 			return [];
+---
+> 			$l = $this->get('lib', $forceLanguage);
+> 			$potentialName = $l->t('__language_name__');
+> 
+> 			return [
+> 				'commonlanguages' => [[
+> 					'code' => $forceLanguage,
+> 					'name' => $potentialName,
+> 				]],
+> 				'languages' => [],
+> 			];
+589c636
+< 		foreach($languageCodes as $lang) {
+---
+> 		foreach ($languageCodes as $lang) {
+592c639
+< 			$potentialName = (string) $l->t('__language_name__');
+---
+> 			$potentialName = $l->t('__language_name__');
+594c641
+< 				$ln = array(
+---
+> 				$ln = [
+597,599c644,646
+< 				);
+< 			} else if ($lang === 'en') {
+< 				$ln = array(
+---
+> 				];
+> 			} elseif ($lang === 'en') {
+> 				$ln = [
+602c649
+< 				);
+---
+> 				];
+604c651
+< 				$ln = array(
+---
+> 				$ln = [
+607c654
+< 				);
+---
+> 				];
+622c669
+< 		usort( $languages, function ($a, $b) {
+---
+> 		usort($languages, function ($a, $b) {

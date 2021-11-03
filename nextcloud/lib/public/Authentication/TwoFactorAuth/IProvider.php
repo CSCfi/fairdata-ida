@@ -1,9 +1,12 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -17,7 +20,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -34,8 +37,8 @@ interface IProvider {
 	/**
 	 * @since 14.0.0
 	 */
-	const EVENT_SUCCESS = self::class . '::success';
-	const EVENT_FAILED  = self::class . '::failed';
+	public const EVENT_SUCCESS = self::class . '::success';
+	public const EVENT_FAILED = self::class . '::failed';
 
 	/**
 	 * Get unique identifier of this 2FA provider

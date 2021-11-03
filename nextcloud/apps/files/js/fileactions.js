@@ -1,11 +1,4 @@
 /*
- * This file is part of the IDA research data storage service
- *
- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
- * @link     https://research.csc.fi/
- */
-
-/*
  * Copyright (c) 2014
  *
  * This file is licensed under the Affero General Public License version 3
@@ -264,13 +257,26 @@
 		},
 
 		/**
+		 * Returns the default file action handler for the current file
+		 *
+		 * @return {OCA.Files.FileActions~actionSpec} action spec
+		 * @since 8.2
+		 */
+		getCurrentDefaultFileAction: function() {
+			var mime = this.getCurrentMimeType();
+			var type = this.getCurrentType();
+			var permissions = this.getCurrentPermissions();
+			return this.getDefaultFileAction(mime, type, permissions);
+		},
+
+		/**
 		 * Returns the default file action handler for the given conditions
 		 *
 		 * @param {string} mime mime type
 		 * @param {string} type "dir" or "file"
 		 * @param {int} permissions permissions
 		 *
-		 * @return {OCA.Files.FileActions~actionHandler} action handler
+		 * @return {OCA.Files.FileActions~actionSpec} action spec
 		 * @since 8.2
 		 */
 		getDefaultFileAction: function(mime, type, permissions) {
@@ -416,8 +422,6 @@
 					var fileName = $file.attr('data-file');
 
 					context.fileActions.currentFile = currentFile;
-					// also set on global object for legacy apps
-					window.FileActions.currentFile = currentFile;
 
 					var callContext = _.extend({}, context);
 
@@ -487,8 +491,6 @@
 
 			var fileName = fileInfoModel.get('name');
 			this.currentFile = fileName;
-			// also set on global object for legacy apps
-			window.FileActions.currentFile = fileName;
 
 			if (fileList) {
 				// compatibility with action handlers that expect these
@@ -632,24 +634,6 @@
 				permissions: OC.PERMISSION_UPDATE,
 				iconClass: 'icon-rename',
 				actionHandler: function (filename, context) {
-                    if (context.$file.attr('data-mounttype') === 'shared-root') {
-                        OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
-                        return;
-                    }
-                    var dir = context.dir || context.fileList.getCurrentDirectory();
-                    var pathname = dir + '/' + filename;
-                    var project = OCA.IDA.Util.extractProjectName(pathname);
-                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
-                    try {
-						var message = OCA.IDA.Util.scopeNotOK(project, scope);
-                        if (message !== false) {
-                            OC.Notification.show(t('ida', message), {type: 'error'});
-                            return;
-                        }
-                    } catch (error) {
-                        OC.Notification.show(error, {type: 'error'});
-                        return;
-                    }
 					context.fileList.rename(filename);
 				}
 			});
@@ -668,24 +652,6 @@
 				permissions: $('#isPublic').val() ? OC.PERMISSION_UPDATE : OC.PERMISSION_READ,
 				iconClass: 'icon-external',
 				actionHandler: function (filename, context) {
-                    if (context.$file.attr('data-mounttype') === 'shared-root') {
-                        OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
-                        return;
-                    }
-                    var dir = context.dir || context.fileList.getCurrentDirectory();
-                    var pathname = dir + '/' + filename;
-                    var project = OCA.IDA.Util.extractProjectName(pathname);
-                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
-                    try {
-						var message = OCA.IDA.Util.scopeNotOK(project, scope);
-                        if (message !== false) {
-                            OC.Notification.show(t('ida', message), {type: 'error'});
-                            return;
-                        }
-                    } catch (error) {
-                        OC.Notification.show(error, {type: 'error'});
-                        return;
-                    }
 					var permissions = context.fileInfoModel.attributes.permissions;
 					var actions = OC.dialogs.FILEPICKER_TYPE_COPY;
 					if (permissions & OC.PERMISSION_UPDATE) {
@@ -697,44 +663,12 @@
 					}
 					OC.dialogs.filepicker(t('files', 'Choose target folder'), function(targetPath, type) {
 						if (type === OC.dialogs.FILEPICKER_TYPE_COPY) {
-                           if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
-                                OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
-                                return;
-                            }
-                            var project = OCA.IDA.Util.extractProjectName(targetPath);
-                            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
-                            try {
-						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
-                                if (message !== false) {
-                                    OC.Notification.show(t('ida', message), {type: 'error'});
-                                    return;
-                                }
-                            } catch (error) {
-                                OC.Notification.show(error, {type: 'error'});
-                                return;
-                            }
 							context.fileList.copy(filename, targetPath, false, context.dir);
 						}
 						if (type === OC.dialogs.FILEPICKER_TYPE_MOVE) {
-                           if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
-                                OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
-                                return;
-                            }
-                            var project = OCA.IDA.Util.extractProjectName(targetPath);
-                            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
-                            try {
-						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
-                                if (message !== false) {
-                                    OC.Notification.show(t('ida', message), {type: 'error'});
-                                    return;
-                                }
-                            } catch (error) {
-                                OC.Notification.show(error, {type: 'error'});
-                                return;
-                            }
 							context.fileList.move(filename, targetPath, false, context.dir);
 						}
-						context.fileList.dirInfo.dirLastCopiedTo = targetPath; 
+						context.fileList.dirInfo.dirLastCopiedTo = targetPath;
 					}, false, "httpd/unix-directory", true, actions, dialogDir);
 				}
 			});
@@ -760,11 +694,14 @@
 				name: 'Delete',
 				displayName: function(context) {
 					var mountType = context.$file.attr('data-mounttype');
-					var deleteTitle = t('files', 'Delete');
+					var type = context.$file.attr('data-type');
+					var deleteTitle = (type && type === 'file')
+						? t('files', 'Delete file')
+						: t('files', 'Delete folder')
 					if (mountType === 'external-root') {
 						deleteTitle = t('files', 'Disconnect storage');
 					} else if (mountType === 'shared-root') {
-						deleteTitle = t('files', 'Unshare');
+						deleteTitle = t('files', 'Leave this share');
 					}
 					return deleteTitle;
 				},
@@ -773,34 +710,19 @@
 				// permission is READ because we show a hint instead if there is no permission
 				permissions: OC.PERMISSION_DELETE,
 				iconClass: 'icon-delete',
-				actionHandler: function(filename, context) {
-                    if (context.$file.attr('data-mounttype') === 'shared-root') {
-                        OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
-                        return;
-                    }
-                    var dir = context.dir || context.fileList.getCurrentDirectory();
-                    var pathname = dir + '/' + filename;
-                    var project = OCA.IDA.Util.extractProjectName(pathname);
-                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
-                    try {
-						var message = OCA.IDA.Util.scopeNotOK(project, scope);
-                        if (message !== false) {
-                            OC.Notification.show(t('ida', message), {type: 'error'});
-                            return;
-                        }
-                    } catch (error) {
-                        OC.Notification.show(error, {type: 'error'});
-                        return;
-                    }
+				actionHandler: function(fileName, context) {
 					// if there is no permission to delete do nothing
 					if((context.$file.data('permissions') & OC.PERMISSION_DELETE) === 0) {
 						return;
 					}
-                    var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
-                    if (response) {
-					    context.fileList.do_delete(filename, context.dir);
-                    }
+					context.fileList.do_delete(fileName, context.dir);
 					$('.tipsy').remove();
+
+					// close sidebar on delete
+					const path = context.dir + '/' + fileName
+					if (OCA.Files.Sidebar && OCA.Files.Sidebar.file === path) {
+						OCA.Files.Sidebar.close()
+					}
 				}
 			});
 
@@ -907,25 +829,4 @@
 
 	// global file actions to be used by all lists
 	OCA.Files.fileActions = new OCA.Files.FileActions();
-	OCA.Files.legacyFileActions = new OCA.Files.FileActions();
-
-	// for backward compatibility
-	//
-	// legacy apps are expecting a stateful global FileActions object to register
-	// their actions on. Since legacy apps are very likely to break with other
-	// FileList views than the main one ("All files"), actions registered
-	// through window.FileActions will be limited to the main file list.
-	// @deprecated use OCA.Files.FileActions instead
-	window.FileActions = OCA.Files.legacyFileActions;
-	window.FileActions.register = function (mime, name, permissions, icon, action, displayName) {
-		console.warn('FileActions.register() is deprecated, please use OCA.Files.fileActions.register() instead', arguments);
-		OCA.Files.FileActions.prototype.register.call(
-				window.FileActions, mime, name, permissions, icon, action, displayName
-		);
-	};
-	window.FileActions.display = function (parent, triggerEvent, fileList) {
-		fileList = fileList || OCA.Files.App.fileList;
-		console.warn('FileActions.display() is deprecated, please use OCA.Files.fileActions.register() which automatically redisplays actions', mime, name);
-		OCA.Files.FileActions.prototype.display.call(window.FileActions, parent, triggerEvent, fileList);
-	};
 })();

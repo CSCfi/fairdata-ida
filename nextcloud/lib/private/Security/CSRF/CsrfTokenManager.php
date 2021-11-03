@@ -1,9 +1,13 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -17,7 +21,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -54,11 +58,11 @@ class CsrfTokenManager {
 	 * @return CsrfToken
 	 */
 	public function getToken(): CsrfToken {
-		if(!\is_null($this->csrfToken)) {
+		if (!\is_null($this->csrfToken)) {
 			return $this->csrfToken;
 		}
 
-		if($this->sessionStorage->hasToken()) {
+		if ($this->sessionStorage->hasToken()) {
 			$value = $this->sessionStorage->getToken();
 		} else {
 			$value = $this->tokenGenerator->generateToken();
@@ -96,7 +100,7 @@ class CsrfTokenManager {
 	 * @return bool
 	 */
 	public function isTokenValid(CsrfToken $token): bool {
-		if(!$this->sessionStorage->hasToken()) {
+		if (!$this->sessionStorage->hasToken()) {
 			return false;
 		}
 

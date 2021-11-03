@@ -2,13 +2,14 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Miha Frangez <miha.frangez@gmail.com>
+ * @author Michael Weimann <mail@michael-weimann.eu>
  * @author Morris Jobke <hey@morrisjobke.de>
- * @author noveens <noveen.sachdeva@research.iiit.ac.in>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  *
@@ -24,9 +25,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OC\Console;
 
 use OC\MemoryInfo;
@@ -145,10 +147,10 @@ class Application {
 						}
 					}
 				}
-			} else if ($input->getArgument('command') !== '_completion' && $input->getArgument('command') !== 'maintenance:install') {
+			} elseif ($input->getArgument('command') !== '_completion' && $input->getArgument('command') !== 'maintenance:install') {
 				$output->writeln("Nextcloud is not installed - only a limited number of commands are available");
 			}
-		} catch(NeedsUpdateException $e) {
+		} catch (NeedsUpdateException $e) {
 			if ($input->getArgument('command') !== '_completion') {
 				$output->writeln("Nextcloud or one of the apps require upgrade - only a limited number of commands are available");
 				$output->writeln("You may use your browser or the occ upgrade command to do the upgrade");

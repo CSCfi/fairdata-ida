@@ -4,6 +4,7 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -12,7 +13,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author scambra <sergio@entrecables.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -26,23 +27,26 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OCA\Files_Sharing;
 
 use OC\Files\Cache\FailedCache;
+use OC\Files\Cache\NullWatcher;
+use OC\Files\Cache\Watcher;
 use OC\Files\Filesystem;
-use OC\Files\Storage\Wrapper\PermissionsMask;
 use OC\Files\Storage\FailedStorage;
+use OC\Files\Storage\Wrapper\PermissionsMask;
+use OC\User\NoUserException;
+use OCA\Files_External\Config\ExternalMountPoint;
 use OCP\Constants;
 use OCP\Files\Cache\ICacheEntry;
 use OCP\Files\NotFoundException;
 use OCP\Files\Storage\IDisableEncryptionStorage;
 use OCP\Files\Storage\IStorage;
 use OCP\Lock\ILockingProvider;
-use OC\User\NoUserException;
 
 /**
  * Convert target path to source path and pass the function call to the correct storage provider
@@ -125,11 +129,12 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 		$this->initialized = true;
 		try {
 			Filesystem::initMountPoints($this->superShare->getShareOwner());
-			$sourcePath = $this->ownerView->getPath($this->superShare->getNodeId());
-			list($this->nonMaskedStorage, $this->rootPath) = $this->ownerView->resolvePath($sourcePath);
+			$storageId = $this->superShare->getNodeCacheEntry() ? $this->superShare->getNodeCacheEntry()->getStorageId() : null;
+			$sourcePath = $this->ownerView->getPath($this->superShare->getNodeId(), $storageId);
+			[$this->nonMaskedStorage, $this->rootPath] = $this->ownerView->resolvePath($sourcePath);
 			$this->storage = new PermissionsMask([
 				'storage' => $this->nonMaskedStorage,
-				'mask' => $this->superShare->getPermissions()
+				'mask' => $this->superShare->getPermissions(),
 			]);
 		} catch (NotFoundException $e) {
 			// original file not accessible or deleted, set FailedStorage
@@ -160,7 +165,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 		if ($class === '\OC\Files\Storage\Common') {
 			return true;
 		}
-		if (in_array($class, ['\OC\Files\Storage\Home', '\OC\Files\ObjectStore\HomeObjectStoreStorage'])) {
+		if (in_array($class, ['\OC\Files\Storage\Home', '\OC\Files\ObjectStore\HomeObjectStoreStorage', '\OCP\Files\IHomeStorage'])) {
 			return false;
 		}
 		return parent::instanceOfStorage($class);
@@ -223,7 +228,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 		}
 		/** @var IStorage $storage */
 		/** @var string $internalPath */
-		list($storage, $internalPath) = $this->resolvePath($path);
+		[$storage, $internalPath] = $this->resolvePath($path);
 		return $storage->isReadable($internalPath);
 	}
 
@@ -243,61 +248,59 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 	}
 
 	public function fopen($path, $mode) {
-		if ($source = $this->getUnjailedPath($path)) {
-			switch ($mode) {
-				case 'r+':
-				case 'rb+':
-				case 'w+':
-				case 'wb+':
-				case 'x+':
-				case 'xb+':
-				case 'a+':
-				case 'ab+':
-				case 'w':
-				case 'wb':
-				case 'x':
-				case 'xb':
-				case 'a':
-				case 'ab':
-					$creatable = $this->isCreatable(dirname($path));
-					$updatable = $this->isUpdatable($path);
-					// if neither permissions given, no need to continue
-					if (!$creatable && !$updatable) {
-						if (pathinfo($path, PATHINFO_EXTENSION) === 'part') {
-							$updatable = $this->isUpdatable(dirname($path));
-						}
-
-						if (!$updatable) {
-							return false;
-						}
+		$source = $this->getUnjailedPath($path);
+		switch ($mode) {
+			case 'r+':
+			case 'rb+':
+			case 'w+':
+			case 'wb+':
+			case 'x+':
+			case 'xb+':
+			case 'a+':
+			case 'ab+':
+			case 'w':
+			case 'wb':
+			case 'x':
+			case 'xb':
+			case 'a':
+			case 'ab':
+				$creatable = $this->isCreatable(dirname($path));
+				$updatable = $this->isUpdatable($path);
+				// if neither permissions given, no need to continue
+				if (!$creatable && !$updatable) {
+					if (pathinfo($path, PATHINFO_EXTENSION) === 'part') {
+						$updatable = $this->isUpdatable(dirname($path));
 					}
 
-					$exists = $this->file_exists($path);
-					// if a file exists, updatable permissions are required
-					if ($exists && !$updatable) {
+					if (!$updatable) {
 						return false;
 					}
+				}
 
-					// part file is allowed if !$creatable but the final file is $updatable
-					if (pathinfo($path, PATHINFO_EXTENSION) !== 'part') {
-						if (!$exists && !$creatable) {
-							return false;
-						}
+				$exists = $this->file_exists($path);
+				// if a file exists, updatable permissions are required
+				if ($exists && !$updatable) {
+					return false;
+				}
+
+				// part file is allowed if !$creatable but the final file is $updatable
+				if (pathinfo($path, PATHINFO_EXTENSION) !== 'part') {
+					if (!$exists && !$creatable) {
+						return false;
 					}
-			}
-			$info = array(
-				'target' => $this->getMountPoint() . $path,
-				'source' => $source,
-				'mode' => $mode,
-			);
-			\OCP\Util::emitHook('\OC\Files\Storage\Shared', 'fopen', $info);
-			return $this->nonMaskedStorage->fopen($this->getUnjailedPath($path), $mode);
+				}
 		}
-		return false;
+		$info = [
+			'target' => $this->getMountPoint() . '/' . $path,
+			'source' => $source,
+			'mode' => $mode,
+		];
+		\OCP\Util::emitHook('\OC\Files\Storage\Shared', 'fopen', $info);
+		return $this->nonMaskedStorage->fopen($this->getUnjailedPath($path), $mode);
 	}
 
 	/**
-	 * see http://php.net/manual/en/function.rename.php
+	 * see https://www.php.net/manual/en/function.rename.php
 	 *
 	 * @param string $path1
 	 * @param string $path2
@@ -307,9 +310,9 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 		$this->init();
 		$isPartFile = pathinfo($path1, PATHINFO_EXTENSION) === 'part';
 		$targetExists = $this->file_exists($path2);
-		$sameFodler = dirname($path1) === dirname($path2);
+		$sameFolder = dirname($path1) === dirname($path2);
 
-		if ($targetExists || ($sameFodler && !$isPartFile)) {
+		if ($targetExists || ($sameFolder && !$isPartFile)) {
 			if (!$this->isUpdatable('')) {
 				return false;
 			}
@@ -379,7 +382,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 		if (!$storage) {
 			$storage = $this;
 		}
-		$sourceRoot  = $this->getSourceRootInfo();
+		$sourceRoot = $this->getSourceRootInfo();
 		if ($this->storage instanceof FailedStorage) {
 			return new FailedCache();
 		}
@@ -397,6 +400,24 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 
 	public function getOwner($path) {
 		return $this->superShare->getShareOwner();
+	}
+
+	public function getWatcher($path = '', $storage = null): Watcher {
+		$mountManager = \OC::$server->getMountManager();
+
+		// Get node informations
+		$node = $this->getShare()->getNodeCacheEntry();
+		if ($node) {
+			$mount = $mountManager->findByNumericId($node->getStorageId());
+			// If the share is originating from an external storage
+			if (count($mount) > 0 && $mount[0] instanceof ExternalMountPoint) {
+				// Propagate original storage scan
+				return parent::getWatcher($path, $storage);
+			}
+		}
+
+		// cache updating is handled by the share source
+		return new NullWatcher();
 	}
 
 	/**
@@ -419,7 +440,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 	 */
 	public function acquireLock($path, $type, ILockingProvider $provider) {
 		/** @var \OCP\Files\Storage $targetStorage */
-		list($targetStorage, $targetInternalPath) = $this->resolvePath($path);
+		[$targetStorage, $targetInternalPath] = $this->resolvePath($path);
 		$targetStorage->acquireLock($targetInternalPath, $type, $provider);
 		// lock the parent folders of the owner when locking the share as recipient
 		if ($path === '') {
@@ -435,7 +456,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 	 */
 	public function releaseLock($path, $type, ILockingProvider $provider) {
 		/** @var \OCP\Files\Storage $targetStorage */
-		list($targetStorage, $targetInternalPath) = $this->resolvePath($path);
+		[$targetStorage, $targetInternalPath] = $this->resolvePath($path);
 		$targetStorage->releaseLock($targetInternalPath, $type, $provider);
 		// unlock the parent folders of the owner when unlocking the share as recipient
 		if ($path === '') {
@@ -451,7 +472,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 	 */
 	public function changeLock($path, $type, ILockingProvider $provider) {
 		/** @var \OCP\Files\Storage $targetStorage */
-		list($targetStorage, $targetInternalPath) = $this->resolvePath($path);
+		[$targetStorage, $targetInternalPath] = $this->resolvePath($path);
 		$targetStorage->changeLock($targetInternalPath, $type, $provider);
 	}
 
@@ -462,7 +483,7 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 		// shares do not participate in availability logic
 		return [
 			'available' => true,
-			'last_checked' => 0
+			'last_checked' => 0,
 		];
 	}
 
@@ -503,5 +524,10 @@ class SharedStorage extends \OC\Files\Storage\Wrapper\Jail implements ISharedSto
 
 	public function setMountOptions(array $options) {
 		$this->mountOptions = $options;
+	}
+
+	public function getUnjailedPath($path) {
+		$this->init();
+		return parent::getUnjailedPath($path);
 	}
 }

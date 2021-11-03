@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -20,9 +22,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OC\Core\Controller;
 
 use bantu\IniGetWrapper\IniGetWrapper;
@@ -35,6 +38,7 @@ use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\Defaults;
 use OCP\IConfig;
 use OCP\IGroupManager;
+use OCP\IInitialStateService;
 use OCP\IRequest;
 use OCP\ISession;
 use OCP\IURLGenerator;
@@ -61,6 +65,7 @@ class OCJSController extends Controller {
 	 * @param IniGetWrapper $iniWrapper
 	 * @param IURLGenerator $urlGenerator
 	 * @param CapabilitiesManager $capabilitiesManager
+	 * @param IInitialStateService $initialStateService
 	 */
 	public function __construct($appName,
 								IRequest $request,
@@ -73,7 +78,8 @@ class OCJSController extends Controller {
 								IGroupManager $groupManager,
 								IniGetWrapper $iniWrapper,
 								IURLGenerator $urlGenerator,
-								CapabilitiesManager $capabilitiesManager) {
+								CapabilitiesManager $capabilitiesManager,
+								IInitialStateService $initialStateService) {
 		parent::__construct($appName, $request);
 
 		$this->helper = new JSConfigHelper(
@@ -86,7 +92,8 @@ class OCJSController extends Controller {
 			$groupManager,
 			$iniWrapper,
 			$urlGenerator,
-			$capabilitiesManager
+			$capabilitiesManager,
+			$initialStateService
 		);
 	}
 

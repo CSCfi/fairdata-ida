@@ -1,15 +1,14 @@
 <?php
+
 declare(strict_types=1);
 
-
 /**
- * Nextcloud - Dashboard App
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Maxence Lange <maxence@artificial-owl.com>
  * @copyright 2018, Maxence Lange <maxence@artificial-owl.com>
+ *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Maxence Lange <maxence@artificial-owl.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,15 +22,13 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCP\Dashboard\Model;
 
-
 use JsonSerializable;
-
 
 /**
  * Interface WidgetSetup
@@ -42,15 +39,13 @@ use JsonSerializable;
  * @see IDashboardWidget::getWidgetSetup
  *
  * @since 15.0.0
+ * @deprecated 20.0.0
  *
- * @package OCP\Dashboard\Model
  */
 final class WidgetSetup implements JsonSerializable {
-
-
-	const SIZE_TYPE_MIN = 'min';
-	const SIZE_TYPE_MAX = 'max';
-	const SIZE_TYPE_DEFAULT = 'default';
+	public const SIZE_TYPE_MIN = 'min';
+	public const SIZE_TYPE_MAX = 'max';
+	public const SIZE_TYPE_DEFAULT = 'default';
 
 
 	/** @var array */
@@ -79,6 +74,7 @@ final class WidgetSetup implements JsonSerializable {
 	 *
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $type
 	 *
@@ -96,6 +92,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * Returns all sizes defined for the widget.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -107,6 +104,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * Add a new size to the setup.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $type
 	 * @param int $width
@@ -127,6 +125,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * Returns menu entries.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -142,6 +141,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * $text is the display name of the menu entry.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $function
 	 * @param string $icon
@@ -167,6 +167,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * $delay is the time in seconds between each call.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $function
 	 * @param int $delay
@@ -186,6 +187,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * Get delayed jobs.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -198,6 +200,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * Get the push function, called when an event is send to the front-end
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return string
 	 */
@@ -210,6 +213,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * frontend.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param string $function
 	 *
@@ -226,6 +230,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * Returns the default settings for a widget.
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -241,6 +246,7 @@ final class WidgetSetup implements JsonSerializable {
 	 * @see WidgetSetting
 	 *
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @param array $settings
 	 *
@@ -255,6 +261,7 @@ final class WidgetSetup implements JsonSerializable {
 
 	/**
 	 * @since 15.0.0
+	 * @deprecated 20.0.0
 	 *
 	 * @return array
 	 */
@@ -268,4 +275,3 @@ final class WidgetSetup implements JsonSerializable {
 		];
 	}
 }
-

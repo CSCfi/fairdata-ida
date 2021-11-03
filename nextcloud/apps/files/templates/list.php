@@ -1,37 +1,31 @@
-<!--
-This file is part of the IDA research data storage service
- 
-@author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
-@link     https://research.csc.fi/
--->
-
-
 <div id="controls">
 		<div class="actions creatable hidden">
 			<div id="uploadprogresswrapper">
 			</div>
 		</div>
 		<div id="file_action_panel"></div>
-		<div class="notCreatable notPublic hidden" tabindex="0">
-            <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
+		<div class="notCreatable notPublic hidden">
+			<div class="icon-alert-outline"></div>
+			<?php p($l->t('You don’t have permission to upload or create files here'))?>
 		</div>
 	<?php /* Note: the template attributes are here only for the public page. These are normally loaded
 			 through ajax instead (updateStorageStatistics).
 	*/ ?>
 	<input type="hidden" name="permissions" value="" id="permissions">
 	<input type="hidden" id="free_space" value="<?php isset($_['freeSpace']) ? p($_['freeSpace']) : '' ?>">
-	<?php if(isset($_['dirToken'])):?>
+	<?php if (isset($_['dirToken'])):?>
 	<input type="hidden" id="publicUploadRequestToken" name="requesttoken" value="<?php p($_['requesttoken']) ?>" />
 	<input type="hidden" id="dirToken" name="dirToken" value="<?php p($_['dirToken']) ?>" />
 	<?php endif;?>
 	<input type="hidden" class="max_human_file_size"
 		   value="(max <?php isset($_['uploadMaxHumanFilesize']) ? p($_['uploadMaxHumanFilesize']) : ''; ?>)">
 </div>
+<div id="filelist-header"></div>
 
 <div id="emptycontent" class="hidden">
 	<div class="icon-folder"></div>
 	<h2><?php p($l->t('No files in here')); ?></h2>
-	<p class="uploadmessage hidden"><?php p($l->t('Upload some content!')); ?></p>
+	<p class="uploadmessage hidden"><?php p($l->t('Upload some content or sync with your devices!')); ?></p>
 </div>
 
 <div class="nofilterresults emptycontent hidden">
@@ -51,7 +45,7 @@ This file is part of the IDA research data storage service
 			<th id='headerName' class="hidden column-name">
 				<div id="headerName-container">
 					<a class="name sort columntitle" data-sort="name">
-                        <span><?php p($l->t( 'Name' )); ?></span>
+                        <span><?php p($l->t('Name')); ?></span>
                         <span class="sort-indicator"></span>
 
                     </a>
@@ -67,7 +61,7 @@ This file is part of the IDA research data storage service
 				<a class="size sort columntitle" data-sort="size"><span><?php p($l->t('Size')); ?></span><span class="sort-indicator"></span></a>
 			</th>
 			<th id="headerDate" class="hidden column-mtime">
-				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t( 'Modified' )); ?></span><span class="sort-indicator"></span></a>
+				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t('Modified')); ?></span><span class="sort-indicator"></span></a>
 			</th>
 		</tr>
 	</thead>
@@ -76,6 +70,7 @@ This file is part of the IDA research data storage service
 	<tfoot>
 	</tfoot>
 </table>
+<div id="filelist-footer"></div>
 <input type="hidden" name="dir" id="dir" value="" />
 <div class="hiddenuploadfield">
 	<input type="file" id="file_upload_start" class="hiddenuploadfield" name="files[]" />

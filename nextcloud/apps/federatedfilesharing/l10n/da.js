@@ -1,7 +1,6 @@
 OC.L10N.register(
     "federatedfilesharing",
     {
-    "Federated sharing" : "Datafællesskabsdeling",
     "Do you want to add the remote share {name} from {owner}@{remote}?" : "Ønsker du at tilføje det eksterne drev  {name} fra {owner}@{remote}?",
     "Remote share" : "Eksterne drev",
     "Remote share password" : "Fjerndrev adgangskode",
@@ -21,9 +20,8 @@ OC.L10N.register(
     "Not allowed to create a federated share with the same user" : "Det er ikke tilladt at danne et datafællesskab med samme bruger",
     "File is already shared with %s" : "Filen deles allerede med %s",
     "Could not find share" : "Kan ikke finde deling",
-    "You received \"%3$s\" as a remote share from %1$s (on behalf of %2$s)" : "Du modtog \"/%3$s\" som en ekstern deling fra %1$s (på vegne af %2$s)",
+    "Federated sharing" : "Datafællesskabsdeling",
     "You received {share} as a remote share from {user} (on behalf of {behalf})" : "Du modtog {share} som en ekstern deling fra {user} (på vegne af {behalf})",
-    "You received \"%3$s\" as a remote share from %1$s" : "Du modtog \"%3$s\" som en ekstern deling fra %1$s",
     "You received {share} as a remote share from {user}" : "Du modtog {share} som en ekstern deling fra {user}",
     "Accept" : "Acceptér",
     "Decline" : "Afvis",
@@ -32,8 +30,6 @@ OC.L10N.register(
     "Sharing" : "Deling",
     "Federated Cloud Sharing" : "Sammensluttet Cloud deling",
     "Open documentation" : "Åbn dokumentation",
-    "Adjust how people can share between servers." : "Juster hvordan folk kan dele mellem servere.",
-    "Allow users on this server to send shares to other servers" : "Tillad brugere på denne server, at sende delinger til andre servere",
     "Allow users on this server to receive shares from other servers" : "Tillad brugere på denne server, at modtage delinger fra andre servere",
     "Search global and public address book for users" : "Søg global og offentlig adresse bog for brugere",
     "Allow users to publish their data to a global and public address book" : "Tillad brugere at offentliggøre deres data til en global adressebog ",
@@ -43,7 +39,6 @@ OC.L10N.register(
     "Add to your website" : "Tilføj til dit websted",
     "Share with me via Nextcloud" : "Del med mig gennem Nextcloud",
     "HTML Code:" : "HTMLkode:",
-    "Sharing %s failed, because this item is already shared with %s" : "Der skete en fejl ved deling af %s, objektet er allerede delt med %s",
-    "Sharing %s failed, could not find %s, maybe the server is currently unreachable or uses a self-signed certificate." : "Deling af %s mislykkedes - kunne ikke finde %s. Måske er serveren ikke tilgængelig i øjeblikket eller bruger et selv underskrevet certifikat."
+    "Adjust how people can share between servers." : "Juster hvordan folk kan dele mellem servere."
 },
 "nplurals=2; plural=(n != 1);");

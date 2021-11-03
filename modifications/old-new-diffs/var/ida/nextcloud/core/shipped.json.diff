@@ -1,0 +1,23 @@
+7a8,9
+>     "contactsinteraction",
+>     "dashboard",
+14a17
+>     "files_rightclick",
+16d18
+<     "files_texteditor",
+21d22
+<     "gallery",
+27a29
+>     "photos",
+30a33
+>     "settings",
+35a39
+>     "text",
+39a44
+>     "user_status",
+40a46
+>     "weather_status",
+50a57
+>     "settings",
+51a59
+>     "viewer",

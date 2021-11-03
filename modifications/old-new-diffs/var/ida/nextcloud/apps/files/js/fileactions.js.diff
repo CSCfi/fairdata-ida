@@ -1,0 +1,68 @@
+259a260,272
+> 		 * Returns the default file action handler for the current file
+> 		 *
+> 		 * @return {OCA.Files.FileActions~actionSpec} action spec
+> 		 * @since 8.2
+> 		 */
+> 		getCurrentDefaultFileAction: function() {
+> 			var mime = this.getCurrentMimeType();
+> 			var type = this.getCurrentType();
+> 			var permissions = this.getCurrentPermissions();
+> 			return this.getDefaultFileAction(mime, type, permissions);
+> 		},
+> 
+> 		/**
+266c279
+< 		 * @return {OCA.Files.FileActions~actionHandler} action handler
+---
+> 		 * @return {OCA.Files.FileActions~actionSpec} action spec
+412,413d424
+< 					// also set on global object for legacy apps
+< 					window.FileActions.currentFile = currentFile;
+483,484d493
+< 			// also set on global object for legacy apps
+< 			window.FileActions.currentFile = fileName;
+662c671
+< 						context.fileList.dirInfo.dirLastCopiedTo = targetPath; 
+---
+> 						context.fileList.dirInfo.dirLastCopiedTo = targetPath;
+688c697,700
+< 					var deleteTitle = t('files', 'Delete');
+---
+> 					var type = context.$file.attr('data-type');
+> 					var deleteTitle = (type && type === 'file')
+> 						? t('files', 'Delete file')
+> 						: t('files', 'Delete folder')
+692c704
+< 						deleteTitle = t('files', 'Unshare');
+---
+> 						deleteTitle = t('files', 'Leave this share');
+707a720,725
+> 
+> 					// close sidebar on delete
+> 					const path = context.dir + '/' + fileName
+> 					if (OCA.Files.Sidebar && OCA.Files.Sidebar.file === path) {
+> 						OCA.Files.Sidebar.close()
+> 					}
+814,834d831
+< 	OCA.Files.legacyFileActions = new OCA.Files.FileActions();
+< 
+< 	// for backward compatibility
+< 	//
+< 	// legacy apps are expecting a stateful global FileActions object to register
+< 	// their actions on. Since legacy apps are very likely to break with other
+< 	// FileList views than the main one ("All files"), actions registered
+< 	// through window.FileActions will be limited to the main file list.
+< 	// @deprecated use OCA.Files.FileActions instead
+< 	window.FileActions = OCA.Files.legacyFileActions;
+< 	window.FileActions.register = function (mime, name, permissions, icon, action, displayName) {
+< 		console.warn('FileActions.register() is deprecated, please use OCA.Files.fileActions.register() instead', arguments);
+< 		OCA.Files.FileActions.prototype.register.call(
+< 				window.FileActions, mime, name, permissions, icon, action, displayName
+< 		);
+< 	};
+< 	window.FileActions.display = function (parent, triggerEvent, fileList) {
+< 		fileList = fileList || OCA.Files.App.fileList;
+< 		console.warn('FileActions.display() is deprecated, please use OCA.Files.fileActions.register() which automatically redisplays actions', mime, name);
+< 		OCA.Files.FileActions.prototype.display.call(window.FileActions, parent, triggerEvent, fileList);
+< 	};

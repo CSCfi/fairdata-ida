@@ -1,0 +1,28 @@
+5a6
+>  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+7a9
+>  * @author Roeland Jago Douma <roeland@famdouma.nl>
+23c25
+<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
+---
+>  * along with this program. If not, see <http://www.gnu.org/licenses/>
+55c57,59
+< 	public function __construct($data=array(), $statusCode=Http::STATUS_OK) {
+---
+> 	public function __construct($data = [], $statusCode = Http::STATUS_OK) {
+> 		parent::__construct();
+> 
+70c74
+< 		if($response === false) {
+---
+> 		if ($response === false) {
+85c89
+< 	public function setData($data){
+---
+> 	public function setData($data) {
+97c101
+< 	public function getData(){
+---
+> 	public function getData() {
+100d103
+< 

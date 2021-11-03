@@ -17,7 +17,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,7 +26,6 @@ namespace OCP\Calendar\Resource;
 /**
  * Interface IResource
  *
- * @package OCP\Calendar\Resource
  * @since 14.0.0
  */
 interface IResource {

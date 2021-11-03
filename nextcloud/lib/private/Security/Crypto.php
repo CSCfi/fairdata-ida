@@ -1,10 +1,14 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Andreas Fischer <bantu@owncloud.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author lynn-stephenson <lynn.stephenson@protonmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -20,18 +24,17 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
-
 namespace OC\Security;
 
-use phpseclib\Crypt\AES;
-use phpseclib\Crypt\Hash;
+use OCP\IConfig;
 use OCP\Security\ICrypto;
 use OCP\Security\ISecureRandom;
-use OCP\IConfig;
+use phpseclib\Crypt\AES;
+use phpseclib\Crypt\Hash;
 
 /**
  * Class Crypto provides a high-level encryption layer using AES-CBC. If no key has been provided
@@ -50,17 +53,14 @@ class Crypto implements ICrypto {
 	private $ivLength = 16;
 	/** @var IConfig */
 	private $config;
-	/** @var ISecureRandom */
-	private $random;
 
 	/**
 	 * @param IConfig $config
 	 * @param ISecureRandom $random
 	 */
-	public function __construct(IConfig $config, ISecureRandom $random) {
+	public function __construct(IConfig $config) {
 		$this->cipher = new AES();
 		$this->config = $config;
-		$this->random = $random;
 	}
 
 	/**
@@ -69,7 +69,7 @@ class Crypto implements ICrypto {
 	 * @return string Calculated HMAC
 	 */
 	public function calculateHMAC(string $message, string $password = ''): string {
-		if($password === '') {
+		if ($password === '') {
 			$password = $this->config->getSystemValue('secret');
 		}
 
@@ -88,18 +88,20 @@ class Crypto implements ICrypto {
 	 * @return string Authenticated ciphertext
 	 */
 	public function encrypt(string $plaintext, string $password = ''): string {
-		if($password === '') {
+		if ($password === '') {
 			$password = $this->config->getSystemValue('secret');
 		}
-		$this->cipher->setPassword($password);
+		$keyMaterial = hash_hkdf('sha512', $password);
+		$this->cipher->setPassword(substr($keyMaterial, 0, 32));
 
-		$iv = $this->random->generate($this->ivLength);
+		$iv = \random_bytes($this->ivLength);
 		$this->cipher->setIV($iv);
 
 		$ciphertext = bin2hex($this->cipher->encrypt($plaintext));
-		$hmac = bin2hex($this->calculateHMAC($ciphertext.$iv, $password));
+		$iv = bin2hex($iv);
+		$hmac = bin2hex($this->calculateHMAC($ciphertext.$iv, substr($keyMaterial, 32)));
 
-		return $ciphertext.'|'.$iv.'|'.$hmac;
+		return $ciphertext.'|'.$iv.'|'.$hmac.'|3';
 	}
 
 	/**
@@ -114,20 +116,34 @@ class Crypto implements ICrypto {
 		if ($password === '') {
 			$password = $this->config->getSystemValue('secret');
 		}
-		$this->cipher->setPassword($password);
+		$hmacKey = $encryptionKey = $password;
 
 		$parts = explode('|', $authenticatedCiphertext);
-		if (\count($parts) !== 3) {
+		$partCount = \count($parts);
+		if ($partCount < 3 || $partCount > 4) {
 			throw new \Exception('Authenticated ciphertext could not be decoded.');
 		}
 
-		$ciphertext = hex2bin($parts[0]);
+		$ciphertext = $this->hex2bin($parts[0]);
 		$iv = $parts[1];
-		$hmac = hex2bin($parts[2]);
+		$hmac = $this->hex2bin($parts[2]);
 
+		if ($partCount === 4) {
+			$version = $parts[3];
+			if ($version >= '2') {
+				$iv = $this->hex2bin($iv);
+			}
+
+			if ($version === '3') {
+				$keyMaterial = hash_hkdf('sha512', $password);
+				$encryptionKey = substr($keyMaterial, 0, 32);
+				$hmacKey = substr($keyMaterial, 32);
+			}
+		}
+		$this->cipher->setPassword($encryptionKey);
 		$this->cipher->setIV($iv);
 
-		if (!hash_equals($this->calculateHMAC($parts[0] . $parts[1], $password), $hmac)) {
+		if (!hash_equals($this->calculateHMAC($parts[0] . $parts[1], $hmacKey), $hmac)) {
 			throw new \Exception('HMAC does not match.');
 		}
 
@@ -139,4 +155,19 @@ class Crypto implements ICrypto {
 		return $result;
 	}
 
+	private function hex2bin(string $hex): string {
+		if (!ctype_xdigit($hex)) {
+			throw new \RuntimeException('String contains non hex chars: ' . $hex);
+		}
+		if (strlen($hex) % 2 !== 0) {
+			throw new \RuntimeException('Hex string is not of even length: ' . $hex);
+		}
+		$result = hex2bin($hex);
+
+		if ($result === false) {
+			throw new \RuntimeException('Hex to bin conversion failed: ' . $hex);
+		}
+
+		return $result;
+	}
 }

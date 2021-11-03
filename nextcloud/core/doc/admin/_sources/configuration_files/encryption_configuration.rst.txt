@@ -6,12 +6,12 @@ The primary purpose of the Nextcloud server-side encryption is to protect users'
 files on remote storage, such as Dropbox and Google Drive, and to do it easily 
 and seamlessly from within Nextcloud.
 
-In Nextcloud 9.0 the server-side encryption separates encryption of local and 
-remote storage. This allows you to encrypt remote storage, such as Dropbox and 
+Server-side encryption separates encryption of local and remote storage. 
+This allows you to encrypt remote storage, such as Dropbox and 
 Google, without having to also encrypt your home storage on your Nextcloud 
 server.
 
-.. note:: Starting with Nextcloud 9.0 we support Authenticated Encryption for all
+.. note:: Nextcloud supports Authenticated Encryption for all
    newly encrypted files. See https://hackerone.com/reports/108082 for more 
    technical information about the impact.
    
@@ -70,8 +70,7 @@ storage.
    termination and the Nextcloud code that encrypts and decrypts files. This is 
    also potentially exploitable by anyone with administrator access to your 
    server. Read `How Nextcloud uses encryption to protect your data 
-   <https://owncloud.org/blog/how-owncloud-uses-encryption-to-protect-your- 
-   data/>`_ for more information.
+   <https://nextcloud.com/blog/encryption-in-nextcloud/>`_ for more information.
    
 Before enabling encryption
 --------------------------
@@ -212,14 +211,9 @@ The [module ID] is taken from the ``encryption:list-modules`` command.
 
 Encrypt all data files for all users. For performance reasons, when you enable 
 encryption on a Nextcloud server only new and changed files are encrypted. This 
-command gives you the option to encrypt all files. You must first put your 
-Nextcloud server into maintenance mode to prevent any user activity until
-encryption is completed::
+command gives you the option to encrypt all files. 
 
- occ maintenance:mode --on
- Maintenance mode is currently enabled
-
-Then run ``occ``::
+Run ``occ``::
 
  occ encryption:encrypt-all
  
@@ -305,3 +299,15 @@ both their old and new passwords to do this. If you have enabled the Recovery
 Key then you can change a user's password in the Nextcloud Users panel to match 
 their back-end password, and then, of course, notify the user and give them 
 their new password.
+
+Troubleshooting
+---------------
+
+Invalid private key for encryption app
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This `issue <https://github.com/nextcloud/server/issues/8546>`_ is being worked
+on. In the meantime there is a 
+`workaround <https://github.com/nextcloud/server/issues/8546#issuecomment-514139714>`_
+which unfortunately is only suitable for administrators comfortable with the
+command line.

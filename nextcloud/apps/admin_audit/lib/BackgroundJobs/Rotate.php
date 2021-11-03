@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2018 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +18,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -30,7 +31,7 @@ class Rotate extends TimedJob {
 	use RotationTrait;
 
 	public function __construct() {
-		$this->setInterval(60*60*3);
+		$this->setInterval(60 * 60 * 3);
 	}
 
 	protected function run($argument) {
@@ -38,14 +39,14 @@ class Rotate extends TimedJob {
 		$default = $config->getSystemValue('datadirectory', \OC::$SERVERROOT . '/data') . '/audit.log';
 		$this->filePath = $config->getAppValue('admin_audit', 'logfile', $default);
 
-		if($this->filePath === '') {
+		if ($this->filePath === '') {
 			// default log file, nothing to do
 			return;
 		}
 
 		$this->maxSize = $config->getSystemValue('log_rotate_size', 100 * 1024 * 1024);
 
-		if($this->shouldRotateBySize()) {
+		if ($this->shouldRotateBySize()) {
 			$this->rotate();
 		}
 	}

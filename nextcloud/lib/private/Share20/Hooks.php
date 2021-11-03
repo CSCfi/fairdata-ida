@@ -16,9 +16,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OC\Share20;
 
 class Hooks {
@@ -28,9 +29,5 @@ class Hooks {
 
 	public static function post_deleteGroup($arguments) {
 		\OC::$server->getShareManager()->groupDeleted($arguments['gid']);
-	}
-
-	public static function post_removeFromGroup($arguments) {
-		\OC::$server->getShareManager()->userDeletedFromGroup($arguments['uid'], $arguments['gid']);
 	}
 }

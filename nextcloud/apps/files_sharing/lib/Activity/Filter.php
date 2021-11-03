@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,20 +18,19 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCA\Files_Sharing\Activity;
-
 
 use OCP\Activity\IFilter;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 
 class Filter implements IFilter {
-	const TYPE_REMOTE_SHARE = 'remote_share';
-	const TYPE_SHARED = 'shared';
+	public const TYPE_REMOTE_SHARE = 'remote_share';
+	public const TYPE_SHARED = 'shared';
 
 	/** @var IL10N */
 	protected $l;
@@ -83,7 +83,8 @@ class Filter implements IFilter {
 	public function filterTypes(array $types) {
 		return array_intersect([
 			self::TYPE_SHARED,
-			self::TYPE_REMOTE_SHARE
+			self::TYPE_REMOTE_SHARE,
+			'file_downloaded',
 		], $types);
 	}
 
@@ -92,6 +93,9 @@ class Filter implements IFilter {
 	 * @since 11.0.0
 	 */
 	public function allowedApps() {
-		return ['files_sharing'];
+		return [
+			'files_sharing',
+			'files_downloadactivity',
+		];
 	}
 }
