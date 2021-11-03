@@ -62,7 +62,7 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 >> Execute /var/ida/utils/restart-www
 >> Open Nextcloud in browser, and approve the update process when prompted
 >> Log in as admin and disable all apps except those listed in essential_nextcloud_apps, and disable / do not enable the IDA app
->> Go to the admin/settings/overview page and follow guidance as recommended, except do not enable filelocking.
+>> Go to the admin/settings/overview page and follow guidance as recommended and relevant, except do not enable filelocking.
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
 >> Execute /var/ida/utils/restart-www
 >> Log in as admin and enable IDA app
@@ -86,4 +86,8 @@ generate-diffs, and will be stored in the ./diffs/ subdirectory by their relativ
 
 A list of files modified in the old version of nextcloud which do not exist in the new version
 of nextcloud can be obtaind via the script list-missing-new-modified-files.
+
+Original copies of files modified in the old nextcloud can be created in the new nextcloud, for
+those that exist in the new nextcloud, using the script create-new-original-files.
+
 
