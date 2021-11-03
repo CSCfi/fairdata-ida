@@ -1,12 +1,23 @@
-1a2,8
-> /*
->  * This file is part of the IDA research data storage service
->  *
->  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
->  * @link     https://research.csc.fi/
->  */
-> 
-51c58
-< 	const TOKEN_LENGTH = 15; // old (oc7) length is 32, keep token length in db at least that for compatibility
----
-> 	const TOKEN_LENGTH = 12; // old (oc7) length is 32, keep token length in db at least that for compatibility
+--- /var/ida/nextcloud-old/lib/private/Share/Constants.php	2021-10-27 10:25:31.290497247 +0000
++++ /var/ida/nextcloud-old/lib/private/Share/Constants.php.original	2021-10-27 10:25:31.290497247 +0000
+@@ -1,11 +1,4 @@
+ <?php
+-/*
+- * This file is part of the IDA research data storage service
+- *
+- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+- * @link     https://research.csc.fi/
+- */
+-
+ /**
+  * @copyright Copyright (c) 2016, ownCloud, Inc.
+  *
+@@ -55,7 +48,7 @@
+ 
+ 	const RESPONSE_FORMAT = 'json'; // default resonse format for ocs calls
+ 
+-	const TOKEN_LENGTH = 12; // old (oc7) length is 32, keep token length in db at least that for compatibility
++	const TOKEN_LENGTH = 15; // old (oc7) length is 32, keep token length in db at least that for compatibility
+ 
+ 	protected static $shareTypeUserAndGroups = -1;
+ 	protected static $shareTypeGroupUserUnique = 2;

@@ -1,11 +1,18 @@
-61,63c61,66
-< $color-text-maxcontrast: nc-lighten($color-main-text, 46.2%) !default;
-< $color-text-light: nc-lighten($color-main-text, 15%) !default;
-< $color-text-lighter: nc-lighten($color-main-text, 30%) !default;
----
-> //$color-text-maxcontrast: nc-lighten($color-main-text, 46.2%) !default;
-> //$color-text-light: nc-lighten($color-main-text, 15%) !default;
-> //$color-text-lighter: nc-lighten($color-main-text, 30%) !default;
-> $color-text-maxcontrast: #222 !default;
-> $color-text-light: #222 !default;
-> $color-text-lighter: #222 !default;
+--- /var/ida/nextcloud-old/core/css/variables.scss	2021-10-27 10:25:30.760495967 +0000
++++ /var/ida/nextcloud-old/core/css/variables.scss.original	2021-10-27 10:25:30.760495967 +0000
+@@ -58,12 +58,9 @@
+ // rgb(118, 118, 118) / #767676
+ // min. color contrast for normal text on white background according to WCAG AA
+ // (Works as well: color: #000; opacity: 0.57;)
+-//$color-text-maxcontrast: nc-lighten($color-main-text, 46.2%) !default;
+-//$color-text-light: nc-lighten($color-main-text, 15%) !default;
+-//$color-text-lighter: nc-lighten($color-main-text, 30%) !default;
+-$color-text-maxcontrast: #222 !default;
+-$color-text-light: #222 !default;
+-$color-text-lighter: #222 !default;
++$color-text-maxcontrast: nc-lighten($color-main-text, 46.2%) !default;
++$color-text-light: nc-lighten($color-main-text, 15%) !default;
++$color-text-lighter: nc-lighten($color-main-text, 30%) !default;
+ 
+ $image-logo: url('../img/logo/logo.svg?v=1') !default;
+ $image-login-background: url('../img/background.png?v=2') !default;

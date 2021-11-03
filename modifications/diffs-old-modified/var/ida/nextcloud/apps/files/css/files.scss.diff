@@ -1,57 +1,87 @@
-0a1,7
-> /*
->  * This file is part of the IDA research data storage service
->  *
->  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
->  * @link     https://research.csc.fi/
->  */
-> 
-161,162c168,169
-< 	transition: background-color 0.3s ease;
-< 	background-color: var(--color-background-dark);
----
-> 	transition: background-color 0.2s ease;
->     background-color: #e5f2f7;
-425c432,433
-< 	opacity: 0.3;
----
-> 	/* opacity: 0.3; */
-> 	opacity: 1; /* opacity of 0.3 was too light for Accessibility requirements */
-541c549
-< 		opacity: .3;
----
-> 		opacity: 1;
-567c575
-< 				opacity: .3;
----
-> 				opacity: 1;
-573c581
-< 				opacity: .3;
----
-> 				opacity: 1;
-576c584
-< 				opacity: .7;
----
-> 				opacity: 1;
-578c586
-< 					opacity: .7;
----
-> 					opacity: 1;
-583c591
-< 			opacity: .7;
----
-> 			opacity: 1;
-587c595
-< 		opacity: .7;
----
-> 		opacity: 1;
-631c639,640
-< 	opacity: .3;
----
-> 	/* opacity: .3; */
-> 	opacity: 1;  /* .3 is too light for Accessibility requirements */
-1093c1102
-< }
----
-> }
-\ No newline at end of file
+--- /var/ida/nextcloud-old/apps/files/css/files.scss	2021-10-27 10:25:30.393495080 +0000
++++ /var/ida/nextcloud-old/apps/files/css/files.scss.original	2021-10-27 10:25:30.393495080 +0000
+@@ -1,10 +1,3 @@
+-/*
+- * This file is part of the IDA research data storage service
+- *
+- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+- * @link     https://research.csc.fi/
+- */
+-
+ /* Copyright (c) 2011, Jan-Christoph Borchardt, http://jancborchardt.net
+  This file is licensed under the Affero General Public License version 3 or later.
+  See the COPYING-README file. */
+@@ -165,8 +158,8 @@
+ #filestable tbody tr.searchresult,
+ #filestable tbody tr:hover .filename form,
+ table tr.mouseOver td {
+-	transition: background-color 0.2s ease;
+-    background-color: #e5f2f7;
++	transition: background-color 0.3s ease;
++	background-color: var(--color-background-dark);
+ }
+ tbody a { color: var(--color-main-text); }
+ 
+@@ -429,8 +422,7 @@
+ 
+ /* File checkboxes */
+ #fileList tr td.selection>.selectCheckBox + label:before {
+-	/* opacity: 0.3; */
+-	opacity: 1; /* opacity of 0.3 was too light for Accessibility requirements */
++	opacity: 0.3;
+ }
+ 
+ /* Show checkbox with full opacity when hovering, checked, or selected */
+@@ -546,7 +538,7 @@
+ 		display: inline;
+ 		padding: 17px 8px;
+ 		line-height: 50px;
+-		opacity: 1;
++		opacity: .3;
+ 		&.action-share {
+ 			padding: 17px 14px;
+ 			&.permanent:not(.shared-style) .icon-shared + span {
+@@ -572,27 +564,27 @@
+ 		}
+ 		&.no-permission {
+ 			&:hover, &:focus {
+-				opacity: 1;
++				opacity: .3;
+ 			}
+ 		}
+ 		&.disabled {
+ 			&:hover, &:focus,
+ 			img {
+-				opacity: 1;
++				opacity: .3;
+ 			}
+ 			&.action-download {
+-				opacity: 1;
++				opacity: .7;
+ 				&:hover, &:focus {
+-					opacity: 1;
++					opacity: .7;
+ 				}
+ 			}
+ 		}
+ 		&:hover, &:focus {
+-			opacity: 1;
++			opacity: .7;
+ 		}
+ 	}
+ 	.fileActionsMenu a.action, a.action.action-share.shared-style {
+-		opacity: 1;
++		opacity: .7;
+ 	}
+ }
+ 
+@@ -636,8 +628,7 @@
+ }
+ 
+ .summary {
+-	/* opacity: .3; */
+-	opacity: 1;  /* .3 is too light for Accessibility requirements */
++	opacity: .3;
+ 	/* add whitespace to bottom of files list to correctly show dropdowns */
+ 	height: 250px;
+ }

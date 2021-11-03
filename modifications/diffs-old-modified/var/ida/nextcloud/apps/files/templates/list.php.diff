@@ -1,19 +1,33 @@
-0a1,8
-> <!--
-> This file is part of the IDA research data storage service
->  
-> @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
-> @link     https://research.csc.fi/
-> -->
-> 
-> 
-7,8c15,16
-< 		<div class="notCreatable notPublic hidden">
-< 			<?php p($l->t('You don’t have permission to upload or create files here'))?>
----
-> 		<div class="notCreatable notPublic hidden" tabindex="0">
->             <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
-26c34
-< 	<p class="uploadmessage hidden"><?php p($l->t('Upload some content or sync with your devices!')); ?></p>
----
-> 	<p class="uploadmessage hidden"><?php p($l->t('Upload some content!')); ?></p>
+--- /var/ida/nextcloud-old/apps/files/templates/list.php	2021-10-27 10:25:30.428495165 +0000
++++ /var/ida/nextcloud-old/apps/files/templates/list.php.original	2021-10-27 10:25:30.428495165 +0000
+@@ -1,19 +1,11 @@
+-<!--
+-This file is part of the IDA research data storage service
+- 
+-@author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+-@link     https://research.csc.fi/
+--->
+-
+-
+ <div id="controls">
+ 		<div class="actions creatable hidden">
+ 			<div id="uploadprogresswrapper">
+ 			</div>
+ 		</div>
+ 		<div id="file_action_panel"></div>
+-		<div class="notCreatable notPublic hidden" tabindex="0">
+-            <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
++		<div class="notCreatable notPublic hidden">
++			<?php p($l->t('You don’t have permission to upload or create files here'))?>
+ 		</div>
+ 	<?php /* Note: the template attributes are here only for the public page. These are normally loaded
+ 			 through ajax instead (updateStorageStatistics).
+@@ -31,7 +23,7 @@
+ <div id="emptycontent" class="hidden">
+ 	<div class="icon-folder"></div>
+ 	<h2><?php p($l->t('No files in here')); ?></h2>
+-	<p class="uploadmessage hidden"><?php p($l->t('Upload some content!')); ?></p>
++	<p class="uploadmessage hidden"><?php p($l->t('Upload some content or sync with your devices!')); ?></p>
+ </div>
+ 
+ <div class="nofilterresults emptycontent hidden">

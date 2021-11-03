@@ -1,19 +1,32 @@
-3a4,17
->     "Note to recipient" : "Viesti vastaanottajalle",
->     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Julkinen linkki vanhenee viimeistään {days} päivän jälkeen sen luomisesta, ellei käyttäjä määritä voimassaoloaikaa lyhyemmäksi.",
->     "Log in": "Kirjaudu",
->     "Username" : "Käyttäjätunnus",
->     "Password" : "Salasana",
->     "Login with CSC account": "Kirjaudu CSC-tunnuksella",
->     "Personal CSC accounts are created and managed in": "CSC-tiliä hallinnoidaan",
->     "CSC Customer Portal": "CSC:n asiakasportaalissa",
->     "CSC username" : "CSC-käyttäjätunnus",
->     "CSC password" : "CSC-salasana",
->     "Enter temporary share password:": "Syötä väliaikaisen jakolinkin salasana:",
->     "Upload some content!" : "Lähetä tiedostoja!",
->     "Web, desktop, mobile clients and app specific passwords that currently have access to your account." : "Selain-, työpöytä- ja mobiiliasiakasohjemat sekä sovelluskohtaiset salasanat joilla on tällä hetkellä pääsy tilillesi.",
->     "Files can be added only in the Staging area (root folder ending in +)": "Tiedostoja voidaan lisätä ainoastaan Valmistelualueelle (juurikansio jonka päätteenä on +)",
-91c105
-<     "Upload file" : "Lähetä tiedosto",
----
->     "Upload file" : "Lisää tiedosto",
+--- /var/ida/nextcloud-old/apps/files/l10n/fi.js	2021-10-27 10:25:30.410495122 +0000
++++ /var/ida/nextcloud-old/apps/files/l10n/fi.js.original	2021-10-27 10:25:30.410495122 +0000
+@@ -1,20 +1,6 @@
+ OC.L10N.register(
+     "files",
+     {
+-    "Note to recipient" : "Viesti vastaanottajalle",
+-    "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Julkinen linkki vanhenee viimeistään {days} päivän jälkeen sen luomisesta, ellei käyttäjä määritä voimassaoloaikaa lyhyemmäksi.",
+-    "Log in": "Kirjaudu",
+-    "Username" : "Käyttäjätunnus",
+-    "Password" : "Salasana",
+-    "Login with CSC account": "Kirjaudu CSC-tunnuksella",
+-    "Personal CSC accounts are created and managed in": "CSC-tiliä hallinnoidaan",
+-    "CSC Customer Portal": "CSC:n asiakasportaalissa",
+-    "CSC username" : "CSC-käyttäjätunnus",
+-    "CSC password" : "CSC-salasana",
+-    "Enter temporary share password:": "Syötä väliaikaisen jakolinkin salasana:",
+-    "Upload some content!" : "Lähetä tiedostoja!",
+-    "Web, desktop, mobile clients and app specific passwords that currently have access to your account." : "Selain-, työpöytä- ja mobiiliasiakasohjemat sekä sovelluskohtaiset salasanat joilla on tällä hetkellä pääsy tilillesi.",
+-    "Files can be added only in the Staging area (root folder ending in +)": "Tiedostoja voidaan lisätä ainoastaan Valmistelualueelle (juurikansio jonka päätteenä on +)",
+     "Storage is temporarily not available" : "Tallennustila on tilapäisesti pois käytöstä",
+     "Storage invalid" : "Virheellinen tallennustila",
+     "Unknown error" : "Tuntematon virhe",
+@@ -102,7 +88,7 @@
+     "Favorite" : "Suosikki",
+     "You can only favorite a single file or folder at a time" : "Voit valita suosikiksi vain yhden tiedoston tai kansion kerrallaan",
+     "New folder" : "Uusi kansio",
+-    "Upload file" : "Lisää tiedosto",
++    "Upload file" : "Lähetä tiedosto",
+     "Not favorited" : "Ei suosikeissa",
+     "Remove from favorites" : "Poista suosikeista",
+     "Add to favorites" : "Lisää suosikkeihin",

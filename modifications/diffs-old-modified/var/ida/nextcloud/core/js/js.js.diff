@@ -1,3 +1,11 @@
-1313a1314,1315
-> 	OCA.IDA.Util.showNotificationIcons();
-> 
+--- /var/ida/nextcloud-old/core/js/js.js	2021-10-27 10:25:31.028496614 +0000
++++ /var/ida/nextcloud-old/core/js/js.js.original	2021-10-27 10:25:31.028496614 +0000
+@@ -1311,8 +1311,6 @@
+ 	}, 30 * 1000);
+ 
+ 	OC.PasswordConfirmation.init();
+-	OCA.IDA.Util.showNotificationIcons();
+-
+ }
+ 
+ $(document).ready(initCore);

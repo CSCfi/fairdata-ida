@@ -1,79 +1,111 @@
-1a2,8
-> /*
->  * This file is part of the IDA research data storage service
->  *
->  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
->  * @link     https://research.csc.fi/
->  */
-> 
-61a69,70
-> use OCP\Util;
-> use \Firebase\JWT\JWT;
-613,623c622,632
-< 		//try to set the maximum execution time to 60min
-< 		if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
-< 			@set_time_limit(3600);
-< 		}
-< 		@ini_set('max_execution_time', '3600');
-< 		@ini_set('max_input_time', '3600');
-< 
-< 		//try to set the maximum filesize to 10G
-< 		@ini_set('upload_max_filesize', '10G');
-< 		@ini_set('post_max_size', '10G');
-< 		@ini_set('file_uploads', '50');
----
->         //try to set execution time limits to 30 days
->         if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
->             @set_time_limit(2592000);
->         }
->         @ini_set('max_execution_time',2592000);
->         @ini_set('max_input_time', 2592000);
-> 
->         //try to set the maximum filesize to 10TB and upload of up to 1 million files
->         @ini_set('upload_max_filesize', '10000G');
->         @ini_set('post_max_size', '10000G');
->         @ini_set('file_uploads', '1000000');
-895a905
->         Util::writeLog('ida', 'base.php: handleRequest', \OCP\Util::DEBUG);
-1014a1025
->         Util::writeLog('ida', 'base.php: handleLogin', \OCP\Util::DEBUG);
-1015a1027,1030
-> 		$hostname = $_SERVER['SERVER_NAME'];
-> 		$domain = substr($hostname, strpos($hostname, '.') + 1);
-> 		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-> 
-1022,1027d1036
-< 		if (isset($_COOKIE['nc_username'])
-< 			&& isset($_COOKIE['nc_token'])
-< 			&& isset($_COOKIE['nc_session_id'])
-< 			&& $userSession->loginWithCookie($_COOKIE['nc_username'], $_COOKIE['nc_token'], $_COOKIE['nc_session_id'])) {
-< 			return true;
-< 		}
-1030a1040,1066
-> 
-> 		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
-> 
-> 		    Util::writeLog('ida', 'base.php: handleLogin: domain=' . $domain
-> 		                  . ' fd_sso_session_id=' . $_COOKIE[$prefix . '_fd_sso_session_id']
-> 		                  . ' fd_sso_session=' . $_COOKIE[$prefix . '_fd_sso_session']
-> 						  , \OCP\Util::DEBUG);
-> 
-> 			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
-> 
-> 			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
-> 
-> 			if ($session) {
-> 
-> 			    Util::writeLog('ida', 'base.php: handleLogin: session=' . json_encode($session), \OCP\Util::DEBUG);
-> 
-> 				if ($session->id == $_COOKIE[$prefix . '_fd_sso_session_id']
-> 				    && $session->fairdata_user
-> 				    && $session->fairdata_user->id
-> 				    && $session->services 
-> 				    && $session->services->IDA 
-> 			        && $userSession->loginWithSSOSession($session->id, $session->fairdata_user->id)) {
-> 			        return true;
-> 		        }
-> 			}
-> 		}
-> 
+--- /var/ida/nextcloud-old/lib/base.php	2021-10-27 10:25:31.212497058 +0000
++++ /var/ida/nextcloud-old/lib/base.php.original	2021-10-27 10:25:31.212497058 +0000
+@@ -1,11 +1,4 @@
+ <?php
+-/*
+- * This file is part of the IDA research data storage service
+- *
+- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+- * @link     https://research.csc.fi/
+- */
+-
+ /**
+  * @copyright Copyright (c) 2016, ownCloud, Inc.
+  *
+@@ -66,8 +59,6 @@
+ use OC\Encryption\HookManager;
+ use OC\Files\Filesystem;
+ use OC\Share20\Hooks;
+-use OCP\Util;
+-use \Firebase\JWT\JWT;
+ 
+ require_once 'public/Constants.php';
+ 
+@@ -619,17 +610,17 @@
+ 		//this doesn´t work always depending on the webserver and php configuration.
+ 		//Let´s try to overwrite some defaults anyway
+ 
+-        //try to set execution time limits to 30 days
++		//try to set the maximum execution time to 60min
+         if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
+-            @set_time_limit(2592000);
++			@set_time_limit(3600);
+         }
+-        @ini_set('max_execution_time',2592000);
+-        @ini_set('max_input_time', 2592000);
++		@ini_set('max_execution_time', '3600');
++		@ini_set('max_input_time', '3600');
+ 
+-        //try to set the maximum filesize to 10TB and upload of up to 1 million files
+-        @ini_set('upload_max_filesize', '10000G');
+-        @ini_set('post_max_size', '10000G');
+-        @ini_set('file_uploads', '1000000');
++		//try to set the maximum filesize to 10G
++		@ini_set('upload_max_filesize', '10G');
++		@ini_set('post_max_size', '10G');
++		@ini_set('file_uploads', '50');
+ 
+ 		self::setRequiredIniValues();
+ 		self::handleAuthHeaders();
+@@ -902,7 +893,6 @@
+ 	 * Handle the request
+ 	 */
+ 	public static function handleRequest() {
+-        Util::writeLog('ida', 'base.php: handleRequest', \OCP\Util::DEBUG);
+ 
+ 		\OC::$server->getEventLogger()->start('handle_request', 'Handle request');
+ 		$systemConfig = \OC::$server->getSystemConfig();
+@@ -1022,48 +1012,22 @@
+ 	 * @return boolean
+ 	 */
+ 	static function handleLogin(OCP\IRequest $request) {
+-        Util::writeLog('ida', 'base.php: handleLogin', \OCP\Util::DEBUG);
+ 		$userSession = self::$server->getUserSession();
+-		$hostname = $_SERVER['SERVER_NAME'];
+-		$domain = substr($hostname, strpos($hostname, '.') + 1);
+-		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+-
+ 		if (OC_User::handleApacheAuth()) {
+ 			return true;
+ 		}
+ 		if ($userSession->tryTokenLogin($request)) {
+ 			return true;
+ 		}
+-		if ($userSession->tryBasicAuthLogin($request, \OC::$server->getBruteForceThrottler())) {
++		if (isset($_COOKIE['nc_username'])
++			&& isset($_COOKIE['nc_token'])
++			&& isset($_COOKIE['nc_session_id'])
++			&& $userSession->loginWithCookie($_COOKIE['nc_username'], $_COOKIE['nc_token'], $_COOKIE['nc_session_id'])) {
+ 			return true;
+ 		}
+-
+-		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
+-
+-		    Util::writeLog('ida', 'base.php: handleLogin: domain=' . $domain
+-		                  . ' fd_sso_session_id=' . $_COOKIE[$prefix . '_fd_sso_session_id']
+-		                  . ' fd_sso_session=' . $_COOKIE[$prefix . '_fd_sso_session']
+-						  , \OCP\Util::DEBUG);
+-
+-			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+-
+-			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+-
+-			if ($session) {
+-
+-			    Util::writeLog('ida', 'base.php: handleLogin: session=' . json_encode($session), \OCP\Util::DEBUG);
+-
+-				if ($session->id == $_COOKIE[$prefix . '_fd_sso_session_id']
+-				    && $session->fairdata_user
+-				    && $session->fairdata_user->id
+-				    && $session->services 
+-				    && $session->services->IDA 
+-			        && $userSession->loginWithSSOSession($session->id, $session->fairdata_user->id)) {
++		if ($userSession->tryBasicAuthLogin($request, \OC::$server->getBruteForceThrottler())) {
+ 			        return true;
+ 		        }
+-			}
+-		}
+-
+ 		return false;
+ 	}
+ 

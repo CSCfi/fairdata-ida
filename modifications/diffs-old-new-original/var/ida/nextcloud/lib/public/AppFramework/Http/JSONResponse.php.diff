@@ -1,28 +1,24 @@
-5a6
->  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
-7a9
->  * @author Roeland Jago Douma <roeland@famdouma.nl>
-23c25
-<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
----
->  * along with this program. If not, see <http://www.gnu.org/licenses/>
-55c57,59
-< 	public function __construct($data=array(), $statusCode=Http::STATUS_OK) {
----
-> 	public function __construct($data = [], $statusCode = Http::STATUS_OK) {
-> 		parent::__construct();
-> 
-70c74
-< 		if($response === false) {
----
-> 		if ($response === false) {
-85c89
-< 	public function setData($data){
----
-> 	public function setData($data) {
-97c101
-< 	public function getData(){
----
-> 	public function getData() {
-100d103
-< 
+--- /var/ida/nextcloud-new/lib/public/AppFramework/Http/JSONResponse.php	2021-10-27 15:54:10.723762531 +0000
++++ /var/ida/nextcloud-old/lib/public/AppFramework/Http/JSONResponse.php.original	2021-10-27 10:25:31.302497276 +0000
+@@ -3,10 +3,8 @@
+  * @copyright Copyright (c) 2016, ownCloud, Inc.
+  *
+  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+  * @author Lukas Reschke <lukas@statuscode.ch>
+  * @author Morris Jobke <hey@morrisjobke.de>
+- * @author Roeland Jago Douma <roeland@famdouma.nl>
+  * @author Thomas Müller <thomas.mueller@tmit.eu>
+  * @author Thomas Tanghus <thomas@tanghus.net>
+  *
+@@ -54,9 +52,7 @@
+ 	 * @param int $statusCode the Http status code, defaults to 200
+ 	 * @since 6.0.0
+ 	 */
+-	public function __construct($data = [], $statusCode = Http::STATUS_OK) {
+-		parent::__construct();
+-
++	public function __construct($data=array(), $statusCode=Http::STATUS_OK) {
+ 		$this->data = $data;
+ 		$this->setStatus($statusCode);
+ 		$this->addHeader('Content-Type', 'application/json; charset=utf-8');

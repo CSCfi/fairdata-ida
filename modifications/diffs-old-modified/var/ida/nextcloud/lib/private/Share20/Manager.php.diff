@@ -1,12 +1,30 @@
-1a2,8
-> /*
->  * This file is part of the IDA research data storage service
->  *
->  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
->  * @link     https://research.csc.fi/
->  */
-> 
-646a654
->                 'NOT_FOR_PUBLICATION_' .
-664a673
->                 'NOT_FOR_PUBLICATION_' .
+--- /var/ida/nextcloud-old/lib/private/Share20/Manager.php	2021-10-27 10:25:31.292497252 +0000
++++ /var/ida/nextcloud-old/lib/private/Share20/Manager.php.original	2021-10-27 10:25:31.293497254 +0000
+@@ -1,11 +1,4 @@
+ <?php
+-/*
+- * This file is part of the IDA research data storage service
+- *
+- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+- * @link     https://research.csc.fi/
+- */
+-
+ /**
+  * @copyright Copyright (c) 2016, ownCloud, Inc.
+  *
+@@ -651,7 +644,6 @@
+ 			 * For now ignore a set token.
+ 			 */
+ 			$share->setToken(
+-                'NOT_FOR_PUBLICATION_' .
+ 				$this->secureRandom->generate(
+ 					\OC\Share\Constants::TOKEN_LENGTH,
+ 					\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE
+@@ -670,7 +662,6 @@
+ 			}
+ 		} else if ($share->getShareType() === \OCP\Share::SHARE_TYPE_EMAIL) {
+ 			$share->setToken(
+-                'NOT_FOR_PUBLICATION_' .
+ 				$this->secureRandom->generate(
+ 					\OC\Share\Constants::TOKEN_LENGTH,
+ 					\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE

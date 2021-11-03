@@ -30,11 +30,13 @@
 
 source ../config/config.sh
 
+OPTS="-u --ignore-all-space --ignore-blank-lines"
+
 for PATHNAME in `./list-modified-files`; do
     OLDPATHNAME=`echo "${PATHNAME}" | sed -e 's/nextcloud/nextcloud-old/'`
     NEWPATHNAME=`echo "${PATHNAME}" | sed -e 's/nextcloud/nextcloud-new/'`
     if [ -s "${NEWPATHNAME}" ]; then
-        diff "${OLDPATHNAME}.original" "${NEWPATHNAME}" > "/tmp/$$.diff" 
+        diff $OPTS "${NEWPATHNAME}" "${OLDPATHNAME}.original" > "/tmp/$$.diff" 
         if [ -s "/tmp/$$.diff" ]; then
             DIRS=`dirname "${PATHNAME}"`
             mkdir -p "./diffs-old-new-original${DIRS}"

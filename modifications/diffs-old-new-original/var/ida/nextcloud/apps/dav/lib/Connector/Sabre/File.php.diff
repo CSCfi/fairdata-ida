@@ -1,210 +1,270 @@
-6a7,8
->  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
->  * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
-7a10
->  * @author Jan-Philipp Litza <jplitza@users.noreply.github.com>
-9a13
->  * @author Julius Härtl <jus@bitgrid.net>
-18,19c22
-<  * @author Vincent Petry <pvince81@owncloud.com>
-<  * @author Vinicius Cubas Brand <vinicius@eita.org.br>
----
->  * @author Vincent Petry <vincent@nextcloud.com>
-33c36
-<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
----
->  * along with this program. If not, see <http://www.gnu.org/licenses/>
-41a45
-> use OC\Files\Stream\HashWrapper;
-50a55
-> use OCP\Files\GenericFileException;
-57a63
-> use OCP\ILogger;
-63a70
-> use Sabre\DAV\Exception\NotFound;
-67d73
-< use Sabre\DAV\Exception\NotFound;
-70d75
-< 
-174,183c179,196
-< 			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
-< 
-< 				if (!is_resource($data)) {
-< 					$tmpData = fopen('php://temp', 'r+');
-< 					if ($data !== null) {
-< 						fwrite($tmpData, $data);
-< 						rewind($tmpData);
-< 					}
-< 					$data = $tmpData;
-< 				}
----
-> 			if (!is_resource($data)) {
-> 				$tmpData = fopen('php://temp', 'r+');
-> 				if ($data !== null) {
-> 					fwrite($tmpData, $data);
-> 					rewind($tmpData);
-> 				}
-> 				$data = $tmpData;
-> 			}
-> 
-> 			$data = HashWrapper::wrap($data, 'md5', function ($hash) {
-> 				$this->header('X-Hash-MD5: ' . $hash);
-> 			});
-> 			$data = HashWrapper::wrap($data, 'sha1', function ($hash) {
-> 				$this->header('X-Hash-SHA1: ' . $hash);
-> 			});
-> 			$data = HashWrapper::wrap($data, 'sha256', function ($hash) {
-> 				$this->header('X-Hash-SHA256: ' . $hash);
-> 			});
-184a198
-> 			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
-190,191c204,211
-< 				$count = $partStorage->writeStream($internalPartPath, $wrappedData);
-< 				$result = $count > 0;
----
-> 				$result = true;
-> 				$count = -1;
-> 				try {
-> 					$count = $partStorage->writeStream($internalPartPath, $wrappedData);
-> 				} catch (GenericFileException $e) {
-> 					$result = false;
-> 				}
-> 
-199d218
-< 
-227c246
-< 					throw new BadRequest('expected filesize ' . $expected . ' got ' . $count);
----
-> 					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $count . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
-230d248
-< 
-232c250,256
-< 			\OC::$server->getLogger()->logException($e);
----
-> 			$context = [];
-> 
-> 			if ($e instanceof LockedException) {
-> 				$context['level'] = ILogger::DEBUG;
-> 			}
-> 
-> 			\OC::$server->getLogger()->logException($e, $context);
-248,249c272,286
-< 					if ($needsPartFile) {
-< 						$partStorage->unlink($internalPartPath);
----
-> 					// during very large uploads, the shared lock we got at the start might have been expired
-> 					// meaning that the above lock can fail not just only because somebody else got a shared lock
-> 					// or because there is no existing shared lock to make exclusive
-> 					//
-> 					// Thus we try to get a new exclusive lock, if the original lock failed because of a different shared
-> 					// lock this will still fail, if our original shared lock expired the new lock will be successful and
-> 					// the entire operation will be safe
-> 
-> 					try {
-> 						$this->acquireLock(ILockingProvider::LOCK_EXCLUSIVE);
-> 					} catch (LockedException $ex) {
-> 						if ($needsPartFile) {
-> 							$partStorage->unlink($internalPartPath);
-> 						}
-> 						throw new FileLocked($e->getMessage(), $e->getCode(), $e);
-251d287
-< 					throw new FileLocked($e->getMessage(), $e->getCode(), $e);
-262a299,301
-> 					if (!$ex->getRetry()) {
-> 						$partStorage->unlink($internalPartPath);
-> 					}
-286a326,338
-> 			$fileInfoUpdate = [
-> 				'upload_time' => time()
-> 			];
-> 
-> 			// allow sync clients to send the creation time along in a header
-> 			if (isset($this->request->server['HTTP_X_OC_CTIME'])) {
-> 				$ctime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_CTIME']);
-> 				$fileInfoUpdate['creation_time'] = $ctime;
-> 				$this->header('X-OC-CTime: accepted');
-> 			}
-> 
-> 			$this->fileView->putFileInfo($this->path, $fileInfoUpdate);
-> 
-297c349
-< 			} else if ($this->getChecksum() !== null && $this->getChecksum() !== '') {
----
-> 			} elseif ($this->getChecksum() !== null && $this->getChecksum() !== '') {
-301d352
-< 
-303c354
-< 			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage());
----
-> 			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage(), 0, $e);
-329c380
-< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, array(
----
-> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, [
-332c383
-< 			));
----
-> 			]);
-334c385
-< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, array(
----
-> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, [
-337c388
-< 			));
----
-> 			]);
-339c390
-< 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, array(
----
-> 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, [
-342c393
-< 		));
----
-> 		]);
-355c406
-< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, array(
----
-> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, [
-357c408
-< 			));
----
-> 			]);
-359c410
-< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, array(
----
-> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, [
-361c412
-< 			));
----
-> 			]);
-363c414
-< 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, array(
----
-> 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, [
-365c416
-< 		));
----
-> 		]);
-446c497
-< 	 * @return array|false
----
-> 	 * @return array|bool
-481c532
-< 		if (isset ($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
----
-> 		if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
-486,487c537
-< 					throw new BadRequest(
-< 						'expected filesize ' . $expected . ' got ' . $bytesWritten);
----
-> 					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $bytesWritten . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
-562c612
-< 				} else if ($info->getChecksum() !== null && $info->getChecksum() !== '') {
----
-> 				} elseif ($info->getChecksum() !== null && $info->getChecksum() !== '') {
-640c690,692
-< 		\header($string);
----
-> 		if (!\OC::$CLI) {
-> 			\header($string);
-> 		}
+--- /var/ida/nextcloud-new/apps/dav/lib/Connector/Sabre/File.php	2021-10-27 15:54:06.507751447 +0000
++++ /var/ida/nextcloud-old/apps/dav/lib/Connector/Sabre/File.php.original	2021-10-27 10:25:30.361495003 +0000
+@@ -4,13 +4,9 @@
+  *
+  * @author Bart Visscher <bartv@thisnet.nl>
+  * @author Björn Schießle <bjoern@schiessle.org>
+- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+- * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
+  * @author Jakob Sack <mail@jakobsack.de>
+- * @author Jan-Philipp Litza <jplitza@users.noreply.github.com>
+  * @author Joas Schilling <coding@schilljs.com>
+  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+- * @author Julius Härtl <jus@bitgrid.net>
+  * @author Lukas Reschke <lukas@statuscode.ch>
+  * @author Morris Jobke <hey@morrisjobke.de>
+  * @author Owen Winkler <a_github@midnightcircus.com>
+@@ -19,7 +15,8 @@
+  * @author Semih Serhat Karakaya <karakayasemi@itu.edu.tr>
+  * @author Stefan Schneider <stefan.schneider@squareweave.com.au>
+  * @author Thomas Müller <thomas.mueller@tmit.eu>
+- * @author Vincent Petry <vincent@nextcloud.com>
++ * @author Vincent Petry <pvince81@owncloud.com>
++ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
+  *
+  * @license AGPL-3.0
+  *
+@@ -42,7 +39,6 @@
+ use Icewind\Streams\CallbackWrapper;
+ use OC\AppFramework\Http\Request;
+ use OC\Files\Filesystem;
+-use OC\Files\Stream\HashWrapper;
+ use OC\Files\View;
+ use OCA\DAV\Connector\Sabre\Exception\EntityTooLarge;
+ use OCA\DAV\Connector\Sabre\Exception\FileLocked;
+@@ -52,7 +48,6 @@
+ use OCP\Files\EntityTooLargeException;
+ use OCP\Files\FileInfo;
+ use OCP\Files\ForbiddenException;
+-use OCP\Files\GenericFileException;
+ use OCP\Files\InvalidContentException;
+ use OCP\Files\InvalidPathException;
+ use OCP\Files\LockNotAcquiredException;
+@@ -60,19 +55,19 @@
+ use OCP\Files\NotPermittedException;
+ use OCP\Files\Storage;
+ use OCP\Files\StorageNotAvailableException;
+-use OCP\ILogger;
+ use OCP\Lock\ILockingProvider;
+ use OCP\Lock\LockedException;
+ use OCP\Share\IManager;
+ use Sabre\DAV\Exception;
+ use Sabre\DAV\Exception\BadRequest;
+ use Sabre\DAV\Exception\Forbidden;
+-use Sabre\DAV\Exception\NotFound;
+ use Sabre\DAV\Exception\NotImplemented;
+ use Sabre\DAV\Exception\ServiceUnavailable;
+ use Sabre\DAV\IFile;
++use Sabre\DAV\Exception\NotFound;
+ 
+ class File extends Node implements IFile {
++
+ 	protected $request;
+ 
+ 	/**
+@@ -176,6 +171,8 @@
+ 				$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
+ 			}
+ 
++			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
++
+ 			if (!is_resource($data)) {
+ 				$tmpData = fopen('php://temp', 'r+');
+ 				if ($data !== null) {
+@@ -185,30 +182,13 @@
+ 				$data = $tmpData;
+ 			}
+ 
+-			$data = HashWrapper::wrap($data, 'md5', function ($hash) {
+-				$this->header('X-Hash-MD5: ' . $hash);
+-			});
+-			$data = HashWrapper::wrap($data, 'sha1', function ($hash) {
+-				$this->header('X-Hash-SHA1: ' . $hash);
+-			});
+-			$data = HashWrapper::wrap($data, 'sha256', function ($hash) {
+-				$this->header('X-Hash-SHA256: ' . $hash);
+-			});
+-
+-			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
+ 				$isEOF = false;
+ 				$wrappedData = CallbackWrapper::wrap($data, null, null, null, null, function ($stream) use (&$isEOF) {
+ 					$isEOF = feof($stream);
+ 				});
+ 
+-				$result = true;
+-				$count = -1;
+-				try {
+ 					$count = $partStorage->writeStream($internalPartPath, $wrappedData);
+-				} catch (GenericFileException $e) {
+-					$result = false;
+-				}
+-
++				$result = $count > 0;
+ 
+ 				if ($result === false) {
+ 					$result = $isEOF;
+@@ -243,17 +224,12 @@
+ 			if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+ 				$expected = (int)$_SERVER['CONTENT_LENGTH'];
+ 				if ($count !== $expected) {
+-					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $count . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
++					throw new BadRequest('expected filesize ' . $expected . ' got ' . $count);
+ 				}
+ 			}
+-		} catch (\Exception $e) {
+-			$context = [];
+-
+-			if ($e instanceof LockedException) {
+-				$context['level'] = ILogger::DEBUG;
+-			}
+ 
+-			\OC::$server->getLogger()->logException($e, $context);
++		} catch (\Exception $e) {
++			\OC::$server->getLogger()->logException($e);
+ 			if ($needsPartFile) {
+ 				$partStorage->unlink($internalPartPath);
+ 			}
+@@ -269,23 +245,11 @@
+ 				try {
+ 					$this->changeLock(ILockingProvider::LOCK_EXCLUSIVE);
+ 				} catch (LockedException $e) {
+-					// during very large uploads, the shared lock we got at the start might have been expired
+-					// meaning that the above lock can fail not just only because somebody else got a shared lock
+-					// or because there is no existing shared lock to make exclusive
+-					//
+-					// Thus we try to get a new exclusive lock, if the original lock failed because of a different shared
+-					// lock this will still fail, if our original shared lock expired the new lock will be successful and
+-					// the entire operation will be safe
+-
+-					try {
+-						$this->acquireLock(ILockingProvider::LOCK_EXCLUSIVE);
+-					} catch (LockedException $ex) {
+ 						if ($needsPartFile) {
+ 							$partStorage->unlink($internalPartPath);
+ 						}
+ 						throw new FileLocked($e->getMessage(), $e->getCode(), $e);
+ 					}
+-				}
+ 
+ 				// rename to correct path
+ 				try {
+@@ -296,9 +260,6 @@
+ 						throw new Exception('Could not rename part file to final file');
+ 					}
+ 				} catch (ForbiddenException $ex) {
+-					if (!$ex->getRetry()) {
+-						$partStorage->unlink($internalPartPath);
+-					}
+ 					throw new DAVForbiddenException($ex->getMessage(), $ex->getRetry());
+ 				} catch (\Exception $e) {
+ 					$partStorage->unlink($internalPartPath);
+@@ -323,19 +284,6 @@
+ 				}
+ 			}
+ 
+-			$fileInfoUpdate = [
+-				'upload_time' => time()
+-			];
+-
+-			// allow sync clients to send the creation time along in a header
+-			if (isset($this->request->server['HTTP_X_OC_CTIME'])) {
+-				$ctime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_CTIME']);
+-				$fileInfoUpdate['creation_time'] = $ctime;
+-				$this->header('X-OC-CTime: accepted');
+-			}
+-
+-			$this->fileView->putFileInfo($this->path, $fileInfoUpdate);
+-
+ 			if ($view) {
+ 				$this->emitPostHooks($exists);
+ 			}
+@@ -350,8 +298,9 @@
+ 				$this->fileView->putFileInfo($this->path, ['checksum' => '']);
+ 				$this->refreshInfo();
+ 			}
++
+ 		} catch (StorageNotAvailableException $e) {
+-			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage(), 0, $e);
++			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage());
+ 		}
+ 
+ 		return '"' . $this->info->getEtag() . '"';
+@@ -377,20 +326,20 @@
+ 		$run = true;
+ 
+ 		if (!$exists) {
+-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, [
++			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, array(
+ 				\OC\Files\Filesystem::signal_param_path => $hookPath,
+ 				\OC\Files\Filesystem::signal_param_run => &$run,
+-			]);
++			));
+ 		} else {
+-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, [
++			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, array(
+ 				\OC\Files\Filesystem::signal_param_path => $hookPath,
+ 				\OC\Files\Filesystem::signal_param_run => &$run,
+-			]);
++			));
+ 		}
+-		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, [
++		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, array(
+ 			\OC\Files\Filesystem::signal_param_path => $hookPath,
+ 			\OC\Files\Filesystem::signal_param_run => &$run,
+-		]);
++		));
+ 		return $run;
+ 	}
+ 
+@@ -403,17 +352,17 @@
+ 		}
+ 		$hookPath = Filesystem::getView()->getRelativePath($this->fileView->getAbsolutePath($path));
+ 		if (!$exists) {
+-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, [
++			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, array(
+ 				\OC\Files\Filesystem::signal_param_path => $hookPath
+-			]);
++			));
+ 		} else {
+-			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, [
++			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, array(
+ 				\OC\Files\Filesystem::signal_param_path => $hookPath
+-			]);
++			));
+ 		}
+-		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, [
++		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, array(
+ 			\OC\Files\Filesystem::signal_param_path => $hookPath
+-		]);
++		));
+ 	}
+ 
+ 	/**
+@@ -494,7 +443,7 @@
+ 	}
+ 
+ 	/**
+-	 * @return array|bool
++	 * @return array|false
+ 	 */
+ 	public function getDirectDownload() {
+ 		if (\OCP\App::isEnabled('encryption')) {
+@@ -534,7 +483,8 @@
+ 				$expected = (int)$_SERVER['CONTENT_LENGTH'];
+ 				if ($bytesWritten !== $expected) {
+ 					$chunk_handler->remove($info['index']);
+-					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $bytesWritten . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
++					throw new BadRequest(
++						'expected filesize ' . $expected . ' got ' . $bytesWritten);
+ 				}
+ 			}
+ 		}
+@@ -687,8 +637,6 @@
+ 	}
+ 
+ 	protected function header($string) {
+-		if (!\OC::$CLI) {
+ 			\header($string);
+ 		}
+ 	}
+-}

@@ -1,19 +1,20 @@
-1a2,14
->     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Den öppna länken föråldras senast {days} dagar efter att den skapats, om inte tiden definieras kortare.",
->     "Login": "Logga in",
->     "Log in": "Logga in",
->     "Username" : "Användarnamn",
->     "Password" : "Lösenord",
->     "Login with CSC account": "Logga in med CSC-användarkonto",
->     "Personal CSC accounts are created and managed in": "Hantering av CSC-profilen sker i",
->     "CSC Customer Portal": "CSC:s kundportal",
->     "CSC username" : "CSC-användarnamn",
->     "CSC password" : "CSC-lösenord",
->     "Enter temporary share password:": "Ange lösenord för tillfällig länk:",
->     "Upload some content!" : "Ladda upp innehåll!",
->     "Files can be added only in the Staging area (root folder ending in +)": "Filer kan läggas till endast i mappar med plustecken (+, område för preparering)",
-172c185
-< }
-\ No newline at end of file
----
-> }
+--- /var/ida/nextcloud-old/apps/files/l10n/sv.json	2021-10-27 10:25:30.421495148 +0000
++++ /var/ida/nextcloud-old/apps/files/l10n/sv.json.original	2021-10-27 10:25:30.422495150 +0000
+@@ -1,17 +1,4 @@
+ { "translations": {
+-    "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Den öppna länken föråldras senast {days} dagar efter att den skapats, om inte tiden definieras kortare.",
+-    "Login": "Logga in",
+-    "Log in": "Logga in",
+-    "Username" : "Användarnamn",
+-    "Password" : "Lösenord",
+-    "Login with CSC account": "Logga in med CSC-användarkonto",
+-    "Personal CSC accounts are created and managed in": "Hantering av CSC-profilen sker i",
+-    "CSC Customer Portal": "CSC:s kundportal",
+-    "CSC username" : "CSC-användarnamn",
+-    "CSC password" : "CSC-lösenord",
+-    "Enter temporary share password:": "Ange lösenord för tillfällig länk:",
+-    "Upload some content!" : "Ladda upp innehåll!",
+-    "Files can be added only in the Staging area (root folder ending in +)": "Filer kan läggas till endast i mappar med plustecken (+, område för preparering)",
+     "Storage is temporarily not available" : "Lagring är tillfälligt inte tillgänglig",
+     "Storage invalid" : "Lagring ogiltig",
+     "Unknown error" : "Okänt fel",

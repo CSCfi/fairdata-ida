@@ -1,1537 +1,258 @@
-1a2,8
->  * This file is part of the IDA research data storage service
->  *
->  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
->  * @link     https://research.csc.fi/
->  */
-> 
-> /*
-11c18
-< (function() {
----
-> (function () {
-31c38
-< 	var FileList = function($el, options) {
----
-> 	var FileList = function ($el, options) {
-44c51
-< 		useUndo:true,
----
-> 		useUndo: true,
-101c108
-< 		pageSize: function() {
----
-> 		pageSize: function () {
-109c116
-< 			return Math.max(columns*rows, columns);
----
-> 			return Math.max(columns * rows, columns);
-224c231
-< 		initialize: function($el, options) {
----
-> 		initialize: function ($el, options) {
-267c274
-< 				this._filesConfig.on('change:showhidden', function() {
----
-> 				this._filesConfig.on('change:showhidden', function () {
-290c297
-< 				this._detailsView.addDetailView(new OCA.Files.MainFileInfoDetailView({fileList: this, fileActions: this.fileActions}));
----
-> 				this._detailsView.addDetailView(new OCA.Files.MainFileInfoDetailView({ fileList: this, fileActions: this.fileActions }));
-295c302
-< 			this._selectionSummary = new OCA.Files.FileSummary(undefined, {config: this._filesConfig});
----
-> 			this._selectionSummary = new OCA.Files.FileSummary(undefined, { config: this._filesConfig });
-303c310
-< 				for (var i=0; i<this.multiSelectMenuItems.length; i++) {
----
-> 				for (var i = 0; i < this.multiSelectMenuItems.length; i++) {
-321c328
-< 				getCrumbUrl: function(part) {
----
-> 				getCrumbUrl: function (part) {
-328c335
-< 				breadcrumbOptions.onOver = function() {
----
-> 				breadcrumbOptions.onOver = function () {
-331c338
-< 				breadcrumbOptions.onOut = function() {
----
-> 				breadcrumbOptions.onOut = function () {
-351c358
-< 			$('#view-toggle').tooltip({placement: 'bottom', trigger: 'hover'});
----
-> 			$('#view-toggle').tooltip({ placement: 'bottom', trigger: 'hover' });
-361c368
-< 			this.$fileList.on('click','td.filename>a.name, td.filesize, td.date', _.bind(this._onClickFile, this));
----
-> 			this.$fileList.on('click', 'td.filename>a.name, td.filesize, td.date', _.bind(this._onClickFile, this));
-384c391
-< 				this.$fileList.one('updated', function() {
----
-> 				this.$fileList.one('updated', function () {
-409d415
-< 
-416c422
-< 		destroy: function() {
----
-> 		destroy: function () {
-445,463c451,469
-< 				var actionFunction = _.find(this.multiSelectMenuItems, function (item) {return item.name === action;}).action;
-< 				if (actionFunction) {
-< 					actionFunction(ev);
-< 					return;
-< 				}
-< 				switch (action) {
-< 					case 'delete':
-< 						this._onClickDeleteSelected(ev)
-< 						break;
-< 					case 'download':
-< 						this._onClickDownloadSelected(ev);
-< 						break;
-< 					case 'copyMove':
-< 						this._onClickCopyMoveSelected(ev);
-< 						break;
-< 					case 'restore':
-< 						this._onClickRestoreSelected(ev);
-< 						break;
-< 				}
----
-> 			var actionFunction = _.find(this.multiSelectMenuItems, function (item) { return item.name === action; }).action;
-> 			if (actionFunction) {
-> 				actionFunction(ev);
-> 				return;
-> 			}
-> 			switch (action) {
-> 				case 'delete':
-> 					this._onClickDeleteSelected(ev)
-> 					break;
-> 				case 'download':
-> 					this._onClickDownloadSelected(ev);
-> 					break;
-> 				case 'copyMove':
-> 					this._onClickCopyMoveSelected(ev);
-> 					break;
-> 				case 'restore':
-> 					this._onClickRestoreSelected(ev);
-> 					break;
-> 			}
-470c476
-< 		_initFileActions: function(fileActions) {
----
-> 		_initFileActions: function (fileActions) {
-486c492
-< 					actionHandler: function(fileName, context) {
----
-> 					actionHandler: function (fileName, context) {
-503c509
-< 		getModelForFile: function(fileName) {
----
-> 		getModelForFile: function (fileName) {
-532c538
-< 				model.set('path', this.getCurrentDirectory(), {silent: true});
----
-> 				model.set('path', this.getCurrentDirectory(), { silent: true });
-535c541
-< 			model.on('change', function(model) {
----
-> 			model.on('change', function (model) {
-541c547
-< 					{updateSummary: true, silent: false, animate: true}
----
-> 					{ updateSummary: true, silent: false, animate: true }
-550c556
-< 			model.on('busy', function(model, state) {
----
-> 			model.on('busy', function (model, state) {
-564c570
-< 		showDetailsView: function(fileName, tabId) {
----
-> 		showDetailsView: function (fileName, tabId) {
-578c584
-< 		_updateDetailsView: function(fileName, show) {
----
-> 		_updateDetailsView: function (fileName, show) {
-632c638
-< 		_replaceDetailsViewElementIfNeeded: function() {
----
-> 		_replaceDetailsViewElementIfNeeded: function () {
-647c653
-< 		_onResize: function() {
----
-> 		_onResize: function () {
-650c656
-< 			$.each(this.$el.find('#controls .actions'), function(index, action) {
----
-> 			$.each(this.$el.find('#controls .actions'), function (index, action) {
-664c670
-< 		_onGridviewChange: function() {
----
-> 		_onGridviewChange: function () {
-675c681
-< 				
----
-> 
-682c688
-< 		_onShow: function(e) {
----
-> 		_onShow: function (e) {
-698c704
-< 		_onUrlChanged: function(e) {
----
-> 		_onUrlChanged: function (e) {
-702c708
-< 				if( (this._currentDirectory || this.$el.find('#dir').val()) && currentDir === e.dir) {
----
-> 				if ((this._currentDirectory || this.$el.find('#dir').val()) && currentDir === e.dir) {
-716c722
-< 		_selectFileEl: function($tr, state) {
----
-> 		_selectFileEl: function ($tr, state) {
-742c748
-< 		_selectRange: function($tr) {
----
-> 		_selectRange: function ($tr) {
-764c770
-< 		_selectSingle: function($tr) {
----
-> 		_selectSingle: function ($tr) {
-769c775
-< 		_onMouseOverCheckbox: function(e) {
----
-> 		_onMouseOverCheckbox: function (e) {
-792c798
-< 				if(lastIndex <= i && i <= currentIndex) {
----
-> 				if (lastIndex <= i && i <= currentIndex) {
-799c805
-< 		_removeHalfSelection: function() {
----
-> 		_removeHalfSelection: function () {
-812c818
-< 		_onClickFile: function(event) {
----
-> 		_onClickFile: function (event) {
-828c834
-< 				if (!this._detailsView || $(event.target).is('.nametext, .name') || $(event.target).closest('.nametext').length) {
----
-> 				if (!this._detailsView || $(event.target).is('.nametext, .name') || $(event.target).closest('.nametext').length || $(event.target).is('.projectDetails') || $(event.target).closest('.projectDetails').length) {
-836c842
-< 						var action = this.fileActions.getDefault(mime,type, permissions);
----
-> 						var action = this.fileActions.getDefault(mime, type, permissions);
-881c887
-< 		_onClickFileCheckbox: function(e) {
----
-> 		_onClickFileCheckbox: function (e) {
-883c889
-< 			if(this._getCurrentSelectionMode() === 'range') {
----
-> 			if (this._getCurrentSelectionMode() === 'range') {
-899c905
-< 		_onClickSelectAll: function(e) {
----
-> 		_onClickSelectAll: function (e) {
-932c938
-< 					visibleFiles.each(function() {
----
-> 					visibleFiles.each(function () {
-958c964
-< 		_onClickDownloadSelected: function(event) {
----
-> 		_onClickDownloadSelected: function (event) {
-972c978
-< 			if(this.fileMultiSelectMenu.isDisabled('download')) {
----
-> 			if (this.fileMultiSelectMenu.isDisabled('download')) {
-977c983
-< 			var disableLoadingState = function(){
----
-> 			var disableLoadingState = function () {
-981c987
-< 			if(this.getSelectedFiles().length > 1) {
----
-> 			if (this.getSelectedFiles().length > 1) {
-994c1000
-< 		_onClickCopyMoveSelected: function(event) {
----
-> 		_onClickCopyMoveSelected: function (event) {
-1001c1007
-< 			if(this.fileMultiSelectMenu.isDisabled('copyMove')) {
----
-> 			if (this.fileMultiSelectMenu.isDisabled('copyMove')) {
-1005c1011
-< 			var disableLoadingState = function(){
----
-> 			var disableLoadingState = function () {
-1014c1020
-< 			OC.dialogs.filepicker(t('files', 'Choose target folder'), function(targetPath, type) {
----
-> 			OC.dialogs.filepicker(t('files', 'Choose target folder'), function (targetPath, type) {
-1022c1028
-< 				self.dirInfo.dirLastCopiedTo = targetPath; 
----
-> 				self.dirInfo.dirLastCopiedTo = targetPath;
-1030c1036
-< 		_onClickDeleteSelected: function(event) {
----
-> 		_onClickDeleteSelected: function (event) {
-1035c1041,1044
-< 			this.do_delete(files);
----
-> 			var response = confirm(t('ida', 'Are you sure you want to delete the selected item(s)? THIS ACTION CANNOT BE UNDONE!'));
-> 			if (response) {
-> 				this.do_delete(files);
-> 			}
-1042c1051
-< 		_onClickHeader: function(e) {
----
-> 		_onClickHeader: function (e) {
-1054c1063
-< 					this.setSort(sort, (this._sortDirection === 'desc')?'asc':'desc', true, true);
----
-> 					this.setSort(sort, (this._sortDirection === 'desc') ? 'asc' : 'desc', true, true);
-1057c1066
-< 					if ( sort === 'name' ) {	//default sorting of name is opposite to size and mtime
----
-> 					if (sort === 'name') {	//default sorting of name is opposite to size and mtime
-1070c1079
-< 		_onClickBreadCrumb: function(e) {
----
-> 		_onClickBreadCrumb: function (e) {
-1086c1095
-< 		_onScroll: function(e) {
----
-> 		_onScroll: function (e) {
-1095c1104
-< 		_onDropOnBreadCrumb: function( event, ui ) {
----
-> 		_onDropOnBreadCrumb: function (event, ui) {
-1103c1112
-< 			while (dir.substr(0,1) === '/') {//remove extra leading /'s
----
-> 			while (dir.substr(0, 1) === '/') {//remove extra leading /'s
-1107c1116
-< 			if (dir.substr(-1,1) !== '/') {
----
-> 			if (dir.substr(-1, 1) !== '/') {
-1118c1127
-< 				files = _.map(ui.helper.find('tr'), function(el) {
----
-> 				files = _.map(ui.helper.find('tr'), function (el) {
-1128c1137
-< 			setTimeout(function() {
----
-> 			setTimeout(function () {
-1138c1147
-< 		setPageTitle: function(title){
----
-> 		setPageTitle: function (title) {
-1158,1159c1167,1168
-< 		findFile: function(fileName) {
-< 			return _.find(this.files, function(aFile) {
----
-> 		findFile: function (fileName) {
-> 			return _.find(this.files, function (aFile) {
-1169c1178
-< 		findFileEl: function(fileName){
----
-> 		findFileEl: function (fileName) {
-1179c1188
-< 		elementToFile: function($el){
----
-> 		elementToFile: function ($el) {
-1216c1225
-< 		_nextPage: function(animate) {
----
-> 		_nextPage: function (animate) {
-1237c1246
-< 				tr = this._renderRow(fileData, {updateSummary: false, silent: true, hidden: hidden});
----
-> 				tr = this._renderRow(fileData, { updateSummary: false, silent: true, hidden: hidden });
-1256c1265
-< 				this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: newTrs}));
----
-> 				this.$fileList.trigger($.Event('fileActionsReady', { fileList: this, $files: newTrs }));
-1261,1262c1270,1271
-< 				window.setTimeout(function() {
-< 					for (var i = 0; i < newTrs.length; i++ ) {
----
-> 				window.setTimeout(function () {
-> 					for (var i = 0; i < newTrs.length; i++) {
-1275c1284
-< 		_onFileActionsUpdated: function() {
----
-> 		_onFileActionsUpdated: function () {
-1282c1291
-< 			$files.each(function() {
----
-> 			$files.each(function () {
-1285c1294
-< 			this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: $files}));
----
-> 			this.$fileList.trigger($.Event('fileActionsReady', { fileList: this, $files: $files }));
-1294c1303
-< 		setFiles: function(filesArray) {
----
-> 		setFiles: function (filesArray) {
-1327c1336
-< 			_.defer(function() {
----
-> 			_.defer(function () {
-1339c1348
-< 		_isHiddenFile: function(file) {
----
-> 		_isHiddenFile: function (file) {
-1350c1359
-< 		_getIconUrl: function(fileInfo) {
----
-> 		_getIconUrl: function (fileInfo) {
-1372c1381
-< 		_createRow: function(fileData, options) {
----
-> 		_createRow: function (fileData, options) {
-1408c1417
-< 				"data-id" : fileData.id,
----
-> 				"data-id": fileData.id,
-1483c1492
-< 			if(name.indexOf('.') === 0) {
----
-> 			if (name.indexOf('.') === 0) {
-1486c1495
-< 			// split extension from filename for non dirs
----
-> 				// split extension from filename for non dirs
-1494c1503
-< 			var nameSpan=$('<span></span>').addClass('nametext');
----
-> 			var nameSpan = $('<span></span>').addClass('nametext');
-1531c1540
-< 				nameSpan.tooltip({placement: 'top'});
----
-> 				nameSpan.tooltip({ placement: 'top' });
-1547c1556
-< 			} catch(error) {
----
-> 			} catch (error) {
-1550,1551c1559,1560
-< 						? '130'
-< 						: '118'
----
-> 					? '130'
-> 					: '118'
-1553a1563,1564
-> 			maxContrast = OCA.Accessibility && OCA.Accessibility.theme === 'themedark' ? '130' : '118';
-> 
-1555c1566
-< 			if (typeof(fileData.size) !== 'undefined' && fileData.size >= 0) {
----
-> 			if (typeof (fileData.size) !== 'undefined' && fileData.size >= 0) {
-1559c1570
-< 				sizeColor = Math.round(118-Math.pow((fileData.size/(1024*1024)), 2));
----
-> 				sizeColor = Math.round(118 - Math.pow((fileData.size / (1024 * 1024)), 2));
-1587c1598
-< 			var modifiedColor = Math.round(((new Date()).getTime() - mtime )/1000/60/60/24*5 );
----
-> 			var modifiedColor = Math.round(((new Date()).getTime() - mtime) / 1000 / 60 / 60 / 24 * 5);
-1619c1630
-< 				"style": 'color:rgb('+modifiedColor+','+modifiedColor+','+modifiedColor+')'
----
-> 				"style": 'color:rgb(' + modifiedColor + ',' + modifiedColor + ',' + modifiedColor + ')'
-1621c1632
-< 			  .tooltip({placement: 'top'})
----
-> 				.tooltip({ placement: 'top' })
-1624a1636,1671
-> 
-> 			try {
-> 				if (path != null && path == '/') {
-> 				    spans = tr.find("span.nametext");
-> 				    if (spans.length > 0) {
-> 					    path = '/' + name;
-> 					    projectName = OCA.IDA.Util.extractProjectName(path);
-> 					    projectTitle = OCA.IDA.Util.getProjectTitle(projectName);
-> 					    tr.attr('data-project-name', projectName);
-> 					    tr.attr('data-project-title', projectTitle);
-> 					    var projectArea = t('ida', 'Frozen');
-> 					    if (name.substr(name.length - 1) == '+') {
-> 						    projectArea = t('ida', 'Staging');
-> 					    }
-> 						var htmlInsertion = "<span class=\"projectDetails\">";
->                         // Use slightly tighter spacing in production since all project names are shorter
-> 						if (location.hostname == 'ida.fairdata.fi') {
-> 							htmlInsertion = "<span class=\"projectDetails projectDetailsTight\">";
-> 						}
-> 						htmlInsertion = htmlInsertion + "<span class=\"projectArea\">" + projectArea + "</span>";
-> 						if (projectTitle != projectName) {
-> 							if (projectTitle.length > 50) {
-> 								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\" title=\"" + projectTitle + "\">" + projectTitle + "</span>";
-> 							}
-> 							else {
-> 								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\">" + projectTitle + "</span>";
-> 							}
-> 						}
-> 						htmlInsertion = htmlInsertion + "</span>";
-> 						spans[0].insertAdjacentHTML('afterend', htmlInsertion);
-> 					}
-> 				}
-> 			} catch (error) {
-> 				;
-> 			}
-> 
-1650c1697
-< 		add: function(fileData, options) {
----
-> 		add: function (fileData, options) {
-1655c1702
-< 			options = _.extend({animate: true}, options || {});
----
-> 			options = _.extend({ animate: true }, options || {});
-1691c1738
-< 				window.setTimeout(function() {
----
-> 				window.setTimeout(function () {
-1703c1750
-< 			if (typeof(options.updateSummary) === 'undefined' || !!options.updateSummary) {
----
-> 			if (typeof (options.updateSummary) === 'undefined' || !!options.updateSummary) {
-1724c1771
-< 		_renderRow: function(fileData, options) {
----
-> 		_renderRow: function (fileData, options) {
-1771c1818
-< 				if (typeof(options.animate) === 'undefined' || !!options.animate) {
----
-> 				if (typeof (options.animate) === 'undefined' || !!options.animate) {
-1777c1824
-< 						callback: function(url) {
----
-> 						callback: function (url) {
-1785,1787c1832,1834
-< 							file: path + '/' + fileData.name,
-< 							c: fileData.etag
-< 						};
----
-> 						file: path + '/' + fileData.name,
-> 						c: fileData.etag
-> 					};
-1800c1847
-< 		getCurrentDirectory: function(){
----
-> 		getCurrentDirectory: function () {
-1807c1854
-< 		getDirectoryPermissions: function() {
----
-> 		getDirectoryPermissions: function () {
-1817c1864
-< 		changeDirectory: function(targetDir, changeUrl, force, fileId) {
----
-> 		changeDirectory: function (targetDir, changeUrl, force, fileId) {
-1828c1875
-< 			return this.reload().then(function(success){
----
-> 			return this.reload().then(function (success) {
-1834,1835c1881,1882
-< 		linkTo: function(dir) {
-< 			return OC.linkTo('files', 'index.php')+"?dir="+ encodeURIComponent(dir).replace(/%2F/g, '/');
----
-> 		linkTo: function (dir) {
-> 			return OC.linkTo('files', 'index.php') + "?dir=" + encodeURIComponent(dir).replace(/%2F/g, '/');
-1842c1889
-< 		_isValidPath: function(path) {
----
-> 		_isValidPath: function (path) {
-1860c1907
-< 		_setCurrentDir: function(targetDir, changeUrl, fileId) {
----
-> 		_setCurrentDir: function (targetDir, changeUrl, fileId) {
-1904c1951
-< 		setSort: function(sort, direction, update, persist) {
----
-> 		setSort: function (sort, direction, update, persist) {
-1907,1909c1954,1956
-< 			this._sortDirection = (direction === 'desc')?'desc':'asc';
-< 			this._sortComparator = function(fileInfo1, fileInfo2) {
-< 				var isFavorite = function(fileInfo) {
----
-> 			this._sortDirection = (direction === 'desc') ? 'desc' : 'asc';
-> 			this._sortComparator = function (fileInfo1, fileInfo2) {
-> 				var isFavorite = function (fileInfo) {
-1954c2001
-< 		_getWebdavProperties: function() {
----
-> 		_getWebdavProperties: function () {
-1963c2010
-< 		reload: function() {
----
-> 		reload: function () {
-1974,1976c2021,2023
-< 					includeParent: true,
-< 					properties: this._getWebdavProperties()
-< 				}
----
-> 				includeParent: true,
-> 				properties: this._getWebdavProperties()
-> 			}
-1986c2033
-< 		reloadCallback: function(status, result) {
----
-> 		reloadCallback: function (status, result) {
-1998c2045
-< 				OC.Notification.show(t('files', 'This operation is forbidden'), {type: 'error'});
----
-> 				OC.Notification.show(t('files', 'This operation is forbidden'), { type: 'error' });
-2007c2054
-< 					{type: 'error'}
----
-> 					{ type: 'error' }
-2018c2065
-< 						{type: 'error'}
----
-> 						{ type: 'error' }
-2030c2077
-< 			if (status === 0){
----
-> 			if (status === 0) {
-2061c2108
-< 		updateStorageStatistics: function(force) {
----
-> 		updateStorageStatistics: function (force) {
-2065c2112
-< 		updateStorageQuotas: function() {
----
-> 		updateStorageQuotas: function () {
-2072c2119
-< 		getAjaxUrl: function(action, params) {
----
-> 		getAjaxUrl: function (action, params) {
-2076c2123
-< 		getDownloadUrl: function(files, dir, isDir) {
----
-> 		getDownloadUrl: function (files, dir, isDir) {
-2080c2127
-< 		getUploadUrl: function(fileName, dir) {
----
-> 		getUploadUrl: function (fileName, dir) {
-2090c2137
-< 			_.each(pathSections, function(section) {
----
-> 			_.each(pathSections, function (section) {
-2106c2153
-< 		generatePreviewUrl: function(urlSpec) {
----
-> 		generatePreviewUrl: function (urlSpec) {
-2138c2185
-< 		lazyLoadPreview : function(options) {
----
-> 		lazyLoadPreview: function (options) {
-2167c2214
-< 			if (etag){
----
-> 			if (etag) {
-2178c2225
-< 			img.onload = function(){
----
-> 			img.onload = function () {
-2192c2239
-< 		_updateDirectoryPermissions: function() {
----
-> 		_updateDirectoryPermissions: function () {
-2193a2241,2244
-> 			// IDA users are not allowed to create anything in their root folder
-> 			if (this.getCurrentDirectory() === '/') {
-> 				isCreatable = false;
-> 			}
-2203c2254
-< 		showActions: function(show){
----
-> 		showActions: function (show) {
-2205c2256
-< 			if (show){
----
-> 			if (show) {
-2208a2260,2263
-> 				// IDA users are not allowed to create anything in their root folder
-> 				if (this.getCurrentDirectory() === '/') {
-> 					isCreatable = false;
-> 				}
-2216c2271
-< 			else{
----
-> 			else {
-2226c2281
-< 		setViewerMode: function(show){
----
-> 		setViewerMode: function (show) {
-2229c2284
-< 			this.$el.trigger(new $.Event('changeViewerMode', {viewerModeEnabled: show}));
----
-> 			this.$el.trigger(new $.Event('changeViewerMode', { viewerModeEnabled: show }));
-2239c2294
-< 		remove: function(name, options){
----
-> 		remove: function (name, options) {
-2242c2297
-< 			var fileData = _.findWhere(this.files, {name: name});
----
-> 			var fileData = _.findWhere(this.files, { name: name });
-2257c2312
-< 			var index = this.files.findIndex(function(el){return el.name==name;});
----
-> 			var index = this.files.findIndex(function (el) { return el.name == name; });
-2262c2317
-< 			if (typeof(options.updateSummary) === 'undefined' || !!options.updateSummary) {
----
-> 			if (typeof (options.updateSummary) === 'undefined' || !!options.updateSummary) {
-2264c2319
-< 				this.fileSummary.remove({type: fileData.type, size: fileData.size}, true);
----
-> 				this.fileSummary.remove({ type: fileData.type, size: fileData.size }, true);
-2302c2357
-< 		_findInsertionIndex: function(fileData) {
----
-> 		_findInsertionIndex: function (fileData) {
-2318c2373
-< 		move: function(fileNames, targetPath, callback, dir) {
----
-> 		move: function (fileNames, targetPath, callback, dir) {
-2330c2385
-< 			var moveFileFunction = function(fileName) {
----
-> 			var moveFileFunction = function (fileName) {
-2339c2394
-< 					.done(function() {
----
-> 					.done(function () {
-2353c2408
-< 					.fail(function(status) {
----
-> 					.fail(function (status) {
-2357c2412
-< 								{file: fileName}), {type: 'error'}
----
-> 								{ file: fileName }), { type: 'error' }
-2361c2416
-< 								{file: fileName}), {type: 'error'}
----
-> 								{ file: fileName }), { type: 'error' }
-2365c2420
-< 					.always(function() {
----
-> 					.always(function () {
-2372,2373c2427,2428
-< 		_reflect: function (promise){
-< 			return promise.then(function(v){ return {};}, function(e){ return {};});
----
-> 		_reflect: function (promise) {
-> 			return promise.then(function (v) { return {}; }, function (e) { return {}; });
-2376c2431
-< 		reportOperationProgress: function (fileNames, operationFunction, callback){
----
-> 		reportOperationProgress: function (fileNames, operationFunction, callback) {
-2381,2383c2436,2438
-< 			var promises = _.map(fileNames, function(arg) {
-< 				return mcSemaphore.acquire().then(function(){
-< 					return operationFunction(arg).always(function(){
----
-> 			var promises = _.map(fileNames, function (arg) {
-> 				return mcSemaphore.acquire().then(function () {
-> 					return operationFunction(arg).always(function () {
-2386c2441
-< 						self._operationProgressBar.setProgressBarValue(100.0*counter/fileNames.length);
----
-> 						self._operationProgressBar.setProgressBarValue(100.0 * counter / fileNames.length);
-2391c2446
-< 			return Promise.all(_.map(promises, self._reflect)).then(function(){
----
-> 			return Promise.all(_.map(promises, self._reflect)).then(function () {
-2407c2462
-< 		copy: function(fileNames, targetPath, callback, dir) {
----
-> 		copy: function (fileNames, targetPath, callback, dir) {
-2420c2475
-< 			var copyFileFunction = function(fileName) {
----
-> 			var copyFileFunction = function (fileName) {
-2431c2486
-< 					if ( dotIndex > 1) {
----
-> 					if (dotIndex > 1) {
-2436c2491
-< 						if (isNaN(fileNumber) ) {
----
-> 						if (isNaN(fileNumber)) {
-2445c2500
-< 								leftPartOfName = leftPartOfName.replace(new RegExp("\\(" + copyNameLocalized + "( \\d+)?\\)"),"");
----
-> 								leftPartOfName = leftPartOfName.replace(new RegExp("\\(" + copyNameLocalized + "( \\d+)?\\)"), "");
-2451c2506
-< 											targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + "\\)"),"");
----
-> 											targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + "\\)"), "");
-2464c2519
-< 								targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + " \\d+\\)"),"");
----
-> 								targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + " \\d+\\)"), "");
-2468c2523
-< 							var extensionName = " (" + copyNameLocalized + " " + maxNum +")";
----
-> 							var extensionName = " (" + copyNameLocalized + " " + maxNum + ")";
-2492c2547
-< 					.fail(function(status) {
----
-> 					.fail(function (status) {
-2496c2551
-< 								{file: fileName}), {type: 'error'}
----
-> 								{ file: fileName }), { type: 'error' }
-2500c2555
-< 								{file: fileName}), {type: 'error'}
----
-> 								{ file: fileName }), { type: 'error' }
-2504c2559
-< 					.always(function() {
----
-> 					.always(function () {
-2528c2583
-< 									), {timeout: 10});
----
-> 									), { timeout: 10 });
-2535c2590
-< 									), {timeout: 10});
----
-> 									), { timeout: 10 });
-2543c2598
-< 									), {timeout: 10});
----
-> 									), { timeout: 10 });
-2561c2616
-< 		updateRow: function($tr, fileInfo, options) {
----
-> 		updateRow: function ($tr, fileInfo, options) {
-2564,2565c2619,2620
-< 			options = _.extend({silent: true}, options);
-< 			options = _.extend(options, {updateSummary: false});
----
-> 			options = _.extend({ silent: true }, options);
-> 			options = _.extend(options, { updateSummary: false });
-2567c2622
-< 			this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: $tr}));
----
-> 			this.$fileList.trigger($.Event('fileActionsReady', { fileList: this, $files: $tr }));
-2577c2632
-< 		rename: function(oldName) {
----
-> 		rename: function (oldName) {
-2582c2637
-< 			tr.data('renaming',true);
----
-> 			tr.data('renaming', true);
-2592,2593c2647,2648
-< 			if ( len === -1 ||
-< 				tr.data('type') === 'dir' ) {
----
-> 			if (len === -1 ||
-> 				tr.data('type') === 'dir') {
-2603c2658
-< 						throw t('files', '{newName} already exists', {newName: filename}, undefined, {
----
-> 						throw t('files', '{newName} already exists', { newName: filename }, undefined, {
-2613c2668
-< 				tr.data('renaming',false);
----
-> 				tr.data('renaming', false);
-2624c2679
-< 			form.submit(function(event) {
----
-> 			form.submit(function (event) {
-2637a2693,2708
-> 						var dir = self.getCurrentDirectory();
-> 						var pathname = dir + '/' + newName;
-> 						var project = OCA.IDA.Util.extractProjectName(pathname);
-> 						var scope = OCA.IDA.Util.stripRootFolder(pathname);
-> 						try {
-> 						    var message = OCA.IDA.Util.scopeNotOK(project, scope);
->                             if (message !== false) {
->                                 OC.Notification.show(t('ida', message), {type: 'error'});
-> 								updateInList(oldFileInfo);
-> 								return false;
->                             }
-> 						} catch (error) {
-> 							OC.Notification.show(error, { type: 'error' });
-> 							updateInList(oldFileInfo);
-> 							return false;
-> 						}
-2650c2721
-< 							.done(function() {
----
-> 							.done(function () {
-2654c2725
-< 							.fail(function(status) {
----
-> 							.fail(function (status) {
-2659c2730
-< 										{fileName: oldName}), {timeout: 7, type: 'error'}
----
-> 										{ fileName: oldName }), { timeout: 7, type: 'error' }
-2662c2733
-< 									self.remove(newName, {updateSummary: true});
----
-> 									self.remove(newName, { updateSummary: true });
-2668,2671c2739,2742
-< 										{
-< 											targetName: newName,
-< 											dir: self.getCurrentDirectory(),
-< 										}),
----
-> 											{
-> 												targetName: newName,
-> 												dir: self.getCurrentDirectory(),
-> 											}),
-2679c2750
-< 										{fileName: oldName}), {type: 'error'}
----
-> 										{ fileName: oldName }), { type: 'error' }
-2688,2689c2759,2760
-< 						tr = self.add(oldFileInfo, {updateSummary: false, silent: true});
-< 						self.$fileList.trigger($.Event('fileActionsReady', {fileList: self, $files: $(tr)}));
----
-> 						tr = self.add(oldFileInfo, { updateSummary: false, silent: true });
-> 						self.$fileList.trigger($.Event('fileActionsReady', { fileList: self, $files: $(tr) }));
-2693c2764
-< 					input.tooltip({placement: 'right', trigger: 'manual'});
----
-> 					input.tooltip({ placement: 'right', trigger: 'manual' });
-2700c2771
-< 			input.keyup(function(event) {
----
-> 			input.keyup(function (event) {
-2708c2779
-< 					input.tooltip({placement: 'right', trigger: 'manual'});
----
-> 					input.tooltip({ placement: 'right', trigger: 'manual' });
-2717c2788
-< 			input.click(function(event) {
----
-> 			input.click(function (event) {
-2721,2722c2792,2793
-< 			input.blur(function() {
-< 				if(input.hasClass('error')) {
----
-> 			input.blur(function () {
-> 				if (input.hasClass('error')) {
-2740c2811
-< 		createFile: function(name) {
----
-> 		createFile: function (name) {
-2753a2825,2832
-> 			var project = OCA.IDA.Util.extractProjectName(targetPath);
-> 			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
-> 
-> 			var message = OCA.IDA.Util.scopeNotOK(project, scope);
->             if (message !== false) {
->                 throw t('ida', message);
->             }
-> 
-2755,2762c2834,2841
-< 					targetPath,
-< 					' ', // dont create empty files which fails on some storage backends
-< 					{
-< 						contentType: 'text/plain',
-< 						overwrite: true
-< 					}
-< 				)
-< 				.done(function() {
----
-> 				targetPath,
-> 				' ', // dont create empty files which fails on some storage backends
-> 				{
-> 					contentType: 'text/plain',
-> 					overwrite: true
-> 				}
-> 			)
-> 				.done(function () {
-2764c2843
-< 					self.addAndFetchFileInfo(targetPath, '', {scrollTo: true}).then(function(status, data) {
----
-> 					self.addAndFetchFileInfo(targetPath, '', { scrollTo: true }).then(function (status, data) {
-2766c2845
-< 					}, function() {
----
-> 					}, function () {
-2768c2847
-< 							{file: name}), {type: 'error'}
----
-> 							{ file: name }), { type: 'error' }
-2772c2851
-< 				.fail(function(status) {
----
-> 				.fail(function (status) {
-2775c2854
-< 							{file: name}), {type: 'error'}
----
-> 							{ file: name }), { type: 'error' }
-2779c2858
-< 							{file: name}), {type: 'error'}
----
-> 							{ file: name }), { type: 'error' }
-2798c2877
-< 		createDirectory: function(name) {
----
-> 		createDirectory: function (name) {
-2811a2891,2898
-> 			var project = OCA.IDA.Util.extractProjectName(targetPath);
-> 			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
-> 
-> 			var message = OCA.IDA.Util.scopeNotOK(project, scope);
->             if (message !== false) {
->                 throw t('ida', message);
->             }
-> 
-2813,2814c2900,2901
-< 				.done(function() {
-< 					self.addAndFetchFileInfo(targetPath, '', {scrollTo:true}).then(function(status, data) {
----
-> 				.done(function () {
-> 					self.addAndFetchFileInfo(targetPath, '', { scrollTo: true }).then(function (status, data) {
-2816c2903
-< 					}, function() {
----
-> 					}, function () {
-2818c2905
-< 							{dir: name}), {type: 'error'}
----
-> 							{ dir: name }), { type: 'error' }
-2822c2909
-< 				.fail(function(createStatus) {
----
-> 				.fail(function (createStatus) {
-2826,2827c2913,2914
-< 						self.addAndFetchFileInfo(targetPath, '', {scrollTo:true})
-< 							.done(function(status, data) {
----
-> 						self.addAndFetchFileInfo(targetPath, '', { scrollTo: true })
-> 							.done(function (status, data) {
-2829c2916
-< 									{dir: name}), {type: 'error'}
----
-> 									{ dir: name }), { type: 'error' }
-2834c2921
-< 							.fail(function() {
----
-> 							.fail(function () {
-2836c2923
-< 									{dir: name}), {type: 'error'}
----
-> 									{ dir: name }), { type: 'error' }
-2842c2929
-< 							{dir: name}), {type: 'error'}
----
-> 							{ dir: name }), { type: 'error' }
-2866c2953
-< 		addAndFetchFileInfo: function(fileName, dir, options) {
----
-> 		addAndFetchFileInfo: function (fileName, dir, options) {
-2889,2891c2976,2978
-< 					properties: this._getWebdavProperties()
-< 				})
-< 				.then(function(status, data) {
----
-> 				properties: this._getWebdavProperties()
-> 			})
-> 				.then(function (status, data) {
-2897c2984
-< 				.fail(function(status) {
----
-> 				.fail(function (status) {
-2899c2986
-< 						{file: name}), {type: 'error'}
----
-> 						{ file: name }), { type: 'error' }
-2914c3001
-< 		inList:function(file) {
----
-> 		inList: function (file) {
-2926c3013
-< 		showFileBusyState: function(files, state) {
----
-> 		showFileBusyState: function (files, state) {
-2936c3023
-< 			_.each(files, function(fileName) {
----
-> 			_.each(files, function (fileName) {
-2962c3049
-< 		do_delete:function(files, dir) {
----
-> 		do_delete: function (files, dir) {
-2965c3052
-< 				files=[files];
----
-> 				files = [files];
-2978c3065,3075
-< 			var removeFunction = function(fileName) {
----
-> 			// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
-> 			// compromise to having overly complex mods to the existing logic...
-> 			var project = OCA.IDA.Util.extractProjectName(dir);
-> 			var scope = OCA.IDA.Util.stripRootFolder(dir);
-> 
-> 			var message = OCA.IDA.Util.scopeNotOK(project, scope);
->             if (message !== false) {
->                 throw t('ida', message);
->             }
-> 
-> 			var removeFunction = function (fileName) {
-2982c3079
-< 					.done(function() {
----
-> 					.done(function () {
-2987c3084
-< 					.fail(function(status) {
----
-> 					.fail(function (status) {
-2996c3093
-< 								{fileName: fileName}), {type: 'error'}
----
-> 								{ fileName: fileName }), { type: 'error' }
-3000c3097
-< 					.always(function() {
----
-> 					.always(function () {
-3004,3007c3101,3104
-< 			return this.reportOperationProgress(files, removeFunction).then(function(){
-< 					self.updateStorageStatistics();
-< 					self.updateStorageQuotas();
-< 				});
----
-> 			return this.reportOperationProgress(files, removeFunction).then(function () {
-> 				self.updateStorageStatistics();
-> 				self.updateStorageQuotas();
-> 			});
-3013c3110
-< 		_createSummary: function() {
----
-> 		_createSummary: function () {
-3024c3121
-< 			return new OCA.Files.FileSummary($tr, {config: this._filesConfig});
----
-> 			return new OCA.Files.FileSummary($tr, { config: this._filesConfig });
-3026c3123
-< 		updateEmptyContent: function() {
----
-> 		updateEmptyContent: function () {
-3028a3126,3129
-> 			// IDA users are not allowed to create anything in their root folder
-> 			if (this.getCurrentDirectory() === '/') {
-> 				isCreatable = false;
-> 			}
-3040c3141
-< 		showMask: function() {
----
-> 		showMask: function () {
-3060c3161
-< 		hideMask: function() {
----
-> 		hideMask: function () {
-3064c3165
-< 		scrollTo:function(file) {
----
-> 		scrollTo: function (file) {
-3069c3170
-< 				_.defer(function() {
----
-> 				_.defer(function () {
-3073c3174
-< 			this.highlightFiles(file, function($tr) {
----
-> 			this.highlightFiles(file, function ($tr) {
-3075c3176
-< 				$tr.one('hover', function() {
----
-> 				$tr.one('hover', function () {
-3083c3184
-< 		filter:function(query) {
----
-> 		filter: function (query) {
-3089c3190
-< 		unfilter:function() {
----
-> 		unfilter: function () {
-3096c3197
-< 		setFilter:function(filter) {
----
-> 		setFilter: function (filter) {
-3131c3232
-< 		hideIrrelevantUIWhenNoFilesMatch:function() {
----
-> 		hideIrrelevantUIWhenNoFilesMatch: function () {
-3137,3138c3238,3239
-< 				if ( $('#searchresults').length === 0 || $('#searchresults').hasClass('hidden') ) {
-< 					var error = t('files', 'No search results in other folders for {tag}{filter}{endtag}', {filter:this._filter});
----
-> 				if ($('#searchresults').length === 0 || $('#searchresults').hasClass('hidden')) {
-> 					var error = t('files', 'No search results in other folders for {tag}{filter}{endtag}', { filter: this._filter });
-3156c3257
-< 		getFilter:function(filter) {
----
-> 		getFilter: function (filter) {
-3162c3263
-< 		updateSearch:function() {
----
-> 		updateSearch: function () {
-3173c3274
-< 		updateSelectionSummary: function() {
----
-> 		updateSelectionSummary: function () {
-3179,3181c3280,3282
-< 				this.$el.find('#headerName a.name>span:first').text(t('files','Name'));
-< 				this.$el.find('#headerSize a>span:first').text(t('files','Size'));
-< 				this.$el.find('#modified a>span:first').text(t('files','Modified'));
----
-> 				this.$el.find('#headerName a.name>span:first').text(t('files', 'Name'));
-> 				this.$el.find('#headerSize a>span:first').text(t('files', 'Size'));
-> 				this.$el.find('#modified a>span:first').text(t('files', 'Modified'));
-3233,3234c3334,3335
-< 		isSelectedCopiable: function() {
-< 			return _.reduce(this.getSelectedFiles(), function(copiable, file) {
----
-> 		isSelectedCopiable: function () {
-> 			return _.reduce(this.getSelectedFiles(), function (copiable, file) {
-3243,3244c3344,3345
-< 		isSelectedMovable: function() {
-< 			return _.reduce(this.getSelectedFiles(), function(movable, file) {
----
-> 		isSelectedMovable: function () {
-> 			return _.reduce(this.getSelectedFiles(), function (movable, file) {
-3252,3253c3353,3354
-< 		isSelectedDownloadable: function() {
-< 			return _.reduce(this.getSelectedFiles(), function(downloadable, file) {
----
-> 		isSelectedDownloadable: function () {
-> 			return _.reduce(this.getSelectedFiles(), function (downloadable, file) {
-3261,3262c3362,3363
-< 		isSelectedDeletable: function() {
-< 			return _.reduce(this.getSelectedFiles(), function(deletable, file) {
----
-> 		isSelectedDeletable: function () {
-> 			return _.reduce(this.getSelectedFiles(), function (deletable, file) {
-3272c3373
-< 		isAllSelected: function() {
----
-> 		isAllSelected: function () {
-3284c3385
-< 		getSelectedFiles: function() {
----
-> 		getSelectedFiles: function () {
-3288c3389
-< 		getUniqueName: function(name) {
----
-> 		getUniqueName: function (name) {
-3291c3392
-< 				var parts=name.split('.');
----
-> 				var parts = name.split('.');
-3294c3395
-< 					extension=parts.pop();
----
-> 					extension = parts.pop();
-3296,3301c3397,3402
-< 				var base=parts.join('.');
-< 				numMatch=base.match(/\((\d+)\)/);
-< 				var num=2;
-< 				if (numMatch && numMatch.length>0) {
-< 					num=parseInt(numMatch[numMatch.length-1], 10)+1;
-< 					base=base.split('(');
----
-> 				var base = parts.join('.');
-> 				numMatch = base.match(/\((\d+)\)/);
-> 				var num = 2;
-> 				if (numMatch && numMatch.length > 0) {
-> 					num = parseInt(numMatch[numMatch.length - 1], 10) + 1;
-> 					base = base.split('(');
-3303c3404
-< 					base=$.trim(base.join('('));
----
-> 					base = $.trim(base.join('('));
-3305c3406
-< 				name=base+' ('+num+')';
----
-> 				name = base + ' (' + num + ')';
-3307c3408
-< 					name = name+'.'+extension;
----
-> 					name = name + '.' + extension;
-3318,3320c3419,3421
-< 		_showPermissionDeniedNotification: function() {
-< 			var message = t('files', 'You don’t have permission to upload or create files here');
-< 			OC.Notification.show(message, {type: 'error'});
----
-> 		_showPermissionDeniedNotification: function () {
-> 			var message = t('ida', 'Files can be added only in the Staging area (root folder ending in +)');
-> 			OC.Notification.show(message, { type: 'error' });
-3328c3429
-< 		setupUploadEvents: function(uploader) {
----
-> 		setupUploadEvents: function (uploader) {
-3336c3437
-< 			uploader.on('drop', function(e, data) {
----
-> 			uploader.on('drop', function (e, data) {
-3353c3454
-< 					) {
----
-> 				) {
-3383c3484
-< 					else{
----
-> 					else {
-3392a3494,3497
-> 					// IDA users are not allowed to create anything in their root folder
-> 					if (self.getCurrentDirectory() === '/') {
-> 						isCreatable = false;
-> 					}
-3402a3508,3524
-> 
-> 				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
-> 				// compromise to having overly complex mods to the existing logic...
-> 				var project = OCA.IDA.Util.extractProjectName(data.targetDir);
-> 				var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
-> 				try {
-> 			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
->                     if (message !== false) {
->                         OC.Notification.show(t('ida', message), {type: 'error'});
-> 						e.stopPropagation();
-> 						return false;
->                     }
-> 				} catch (error) {
-> 					OC.Notification.show(error, { type: 'error' });
-> 					e.stopPropagation();
-> 					return false;
-> 				}
-3404c3526
-< 			uploader.on('add', function(e, data) {
----
-> 			uploader.on('add', function (e, data) {
-3406a3529,3549
-> 				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
-> 				// compromise to having overly complex mods to the existing logic...
-> 				if (!data.targetDir) {
-> 					targetDir = self.getCurrentDirectory();
-> 				}
-> 				else {
-> 					targetDir = data.targetDir;
-> 				}
-> 				var project = OCA.IDA.Util.extractProjectName(targetDir);
-> 				var scope = OCA.IDA.Util.stripRootFolder(targetDir);
-> 				try {
-> 			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
->                     if (message !== false) {
->                         OC.Notification.show(t('ida', message), {type: 'error'});
->                         return;
->                     }
-> 				} catch (error) {
-> 					OC.Notification.show(error, { type: 'error' });
-> 					return;
-> 				}
-> 
-3430d3572
-< 
-3436c3578
-< 			uploader.on('done', function(e, upload) {
----
-> 			uploader.on('done', function (e, upload) {
-3462c3604
-< 			uploader.on('createdfolder', function(fullPath) {
----
-> 			uploader.on('createdfolder', function (fullPath) {
-3465c3607
-< 			uploader.on('stop', function() {
----
-> 			uploader.on('stop', function () {
-3475c3617
-< 				$.when.apply($, promises).then(function() {
----
-> 				$.when.apply($, promises).then(function () {
-3486c3628
-< 			uploader.on('fail', function(e, data) {
----
-> 			uploader.on('fail', function (e, data) {
-3508c3650
-< 		highlightFiles: function(files, highlightFunction) {
----
-> 		highlightFiles: function (files, highlightFunction) {
-3513c3655
-< 			while(!$fileRow.exists() && this._nextPage(false) !== false) { // Checking element existence
----
-> 			while (!$fileRow.exists() && this._nextPage(false) !== false) { // Checking element existence
-3522c3664
-< 			var additionalOffset = this.$el.find("#controls").height()+this.$el.find("#controls").offset().top;
----
-> 			var additionalOffset = this.$el.find("#controls").height() + this.$el.find("#controls").offset().top;
-3537c3679
-< 				complete: function() {
----
-> 				complete: function () {
-3542c3684
-< 						highlightRow = function($fileRow) {
----
-> 						highlightRow = function ($fileRow) {
-3544c3686
-< 							setTimeout(function() {
----
-> 							setTimeout(function () {
-3551c3693
-< 					for(var i=0; i<files.length; i++) {
----
-> 					for (var i = 0; i < files.length; i++) {
-3554c3696
-< 						if($fileRow.length !== 0) { // Checking element existence
----
-> 						if ($fileRow.length !== 0) { // Checking element existence
-3563c3705
-< 		_renderNewButton: function() {
----
-> 		_renderNewButton: function () {
-3575c3717
-< 			$newButton.tooltip({'placement': 'bottom'});
----
-> 			$newButton.tooltip({ 'placement': 'bottom' });
-3581c3723
-< 		_onClickNewButton: function(event) {
----
-> 		_onClickNewButton: function (event) {
-3605c3747
-< 		registerTabView: function(tabView) {
----
-> 		registerTabView: function (tabView) {
-3614c3756
-< 		registerDetailView: function(detailView) {
----
-> 		registerDetailView: function (detailView) {
-3623c3765
-< 		registerBreadCrumbDetailView: function(detailView) {
----
-> 		registerBreadCrumbDetailView: function (detailView) {
-3636c3778
-< 		getRegisteredDetailViews: function() {
----
-> 		getRegisteredDetailViews: function () {
-3646c3788
-< 		ToggleSelectionModeAction: function(fileList) {
----
-> 		ToggleSelectionModeAction: function (fileList) {
-3649c3791
-< 				displayName: function(context) {
----
-> 				displayName: function (context) {
-3653c3795
-< 				action: function() {
----
-> 				action: function () {
-3660,3665d3801
-< 	/**
-< 	 * Sort comparators.
-< 	 * @namespace OCA.Files.FileList.Comparators
-< 	 * @private
-< 	 */
-< 	FileList.Comparators = {
-3667,3673c3803,3805
-< 		 * Compares two file infos by name, making directories appear
-< 		 * first.
-< 		 *
-< 		 * @param {OC.Files.FileInfo} fileInfo1 file info
-< 		 * @param {OC.Files.FileInfo} fileInfo2 file info
-< 		 * @return {int} -1 if the first file must appear before the second one,
-< 		 * 0 if they are identify, 1 otherwise.
----
-> 		 * Sort comparators.
-> 		 * @namespace OCA.Files.FileList.Comparators
-> 		 * @private
-3675,3680c3807,3846
-< 		name: function(fileInfo1, fileInfo2) {
-< 			if (fileInfo1.type === 'dir' && fileInfo2.type !== 'dir') {
-< 				return -1;
-< 			}
-< 			if (fileInfo1.type !== 'dir' && fileInfo2.type === 'dir') {
-< 				return 1;
----
-> 		FileList.Comparators = {
-> 			/**
-> 			 * Compares two file infos by name, making directories appear
-> 			 * first.
-> 			 *
-> 			 * @param {OC.Files.FileInfo} fileInfo1 file info
-> 			 * @param {OC.Files.FileInfo} fileInfo2 file info
-> 			 * @return {int} -1 if the first file must appear before the second one,
-> 			 * 0 if they are identify, 1 otherwise.
-> 			 */
-> 			name: function (fileInfo1, fileInfo2) {
-> 				if (fileInfo1.type === 'dir' && fileInfo2.type !== 'dir') {
-> 					return -1;
-> 				}
-> 				if (fileInfo1.type !== 'dir' && fileInfo2.type === 'dir') {
-> 					return 1;
-> 				}
-> 				return OC.Util.naturalSortCompare(fileInfo1.name, fileInfo2.name);
-> 			},
-> 			/**
-> 			 * Compares two file infos by size.
-> 			 *
-> 			 * @param {OC.Files.FileInfo} fileInfo1 file info
-> 			 * @param {OC.Files.FileInfo} fileInfo2 file info
-> 			 * @return {int} -1 if the first file must appear before the second one,
-> 			 * 0 if they are identify, 1 otherwise.
-> 			 */
-> 			size: function (fileInfo1, fileInfo2) {
-> 				return fileInfo1.size - fileInfo2.size;
-> 			},
-> 			/**
-> 			 * Compares two file infos by timestamp.
-> 			 *
-> 			 * @param {OC.Files.FileInfo} fileInfo1 file info
-> 			 * @param {OC.Files.FileInfo} fileInfo2 file info
-> 			 * @return {int} -1 if the first file must appear before the second one,
-> 			 * 0 if they are identify, 1 otherwise.
-> 			 */
-> 			mtime: function (fileInfo1, fileInfo2) {
-> 				return fileInfo1.mtime - fileInfo2.mtime;
-3682,3706c3848
-< 			return OC.Util.naturalSortCompare(fileInfo1.name, fileInfo2.name);
-< 		},
-< 		/**
-< 		 * Compares two file infos by size.
-< 		 *
-< 		 * @param {OC.Files.FileInfo} fileInfo1 file info
-< 		 * @param {OC.Files.FileInfo} fileInfo2 file info
-< 		 * @return {int} -1 if the first file must appear before the second one,
-< 		 * 0 if they are identify, 1 otherwise.
-< 		 */
-< 		size: function(fileInfo1, fileInfo2) {
-< 			return fileInfo1.size - fileInfo2.size;
-< 		},
-< 		/**
-< 		 * Compares two file infos by timestamp.
-< 		 *
-< 		 * @param {OC.Files.FileInfo} fileInfo1 file info
-< 		 * @param {OC.Files.FileInfo} fileInfo2 file info
-< 		 * @return {int} -1 if the first file must appear before the second one,
-< 		 * 0 if they are identify, 1 otherwise.
-< 		 */
-< 		mtime: function(fileInfo1, fileInfo2) {
-< 			return fileInfo1.mtime - fileInfo2.mtime;
-< 		}
-< 	};
----
-> 		};
-3723c3865
-< $(document).ready(function() {
----
-> $(document).ready(function () {
-3725c3867
-< 	OCA.Files.FileList.useUndo = (window.onbeforeunload)?true:false;
----
-> 	OCA.Files.FileList.useUndo = (window.onbeforeunload) ? true : false;
-3734d3875
-< 
+--- /var/ida/nextcloud-old/apps/files/js/filelist.js	2021-10-27 10:25:30.396495088 +0000
++++ /var/ida/nextcloud-old/apps/files/js/filelist.js.original	2021-10-27 10:25:30.397495090 +0000
+@@ -1,11 +1,4 @@
+ /*
+- * This file is part of the IDA research data storage service
+- *
+- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+- * @link     https://research.csc.fi/
+- */
+-
+-/*
+  * Copyright (c) 2014
+  *
+  * This file is licensed under the Affero General Public License version 3
+@@ -831,7 +825,7 @@
+ 				this.updateSelectionSummary();
+ 			} else {
+ 				// clicked directly on the name
+-				if (!this._detailsView || $(event.target).is('.nametext, .name') || $(event.target).closest('.nametext').length || $(event.target).is('.projectDetails') || $(event.target).closest('.projectDetails').length) {
++				if (!this._detailsView || $(event.target).is('.nametext, .name') || $(event.target).closest('.nametext').length) {
+ 					var filename = $tr.attr('data-file');
+ 					var renaming = $tr.data('renaming');
+ 					if (!renaming) {
+@@ -1038,10 +1032,7 @@
+ 			if (!this.isAllSelected()) {
+ 				files = _.pluck(this.getSelectedFiles(), 'name');
+ 			}
+-			var response = confirm(t('ida', 'Are you sure you want to delete the selected item(s)? THIS ACTION CANNOT BE UNDONE!'));
+-			if (response) {
+ 				this.do_delete(files);
+-			}
+ 			event.preventDefault();
+ 		},
+ 
+@@ -1560,8 +1551,6 @@
+ 					: '118'
+ 			}
+ 
+-			maxContrast = OCA.Accessibility && OCA.Accessibility.theme === 'themedark' ? '130' : '118';
+-
+ 			// size column
+ 			if (typeof (fileData.size) !== 'undefined' && fileData.size >= 0) {
+ 				simpleSize = humanFileSize(parseInt(fileData.size, 10), true);
+@@ -1633,42 +1622,6 @@
+ 			);
+ 			tr.find('.filesize').text(simpleSize);
+ 			tr.append(td);
+-
+-			try {
+-				if (path != null && path == '/') {
+-				    spans = tr.find("span.nametext");
+-				    if (spans.length > 0) {
+-					    path = '/' + name;
+-					    projectName = OCA.IDA.Util.extractProjectName(path);
+-					    projectTitle = OCA.IDA.Util.getProjectTitle(projectName);
+-					    tr.attr('data-project-name', projectName);
+-					    tr.attr('data-project-title', projectTitle);
+-					    var projectArea = t('ida', 'Frozen');
+-					    if (name.substr(name.length - 1) == '+') {
+-						    projectArea = t('ida', 'Staging');
+-					    }
+-						var htmlInsertion = "<span class=\"projectDetails\">";
+-                        // Use slightly tighter spacing in production since all project names are shorter
+-						if (location.hostname == 'ida.fairdata.fi') {
+-							htmlInsertion = "<span class=\"projectDetails projectDetailsTight\">";
+-						}
+-						htmlInsertion = htmlInsertion + "<span class=\"projectArea\">" + projectArea + "</span>";
+-						if (projectTitle != projectName) {
+-							if (projectTitle.length > 50) {
+-								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\" title=\"" + projectTitle + "\">" + projectTitle + "</span>";
+-							}
+-							else {
+-								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\">" + projectTitle + "</span>";
+-							}
+-						}
+-						htmlInsertion = htmlInsertion + "</span>";
+-						spans[0].insertAdjacentHTML('afterend', htmlInsertion);
+-					}
+-				}
+-			} catch (error) {
+-				;
+-			}
+-
+ 			return tr;
+ 		},
+ 
+@@ -2238,10 +2191,6 @@
+ 
+ 		_updateDirectoryPermissions: function () {
+ 			var isCreatable = (this.dirInfo.permissions & OC.PERMISSION_CREATE) !== 0 && this.$el.find('#free_space').val() !== '0';
+-			// IDA users are not allowed to create anything in their root folder
+-			if (this.getCurrentDirectory() === '/') {
+-				isCreatable = false;
+-			}
+ 			this.$el.find('#permissions').val(this.dirInfo.permissions);
+ 			this.$el.find('.creatable').toggleClass('hidden', !isCreatable);
+ 			this.$el.find('.notCreatable').toggleClass('hidden', isCreatable);
+@@ -2257,10 +2206,6 @@
+ 				// make sure to display according to permissions
+ 				var permissions = this.getDirectoryPermissions();
+ 				var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+-				// IDA users are not allowed to create anything in their root folder
+-				if (this.getCurrentDirectory() === '/') {
+-					isCreatable = false;
+-				}
+ 				this.$el.find('.creatable').toggleClass('hidden', !isCreatable);
+ 				this.$el.find('.notCreatable').toggleClass('hidden', isCreatable);
+ 				// remove old style breadcrumbs (some apps might create them)
+@@ -2690,22 +2635,6 @@
+ 
+ 					if (newName !== oldName) {
+ 						checkInput();
+-						var dir = self.getCurrentDirectory();
+-						var pathname = dir + '/' + newName;
+-						var project = OCA.IDA.Util.extractProjectName(pathname);
+-						var scope = OCA.IDA.Util.stripRootFolder(pathname);
+-						try {
+-						    var message = OCA.IDA.Util.scopeNotOK(project, scope);
+-                            if (message !== false) {
+-                                OC.Notification.show(t('ida', message), {type: 'error'});
+-								updateInList(oldFileInfo);
+-								return false;
+-                            }
+-						} catch (error) {
+-							OC.Notification.show(error, { type: 'error' });
+-							updateInList(oldFileInfo);
+-							return false;
+-						}
+ 						// mark as loading (temp element)
+ 						self.showFileBusyState(tr, true);
+ 						tr.attr('data-file', newName);
+@@ -2822,14 +2751,6 @@
+ 			name = this.getUniqueName(name);
+ 			var targetPath = this.getCurrentDirectory() + '/' + name;
+ 
+-			var project = OCA.IDA.Util.extractProjectName(targetPath);
+-			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+-
+-			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+-            if (message !== false) {
+-                throw t('ida', message);
+-            }
+-
+ 			self.filesClient.putFileContents(
+ 				targetPath,
+ 				' ', // dont create empty files which fails on some storage backends
+@@ -2888,14 +2809,6 @@
+ 			name = this.getUniqueName(name);
+ 			var targetPath = this.getCurrentDirectory() + '/' + name;
+ 
+-			var project = OCA.IDA.Util.extractProjectName(targetPath);
+-			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+-
+-			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+-            if (message !== false) {
+-                throw t('ida', message);
+-            }
+-
+ 			this.filesClient.createDirectory(targetPath)
+ 				.done(function () {
+ 					self.addAndFetchFileInfo(targetPath, '', { scrollTo: true }).then(function (status, data) {
+@@ -3062,16 +2975,6 @@
+ 
+ 			dir = dir || this.getCurrentDirectory();
+ 
+-			// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+-			// compromise to having overly complex mods to the existing logic...
+-			var project = OCA.IDA.Util.extractProjectName(dir);
+-			var scope = OCA.IDA.Util.stripRootFolder(dir);
+-
+-			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+-            if (message !== false) {
+-                throw t('ida', message);
+-            }
+-
+ 			var removeFunction = function (fileName) {
+ 				var $tr = self.findFileEl(fileName);
+ 				self.showFileBusyState($tr, true);
+@@ -3123,10 +3026,6 @@
+ 		updateEmptyContent: function () {
+ 			var permissions = this.getDirectoryPermissions();
+ 			var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+-			// IDA users are not allowed to create anything in their root folder
+-			if (this.getCurrentDirectory() === '/') {
+-				isCreatable = false;
+-			}
+ 			this.$el.find('#emptycontent').toggleClass('hidden', !this.isEmpty);
+ 			this.$el.find('#emptycontent').toggleClass('hidden', !this.isEmpty);
+ 			this.$el.find('#emptycontent .uploadmessage').toggleClass('hidden', !isCreatable || !this.isEmpty);
+@@ -3417,7 +3316,7 @@
+ 		 * Shows a "permission denied" notification
+ 		 */
+ 		_showPermissionDeniedNotification: function () {
+-			var message = t('ida', 'Files can be added only in the Staging area (root folder ending in +)');
++			var message = t('files', 'You don’t have permission to upload or create files here');
+ 			OC.Notification.show(message, { type: 'error' });
+ 		},
+ 
+@@ -3491,10 +3390,6 @@
+ 				} else {
+ 					// cancel uploads to current dir if no permission
+ 					var isCreatable = (self.getDirectoryPermissions() & OC.PERMISSION_CREATE) !== 0;
+-					// IDA users are not allowed to create anything in their root folder
+-					if (self.getCurrentDirectory() === '/') {
+-						isCreatable = false;
+-					}
+ 					if (!isCreatable) {
+ 						self._showPermissionDeniedNotification();
+ 						e.stopPropagation();
+@@ -3505,48 +3400,10 @@
+ 					// upload the file to the current directory
+ 					data.targetDir = self.getCurrentDirectory();
+ 				}
+-
+-				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+-				// compromise to having overly complex mods to the existing logic...
+-				var project = OCA.IDA.Util.extractProjectName(data.targetDir);
+-				var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
+-				try {
+-			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+-                    if (message !== false) {
+-                        OC.Notification.show(t('ida', message), {type: 'error'});
+-						e.stopPropagation();
+-						return false;
+-                    }
+-				} catch (error) {
+-					OC.Notification.show(error, { type: 'error' });
+-					e.stopPropagation();
+-					return false;
+-				}
+ 			});
+ 			uploader.on('add', function (e, data) {
+ 				self._uploader.log('filelist handle fileuploadadd', e, data);
+ 
+-				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+-				// compromise to having overly complex mods to the existing logic...
+-				if (!data.targetDir) {
+-					targetDir = self.getCurrentDirectory();
+-				}
+-				else {
+-					targetDir = data.targetDir;
+-				}
+-				var project = OCA.IDA.Util.extractProjectName(targetDir);
+-				var scope = OCA.IDA.Util.stripRootFolder(targetDir);
+-				try {
+-			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+-                    if (message !== false) {
+-                        OC.Notification.show(t('ida', message), {type: 'error'});
+-                        return;
+-                    }
+-				} catch (error) {
+-					OC.Notification.show(error, { type: 'error' });
+-					return;
+-				}
+-
+ 				// add ui visualization to existing folder
+ 				if (data.context && data.context.data('type') === 'dir') {
+ 					// add to existing folder

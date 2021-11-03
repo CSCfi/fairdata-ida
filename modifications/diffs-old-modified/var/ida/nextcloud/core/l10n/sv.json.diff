@@ -1,2 +1,10 @@
-196a197
->     "Login" : "Logga in",
+--- /var/ida/nextcloud-old/core/l10n/sv.json	2021-10-27 10:25:31.076496730 +0000
++++ /var/ida/nextcloud-old/core/l10n/sv.json.original	2021-10-27 10:25:31.076496730 +0000
+@@ -195,7 +195,6 @@
+     "Username or email" : "Användarnamn eller e-post",
+     "Username or\temail" : "Användarnamn eller\te-post",
+     "Login" : "Logga in",
+-    "Log in" : "Logga in",
+     "Logging in …" : "Loggar in ...",
+     "Wrong username or password." : "Felaktigt användarnamn eller lösenord",
+     "User disabled" : "Användare inaktiverad",
