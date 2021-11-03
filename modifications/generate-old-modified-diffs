@@ -24,14 +24,14 @@
 
 # This script generates diffs for all of the modified files in the old nextcloud,
 # detailing what has been modified from the originals, placing them in the
-# subdirectory ./old-modified-diffs/.
+# subdirectory ./diffs-old-modified/.
 
 source ../config/config.sh
 
 for PATHNAME in `./list-modified-files`; do
     OLDPATHNAME=`echo "${PATHNAME}" | sed -e 's/nextcloud/nextcloud-old/'`
     DIRS=`dirname "${PATHNAME}"`
-    mkdir -p "./old-modified-diffs${DIRS}"
-    diff "${OLDPATHNAME}.original" "${OLDPATHNAME}" > "./old-modified-diffs${PATHNAME}.diff" 
+    mkdir -p "./diffs-old-modified${DIRS}"
+    diff "${OLDPATHNAME}.original" "${OLDPATHNAME}" > "./diffs-old-modified${PATHNAME}.diff" 
 done
 

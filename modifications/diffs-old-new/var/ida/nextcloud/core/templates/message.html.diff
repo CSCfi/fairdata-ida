@@ -1,0 +1,4 @@
+2c2
+< 	<p>{message}</p>
+---
+> 	<p><span class="ui-icon ui-icon-{type}"></span>{message}</p>

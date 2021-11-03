@@ -1,0 +1,344 @@
+6a7
+>  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+7a9,12
+>  * @author Bjoern Schiessle <bjoern@schiessle.org>
+>  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+>  * @author Georg Ehrke <oc.list@georgehrke.com>
+>  * @author GretaD <gretadoci@gmail.com>
+8a14
+>  * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+13a20
+>  * @author Thomas Citharel <nextcloud@tcit.fr>
+27c34
+<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
+---
+>  * along with this program. If not, see <http://www.gnu.org/licenses/>
+39d45
+< use \Firebase\JWT\JWT;
+58c64
+< 	protected $availableLanguages = ['en', 'fi', 'sv'];
+---
+> 	protected $availableLanguages = [];
+63c69,74
+< 	protected $availableLocales = ['en_US', 'fi_FI', 'sv_FI'];
+---
+> 	protected $localeCache = [];
+> 
+> 	/**
+> 	 * @var array
+> 	 */
+> 	protected $availableLocales = [];
+70,73c81,83
+< 	const COMMON_LANGUAGE_CODES = [
+< 		'en', 'fi', 'sv', 'en_US', 'en_UK', 'en_GB', 'fi_FI', 'sv_SV', 'sv_FI'
+< 		//'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
+< 		//'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
+---
+> 	public const COMMON_LANGUAGE_CODES = [
+> 		'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
+> 		'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
+113,116c123,127
+< 		$app = \OC_App::cleanAppId($app);
+< 		if ($lang !== null) {
+< 			$lang = str_replace(array('\0', '/', '\\', '..'), '', (string) $lang);
+< 		}
+---
+> 		return new LazyL10N(function () use ($app, $lang, $locale) {
+> 			$app = \OC_App::cleanAppId($app);
+> 			if ($lang !== null) {
+> 				$lang = str_replace(['\0', '/', '\\', '..'], '', $lang);
+> 			}
+118,121c129,132
+< 		$forceLang = $this->config->getSystemValue('force_language', false);
+< 		if (is_string($forceLang)) {
+< 			$lang = $forceLang;
+< 		}
+---
+> 			$forceLang = $this->config->getSystemValue('force_language', false);
+> 			if (is_string($forceLang)) {
+> 				$lang = $forceLang;
+> 			}
+123,126c134,137
+< 		$forceLocale = $this->config->getSystemValue('force_locale', false);
+< 		if (is_string($forceLocale)) {
+< 			$locale = $forceLocale;
+< 		}
+---
+> 			$forceLocale = $this->config->getSystemValue('force_locale', false);
+> 			if (is_string($forceLocale)) {
+> 				$locale = $forceLocale;
+> 			}
+128,130c139,141
+< 		if ($lang === null || !$this->languageExists($app, $lang)) {
+< 			$lang = $this->findLanguage($app);
+< 		}
+---
+> 			if ($lang === null || !$this->languageExists($app, $lang)) {
+> 				$lang = $this->findLanguage($app);
+> 			}
+132,134c143,145
+< 		if ($locale === null || !$this->localeExists($locale)) {
+< 			$locale = $this->findLocale($lang);
+< 		}
+---
+> 			if ($locale === null || !$this->localeExists($locale)) {
+> 				$locale = $this->findLocale($lang);
+> 			}
+136,141c147,152
+< 		if (!isset($this->instances[$lang][$app])) {
+< 			$this->instances[$lang][$app] = new L10N(
+< 				$this, $app, $lang, $locale,
+< 				$this->getL10nFilesForApp($app, $lang)
+< 			);
+< 		}
+---
+> 			if (!isset($this->instances[$lang][$app])) {
+> 				$this->instances[$lang][$app] = new L10N(
+> 					$this, $app, $lang, $locale,
+> 					$this->getL10nFilesForApp($app, $lang)
+> 				);
+> 			}
+143c154,155
+< 		return $this->instances[$lang][$app];
+---
+> 			return $this->instances[$lang][$app];
+> 		});
+152a165,172
+> 		$forceLang = $this->config->getSystemValue('force_language', false);
+> 		if (is_string($forceLang)) {
+> 			$this->requestLanguage = $forceLang;
+> 		}
+> 
+> 		if ($this->requestLanguage !== '' && $this->languageExists($app, $this->requestLanguage)) {
+> 			return $this->requestLanguage;
+> 		}
+154,166c174,198
+<         if (array_key_exists('HTTP_HOST', $_SERVER)) {
+< 	        $hostname = $_SERVER['HTTP_HOST'];
+< 	        $domain = substr($hostname, strpos($hostname, ".") + 1);
+< 	        $prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+< 	        $cookie = $prefix . '_fd_sso_session';
+< 	        if (array_key_exists($cookie, $_COOKIE)) {
+<                 $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+< 		        $session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+< 				if ($session && $session->language) {
+< 		            return $session->language;
+<                 }
+< 	        }
+<         }
+---
+> 		/**
+> 		 * At this point Nextcloud might not yet be installed and thus the lookup
+> 		 * in the preferences table might fail. For this reason we need to check
+> 		 * whether the instance has already been installed
+> 		 *
+> 		 * @link https://github.com/owncloud/core/issues/21955
+> 		 */
+> 		if ($this->config->getSystemValue('installed', false)) {
+> 			$userId = !is_null($this->userSession->getUser()) ? $this->userSession->getUser()->getUID() :  null;
+> 			if (!is_null($userId)) {
+> 				$userLang = $this->config->getUserValue($userId, 'core', 'lang', null);
+> 			} else {
+> 				$userLang = null;
+> 			}
+> 		} else {
+> 			$userId = null;
+> 			$userLang = null;
+> 		}
+> 
+> 		if ($userLang) {
+> 			$this->requestLanguage = $userLang;
+> 			if ($this->languageExists($app, $userLang)) {
+> 				return $userLang;
+> 			}
+> 		}
+169,173c201,213
+< 		    $lang = $this->getLanguageFromRequest($app);
+<             if ($lang == 'en' || $lang == 'fi' || $lang == 'sv') {
+< 		        return $lang;
+<             }
+< 		} catch (LanguageNotFoundException $e) { ; }
+---
+> 			// Try to get the language from the Request
+> 			$lang = $this->getLanguageFromRequest($app);
+> 			if ($userId !== null && $app === null && !$userLang) {
+> 				$this->config->setUserValue($userId, 'core', 'lang', $lang);
+> 			}
+> 			return $lang;
+> 		} catch (LanguageNotFoundException $e) {
+> 			// Finding language from request failed fall back to default language
+> 			$defaultLanguage = $this->config->getSystemValue('default_language', false);
+> 			if ($defaultLanguage !== false && $this->languageExists($app, $defaultLanguage)) {
+> 				return $defaultLanguage;
+> 			}
+> 		}
+174a215
+> 		// We could not find any language so fall back to english
+184a226,244
+> 		$forceLocale = $this->config->getSystemValue('force_locale', false);
+> 		if (is_string($forceLocale) && $this->localeExists($forceLocale)) {
+> 			return $forceLocale;
+> 		}
+> 
+> 		if ($this->config->getSystemValue('installed', false)) {
+> 			$userId = null !== $this->userSession->getUser() ? $this->userSession->getUser()->getUID() :  null;
+> 			$userLocale = null;
+> 			if (null !== $userId) {
+> 				$userLocale = $this->config->getUserValue($userId, 'core', 'locale', null);
+> 			}
+> 		} else {
+> 			$userId = null;
+> 			$userLocale = null;
+> 		}
+> 
+> 		if ($userLocale && $this->localeExists($userLocale)) {
+> 			return $userLocale;
+> 		}
+186,187c246,249
+< 		if ($lang == 'fi') {
+< 			return 'fi_FI';
+---
+> 		// Default : use system default locale
+> 		$defaultLocale = $this->config->getSystemValue('default_locale', false);
+> 		if ($defaultLocale !== false && $this->localeExists($defaultLocale)) {
+> 			return $defaultLocale;
+190,191c252,254
+< 		if ($lang == 'sv'){
+< 			return 'sv_FI';
+---
+> 		// If no user locale set, use lang as locale
+> 		if (null !== $lang && $this->localeExists($lang)) {
+> 			return $lang;
+193a257
+> 		// At last, return USA
+297c361
+< 		if($user === null) {
+---
+> 		if ($user === null) {
+303a368,390
+> 	 * Return the language to use when sending something to a user
+> 	 *
+> 	 * @param IUser|null $user
+> 	 * @return string
+> 	 * @since 20.0.0
+> 	 */
+> 	public function getUserLanguage(IUser $user = null): string {
+> 		$language = $this->config->getSystemValue('force_language', false);
+> 		if ($language !== false) {
+> 			return $language;
+> 		}
+> 
+> 		if ($user instanceof IUser) {
+> 			$language = $this->config->getUserValue($user->getUID(), 'core', 'lang', null);
+> 			if ($language !== null) {
+> 				return $language;
+> 			}
+> 		}
+> 
+> 		return $this->config->getSystemValue('default_language', 'en');
+> 	}
+> 
+> 	/**
+312,315c399,404
+< 		$locales = $this->findAvailableLocales();
+< 		$userLocale = array_filter($locales, function($value) use ($locale) {
+< 			return $locale === $value['code'];
+< 		});
+---
+> 		if ($this->localeCache === []) {
+> 			$locales = $this->findAvailableLocales();
+> 			foreach ($locales as $l) {
+> 				$this->localeCache[$l['code']] = true;
+> 			}
+> 		}
+317c406
+< 		return !empty($userLocale);
+---
+> 		return isset($this->localeCache[$locale]);
+419d507
+< 				|| $this->isSubDirectory($transFile, $this->serverRoot . '/settings/l10n/')
+446c534
+< 		if (in_array($app, ['core', 'lib', 'settings'])) {
+---
+> 		if (in_array($app, ['core', 'lib'])) {
+450c538
+< 		} else if ($app && \OC_App::getAppPath($app) !== false) {
+---
+> 		} elseif ($app && \OC_App::getAppPath($app) !== false) {
+471c559
+< 		if (preg_match( '/^\s*nplurals\s*=\s*(\d+)\s*;\s*plural=(.*)$/u', $string, $matches)) {
+---
+> 		if (preg_match('/^\s*nplurals\s*=\s*(\d+)\s*;\s*plural=(.*)$/u', $string, $matches)) {
+473,474c561,562
+< 			$nplurals = preg_replace( '/[^0-9]/', '', $matches[1] );
+< 			$plural = preg_replace( '#[^n0-9:\(\)\?\|\&=!<>+*/\%-]#', '', $matches[2] );
+---
+> 			$nplurals = preg_replace('/[^0-9]/', '', $matches[1]);
+> 			$plural = preg_replace('#[^n0-9:\(\)\?\|\&=!<>+*/\%-]#', '', $matches[2]);
+477,478c565,566
+< 				array( 'plural', 'n', '$n$plurals', ),
+< 				array( '$plural', '$n', '$nplurals', ),
+---
+> 				[ 'plural', 'n', '$n$plurals', ],
+> 				[ '$plural', '$n', '$nplurals', ],
+488c576
+< 			for($i = 0; $i < $length; $i++) {
+---
+> 			for ($i = 0; $i < $length; $i++) {
+490c578
+< 				switch ( $ch ) {
+---
+> 				switch ($ch) {
+499c587
+< 						$res .= str_repeat( ')', $p ) . ';';
+---
+> 						$res .= str_repeat(')', $p) . ';';
+531c619,628
+< 			return [];
+---
+> 			$l = $this->get('lib', $forceLanguage);
+> 			$potentialName = $l->t('__language_name__');
+> 
+> 			return [
+> 				'commonlanguages' => [[
+> 					'code' => $forceLanguage,
+> 					'name' => $potentialName,
+> 				]],
+> 				'languages' => [],
+> 			];
+539c636
+< 		foreach($languageCodes as $lang) {
+---
+> 		foreach ($languageCodes as $lang) {
+542c639
+< 			$potentialName = (string) $l->t('__language_name__');
+---
+> 			$potentialName = $l->t('__language_name__');
+544c641
+< 				$ln = array(
+---
+> 				$ln = [
+547,549c644,646
+< 				);
+< 			} else if ($lang === 'en') {
+< 				$ln = array(
+---
+> 				];
+> 			} elseif ($lang === 'en') {
+> 				$ln = [
+552c649
+< 				);
+---
+> 				];
+554c651
+< 				$ln = array(
+---
+> 				$ln = [
+557c654
+< 				);
+---
+> 				];
+572c669
+< 		usort( $languages, function ($a, $b) {
+---
+> 		usort($languages, function ($a, $b) {

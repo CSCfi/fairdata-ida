@@ -1,0 +1,177 @@
+2,8d1
+<  * This file is part of the IDA research data storage service
+<  *
+<  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+<  * @link     https://research.csc.fi/
+<  */
+< 
+< /*
+266a260,272
+> 		 * Returns the default file action handler for the current file
+> 		 *
+> 		 * @return {OCA.Files.FileActions~actionSpec} action spec
+> 		 * @since 8.2
+> 		 */
+> 		getCurrentDefaultFileAction: function() {
+> 			var mime = this.getCurrentMimeType();
+> 			var type = this.getCurrentType();
+> 			var permissions = this.getCurrentPermissions();
+> 			return this.getDefaultFileAction(mime, type, permissions);
+> 		},
+> 
+> 		/**
+273c279
+< 		 * @return {OCA.Files.FileActions~actionHandler} action handler
+---
+> 		 * @return {OCA.Files.FileActions~actionSpec} action spec
+419,420d424
+< 					// also set on global object for legacy apps
+< 					window.FileActions.currentFile = currentFile;
+490,491d493
+< 			// also set on global object for legacy apps
+< 			window.FileActions.currentFile = fileName;
+635,652d636
+<                     if (context.$file.attr('data-mounttype') === 'shared-root') {
+<                         OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+<                         return;
+<                     }
+<                     var dir = context.dir || context.fileList.getCurrentDirectory();
+<                     var pathname = dir + '/' + filename;
+<                     var project = OCA.IDA.Util.extractProjectName(pathname);
+<                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
+<                     try {
+< 						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                         if (message !== false) {
+<                             OC.Notification.show(t('ida', message), {type: 'error'});
+<                             return;
+<                         }
+<                     } catch (error) {
+<                         OC.Notification.show(error, {type: 'error'});
+<                         return;
+<                     }
+671,688d654
+<                     if (context.$file.attr('data-mounttype') === 'shared-root') {
+<                         OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+<                         return;
+<                     }
+<                     var dir = context.dir || context.fileList.getCurrentDirectory();
+<                     var pathname = dir + '/' + filename;
+<                     var project = OCA.IDA.Util.extractProjectName(pathname);
+<                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
+<                     try {
+< 						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                         if (message !== false) {
+<                             OC.Notification.show(t('ida', message), {type: 'error'});
+<                             return;
+<                         }
+<                     } catch (error) {
+<                         OC.Notification.show(error, {type: 'error'});
+<                         return;
+<                     }
+700,715d665
+<                            if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+<                                 OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+<                                 return;
+<                             }
+<                             var project = OCA.IDA.Util.extractProjectName(targetPath);
+<                             var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+<                             try {
+< 						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                                 if (message !== false) {
+<                                     OC.Notification.show(t('ida', message), {type: 'error'});
+<                                     return;
+<                                 }
+<                             } catch (error) {
+<                                 OC.Notification.show(error, {type: 'error'});
+<                                 return;
+<                             }
+719,734d668
+<                            if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+<                                 OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+<                                 return;
+<                             }
+<                             var project = OCA.IDA.Util.extractProjectName(targetPath);
+<                             var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+<                             try {
+< 						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                                 if (message !== false) {
+<                                     OC.Notification.show(t('ida', message), {type: 'error'});
+<                                     return;
+<                                 }
+<                             } catch (error) {
+<                                 OC.Notification.show(error, {type: 'error'});
+<                                 return;
+<                             }
+737c671
+< 						context.fileList.dirInfo.dirLastCopiedTo = targetPath; 
+---
+> 						context.fileList.dirInfo.dirLastCopiedTo = targetPath;
+763c697,700
+< 					var deleteTitle = t('files', 'Delete');
+---
+> 					var type = context.$file.attr('data-type');
+> 					var deleteTitle = (type && type === 'file')
+> 						? t('files', 'Delete file')
+> 						: t('files', 'Delete folder')
+767c704
+< 						deleteTitle = t('files', 'Unshare');
+---
+> 						deleteTitle = t('files', 'Leave this share');
+776,794c713
+< 				actionHandler: function(filename, context) {
+<                     if (context.$file.attr('data-mounttype') === 'shared-root') {
+<                         OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+<                         return;
+<                     }
+<                     var dir = context.dir || context.fileList.getCurrentDirectory();
+<                     var pathname = dir + '/' + filename;
+<                     var project = OCA.IDA.Util.extractProjectName(pathname);
+<                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
+<                     try {
+< 						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                         if (message !== false) {
+<                             OC.Notification.show(t('ida', message), {type: 'error'});
+<                             return;
+<                         }
+<                     } catch (error) {
+<                         OC.Notification.show(error, {type: 'error'});
+<                         return;
+<                     }
+---
+> 				actionHandler: function(fileName, context) {
+799,802c718
+<                     var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
+<                     if (response) {
+< 					    context.fileList.do_delete(filename, context.dir);
+<                     }
+---
+> 					context.fileList.do_delete(fileName, context.dir);
+803a720,725
+> 
+> 					// close sidebar on delete
+> 					const path = context.dir + '/' + fileName
+> 					if (OCA.Files.Sidebar && OCA.Files.Sidebar.file === path) {
+> 						OCA.Files.Sidebar.close()
+> 					}
+910,930d831
+< 	OCA.Files.legacyFileActions = new OCA.Files.FileActions();
+< 
+< 	// for backward compatibility
+< 	//
+< 	// legacy apps are expecting a stateful global FileActions object to register
+< 	// their actions on. Since legacy apps are very likely to break with other
+< 	// FileList views than the main one ("All files"), actions registered
+< 	// through window.FileActions will be limited to the main file list.
+< 	// @deprecated use OCA.Files.FileActions instead
+< 	window.FileActions = OCA.Files.legacyFileActions;
+< 	window.FileActions.register = function (mime, name, permissions, icon, action, displayName) {
+< 		console.warn('FileActions.register() is deprecated, please use OCA.Files.fileActions.register() instead', arguments);
+< 		OCA.Files.FileActions.prototype.register.call(
+< 				window.FileActions, mime, name, permissions, icon, action, displayName
+< 		);
+< 	};
+< 	window.FileActions.display = function (parent, triggerEvent, fileList) {
+< 		fileList = fileList || OCA.Files.App.fileList;
+< 		console.warn('FileActions.display() is deprecated, please use OCA.Files.fileActions.register() which automatically redisplays actions', mime, name);
+< 		OCA.Files.FileActions.prototype.display.call(window.FileActions, parent, triggerEvent, fileList);
+< 	};

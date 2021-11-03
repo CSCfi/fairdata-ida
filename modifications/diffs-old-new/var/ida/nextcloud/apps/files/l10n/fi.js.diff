@@ -1,0 +1,131 @@
+4,17d3
+<     "Note to recipient" : "Viesti vastaanottajalle",
+<     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Julkinen linkki vanhenee viimeistään {days} päivän jälkeen sen luomisesta, ellei käyttäjä määritä voimassaoloaikaa lyhyemmäksi.",
+<     "Log in": "Kirjaudu",
+<     "Username" : "Käyttäjätunnus",
+<     "Password" : "Salasana",
+<     "Login with CSC account": "Kirjaudu CSC-tunnuksella",
+<     "Personal CSC accounts are created and managed in": "CSC-tiliä hallinnoidaan",
+<     "CSC Customer Portal": "CSC:n asiakasportaalissa",
+<     "CSC username" : "CSC-käyttäjätunnus",
+<     "CSC password" : "CSC-salasana",
+<     "Enter temporary share password:": "Syötä väliaikaisen jakolinkin salasana:",
+<     "Upload some content!" : "Lähetä tiedostoja!",
+<     "Web, desktop, mobile clients and app specific passwords that currently have access to your account." : "Selain-, työpöytä- ja mobiiliasiakasohjemat sekä sovelluskohtaiset salasanat joilla on tällä hetkellä pääsy tilillesi.",
+<     "Files can be added only in the Staging area (root folder ending in +)": "Tiedostoja voidaan lisätä ainoastaan Valmistelualueelle (juurikansio jonka päätteenä on +)",
+21,23d6
+<     "All files" : "Kaikki tiedostot",
+<     "Recent" : "Viimeaikaiset",
+<     "Favorites" : "Suosikit",
+29a13
+>     "Favorites" : "Suosikit",
+49a34,35
+>     "Delete file" : "Poista tiedosto",
+>     "Delete folder" : "Poista kansio",
+51c37
+<     "Unshare" : "Peru jakaminen",
+---
+>     "Leave this share" : "Poistu tästä jaosta",
+64a51,52
+>     "Copied {origin} inside {destination}" : "Kopioitu {origin} kohteeseen {destination}",
+>     "Copied {origin} and {nbfiles} other files inside {destination}" : "Kopioitu {origin} ja {nbfiles} muuta tiedostoa kohteeseen {destination}",
+71a60
+>     "Could not fetch file details \"{file}\"" : "Ei voitu hakea tiedoston tietoja \"{file}\"",
+73a63
+>     "Enter more than two characters to search in other folders" : "Kirjoita enemmän kuin kaksi merkkiä etsiäksesi muista kansioista",
+91,95c81,84
+<     "Storage of {owner} is full, files can not be updated or synced anymore!" : "Käyttäjän {owner} tallennustila on täynnä, tiedostoja ei voi enää päivittää tai synkronoida!",
+<     "Your storage is full, files can not be updated or synced anymore!" : "Tallennustila on loppu, tiedostoja ei voi enää päivittää tai synkronoida!",
+<     "Storage of {owner} is almost full ({usedSpacePercent}%)" : "Käyttäjän {owner} tallennustila on melkein täynnä ({usedSpacePercent} %)",
+<     "Your storage is almost full ({usedSpacePercent}%)" : "Tallennustila on melkein loppu ({usedSpacePercent}%)",
+<     "_matches '{filter}'_::_match '{filter}'_" : ["vastaa '{filter}'","vastaa '{filter}'"],
+---
+>     "Storage of {owner} is almost full ({usedSpacePercent}%)." : "Käyttäjän {owner} tallennustila on melkein täynnä ({usedSpacePercent} %)",
+>     "Group folder \"{mountPoint}\" is almost full ({usedSpacePercent}%)." : "Ryhmäkansio \"{mountPoint}\" on melkein täynnä ({usedSpacePercent}%).",
+>     "External storage \"{mountPoint}\" is almost full ({usedSpacePercent}%)." : "Erillinen tallennustila \"{mountPoint}\" on melkein täynnä ({usedSpacePercent}%).",
+>     "Your storage is almost full ({usedSpacePercent}%)." : "Tallennustila on melkein täynnä ({usedSpacePercent}%).",
+105c94,95
+<     "Upload file" : "Lisää tiedosto",
+---
+>     "Upload file" : "Lähetä tiedosto",
+>     "Recent" : "Viimeaikaiset",
+122a113
+>     "You created an encrypted file in {file}" : "Loit salatun tiedoston {file}",
+123a115
+>     "{user} created an encrypted file in {file}" : "{user} loi salatun tiedoston {file}",
+125a118
+>     "You changed an encrypted file in {file}" : "Muutit salattua tiedostoa {file}",
+126a120
+>     "{user} changed an encrypted file in {file}" : "{user} muutti salattua tiedostoa {file}",
+127a122
+>     "You deleted an encrypted file in {file}" : "Poistit salatun tiedoston {file}",
+128a124
+>     "{user} deleted an encrypted file in {file}" : "{user} poisti salatun tiedoston {file}",
+136,140c132,134
+<     "A file or folder has been <strong>changed</strong> or <strong>renamed</strong>" : "Tiedostoa tai kansiota on <strong>muutettu</strong> tai se on <strong>uudelleennimetty</strong>",
+<     "A new file or folder has been <strong>created</strong>" : "Uusi tiedosto tai kansio on <strong>luotu</strong>",
+<     "A file or folder has been <strong>deleted</strong>" : "Tiedosto tai kansio on <strong>poistettu</strong>",
+<     "Limit notifications about creation and changes to your <strong>favorite files</strong> <em>(Stream only)</em>" : "Rajoita luomis- ja muutosilmoitukset <strong>omiin suosikkitiedostoihin</strong> <em>(Vain listaus)</em>",
+<     "A file or folder has been <strong>restored</strong>" : "Tiedosto tai kansio on <strong>palautettu</strong>",
+---
+>     "A file or folder has been <strong>changed</strong>" : "Tiedostoa tai kansiota on <strong>muutettu</strong>",
+>     "A favorite file or folder has been <strong>changed</strong>" : "Suosikkitiedostoa tai -kansiota on <strong>muutettu</strong>",
+>     "All files" : "Kaikki tiedostot",
+142a137,147
+>     "Accept" : "Hyväksy",
+>     "Reject" : "Hylkää",
+>     "Incoming ownership transfer from {user}" : "Saapuva omistajuussiirto käyttäjältä {user}",
+>     "Do you want to accept {path}?\n\nNote: The transfer process after accepting may take up to 1 hour." : "Hyväksytkö kohteen {path}?\n\nHuomio: Siirtotoimenpiteet hyväksynnän jälkeen saattavat kestää tunnin.",
+>     "Ownership transfer failed" : "Omistajuuden siirto epäonnistui",
+>     "Your ownership transfer of {path} to {user} failed." : "Kohteen {path} omistajuussiirtosi käyttäjälle {user} epäonnistui.",
+>     "The ownership transfer of {path} from {user} failed." : "Kohteen {path} omistajuussiirto käyttäjälle {user} epäonnistui.",
+>     "Ownership transfer done" : "Omistajuuden siirto valmis",
+>     "Your ownership transfer of {path} to {user} has completed." : "Kohteen {path} omistajuussiirto käyttäjälle {user} valmistui.",
+>     "The ownership transfer of {path} from {user} has completed." : "Kohteen {path} omistajuussiirto käyttäjältä {user} valmistui.",
+>     "in %s" : "polussa %s",
+143a149,166
+>     "Transfer ownership of a file or folder" : "Siirrä tiedoston tai kansion omistajuus",
+>     "Choose file or folder to transfer" : "Valitse siirrettävä tiedosto tai kansio",
+>     "Change" : "Muuta",
+>     "New owner" : "Uusi omistaja",
+>     "Search users" : "Etsi käyttäjistä",
+>     "Choose a file or folder to transfer" : "Valitse siirrettävä tiedosto tai kansio",
+>     "Transfer" : "Siirrä",
+>     "Transfer {path} to {userid}" : "Siirrä {path} käyttäjälle {userid}",
+>     "Invalid path selected" : "Valittu virheellinen polku",
+>     "Ownership transfer request sent" : "Pyyntö omistajuuden vaihdosta lähetetty",
+>     "Cannot transfer ownership of a file or folder you don't own" : "Et voi siirtää sellaisen tiedoston tai kansion omistajuutta, jota et itse omista",
+>     "Tags" : "Tunnisteet",
+>     "Unable to change the favourite state of the file" : "Suosikki-tilan muuttaminen epäonnistui.",
+>     "Error while loading the file data" : "Virhe tiedostoa ladatessa",
+>     "Cancel" : "Peruuta",
+>     "Create" : "Luo",
+>     "Creating file" : "Luodaan tiedostoa",
+>     "Blank" : "Tyhjä",
+144a168
+>     "%s%% of %s used" : "%s%% / %s käytetty",
+149c173
+<     "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer noopener\">access your Files via WebDAV</a>" : "Käytä tätä osoitetta <a href=\"%s\" target=\"_blank\" rel=\"noreferrer noopener\">käyttääksesi tiedostojasi WebDAV:in kautta</a>",
+---
+>     "Use this address to access your Files via WebDAV" : "Käytä kyseistä osoitetta yhdistääksesi tiedostosi WebDAV kautta",
+159d182
+<     "Tags" : "Tunnisteet",
+165a189
+>     "Pending shares" : "Odottavat jaot",
+168,177c192,196
+<     "Target folder" : "Kohdekansio",
+<     "File handling" : "Tiedostonhallinta",
+<     "Maximum upload size" : "Lähetettävän tiedoston suurin sallittu koko",
+<     "max. possible: " : "suurin mahdollinen:",
+<     "Save" : "Tallenna",
+<     "With PHP-FPM it might take 5 minutes for changes to be applied." : "PHP-FPM:tä käyttäen muutoksien voimaantulossa saattaa kestää 5 minuuttia.",
+<     "Missing permissions to edit from here." : "Käyttöoikeudet eivät riitä tätä kautta muokkaamiseen.",
+<     "%s of %s used" : "%s / %s käytetty",
+<     "Cancel upload" : "Perus lähetys",
+<     "%1$s%% of %2$s used" : "%1$s%%/%2$s käytetty"
+---
+>     "Storage of {owner} is full, files can not be updated or synced anymore!" : "Käyttäjän {owner} tallennustila on täynnä, tiedostoja ei voi enää päivittää tai synkronoida!",
+>     "Group folder \"{mountPoint}\" is full, files can not be updated or synced anymore!" : "Ryhmäkansio \"{mountPoint}\" on täynnä, tiedostoja ei voi enää päivittää tai synkronoida!",
+>     "External storage \"{mountPoint}\" is full, files can not be updated or synced anymore!" : "Erillinen tallennustila \"{mountPoint}\" on täynnä, tiedostoja ei voi enää päivittää tai synkronoida!",
+>     "Your storage is full, files can not be updated or synced anymore!" : "Tallennustila on loppu, tiedostoja ei voi enää päivittää tai synkronoida!",
+>     "_matches '{filter}'_::_match '{filter}'_" : ["vastaa '{filter}'","vastaa '{filter}'"]

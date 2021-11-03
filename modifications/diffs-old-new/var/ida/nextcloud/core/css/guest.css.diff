@@ -1,0 +1,227 @@
+16a17,36
+> body {
+> 	background-color: #ffffff;
+> 	font-weight: normal;
+> 	/* bring the default font size up to 14px */
+> 	font-size: .875em;
+> 	line-height: 1.6em;
+> 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+> 	color: #000;
+> 	text-align: center;
+> 	background-color: #0082c9;
+> 	background-image: url('../img/background.png?v=2');
+> 	background-image: url('../img/background.png?v=2'), linear-gradient(40deg, #0082c9 0%, rgba(28,175,255,1) 100%);
+> 	background-position: 50% 50%;
+> 	background-repeat: repeat;
+> 	background-size: 275px, contain;
+> 	background-attachment: fixed; /* fix background gradient */
+> 	min-height: 100%; /* fix sticky footer */
+> 	height: auto;
+> }
+> 
+18c38
+< #body-login #ida-login a {
+---
+> #body-login a {
+22,23c42,43
+< #body-login #ida-login a:not(.button):hover,
+< #body-login #ida-login a:not(.button):focus {
+---
+> #body-login a:not(.button):hover,
+> #body-login a:not(.button):focus {
+79a100
+> 
+81c102,103
+< 	width: 300px;
+---
+> 	width: 100%;
+> 	max-width: 700px;
+88d109
+< 	width: 280px;
+93,94c114,115
+< 	margin-bottom: 20px;
+< 	text-align: left;
+---
+> 	width: 260px;
+> 	margin: auto auto 20px;
+128c149,150
+< #reset-password-wrapper {
+---
+> #reset-password-wrapper,
+> #alternative-logins {
+136c158,202
+< #submit-wrapper .submit-icon {
+---
+> #alternative-logins {
+> 	margin: auto;
+> 	display: block;
+> 	min-width: 260px;
+> 	max-width: 400px;
+> 	overflow: hidden;
+> }
+> 
+> #alternative-logins a {
+> 	margin: 10px 5px;
+> 	display: block;
+> 	font-size: 15px;
+> 	white-space: nowrap;
+> 	overflow: hidden;
+> 	text-overflow: ellipsis;
+> }
+> 
+> #alternative-logins a.button::before {
+> 	content: "";
+> 	background-repeat: no-repeat;
+> 	background-size: contain;
+> 	width: 0;
+> 	margin-right: 0;
+> 	height: 18px;
+> 	display: inline-block;
+> 	vertical-align: bottom;
+> }
+> 
+> #alternative-logins .button {
+> 	color: #0082c9;
+> 	padding: 12px 20px;
+> }
+> 
+> @media only screen and (max-width: 1024px) {
+> 	.wrapper {
+> 		margin-top: 0;
+> 	}
+> 	#alternative-logins {
+> 		margin: auto;
+> 	}
+> }
+> 
+> 
+> #submit-wrapper .submit-icon,
+> #reset-password-wrapper .submit-icon {
+146a213,216
+> #submit-wrapper {
+> 	margin: 0 auto;
+> }
+> 
+159,162d228
+< #reset-password-wrapper .submit-icon {
+< 	display: none;
+< }
+< 
+171c237
+< 	font-family: 'Nunito', 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
+---
+> 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+215a282,296
+> input[type='password'].password-with-toggle, input[type='text'].password-with-toggle {
+> 	width: 219px;
+> 	padding-right: 40px;
+> }
+> .toggle-password {
+> 	position: absolute;
+> 	top: 1px;
+> 	right: 5px;
+> 	padding: 14px;
+> 	height: 16px;
+> }
+> .toggle-password:hover,
+> .toggle-password:focus {
+> 	opacity: .6;
+> }
+225a307,308
+> 	overflow: hidden;
+> 	text-overflow: ellipsis;
+260c343,345
+< 	color: rgba(255, 255, 255, .8);
+---
+> 	color: rgba(255, 255, 255, 1);
+> 	background-image: linear-gradient(40deg, #0082c9 0%, #30b6ff 100%);
+> 	background-position: initial;
+320d404
+< 	left: 5px;
+396a481,484
+> .body-login-container.two-factor {
+> 	max-width: 290px;
+> 	margin: 15px auto 0;
+> }
+452d539
+< .remember-login-container,
+458d544
+< 	text-shadow: 0 0 2px rgba(0, 0, 0, .4); /* better readability on bright background */
+460,461c546,548
+< .lost-password-container #lost-password,
+< .lost-password-container #lost-password-back {
+---
+> #lost-password,
+> #lost-password-back,
+> #reset-password-wrapper + a {
+463c550
+< 	font-weight: normal;
+---
+> 	font-weight: normal !important;
+465d551
+< 	margin-top: -6px;
+467a554,557
+> 	text-shadow: 0 0 2px rgba(0, 0, 0, .4); /* better readability on bright background */
+> }
+> #lost-password {
+> 	margin-top: -6px;
+568a659,663
+> #install-recommended-apps + label span {
+> 	display: inline-block;
+> 	opacity: .7;
+> }
+> 
+633d727
+< 	margin-left: -200px !important;
+826,827c920,921
+< 	left:-10000px;
+< 	top: auto;
+---
+> 	left: -10000px;
+> 	top: -10000px;
+835,879d928
+< }
+< 
+< 
+< /* latin-ext */
+< @font-face {
+< 	font-family: 'Nunito';
+< 	font-style: normal;
+< 	font-weight: 400; /* normal */
+< 	src: local('Nunito Regular'), local('Nunito-Regular'),
+< 		url('../fonts/Nunito-Regular-latin-ext.woff2') format('woff2'),
+< 		url('../fonts/Nunito-Regular.ttf') format('truetype');
+< 	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+< }
+< 
+< /* latin */
+< @font-face {
+< 	font-family: 'Nunito';
+< 	font-style: normal;
+< 	font-weight: 400; /* normal */
+< 	src: local('Nunito Regular'), local('Nunito-Regular'),
+< 		url('../fonts/Nunito-Regular.woff2') format('woff2'),
+< 		url('../fonts/Nunito-Regular.ttf') format('truetype');
+< 	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+< }
+< 
+< /* latin-ext */
+< @font-face {
+< 	font-family: 'Nunito';
+< 	font-style: normal;
+< 	font-weight: 700; /* bold */
+< 	src: local('Nunito Bold'), local('Nunito-Bold'),
+< 		url('../fonts/Nunito-Bold-latin-ext.woff2') format('woff2'),
+< 		url('../fonts/Nunito-Bold.ttf') format('truetype');
+< 	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+< }
+< 
+< /* latin */
+< @font-face {
+< 	font-family: 'Nunito';
+< 	font-style: normal;
+< 	font-weight: 700; /* bold */
+< 	src: local('Nunito Bold'), local('Nunito-Bold'),
+< 		url('../fonts/Nunito-Bold.woff2') format('woff2'),
+< 		url('../fonts/Nunito-Bold.ttf') format('truetype');
+< 	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;

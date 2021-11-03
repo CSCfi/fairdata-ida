@@ -1,0 +1,54 @@
+3,4c3,5
+<     "files",
+<     "files_sharing",
+---
+>     "accessibility",
+>     "activity",
+>     "admin_audit",
+5a7,9
+>     "comments",
+>     "contactsinteraction",
+>     "dashboard",
+6a11
+>     "encryption",
+7a13,23
+>     "federation",
+>     "files",
+>     "files_external",
+>     "files_pdfviewer",
+>     "files_rightclick",
+>     "files_sharing",
+>     "files_trashbin",
+>     "files_versions",
+>     "files_videoplayer",
+>     "firstrunwizard",
+>     "logreader",
+9c25,26
+<     "provisioning_api",
+---
+>     "nextcloud_announcements",
+>     "notifications",
+10a28,40
+>     "password_policy",
+>     "photos",
+>     "privacy",
+>     "provisioning_api",
+>     "recommendations",
+>     "settings",
+>     "serverinfo",
+>     "sharebymail",
+>     "support",
+>     "survey_client",
+>     "systemtags",
+>     "text",
+>     "theming",
+11a42,46
+>     "updatenotification",
+>     "user_ldap",
+>     "user_status",
+>     "viewer",
+>     "weather_status",
+21a57
+>     "settings",
+22a59
+>     "viewer",

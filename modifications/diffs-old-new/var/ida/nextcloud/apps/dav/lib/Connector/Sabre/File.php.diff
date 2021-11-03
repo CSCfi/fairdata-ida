@@ -1,0 +1,287 @@
+6a7,8
+>  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+>  * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
+7a10
+>  * @author Jan-Philipp Litza <jplitza@users.noreply.github.com>
+9a13
+>  * @author Julius Härtl <jus@bitgrid.net>
+18,20c22
+<  * @author Vincent Petry <pvince81@owncloud.com>
+<  * @author Vinicius Cubas Brand <vinicius@eita.org.br>
+<  * @author CSC <support@csc.fi>
+---
+>  * @author Vincent Petry <vincent@nextcloud.com>
+28c30
+<  * This program is distributeo in the hope that it will be useful,
+---
+>  * This program is distributed in the hope that it will be useful,
+34c36
+<  * along with this program.  If not, see <http://www.gnu.org/licenses/>
+---
+>  * along with this program. If not, see <http://www.gnu.org/licenses/>
+42a45
+> use OC\Files\Stream\HashWrapper;
+51a55
+> use OCP\Files\GenericFileException;
+58a63
+> use OCP\ILogger;
+64a70
+> use Sabre\DAV\Exception\NotFound;
+68d73
+< use Sabre\DAV\Exception\NotFound;
+71d75
+< 
+121d124
+< 
+134,196d136
+<         // Special handling for zero size files
+<         $zero_size = false;
+<         try {
+<             $filesize   = false;
+<             $headers    = null;
+<             $firstbyte  = null;
+<             $test_basis = null;
+< 
+<             // Retrieve stream metadata
+<             $metadata = stream_get_meta_data($data);
+< 
+<             if ($metadata != null && is_array($metadata) && isset($metadata['uri'])) {
+<                 // First, we'll attempt to get the filesize based on the URI defined in the
+<                 // stream metadata, assuming the stream wrapper type supports os.filesize;
+<                 // which if not, it will either return false or throw an exception
+<                 $test_basis = 'filesize-stat';
+<                 $file_uri = $metadata['uri'];
+<                 try {
+<                     $filesize = filesize($file_uri);
+<                     if ($filesize === 0) {
+<                         $zero_size = true;
+<                     }
+<                 } catch (Exception $e) {
+<                     $filesize = false;
+<                 }
+<             }
+<             if ($filesize === false) {
+<                 // If we're here, then either no URI was defined or the stream wrapper type does not
+<                 // support os.filesize, so we'll try to get the size from the content length header,
+<                 // if it exists
+<                 $test_basis = 'content-length-header';
+<                 $headers = get_headers($data, 1);
+<                 if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
+<                     $filesize = (int)$headers['Content-Length'];
+<                     if ($filesize === 0) {
+<                         $zero_size = true;
+<                     }
+<                 }
+<             }
+<             if ($filesize === false) {
+<                 // OK, last recourse is to actually read from the stream, but only if it 
+<                 // is seekable and thus can be reset to the beginning so there is no loss
+<                 // of data during the actual copy operation...
+<                $test_basis = 'read-first-byte';
+<                 if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
+<                     $firstbyte = fread($data, 1);
+<                     fseek($data, 0);
+<                     if (strlen($firstbyte) === 0) {
+<                         $zero_size = true;
+<                     }
+<                 }
+<             }
+<             \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: '
+<                 . ' metadata: '   . json_encode($metadata)
+<                 . ' headers: '    . json_encode($headers)
+<                 . ' filesize: '   . json_encode($filesize)
+<                 . ' firstbyte: '  . json_encode(strlen($firstbyte))
+<                 . ' zero_size: '  . json_encode($zero_size)
+<                 . ' test_basis: ' . $test_basis);
+<         } catch (Exception $e) {
+<             \OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: Error: ' . $e->getMessage());
+<         }
+< 
+239,248c179,196
+< 			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
+< 
+< 				if (!is_resource($data)) {
+< 					$tmpData = fopen('php://temp', 'r+');
+< 					if ($data !== null) {
+< 						fwrite($tmpData, $data);
+< 						rewind($tmpData);
+< 					}
+< 					$data = $tmpData;
+< 				}
+---
+> 			if (!is_resource($data)) {
+> 				$tmpData = fopen('php://temp', 'r+');
+> 				if ($data !== null) {
+> 					fwrite($tmpData, $data);
+> 					rewind($tmpData);
+> 				}
+> 				$data = $tmpData;
+> 			}
+> 
+> 			$data = HashWrapper::wrap($data, 'md5', function ($hash) {
+> 				$this->header('X-Hash-MD5: ' . $hash);
+> 			});
+> 			$data = HashWrapper::wrap($data, 'sha1', function ($hash) {
+> 				$this->header('X-Hash-SHA1: ' . $hash);
+> 			});
+> 			$data = HashWrapper::wrap($data, 'sha256', function ($hash) {
+> 				$this->header('X-Hash-SHA256: ' . $hash);
+> 			});
+249a198
+> 			if ($partStorage->instanceOfStorage(Storage\IWriteStreamStorage::class)) {
+255,256c204,211
+< 				$count = $partStorage->writeStream($internalPartPath, $wrappedData);
+< 				$result = $count > 0;
+---
+> 				$result = true;
+> 				$count = -1;
+> 				try {
+> 					$count = $partStorage->writeStream($internalPartPath, $wrappedData);
+> 				} catch (GenericFileException $e) {
+> 					$result = false;
+> 				}
+> 
+264d218
+< 
+276,280d229
+<             // Special handling for zero size files
+<             if ($zero_size === true && $count === 0) {
+<                 $result = true;
+<             }
+< 
+297c246
+< 					throw new BadRequest('expected filesize ' . $expected . ' got ' . $count);
+---
+> 					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $count . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
+300d248
+< 
+302c250,256
+< 			\OC::$server->getLogger()->logException($e);
+---
+> 			$context = [];
+> 
+> 			if ($e instanceof LockedException) {
+> 				$context['level'] = ILogger::DEBUG;
+> 			}
+> 
+> 			\OC::$server->getLogger()->logException($e, $context);
+318,319c272,286
+< 					if ($needsPartFile) {
+< 						$partStorage->unlink($internalPartPath);
+---
+> 					// during very large uploads, the shared lock we got at the start might have been expired
+> 					// meaning that the above lock can fail not just only because somebody else got a shared lock
+> 					// or because there is no existing shared lock to make exclusive
+> 					//
+> 					// Thus we try to get a new exclusive lock, if the original lock failed because of a different shared
+> 					// lock this will still fail, if our original shared lock expired the new lock will be successful and
+> 					// the entire operation will be safe
+> 
+> 					try {
+> 						$this->acquireLock(ILockingProvider::LOCK_EXCLUSIVE);
+> 					} catch (LockedException $ex) {
+> 						if ($needsPartFile) {
+> 							$partStorage->unlink($internalPartPath);
+> 						}
+> 						throw new FileLocked($e->getMessage(), $e->getCode(), $e);
+321d287
+< 					throw new FileLocked($e->getMessage(), $e->getCode(), $e);
+332a299,301
+> 					if (!$ex->getRetry()) {
+> 						$partStorage->unlink($internalPartPath);
+> 					}
+356a326,338
+> 			$fileInfoUpdate = [
+> 				'upload_time' => time()
+> 			];
+> 
+> 			// allow sync clients to send the creation time along in a header
+> 			if (isset($this->request->server['HTTP_X_OC_CTIME'])) {
+> 				$ctime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_CTIME']);
+> 				$fileInfoUpdate['creation_time'] = $ctime;
+> 				$this->header('X-OC-CTime: accepted');
+> 			}
+> 
+> 			$this->fileView->putFileInfo($this->path, $fileInfoUpdate);
+> 
+367c349
+< 			} else if ($this->getChecksum() !== null && $this->getChecksum() !== '') {
+---
+> 			} elseif ($this->getChecksum() !== null && $this->getChecksum() !== '') {
+371d352
+< 
+373c354
+< 			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage());
+---
+> 			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage(), 0, $e);
+399c380
+< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, array(
+---
+> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_create, [
+402c383
+< 			));
+---
+> 			]);
+404c385
+< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, array(
+---
+> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_update, [
+407c388
+< 			));
+---
+> 			]);
+409c390
+< 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, array(
+---
+> 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_write, [
+412c393
+< 		));
+---
+> 		]);
+425c406
+< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, array(
+---
+> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_create, [
+427c408
+< 			));
+---
+> 			]);
+429c410
+< 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, array(
+---
+> 			\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_update, [
+431c412
+< 			));
+---
+> 			]);
+433c414
+< 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, array(
+---
+> 		\OC_Hook::emit(\OC\Files\Filesystem::CLASSNAME, \OC\Files\Filesystem::signal_post_write, [
+435c416
+< 		));
+---
+> 		]);
+516c497
+< 	 * @return array|false
+---
+> 	 * @return array|bool
+551c532
+< 		if (isset ($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+---
+> 		if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+556,557c537
+< 					throw new BadRequest(
+< 						'expected filesize ' . $expected . ' got ' . $bytesWritten);
+---
+> 					throw new BadRequest('Expected filesize of ' . $expected . ' bytes but read (from Nextcloud client) and wrote (to Nextcloud storage) ' . $bytesWritten . ' bytes. Could either be a network problem on the sending side or a problem writing to the storage on the server side.');
+632c612
+< 				} else if ($info->getChecksum() !== null && $info->getChecksum() !== '') {
+---
+> 				} elseif ($info->getChecksum() !== null && $info->getChecksum() !== '') {
+710c690,692
+< 		\header($string);
+---
+> 		if (!\OC::$CLI) {
+> 			\header($string);
+> 		}

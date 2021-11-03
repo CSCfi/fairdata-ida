@@ -1,0 +1,32 @@
+2,8d1
+<  * This file is part of the IDA research data storage service
+<  *
+<  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+<  * @link     https://research.csc.fi/
+<  */
+< 
+< /*
+53,54c46,47
+< 			//'click a.permalink': '_onClickPermalink',
+< 			//'focus .permalink-field>input': '_onFocusPermalink'
+---
+> 			'click a.permalink': '_onClickPermalink',
+> 			'focus .permalink-field>input': '_onFocusPermalink'
+77d69
+<             return;
+102c94
+< 			//e.preventDefault();
+---
+> 			e.preventDefault();
+107d98
+<             return;
+186,187c177,178
+< 					//permalink: this._makePermalink(this.model.get('id')),
+< 					//permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
+---
+> 					permalink: this._makePermalink(this.model.get('id')),
+> 					permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
+197a189,191
+> 					if (typeof this.model.get('mountType') !== 'undefined') {
+> 						iconUrl = OC.MimeType.getIconUrl('dir-' + this.model.get('mountType'))
+> 					}

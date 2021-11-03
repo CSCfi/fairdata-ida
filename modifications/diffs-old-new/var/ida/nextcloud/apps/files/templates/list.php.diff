@@ -1,0 +1,36 @@
+1,8d0
+< <!--
+< This file is part of the IDA research data storage service
+<  
+< @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+< @link     https://research.csc.fi/
+< -->
+< 
+< 
+15,16c7,9
+< 		<div class="notCreatable notPublic hidden" tabindex="0">
+<             <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
+---
+> 		<div class="notCreatable notPublic hidden">
+> 			<div class="icon-alert-outline"></div>
+> 			<?php p($l->t('You don’t have permission to upload or create files here'))?>
+23c16
+< 	<?php if(isset($_['dirToken'])):?>
+---
+> 	<?php if (isset($_['dirToken'])):?>
+29a23
+> <div id="filelist-header"></div>
+34c28
+< 	<p class="uploadmessage hidden"><?php p($l->t('Upload some content!')); ?></p>
+---
+> 	<p class="uploadmessage hidden"><?php p($l->t('Upload some content or sync with your devices!')); ?></p>
+54c48
+<                         <span><?php p($l->t( 'Name' )); ?></span>
+---
+>                         <span><?php p($l->t('Name')); ?></span>
+70c64
+< 				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t( 'Modified' )); ?></span><span class="sort-indicator"></span></a>
+---
+> 				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t('Modified')); ?></span><span class="sort-indicator"></span></a>
+78a73
+> <div id="filelist-footer"></div>

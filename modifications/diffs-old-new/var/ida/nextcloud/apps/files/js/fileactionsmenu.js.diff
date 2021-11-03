@@ -1,0 +1,24 @@
+74d73
+< 			var inRoot = this._context.dir === '/';
+81,85c80
+< 			var defaultAction = fileActions.getDefaultFileAction(
+< 				fileActions.getCurrentMimeType(),
+< 				fileActions.getCurrentType(),
+< 				fileActions.getCurrentPermissions()
+< 			);
+---
+> 			var defaultAction = fileActions.getCurrentDefaultFileAction();
+89,101d83
+< 			});
+< 			items = items.filter(function(item) {
+< 				if (inRoot) {
+< 					if (
+< 						item.name === 'Remove'
+< 						|| item.name === 'MoveCopy'
+< 						|| item.name === 'Delete'
+< 						|| item.name === 'Unshare'
+< 						|| item.name === 'Rename'
+< 					)
+< 					return false;
+< 				}
+< 				return true;

@@ -1,0 +1,1879 @@
+2,8d1
+<  * This file is part of the IDA research data storage service
+<  *
+<  * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+<  * @link     https://research.csc.fi/
+<  */
+< 
+< /*
+18c11
+< (function () {
+---
+> (function() {
+38c31
+< 	var FileList = function ($el, options) {
+---
+> 	var FileList = function($el, options) {
+51c44
+< 		useUndo: true,
+---
+> 		useUndo:true,
+67a61,66
+> 		$header: null,
+> 		headers: [],
+> 
+> 		$footer: null,
+> 		footers: [],
+> 
+108c107
+< 		pageSize: function () {
+---
+> 		pageSize: function() {
+116c115
+< 			return Math.max(columns * rows, columns);
+---
+> 			return Math.max(columns*rows, columns);
+134a134,141
+> 		 * Whether to prevent or to execute the default file actions when the
+> 		 * file name is clicked.
+> 		 *
+> 		 * @type boolean
+> 		 */
+> 		_defaultFileActionsDisabled: false,
+> 
+> 		/**
+231c238
+< 		initialize: function ($el, options) {
+---
+> 		initialize: function($el, options) {
+248c255,256
+< 					'showhidden': false
+---
+> 					'showhidden': false,
+> 					'cropimagepreviews': true
+271a280,281
+> 			this.$header = $el.find('#filelist-header');
+> 			this.$footer = $el.find('#filelist-footer');
+274c284
+< 				this._filesConfig.on('change:showhidden', function () {
+---
+> 				this._filesConfig.on('change:showhidden', function() {
+284a295,298
+> 				this._filesConfig.on('change:cropimagepreviews', function() {
+> 					self.reload();
+> 				});
+> 
+293a308,311
+> 			if (options && options.defaultFileActionsDisabled) {
+> 				this._defaultFileActionsDisabled = options.defaultFileActionsDisabled
+> 			}
+> 
+297c315
+< 				this._detailsView.addDetailView(new OCA.Files.MainFileInfoDetailView({ fileList: this, fileActions: this.fileActions }));
+---
+> 				this._detailsView.addDetailView(new OCA.Files.MainFileInfoDetailView({fileList: this, fileActions: this.fileActions}));
+302c320
+< 			this._selectionSummary = new OCA.Files.FileSummary(undefined, { config: this._filesConfig });
+---
+> 			this._selectionSummary = new OCA.Files.FileSummary(undefined, {config: this._filesConfig});
+310c328
+< 				for (var i = 0; i < this.multiSelectMenuItems.length; i++) {
+---
+> 				for (var i=0; i<this.multiSelectMenuItems.length; i++) {
+328c346
+< 				getCrumbUrl: function (part) {
+---
+> 				getCrumbUrl: function(part) {
+335c353
+< 				breadcrumbOptions.onOver = function () {
+---
+> 				breadcrumbOptions.onOver = function() {
+338c356
+< 				breadcrumbOptions.onOut = function () {
+---
+> 				breadcrumbOptions.onOut = function() {
+358c376
+< 			$('#view-toggle').tooltip({ placement: 'bottom', trigger: 'hover' });
+---
+> 			$('#view-toggle').tooltip({placement: 'bottom', trigger: 'hover'});
+366c384,389
+< 			this.updateSearch();
+---
+> 			// reload files list on share accept
+> 			$('body').on('OCA.Notification.Action', function(eventObject) {
+> 				if (eventObject.notification.app === 'files_sharing' && eventObject.action.type === 'POST') {
+> 					self.reload()
+> 				}
+> 			});
+368c391
+< 			this.$fileList.on('click', 'td.filename>a.name, td.filesize, td.date', _.bind(this._onClickFile, this));
+---
+> 			this.$fileList.on('click','td.filename>a.name, td.filesize, td.date', _.bind(this._onClickFile, this));
+391c414
+< 				this.$fileList.one('updated', function () {
+---
+> 				this.$fileList.one('updated', function() {
+414a438
+> 			this.triedActionOnce = false;
+416a441,482
+> 
+> 			OCA.Files.App && OCA.Files.App.updateCurrentFileList(this);
+> 
+> 			this.initHeadersAndFooters()
+> 		},
+> 
+> 		initHeadersAndFooters: function() {
+> 			this.headers.sort(function(a, b) {
+> 				return a.order - b.order;
+> 			})
+> 			this.footers.sort(function(a, b) {
+> 				return a.order - b.order;
+> 			})
+> 			var uniqueIds = [];
+> 			var self = this;
+> 			this.headers.forEach(function(header) {
+> 				if (header.id) {
+> 					if (uniqueIds.indexOf(header.id) !== -1) {
+> 						return
+> 					}
+> 					uniqueIds.push(header.id)
+> 				}
+> 				self.$header.append(header.el)
+> 
+> 				setTimeout(function() {
+> 					header.render(self)
+> 				}, 0)
+> 			})
+> 
+> 			uniqueIds = [];
+> 			this.footers.forEach(function(footer) {
+> 				if (footer.id) {
+> 					if (uniqueIds.indexOf(footer.id) !== -1) {
+> 						return
+> 					}
+> 					uniqueIds.push(footer.id)
+> 				}
+> 				self.$footer.append(footer.el)
+> 				setTimeout(function() {
+> 					footer.render(self)
+> 				}, 0)
+> 			})
+422c488
+< 		destroy: function () {
+---
+> 		destroy: function() {
+451,469c517,535
+< 			var actionFunction = _.find(this.multiSelectMenuItems, function (item) { return item.name === action; }).action;
+< 			if (actionFunction) {
+< 				actionFunction(ev);
+< 				return;
+< 			}
+< 			switch (action) {
+< 				case 'delete':
+< 					this._onClickDeleteSelected(ev)
+< 					break;
+< 				case 'download':
+< 					this._onClickDownloadSelected(ev);
+< 					break;
+< 				case 'copyMove':
+< 					this._onClickCopyMoveSelected(ev);
+< 					break;
+< 				case 'restore':
+< 					this._onClickRestoreSelected(ev);
+< 					break;
+< 			}
+---
+> 				var actionFunction = _.find(this.multiSelectMenuItems, function (item) {return item.name === action;}).action;
+> 				if (actionFunction) {
+> 					actionFunction(ev);
+> 					return;
+> 				}
+> 				switch (action) {
+> 					case 'delete':
+> 						this._onClickDeleteSelected(ev)
+> 						break;
+> 					case 'download':
+> 						this._onClickDownloadSelected(ev);
+> 						break;
+> 					case 'copyMove':
+> 						this._onClickCopyMoveSelected(ev);
+> 						break;
+> 					case 'restore':
+> 						this._onClickRestoreSelected(ev);
+> 						break;
+> 				}
+476c542
+< 		_initFileActions: function (fileActions) {
+---
+> 		_initFileActions: function(fileActions) {
+492c558
+< 					actionHandler: function (fileName, context) {
+---
+> 					actionHandler: function(fileName, context) {
+509c575
+< 		getModelForFile: function (fileName) {
+---
+> 		getModelForFile: function(fileName) {
+538c604
+< 				model.set('path', this.getCurrentDirectory(), { silent: true });
+---
+> 				model.set('path', this.getCurrentDirectory(), {silent: true});
+541c607
+< 			model.on('change', function (model) {
+---
+> 			model.on('change', function(model) {
+547c613
+< 					{ updateSummary: true, silent: false, animate: true }
+---
+> 					{updateSummary: true, silent: false, animate: true}
+556c622
+< 			model.on('busy', function (model, state) {
+---
+> 			model.on('busy', function(model, state) {
+570c636,637
+< 		showDetailsView: function (fileName, tabId) {
+---
+> 		showDetailsView: function(fileName, tabId) {
+> 			console.warn('showDetailsView is deprecated! Use OCA.Files.Sidebar.activeTab. It will be removed in nextcloud 20.');
+573c640
+< 				this._detailsView.selectTab(tabId);
+---
+> 				OCA.Files.Sidebar.setActiveTab(tabId);
+575d641
+< 			OC.Apps.showAppSidebar(this._detailsView.$el);
+584,585c650,652
+< 		_updateDetailsView: function (fileName, show) {
+< 			if (!this._detailsView) {
+---
+> 		_updateDetailsView: function(fileName, show) {
+> 			if (!(OCA.Files && OCA.Files.Sidebar)) {
+> 				console.error('No sidebar available');
+589,605c656,660
+< 			// show defaults to true
+< 			show = _.isUndefined(show) || !!show;
+< 			var oldFileInfo = this._detailsView.getFileInfo();
+< 			if (oldFileInfo) {
+< 				// TODO: use more efficient way, maybe track the highlight
+< 				this.$fileList.children().filterAttr('data-id', '' + oldFileInfo.get('id')).removeClass('highlighted');
+< 				oldFileInfo.off('change', this._onSelectedModelChanged, this);
+< 			}
+< 
+< 			if (!fileName) {
+< 				this._detailsView.setFileInfo(null);
+< 				if (this._currentFileModel) {
+< 					this._currentFileModel.off();
+< 				}
+< 				this._currentFileModel = null;
+< 				OC.Apps.hideAppSidebar(this._detailsView.$el);
+< 				return;
+---
+> 			if (!fileName && OCA.Files.Sidebar.close) {
+> 				OCA.Files.Sidebar.close()
+> 				return
+> 			} else if (typeof fileName !== 'string') {
+> 				fileName = ''
+608,610c663,668
+< 			if (show && this._detailsView.$el.hasClass('disappear')) {
+< 				OC.Apps.showAppSidebar(this._detailsView.$el);
+< 			}
+---
+> 			// this is the old (terrible) way of getting the context.
+> 			// don't use it anywhere else. Just provide the full path
+> 			// of the file to the sidebar service
+> 			var tr = this.findFileEl(fileName)
+> 			var model = this.getModelForFile(tr)
+> 			var path = model.attributes.path + '/' + model.attributes.name
+612,617c670,672
+< 			if (fileName instanceof OCA.Files.FileInfoModel) {
+< 				var model = fileName;
+< 			} else {
+< 				var $tr = this.findFileEl(fileName);
+< 				var model = this.getModelForFile($tr);
+< 				$tr.addClass('highlighted');
+---
+> 			// make sure the file list has the correct context available
+> 			if (this._currentFileModel) {
+> 				this._currentFileModel.off();
+619c674,675
+< 
+---
+> 			this.$fileList.children().removeClass('highlighted');
+> 			tr.addClass('highlighted');
+622,625c678,681
+< 			this._replaceDetailsViewElementIfNeeded();
+< 
+< 			this._detailsView.setFileInfo(model);
+< 			this._detailsView.$el.scrollTop(0);
+---
+> 			// open sidebar and set file
+> 			if (typeof show === 'undefined' || !!show || (OCA.Files.Sidebar.file !== '')) {
+> 				OCA.Files.Sidebar.open(path.replace('//', '/'))
+> 			}
+638c694
+< 		_replaceDetailsViewElementIfNeeded: function () {
+---
+> 		_replaceDetailsViewElementIfNeeded: function() {
+653c709
+< 		_onResize: function () {
+---
+> 		_onResize: function() {
+656c712
+< 			$.each(this.$el.find('#controls .actions'), function (index, action) {
+---
+> 			$.each(this.$el.find('#controls .actions'), function(index, action) {
+661,662d716
+< 
+< 			this.$table.find('>thead').width($('#app-content').width() - OC.Util.getScrollBarWidth());
+670c724
+< 		_onGridviewChange: function () {
+---
+> 		_onGridviewChange: function() {
+682a737,741
+> 			if (show) {
+> 				// If switching into grid view from list view, too few files might be displayed
+> 				// Try rendering the next page
+> 				this._onScroll();
+> 			}
+688c747,748
+< 		_onShow: function (e) {
+---
+> 		_onShow: function(e) {
+> 			OCA.Files.App && OCA.Files.App.updateCurrentFileList(this);
+704c764
+< 		_onUrlChanged: function (e) {
+---
+> 		_onUrlChanged: function(e) {
+708c768
+< 				if ((this._currentDirectory || this.$el.find('#dir').val()) && currentDir === e.dir) {
+---
+> 				if( (this._currentDirectory || this.$el.find('#dir').val()) && currentDir === e.dir) {
+722c782
+< 		_selectFileEl: function ($tr, state) {
+---
+> 		_selectFileEl: function($tr, state) {
+748c808
+< 		_selectRange: function ($tr) {
+---
+> 		_selectRange: function($tr) {
+770c830
+< 		_selectSingle: function ($tr) {
+---
+> 		_selectSingle: function($tr) {
+775c835
+< 		_onMouseOverCheckbox: function (e) {
+---
+> 		_onMouseOverCheckbox: function(e) {
+798c858
+< 				if (lastIndex <= i && i <= currentIndex) {
+---
+> 				if(lastIndex <= i && i <= currentIndex) {
+805c865
+< 		_removeHalfSelection: function () {
+---
+> 		_removeHalfSelection: function() {
+818c878
+< 		_onClickFile: function (event) {
+---
+> 		_onClickFile: function(event) {
+823c883
+< 			if (this._allowSelection && (event.ctrlKey || event.shiftKey)) {
+---
+> 			if (this._allowSelection && event.shiftKey) {
+825,829c885
+< 				if (event.shiftKey) {
+< 					this._selectRange($tr);
+< 				} else {
+< 					this._selectSingle($tr);
+< 				}
+---
+> 				this._selectRange($tr);
+832c888
+< 			} else {
+---
+> 			} else if (!event.ctrlKey) {
+834c890
+< 				if (!this._detailsView || $(event.target).is('.nametext, .name') || $(event.target).closest('.nametext').length || $(event.target).is('.projectDetails') || $(event.target).closest('.projectDetails').length) {
+---
+> 				if (!this._detailsView || $(event.target).is('.nametext, .name, .thumbnail') || $(event.target).closest('.nametext').length) {
+837c893,895
+< 					if (!renaming) {
+---
+> 					if (this._defaultFileActionsDisabled) {
+> 						event.preventDefault();
+> 					} else if (!renaming) {
+839,843c897,898
+< 						var mime = this.fileActions.getCurrentMimeType();
+< 						var type = this.fileActions.getCurrentType();
+< 						var permissions = this.fileActions.getCurrentPermissions();
+< 						var action = this.fileActions.getDefault(mime, type, permissions);
+< 						if (action) {
+---
+> 						var spec = this.fileActions.getCurrentDefaultFileAction();
+> 						if (spec && spec.action) {
+845,847c900
+< 							// also set on global object for legacy apps
+< 							window.FileActions.currentFile = this.fileActions.currentFile;
+< 							action(filename, {
+---
+> 							spec.action(filename, {
+871,872d923
+< 						// also set on global object for legacy apps
+< 						window.FileActions.currentFile = this.fileActions.currentFile;
+887c938
+< 		_onClickFileCheckbox: function (e) {
+---
+> 		_onClickFileCheckbox: function(e) {
+889c940
+< 			if (this._getCurrentSelectionMode() === 'range') {
+---
+> 			if(this._getCurrentSelectionMode() === 'range') {
+905c956
+< 		_onClickSelectAll: function (e) {
+---
+> 		_onClickSelectAll: function(e) {
+938c989
+< 					visibleFiles.each(function () {
+---
+> 					visibleFiles.each(function() {
+964c1015
+< 		_onClickDownloadSelected: function (event) {
+---
+> 		_onClickDownloadSelected: function(event) {
+978c1029
+< 			if (this.fileMultiSelectMenu.isDisabled('download')) {
+---
+> 			if(this.fileMultiSelectMenu.isDisabled('download')) {
+983c1034
+< 			var disableLoadingState = function () {
+---
+> 			var disableLoadingState = function(){
+987c1038
+< 			if (this.getSelectedFiles().length > 1) {
+---
+> 			if(this.getSelectedFiles().length > 1) {
+1000c1051
+< 		_onClickCopyMoveSelected: function (event) {
+---
+> 		_onClickCopyMoveSelected: function(event) {
+1007c1058
+< 			if (this.fileMultiSelectMenu.isDisabled('copyMove')) {
+---
+> 			if(this.fileMultiSelectMenu.isDisabled('copyMove')) {
+1011c1062
+< 			var disableLoadingState = function () {
+---
+> 			var disableLoadingState = function(){
+1020c1071
+< 			OC.dialogs.filepicker(t('files', 'Choose target folder'), function (targetPath, type) {
+---
+> 			OC.dialogs.filepicker(t('files', 'Choose target folder'), function(targetPath, type) {
+1036c1087
+< 		_onClickDeleteSelected: function (event) {
+---
+> 		_onClickDeleteSelected: function(event) {
+1041,1044c1092
+< 			var response = confirm(t('ida', 'Are you sure you want to delete the selected item(s)? THIS ACTION CANNOT BE UNDONE!'));
+< 			if (response) {
+< 				this.do_delete(files);
+< 			}
+---
+> 			this.do_delete(files);
+1051c1099
+< 		_onClickHeader: function (e) {
+---
+> 		_onClickHeader: function(e) {
+1063c1111
+< 					this.setSort(sort, (this._sortDirection === 'desc') ? 'asc' : 'desc', true, true);
+---
+> 					this.setSort(sort, (this._sortDirection === 'desc')?'asc':'desc', true, true);
+1066c1114
+< 					if (sort === 'name') {	//default sorting of name is opposite to size and mtime
+---
+> 					if ( sort === 'name' ) {	//default sorting of name is opposite to size and mtime
+1079c1127
+< 		_onClickBreadCrumb: function (e) {
+---
+> 		_onClickBreadCrumb: function(e) {
+1087d1134
+< 				this.updateSearch();
+1095c1142
+< 		_onScroll: function (e) {
+---
+> 		_onScroll: function(e) {
+1104c1151
+< 		_onDropOnBreadCrumb: function (event, ui) {
+---
+> 		_onDropOnBreadCrumb: function( event, ui ) {
+1112c1159
+< 			while (dir.substr(0, 1) === '/') {//remove extra leading /'s
+---
+> 			while (dir.substr(0,1) === '/') {//remove extra leading /'s
+1116c1163
+< 			if (dir.substr(-1, 1) !== '/') {
+---
+> 			if (dir.substr(-1,1) !== '/') {
+1127c1174
+< 				files = _.map(ui.helper.find('tr'), function (el) {
+---
+> 				files = _.map(ui.helper.find('tr'), function(el) {
+1137c1184
+< 			setTimeout(function () {
+---
+> 			setTimeout(function() {
+1147c1194
+< 		setPageTitle: function (title) {
+---
+> 		setPageTitle: function(title){
+1155c1202
+< 			window.document.title = title + ' - ' + oc_defaults.title;
+---
+> 			window.document.title = title + ' - ' + OC.theme.title;
+1167,1168c1214,1215
+< 		findFile: function (fileName) {
+< 			return _.find(this.files, function (aFile) {
+---
+> 		findFile: function(fileName) {
+> 			return _.find(this.files, function(aFile) {
+1178c1225
+< 		findFileEl: function (fileName) {
+---
+> 		findFileEl: function(fileName){
+1188c1235
+< 		elementToFile: function ($el) {
+---
+> 		elementToFile: function($el){
+1196a1244
+> 				quotaAvailableBytes: $el.attr('data-quota'),
+1225c1273
+< 		_nextPage: function (animate) {
+---
+> 		_nextPage: function(animate) {
+1246c1294
+< 				tr = this._renderRow(fileData, { updateSummary: false, silent: true, hidden: hidden });
+---
+> 				tr = this._renderRow(fileData, {updateSummary: false, silent: true, hidden: hidden});
+1265c1313
+< 				this.$fileList.trigger($.Event('fileActionsReady', { fileList: this, $files: newTrs }));
+---
+> 				this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: newTrs}));
+1270,1271c1318,1319
+< 				window.setTimeout(function () {
+< 					for (var i = 0; i < newTrs.length; i++) {
+---
+> 				window.setTimeout(function() {
+> 					for (var i = 0; i < newTrs.length; i++ ) {
+1276a1325,1349
+> 			if(!this.triedActionOnce) {
+> 				var id = OC.Util.History.parseUrlQuery().openfile;
+> 				if (id) {
+> 					var $tr = this.$fileList.children().filterAttr('data-id', '' + id);
+> 					var filename = $tr.attr('data-file');
+> 					this.fileActions.currentFile = $tr.find('td');
+> 					var dir = $tr.attr('data-path') || this.getCurrentDirectory();
+> 					var spec = this.fileActions.getCurrentDefaultFileAction();
+> 					if (spec && spec.action) {
+> 						spec.action(filename, {
+> 							$file: $tr,
+> 							fileList: this,
+> 							fileActions: this.fileActions,
+> 							dir: dir
+> 						});
+> 
+> 					}
+> 					else {
+> 						var url = this.getDownloadUrl(filename, dir, true);
+> 						OCA.Files.Files.handleDownload(url);
+> 					}
+> 				}
+> 				this.triedActionOnce = true;
+> 			}
+> 
+1284c1357
+< 		_onFileActionsUpdated: function () {
+---
+> 		_onFileActionsUpdated: function() {
+1291c1364
+< 			$files.each(function () {
+---
+> 			$files.each(function() {
+1294c1367
+< 			this.$fileList.trigger($.Event('fileActionsReady', { fileList: this, $files: $files }));
+---
+> 			this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: $files}));
+1303c1376
+< 		setFiles: function (filesArray) {
+---
+> 		setFiles: function(filesArray) {
+1336c1409
+< 			_.defer(function () {
+---
+> 			_.defer(function() {
+1348c1421
+< 		_isHiddenFile: function (file) {
+---
+> 		_isHiddenFile: function(file) {
+1359c1432
+< 		_getIconUrl: function (fileInfo) {
+---
+> 		_getIconUrl: function(fileInfo) {
+1368a1442,1448
+> 				} else if (fileInfo.shareTypes && (
+> 					fileInfo.shareTypes.indexOf(OC.Share.SHARE_TYPE_LINK) > -1
+> 					|| fileInfo.shareTypes.indexOf(OC.Share.SHARE_TYPE_EMAIL) > -1)
+> 				) {
+> 					return OC.MimeType.getIconUrl('dir-public')
+> 				} else if (fileInfo.shareTypes && fileInfo.shareTypes.length > 0) {
+> 					return OC.MimeType.getIconUrl('dir-shared')
+1381c1461
+< 		_createRow: function (fileData, options) {
+---
+> 		_createRow: function(fileData, options) {
+1417c1497
+< 				"data-id": fileData.id,
+---
+> 				"data-id" : fileData.id,
+1423a1504
+> 				"data-quota": fileData.quotaAvailableBytes,
+1473a1555
+> 			var spec = this.fileActions.getDefaultFileAction(mime, type, permissions);
+1477a1560,1562
+> 			else if (spec && spec.action) {
+> 				linkUrl = this.getDefaultActionUrl(path, fileData.id);
+> 			}
+1484a1570,1572
+> 			if (this._defaultFileActionsDisabled) {
+> 				linkElem.addClass('disabled');
+> 			}
+1492c1580
+< 			if (name.indexOf('.') === 0) {
+---
+> 			if(name.indexOf('.') === 0) {
+1495c1583
+< 				// split extension from filename for non dirs
+---
+> 			// split extension from filename for non dirs
+1503c1591
+< 			var nameSpan = $('<span></span>').addClass('nametext');
+---
+> 			var nameSpan=$('<span></span>').addClass('nametext');
+1540c1628
+< 				nameSpan.tooltip({ placement: 'top' });
+---
+> 				nameSpan.tooltip({placement: 'top'});
+1551a1640,1641
+> 			var isDarkTheme = OCA.Accessibility && OCA.Accessibility.theme === 'dark'
+> 
+1554c1644,1647
+< 					.getPropertyValue('--color-text-maxcontrast')
+---
+> 					.getPropertyValue('--color-text-maxcontrast').trim()
+> 				if (maxContrastHex.length < 4) {
+> 					throw Error();
+> 				}
+1556,1560c1649,1650
+< 			} catch (error) {
+< 				var maxContrast = OCA.Accessibility
+< 					&& OCA.Accessibility.theme === 'themedark'
+< 					? '130'
+< 					: '118'
+---
+> 			} catch(error) {
+> 				var maxContrast = isDarkTheme ? 130 : 118
+1563,1564d1652
+< 			maxContrast = OCA.Accessibility && OCA.Accessibility.theme === 'themedark' ? '130' : '118';
+< 
+1566,1567c1654,1655
+< 			if (typeof (fileData.size) !== 'undefined' && fileData.size >= 0) {
+< 				simpleSize = humanFileSize(parseInt(fileData.size, 10), true);
+---
+> 			if (typeof(fileData.size) !== 'undefined' && fileData.size >= 0) {
+> 				simpleSize = OC.Util.humanFileSize(parseInt(fileData.size, 10), true);
+1570c1658
+< 				sizeColor = Math.round(118 - Math.pow((fileData.size / (1024 * 1024)), 2));
+---
+> 				sizeColor = Math.round(118-Math.pow((fileData.size/(1024*1024)), 2));
+1578c1666
+< 				if (OCA.Accessibility && OCA.Accessibility.theme === 'themedark') {
+---
+> 				if (isDarkTheme) {
+1598c1686
+< 			var modifiedColor = Math.round(((new Date()).getTime() - mtime) / 1000 / 60 / 60 / 24 * 5);
+---
+> 			var modifiedColor = Math.round(((new Date()).getTime() - mtime )/1000/60/60/24*5 );
+1606c1694
+< 			if (OCA.Accessibility && OCA.Accessibility.theme === 'themedark') {
+---
+> 			if (isDarkTheme) {
+1630c1718
+< 				"style": 'color:rgb(' + modifiedColor + ',' + modifiedColor + ',' + modifiedColor + ')'
+---
+> 				"style": 'color:rgb('+modifiedColor+','+modifiedColor+','+modifiedColor+')'
+1632c1720
+< 				.tooltip({ placement: 'top' })
+---
+> 			  .tooltip({placement: 'top'})
+1636,1671d1723
+< 
+< 			try {
+< 				if (path != null && path == '/') {
+< 				    spans = tr.find("span.nametext");
+< 				    if (spans.length > 0) {
+< 					    path = '/' + name;
+< 					    projectName = OCA.IDA.Util.extractProjectName(path);
+< 					    projectTitle = OCA.IDA.Util.getProjectTitle(projectName);
+< 					    tr.attr('data-project-name', projectName);
+< 					    tr.attr('data-project-title', projectTitle);
+< 					    var projectArea = t('ida', 'Frozen');
+< 					    if (name.substr(name.length - 1) == '+') {
+< 						    projectArea = t('ida', 'Staging');
+< 					    }
+< 						var htmlInsertion = "<span class=\"projectDetails\">";
+<                         // Use slightly tighter spacing in production since all project names are shorter
+< 						if (location.hostname == 'ida.fairdata.fi') {
+< 							htmlInsertion = "<span class=\"projectDetails projectDetailsTight\">";
+< 						}
+< 						htmlInsertion = htmlInsertion + "<span class=\"projectArea\">" + projectArea + "</span>";
+< 						if (projectTitle != projectName) {
+< 							if (projectTitle.length > 50) {
+< 								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\" title=\"" + projectTitle + "\">" + projectTitle + "</span>";
+< 							}
+< 							else {
+< 								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\">" + projectTitle + "</span>";
+< 							}
+< 						}
+< 						htmlInsertion = htmlInsertion + "</span>";
+< 						spans[0].insertAdjacentHTML('afterend', htmlInsertion);
+< 					}
+< 				}
+< 			} catch (error) {
+< 				;
+< 			}
+< 
+1697c1749
+< 		add: function (fileData, options) {
+---
+> 		add: function(fileData, options) {
+1702c1754
+< 			options = _.extend({ animate: true }, options || {});
+---
+> 			options = _.extend({animate: true}, options || {});
+1738c1790
+< 				window.setTimeout(function () {
+---
+> 				window.setTimeout(function() {
+1750c1802
+< 			if (typeof (options.updateSummary) === 'undefined' || !!options.updateSummary) {
+---
+> 			if (typeof(options.updateSummary) === 'undefined' || !!options.updateSummary) {
+1771c1823
+< 		_renderRow: function (fileData, options) {
+---
+> 		_renderRow: function(fileData, options) {
+1818c1870
+< 				if (typeof (options.animate) === 'undefined' || !!options.animate) {
+---
+> 				if (typeof(options.animate) === 'undefined' || !!options.animate) {
+1824c1876
+< 						callback: function (url) {
+---
+> 						callback: function(url) {
+1832,1834c1884,1886
+< 						file: path + '/' + fileData.name,
+< 						c: fileData.etag
+< 					};
+---
+> 							file: path + '/' + fileData.name,
+> 							c: fileData.etag
+> 						};
+1847c1899
+< 		getCurrentDirectory: function () {
+---
+> 		getCurrentDirectory: function(){
+1854c1906
+< 		getDirectoryPermissions: function () {
+---
+> 		getDirectoryPermissions: function() {
+1864c1916
+< 		changeDirectory: function (targetDir, changeUrl, force, fileId) {
+---
+> 		changeDirectory: function(targetDir, changeUrl, force, fileId) {
+1875c1927
+< 			return this.reload().then(function (success) {
+---
+> 			return this.reload().then(function(success){
+1881,1882c1933,1934
+< 		linkTo: function (dir) {
+< 			return OC.linkTo('files', 'index.php') + "?dir=" + encodeURIComponent(dir).replace(/%2F/g, '/');
+---
+> 		linkTo: function(dir) {
+> 			return OC.linkTo('files', 'index.php')+"?dir="+ encodeURIComponent(dir).replace(/%2F/g, '/');
+1889c1941
+< 		_isValidPath: function (path) {
+---
+> 		_isValidPath: function(path) {
+1907c1959
+< 		_setCurrentDir: function (targetDir, changeUrl, fileId) {
+---
+> 		_setCurrentDir: function(targetDir, changeUrl, fileId) {
+1951c2003
+< 		setSort: function (sort, direction, update, persist) {
+---
+> 		setSort: function(sort, direction, update, persist) {
+1954,1956c2006,2008
+< 			this._sortDirection = (direction === 'desc') ? 'desc' : 'asc';
+< 			this._sortComparator = function (fileInfo1, fileInfo2) {
+< 				var isFavorite = function (fileInfo) {
+---
+> 			this._sortDirection = (direction === 'desc')?'desc':'asc';
+> 			this._sortComparator = function(fileInfo1, fileInfo2) {
+> 				var isFavorite = function(fileInfo) {
+2001c2053
+< 		_getWebdavProperties: function () {
+---
+> 		_getWebdavProperties: function() {
+2010c2062
+< 		reload: function () {
+---
+> 		reload: function() {
+2021,2023c2073,2075
+< 				includeParent: true,
+< 				properties: this._getWebdavProperties()
+< 			}
+---
+> 					includeParent: true,
+> 					properties: this._getWebdavProperties()
+> 				}
+2033c2085
+< 		reloadCallback: function (status, result) {
+---
+> 		reloadCallback: function(status, result) {
+2045c2097
+< 				OC.Notification.show(t('files', 'This operation is forbidden'), { type: 'error' });
+---
+> 				OC.Notification.show(t('files', 'This operation is forbidden'), {type: 'error'});
+2054c2106
+< 					{ type: 'error' }
+---
+> 					{type: 'error'}
+2065c2117
+< 						{ type: 'error' }
+---
+> 						{type: 'error'}
+2077c2129
+< 			if (status === 0) {
+---
+> 			if (status === 0){
+2108c2160
+< 		updateStorageStatistics: function (force) {
+---
+> 		updateStorageStatistics: function(force) {
+2112c2164
+< 		updateStorageQuotas: function () {
+---
+> 		updateStorageQuotas: function() {
+2119c2171
+< 		getAjaxUrl: function (action, params) {
+---
+> 		getAjaxUrl: function(action, params) {
+2123c2175
+< 		getDownloadUrl: function (files, dir, isDir) {
+---
+> 		getDownloadUrl: function(files, dir, isDir) {
+2127c2179,2183
+< 		getUploadUrl: function (fileName, dir) {
+---
+> 		getDefaultActionUrl: function(path, id) {
+> 			return this.linkTo(path) + "&openfile="+id;
+> 		},
+> 
+> 		getUploadUrl: function(fileName, dir) {
+2137c2193
+< 			_.each(pathSections, function (section) {
+---
+> 			_.each(pathSections, function(section) {
+2153c2209
+< 		generatePreviewUrl: function (urlSpec) {
+---
+> 		generatePreviewUrl: function(urlSpec) {
+2166a2223,2228
+> 			/**
+> 			 * Images are cropped to a square by default. Append a=1 to the URL
+> 			 *  if the user wants to see images with original aspect ratio.
+> 			 */
+> 			urlSpec.a = this._filesConfig.get('cropimagepreviews') ? 0 : 1;
+> 
+2185c2247
+< 		lazyLoadPreview: function (options) {
+---
+> 		lazyLoadPreview : function(options) {
+2214c2276
+< 			if (etag) {
+---
+> 			if (etag){
+2225c2287
+< 			img.onload = function () {
+---
+> 			img.onload = function(){
+2239c2301
+< 		_updateDirectoryPermissions: function () {
+---
+> 		_updateDirectoryPermissions: function() {
+2241,2244d2302
+< 			// IDA users are not allowed to create anything in their root folder
+< 			if (this.getCurrentDirectory() === '/') {
+< 				isCreatable = false;
+< 			}
+2254c2312
+< 		showActions: function (show) {
+---
+> 		showActions: function(show){
+2256c2314
+< 			if (show) {
+---
+> 			if (show){
+2260,2263d2317
+< 				// IDA users are not allowed to create anything in their root folder
+< 				if (this.getCurrentDirectory() === '/') {
+< 					isCreatable = false;
+< 				}
+2271c2325
+< 			else {
+---
+> 			else{
+2281c2335
+< 		setViewerMode: function (show) {
+---
+> 		setViewerMode: function(show){
+2284c2338
+< 			this.$el.trigger(new $.Event('changeViewerMode', { viewerModeEnabled: show }));
+---
+> 			this.$el.trigger(new $.Event('changeViewerMode', {viewerModeEnabled: show}));
+2294c2348
+< 		remove: function (name, options) {
+---
+> 		remove: function(name, options){
+2297c2351
+< 			var fileData = _.findWhere(this.files, { name: name });
+---
+> 			var fileData = _.findWhere(this.files, {name: name});
+2312c2366
+< 			var index = this.files.findIndex(function (el) { return el.name == name; });
+---
+> 			var index = this.files.findIndex(function(el){return el.name==name;});
+2317c2371
+< 			if (typeof (options.updateSummary) === 'undefined' || !!options.updateSummary) {
+---
+> 			if (typeof(options.updateSummary) === 'undefined' || !!options.updateSummary) {
+2319c2373
+< 				this.fileSummary.remove({ type: fileData.type, size: fileData.size }, true);
+---
+> 				this.fileSummary.remove({type: fileData.type, size: fileData.size}, true);
+2357c2411
+< 		_findInsertionIndex: function (fileData) {
+---
+> 		_findInsertionIndex: function(fileData) {
+2373c2427
+< 		move: function (fileNames, targetPath, callback, dir) {
+---
+> 		move: function(fileNames, targetPath, callback, dir) {
+2385c2439
+< 			var moveFileFunction = function (fileName) {
+---
+> 			var moveFileFunction = function(fileName) {
+2394c2448
+< 					.done(function () {
+---
+> 					.done(function() {
+2408c2462
+< 					.fail(function (status) {
+---
+> 					.fail(function(status) {
+2412c2466
+< 								{ file: fileName }), { type: 'error' }
+---
+> 								{file: fileName}), {type: 'error'}
+2416c2470
+< 								{ file: fileName }), { type: 'error' }
+---
+> 								{file: fileName}), {type: 'error'}
+2420c2474
+< 					.always(function () {
+---
+> 					.always(function() {
+2427,2428c2481,2482
+< 		_reflect: function (promise) {
+< 			return promise.then(function (v) { return {}; }, function (e) { return {}; });
+---
+> 		_reflect: function (promise){
+> 			return promise.then(function(v){ return {};}, function(e){ return {};});
+2431c2485
+< 		reportOperationProgress: function (fileNames, operationFunction, callback) {
+---
+> 		reportOperationProgress: function (fileNames, operationFunction, callback){
+2436,2438c2490,2492
+< 			var promises = _.map(fileNames, function (arg) {
+< 				return mcSemaphore.acquire().then(function () {
+< 					return operationFunction(arg).always(function () {
+---
+> 			var promises = _.map(fileNames, function(arg) {
+> 				return mcSemaphore.acquire().then(function(){
+> 					return operationFunction(arg).always(function(){
+2441c2495
+< 						self._operationProgressBar.setProgressBarValue(100.0 * counter / fileNames.length);
+---
+> 						self._operationProgressBar.setProgressBarValue(100.0*counter/fileNames.length);
+2446c2500
+< 			return Promise.all(_.map(promises, self._reflect)).then(function () {
+---
+> 			return Promise.all(_.map(promises, self._reflect)).then(function(){
+2462c2516
+< 		copy: function (fileNames, targetPath, callback, dir) {
+---
+> 		copy: function(fileNames, targetPath, callback, dir) {
+2475c2529
+< 			var copyFileFunction = function (fileName) {
+---
+> 			var copyFileFunction = function(fileName) {
+2486c2540
+< 					if (dotIndex > 1) {
+---
+> 					if ( dotIndex > 1) {
+2491c2545
+< 						if (isNaN(fileNumber)) {
+---
+> 						if (isNaN(fileNumber) ) {
+2500c2554
+< 								leftPartOfName = leftPartOfName.replace(new RegExp("\\(" + copyNameLocalized + "( \\d+)?\\)"), "");
+---
+> 								leftPartOfName = leftPartOfName.replace(new RegExp("\\(" + copyNameLocalized + "( \\d+)?\\)"),"");
+2506c2560
+< 											targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + "\\)"), "");
+---
+> 											targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + "\\)"),"");
+2519c2573
+< 								targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + " \\d+\\)"), "");
+---
+> 								targetPathAndName = targetPathAndName.replace(new RegExp(" \\(" + copyNameLocalized + " \\d+\\)"),"");
+2523c2577
+< 							var extensionName = " (" + copyNameLocalized + " " + maxNum + ")";
+---
+> 							var extensionName = " (" + copyNameLocalized + " " + maxNum +")";
+2547c2601
+< 					.fail(function (status) {
+---
+> 					.fail(function(status) {
+2551c2605
+< 								{ file: fileName }), { type: 'error' }
+---
+> 								{file: fileName}), {type: 'error'}
+2555c2609
+< 								{ file: fileName }), { type: 'error' }
+---
+> 								{file: fileName}), {type: 'error'}
+2559c2613
+< 					.always(function () {
+---
+> 					.always(function() {
+2583c2637
+< 									), { timeout: 10 });
+---
+> 									), {timeout: 10});
+2590c2644
+< 									), { timeout: 10 });
+---
+> 									), {timeout: 10});
+2598c2652
+< 									), { timeout: 10 });
+---
+> 									), {timeout: 10});
+2616c2670
+< 		updateRow: function ($tr, fileInfo, options) {
+---
+> 		updateRow: function($tr, fileInfo, options) {
+2619,2620c2673,2674
+< 			options = _.extend({ silent: true }, options);
+< 			options = _.extend(options, { updateSummary: false });
+---
+> 			options = _.extend({silent: true}, options);
+> 			options = _.extend(options, {updateSummary: false});
+2622c2676
+< 			this.$fileList.trigger($.Event('fileActionsReady', { fileList: this, $files: $tr }));
+---
+> 			this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: $tr}));
+2632c2686
+< 		rename: function (oldName) {
+---
+> 		rename: function(oldName) {
+2637c2691
+< 			tr.data('renaming', true);
+---
+> 			tr.data('renaming',true);
+2647,2648c2701,2702
+< 			if (len === -1 ||
+< 				tr.data('type') === 'dir') {
+---
+> 			if ( len === -1 ||
+> 				tr.data('type') === 'dir' ) {
+2658c2712
+< 						throw t('files', '{newName} already exists', { newName: filename }, undefined, {
+---
+> 						throw t('files', '{newName} already exists', {newName: filename}, undefined, {
+2668c2722
+< 				tr.data('renaming', false);
+---
+> 				tr.data('renaming',false);
+2679c2733
+< 			form.submit(function (event) {
+---
+> 			form.submit(function(event) {
+2693,2708d2746
+< 						var dir = self.getCurrentDirectory();
+< 						var pathname = dir + '/' + newName;
+< 						var project = OCA.IDA.Util.extractProjectName(pathname);
+< 						var scope = OCA.IDA.Util.stripRootFolder(pathname);
+< 						try {
+< 						    var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                             if (message !== false) {
+<                                 OC.Notification.show(t('ida', message), {type: 'error'});
+< 								updateInList(oldFileInfo);
+< 								return false;
+<                             }
+< 						} catch (error) {
+< 							OC.Notification.show(error, { type: 'error' });
+< 							updateInList(oldFileInfo);
+< 							return false;
+< 						}
+2721c2759
+< 							.done(function () {
+---
+> 							.done(function() {
+2725c2763
+< 							.fail(function (status) {
+---
+> 							.fail(function(status) {
+2730c2768
+< 										{ fileName: oldName }), { timeout: 7, type: 'error' }
+---
+> 										{fileName: oldName}), {timeout: 7, type: 'error'}
+2733c2771
+< 									self.remove(newName, { updateSummary: true });
+---
+> 									self.remove(newName, {updateSummary: true});
+2739,2742c2777,2780
+< 											{
+< 												targetName: newName,
+< 												dir: self.getCurrentDirectory(),
+< 											}),
+---
+> 										{
+> 											targetName: newName,
+> 											dir: self.getCurrentDirectory(),
+> 										}),
+2750c2788
+< 										{ fileName: oldName }), { type: 'error' }
+---
+> 										{fileName: oldName}), {type: 'error'}
+2759,2760c2797,2798
+< 						tr = self.add(oldFileInfo, { updateSummary: false, silent: true });
+< 						self.$fileList.trigger($.Event('fileActionsReady', { fileList: self, $files: $(tr) }));
+---
+> 						tr = self.add(oldFileInfo, {updateSummary: false, silent: true});
+> 						self.$fileList.trigger($.Event('fileActionsReady', {fileList: self, $files: $(tr)}));
+2764c2802
+< 					input.tooltip({ placement: 'right', trigger: 'manual' });
+---
+> 					input.tooltip({placement: 'right', trigger: 'manual'});
+2771c2809
+< 			input.keyup(function (event) {
+---
+> 			input.keyup(function(event) {
+2779c2817
+< 					input.tooltip({ placement: 'right', trigger: 'manual' });
+---
+> 					input.tooltip({placement: 'right', trigger: 'manual'});
+2788c2826
+< 			input.click(function (event) {
+---
+> 			input.click(function(event) {
+2792,2793c2830,2831
+< 			input.blur(function () {
+< 				if (input.hasClass('error')) {
+---
+> 			input.blur(function() {
+> 				if(input.hasClass('error')) {
+2811c2849
+< 		createFile: function (name) {
+---
+> 		createFile: function(name, options) {
+2825,2832d2862
+< 			var project = OCA.IDA.Util.extractProjectName(targetPath);
+< 			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+< 
+< 			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<             if (message !== false) {
+<                 throw t('ida', message);
+<             }
+< 
+2834,2841c2864,2871
+< 				targetPath,
+< 				' ', // dont create empty files which fails on some storage backends
+< 				{
+< 					contentType: 'text/plain',
+< 					overwrite: true
+< 				}
+< 			)
+< 				.done(function () {
+---
+> 					targetPath,
+> 					' ', // dont create empty files which fails on some storage backends
+> 					{
+> 						contentType: 'text/plain',
+> 						overwrite: true
+> 					}
+> 				)
+> 				.done(function() {
+2843c2873,2874
+< 					self.addAndFetchFileInfo(targetPath, '', { scrollTo: true }).then(function (status, data) {
+---
+> 					options = _.extend({scrollTo: true}, options || {});
+> 					self.addAndFetchFileInfo(targetPath, '', options).then(function(status, data) {
+2845c2876
+< 					}, function () {
+---
+> 					}, function() {
+2847c2878
+< 							{ file: name }), { type: 'error' }
+---
+> 							{file: name}), {type: 'error'}
+2851c2882
+< 				.fail(function (status) {
+---
+> 				.fail(function(status) {
+2854c2885
+< 							{ file: name }), { type: 'error' }
+---
+> 							{file: name}), {type: 'error'}
+2858c2889
+< 							{ file: name }), { type: 'error' }
+---
+> 							{file: name}), {type: 'error'}
+2877c2908
+< 		createDirectory: function (name) {
+---
+> 		createDirectory: function(name) {
+2891,2898d2921
+< 			var project = OCA.IDA.Util.extractProjectName(targetPath);
+< 			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+< 
+< 			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<             if (message !== false) {
+<                 throw t('ida', message);
+<             }
+< 
+2900,2901c2923,2924
+< 				.done(function () {
+< 					self.addAndFetchFileInfo(targetPath, '', { scrollTo: true }).then(function (status, data) {
+---
+> 				.done(function() {
+> 					self.addAndFetchFileInfo(targetPath, '', {scrollTo:true}).then(function(status, data) {
+2903c2926
+< 					}, function () {
+---
+> 					}, function() {
+2905c2928
+< 							{ dir: name }), { type: 'error' }
+---
+> 							{dir: name}), {type: 'error'}
+2909c2932
+< 				.fail(function (createStatus) {
+---
+> 				.fail(function(createStatus) {
+2913,2914c2936,2937
+< 						self.addAndFetchFileInfo(targetPath, '', { scrollTo: true })
+< 							.done(function (status, data) {
+---
+> 						self.addAndFetchFileInfo(targetPath, '', {scrollTo:true})
+> 							.done(function(status, data) {
+2916c2939
+< 									{ dir: name }), { type: 'error' }
+---
+> 									{dir: name}), {type: 'error'}
+2921c2944
+< 							.fail(function () {
+---
+> 							.fail(function() {
+2923c2946
+< 									{ dir: name }), { type: 'error' }
+---
+> 									{dir: name}), {type: 'error'}
+2929c2952
+< 							{ dir: name }), { type: 'error' }
+---
+> 							{dir: name}), {type: 'error'}
+2953c2976
+< 		addAndFetchFileInfo: function (fileName, dir, options) {
+---
+> 		addAndFetchFileInfo: function(fileName, dir, options) {
+2976,2978c2999,3001
+< 				properties: this._getWebdavProperties()
+< 			})
+< 				.then(function (status, data) {
+---
+> 					properties: this._getWebdavProperties()
+> 				})
+> 				.then(function(status, data) {
+2984,2986c3007,3009
+< 				.fail(function (status) {
+< 					OC.Notification.show(t('files', 'Could not create file "{file}"',
+< 						{ file: name }), { type: 'error' }
+---
+> 				.fail(function(status) {
+> 					OCP.Toast.error(
+> 						t('files', 'Could not fetch file details "{file}"', { file: fileName })
+3001c3024
+< 		inList: function (file) {
+---
+> 		inList:function(file) {
+3013c3036
+< 		showFileBusyState: function (files, state) {
+---
+> 		showFileBusyState: function(files, state) {
+3023c3046
+< 			_.each(files, function (fileName) {
+---
+> 			_.each(files, function(fileName) {
+3049c3072
+< 		do_delete: function (files, dir) {
+---
+> 		do_delete:function(files, dir) {
+3052c3075
+< 				files = [files];
+---
+> 				files=[files];
+3065,3075c3088
+< 			// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+< 			// compromise to having overly complex mods to the existing logic...
+< 			var project = OCA.IDA.Util.extractProjectName(dir);
+< 			var scope = OCA.IDA.Util.stripRootFolder(dir);
+< 
+< 			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<             if (message !== false) {
+<                 throw t('ida', message);
+<             }
+< 
+< 			var removeFunction = function (fileName) {
+---
+> 			var removeFunction = function(fileName) {
+3079c3092
+< 					.done(function () {
+---
+> 					.done(function() {
+3084c3097
+< 					.fail(function (status) {
+---
+> 					.fail(function(status) {
+3093c3106
+< 								{ fileName: fileName }), { type: 'error' }
+---
+> 								{fileName: fileName}), {type: 'error'}
+3097c3110
+< 					.always(function () {
+---
+> 					.always(function() {
+3101,3104c3114,3117
+< 			return this.reportOperationProgress(files, removeFunction).then(function () {
+< 				self.updateStorageStatistics();
+< 				self.updateStorageQuotas();
+< 			});
+---
+> 			return this.reportOperationProgress(files, removeFunction).then(function(){
+> 					self.updateStorageStatistics();
+> 					self.updateStorageQuotas();
+> 				});
+3110c3123
+< 		_createSummary: function () {
+---
+> 		_createSummary: function() {
+3121c3134
+< 			return new OCA.Files.FileSummary($tr, { config: this._filesConfig });
+---
+> 			return new OCA.Files.FileSummary($tr, {config: this._filesConfig});
+3123c3136
+< 		updateEmptyContent: function () {
+---
+> 		updateEmptyContent: function() {
+3126,3129d3138
+< 			// IDA users are not allowed to create anything in their root folder
+< 			if (this.getCurrentDirectory() === '/') {
+< 				isCreatable = false;
+< 			}
+3141c3150
+< 		showMask: function () {
+---
+> 		showMask: function() {
+3161c3170
+< 		hideMask: function () {
+---
+> 		hideMask: function() {
+3165c3174
+< 		scrollTo: function (file) {
+---
+> 		scrollTo:function(file) {
+3170c3179
+< 				_.defer(function () {
+---
+> 				_.defer(function() {
+3174c3183
+< 			this.highlightFiles(file, function ($tr) {
+---
+> 			this.highlightFiles(file, function($tr) {
+3176c3185
+< 				$tr.one('hover', function () {
+---
+> 				$tr.one('hover', function() {
+3184c3193
+< 		filter: function (query) {
+---
+> 		filter:function(query) {
+3190c3199
+< 		unfilter: function () {
+---
+> 		unfilter:function() {
+3197c3206
+< 		setFilter: function (filter) {
+---
+> 		setFilter:function(filter) {
+3232c3241
+< 		hideIrrelevantUIWhenNoFilesMatch: function () {
+---
+> 		hideIrrelevantUIWhenNoFilesMatch:function() {
+3238,3239c3247,3253
+< 				if ($('#searchresults').length === 0 || $('#searchresults').hasClass('hidden')) {
+< 					var error = t('files', 'No search results in other folders for {tag}{filter}{endtag}', { filter: this._filter });
+---
+> 				if ( $('#searchresults').length === 0 || $('#searchresults').hasClass('hidden') ) {
+> 					var error;
+> 					if (this._filter.length > 2) {
+> 						error = t('files', 'No search results in other folders for {tag}{filter}{endtag}', {filter:this._filter});
+> 					} else {
+> 						error = t('files', 'Enter more than two characters to search in other folders');
+> 					}
+3257c3271
+< 		getFilter: function (filter) {
+---
+> 		getFilter:function(filter) {
+3260,3270c3274
+< 		/**
+< 		 * update the search object to use this filelist when filtering
+< 		 */
+< 		updateSearch: function () {
+< 			if (OCA.Search.files) {
+< 				OCA.Search.files.setFileList(this);
+< 			}
+< 			if (OC.Search) {
+< 				OC.Search.clear();
+< 			}
+< 		},
+---
+> 
+3274c3278
+< 		updateSelectionSummary: function () {
+---
+> 		updateSelectionSummary: function() {
+3280,3282c3284,3286
+< 				this.$el.find('#headerName a.name>span:first').text(t('files', 'Name'));
+< 				this.$el.find('#headerSize a>span:first').text(t('files', 'Size'));
+< 				this.$el.find('#modified a>span:first').text(t('files', 'Modified'));
+---
+> 				this.$el.find('#headerName a.name>span:first').text(t('files','Name'));
+> 				this.$el.find('#headerSize a>span:first').text(t('files','Size'));
+> 				this.$el.find('#modified a>span:first').text(t('files','Modified'));
+3334,3335c3338,3339
+< 		isSelectedCopiable: function () {
+< 			return _.reduce(this.getSelectedFiles(), function (copiable, file) {
+---
+> 		isSelectedCopiable: function() {
+> 			return _.reduce(this.getSelectedFiles(), function(copiable, file) {
+3344,3345c3348,3349
+< 		isSelectedMovable: function () {
+< 			return _.reduce(this.getSelectedFiles(), function (movable, file) {
+---
+> 		isSelectedMovable: function() {
+> 			return _.reduce(this.getSelectedFiles(), function(movable, file) {
+3353,3354c3357,3358
+< 		isSelectedDownloadable: function () {
+< 			return _.reduce(this.getSelectedFiles(), function (downloadable, file) {
+---
+> 		isSelectedDownloadable: function() {
+> 			return _.reduce(this.getSelectedFiles(), function(downloadable, file) {
+3362,3363c3366,3367
+< 		isSelectedDeletable: function () {
+< 			return _.reduce(this.getSelectedFiles(), function (deletable, file) {
+---
+> 		isSelectedDeletable: function() {
+> 			return _.reduce(this.getSelectedFiles(), function(deletable, file) {
+3370c3374
+< 		 * 
+---
+> 		 *
+3373c3377
+< 		isAllSelected: function () {
+---
+> 		isAllSelected: function() {
+3385c3389
+< 		getSelectedFiles: function () {
+---
+> 		getSelectedFiles: function() {
+3389c3393
+< 		getUniqueName: function (name) {
+---
+> 		getUniqueName: function(name) {
+3392c3396
+< 				var parts = name.split('.');
+---
+> 				var parts=name.split('.');
+3395c3399
+< 					extension = parts.pop();
+---
+> 					extension=parts.pop();
+3397,3402c3401,3406
+< 				var base = parts.join('.');
+< 				numMatch = base.match(/\((\d+)\)/);
+< 				var num = 2;
+< 				if (numMatch && numMatch.length > 0) {
+< 					num = parseInt(numMatch[numMatch.length - 1], 10) + 1;
+< 					base = base.split('(');
+---
+> 				var base=parts.join('.');
+> 				numMatch=base.match(/\((\d+)\)/);
+> 				var num=2;
+> 				if (numMatch && numMatch.length>0) {
+> 					num=parseInt(numMatch[numMatch.length-1], 10)+1;
+> 					base=base.split('(');
+3404c3408
+< 					base = $.trim(base.join('('));
+---
+> 					base=$.trim(base.join('('));
+3406c3410
+< 				name = base + ' (' + num + ')';
+---
+> 				name=base+' ('+num+')';
+3408c3412
+< 					name = name + '.' + extension;
+---
+> 					name = name+'.'+extension;
+3419,3421c3423,3425
+< 		_showPermissionDeniedNotification: function () {
+< 			var message = t('ida', 'Files can be added only in the Staging area (root folder ending in +)');
+< 			OC.Notification.show(message, { type: 'error' });
+---
+> 		_showPermissionDeniedNotification: function() {
+> 			var message = t('files', 'You don’t have permission to upload or create files here');
+> 			OC.Notification.show(message, {type: 'error'});
+3429c3433
+< 		setupUploadEvents: function (uploader) {
+---
+> 		setupUploadEvents: function(uploader) {
+3437c3441
+< 			uploader.on('drop', function (e, data) {
+---
+> 			uploader.on('drop', function(e, data) {
+3454c3458
+< 				) {
+---
+> 					) {
+3484c3488
+< 					else {
+---
+> 					else{
+3494,3497d3497
+< 					// IDA users are not allowed to create anything in their root folder
+< 					if (self.getCurrentDirectory() === '/') {
+< 						isCreatable = false;
+< 					}
+3508,3524d3507
+< 
+< 				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+< 				// compromise to having overly complex mods to the existing logic...
+< 				var project = OCA.IDA.Util.extractProjectName(data.targetDir);
+< 				var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
+< 				try {
+< 			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                     if (message !== false) {
+<                         OC.Notification.show(t('ida', message), {type: 'error'});
+< 						e.stopPropagation();
+< 						return false;
+<                     }
+< 				} catch (error) {
+< 					OC.Notification.show(error, { type: 'error' });
+< 					e.stopPropagation();
+< 					return false;
+< 				}
+3526c3509
+< 			uploader.on('add', function (e, data) {
+---
+> 			uploader.on('add', function(e, data) {
+3529,3549d3511
+< 				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+< 				// compromise to having overly complex mods to the existing logic...
+< 				if (!data.targetDir) {
+< 					targetDir = self.getCurrentDirectory();
+< 				}
+< 				else {
+< 					targetDir = data.targetDir;
+< 				}
+< 				var project = OCA.IDA.Util.extractProjectName(targetDir);
+< 				var scope = OCA.IDA.Util.stripRootFolder(targetDir);
+< 				try {
+< 			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+<                     if (message !== false) {
+<                         OC.Notification.show(t('ida', message), {type: 'error'});
+<                         return;
+<                     }
+< 				} catch (error) {
+< 					OC.Notification.show(error, { type: 'error' });
+< 					return;
+< 				}
+< 
+3572a3535
+> 
+3578c3541
+< 			uploader.on('done', function (e, upload) {
+---
+> 			uploader.on('done', function(e, upload) {
+3604c3567
+< 			uploader.on('createdfolder', function (fullPath) {
+---
+> 			uploader.on('createdfolder', function(fullPath) {
+3607c3570
+< 			uploader.on('stop', function () {
+---
+> 			uploader.on('stop', function() {
+3617c3580
+< 				$.when.apply($, promises).then(function () {
+---
+> 				$.when.apply($, promises).then(function() {
+3628c3591
+< 			uploader.on('fail', function (e, data) {
+---
+> 			uploader.on('fail', function(e, data) {
+3650c3613
+< 		highlightFiles: function (files, highlightFunction) {
+---
+> 		highlightFiles: function(files, highlightFunction) {
+3655c3618
+< 			while (!$fileRow.exists() && this._nextPage(false) !== false) { // Checking element existence
+---
+> 			while(!$fileRow.exists() && this._nextPage(false) !== false) { // Checking element existence
+3664c3627
+< 			var additionalOffset = this.$el.find("#controls").height() + this.$el.find("#controls").offset().top;
+---
+> 			var additionalOffset = this.$el.find("#controls").height()+this.$el.find("#controls").offset().top;
+3679c3642
+< 				complete: function () {
+---
+> 				complete: function() {
+3684c3647
+< 						highlightRow = function ($fileRow) {
+---
+> 						highlightRow = function($fileRow) {
+3686c3649
+< 							setTimeout(function () {
+---
+> 							setTimeout(function() {
+3693c3656
+< 					for (var i = 0; i < files.length; i++) {
+---
+> 					for(var i=0; i<files.length; i++) {
+3696c3659
+< 						if ($fileRow.length !== 0) { // Checking element existence
+---
+> 						if($fileRow.length !== 0) { // Checking element existence
+3705c3668
+< 		_renderNewButton: function () {
+---
+> 		_renderNewButton: function() {
+3717c3680
+< 			$newButton.tooltip({ 'placement': 'bottom' });
+---
+> 			$newButton.tooltip({'placement': 'bottom'});
+3723c3686
+< 		_onClickNewButton: function (event) {
+---
+> 		_onClickNewButton: function(event) {
+3747,3749c3710,3729
+< 		registerTabView: function (tabView) {
+< 			if (this._detailsView) {
+< 				this._detailsView.addTabView(tabView);
+---
+> 		registerTabView: function(tabView) {
+> 			console.warn('registerTabView is deprecated! It will be removed in nextcloud 20.');
+> 			const enabled = tabView.canDisplay || undefined
+> 			if (tabView.id) {
+> 				OCA.Files.Sidebar.registerTab(new OCA.Files.Sidebar.Tab({
+> 					id: tabView.id,
+> 					name: tabView.getLabel(),
+> 					icon: tabView.getIcon(),
+> 					mount: function(el, fileInfo) {
+> 						tabView.setFileInfo(new OCA.Files.FileInfoModel(fileInfo))
+> 						el.appendChild(tabView.el)
+> 					},
+> 					update: function(fileInfo) {
+> 						tabView.setFileInfo(new OCA.Files.FileInfoModel(fileInfo))
+> 					},
+> 					destroy: function() {
+> 						tabView.el.remove()
+> 					},
+> 					enabled: enabled
+> 				}))
+3756,3758c3736,3739
+< 		registerDetailView: function (detailView) {
+< 			if (this._detailsView) {
+< 				this._detailsView.addDetailView(detailView);
+---
+> 		registerDetailView: function(detailView) {
+> 			console.warn('registerDetailView is deprecated! It will be removed in nextcloud 20.');
+> 			if (detailView.el) {
+> 				OCA.Files.Sidebar.registerSecondaryView(detailView)
+3765c3746
+< 		registerBreadCrumbDetailView: function (detailView) {
+---
+> 		registerBreadCrumbDetailView: function(detailView) {
+3778c3759
+< 		getRegisteredDetailViews: function () {
+---
+> 		getRegisteredDetailViews: function() {
+3783a3765,3776
+> 		},
+> 
+> 		registerHeader: function(header) {
+> 			this.headers.push(
+> 				_.defaults(header, { order: 0 })
+> 			);
+> 		},
+> 
+> 		registerFooter: function(footer) {
+> 			this.footers.push(
+> 				_.defaults(footer, { order: 0 })
+> 			);
+3788c3781
+< 		ToggleSelectionModeAction: function (fileList) {
+---
+> 		ToggleSelectionModeAction: function(fileList) {
+3791c3784
+< 				displayName: function (context) {
+---
+> 				displayName: function(context) {
+3795c3788
+< 				action: function () {
+---
+> 				action: function() {
+3801a3795,3800
+> 	/**
+> 	 * Sort comparators.
+> 	 * @namespace OCA.Files.FileList.Comparators
+> 	 * @private
+> 	 */
+> 	FileList.Comparators = {
+3803,3805c3802,3808
+< 		 * Sort comparators.
+< 		 * @namespace OCA.Files.FileList.Comparators
+< 		 * @private
+---
+> 		 * Compares two file infos by name, making directories appear
+> 		 * first.
+> 		 *
+> 		 * @param {OC.Files.FileInfo} fileInfo1 file info
+> 		 * @param {OC.Files.FileInfo} fileInfo2 file info
+> 		 * @return {int} -1 if the first file must appear before the second one,
+> 		 * 0 if they are identify, 1 otherwise.
+3807,3846c3810,3812
+< 		FileList.Comparators = {
+< 			/**
+< 			 * Compares two file infos by name, making directories appear
+< 			 * first.
+< 			 *
+< 			 * @param {OC.Files.FileInfo} fileInfo1 file info
+< 			 * @param {OC.Files.FileInfo} fileInfo2 file info
+< 			 * @return {int} -1 if the first file must appear before the second one,
+< 			 * 0 if they are identify, 1 otherwise.
+< 			 */
+< 			name: function (fileInfo1, fileInfo2) {
+< 				if (fileInfo1.type === 'dir' && fileInfo2.type !== 'dir') {
+< 					return -1;
+< 				}
+< 				if (fileInfo1.type !== 'dir' && fileInfo2.type === 'dir') {
+< 					return 1;
+< 				}
+< 				return OC.Util.naturalSortCompare(fileInfo1.name, fileInfo2.name);
+< 			},
+< 			/**
+< 			 * Compares two file infos by size.
+< 			 *
+< 			 * @param {OC.Files.FileInfo} fileInfo1 file info
+< 			 * @param {OC.Files.FileInfo} fileInfo2 file info
+< 			 * @return {int} -1 if the first file must appear before the second one,
+< 			 * 0 if they are identify, 1 otherwise.
+< 			 */
+< 			size: function (fileInfo1, fileInfo2) {
+< 				return fileInfo1.size - fileInfo2.size;
+< 			},
+< 			/**
+< 			 * Compares two file infos by timestamp.
+< 			 *
+< 			 * @param {OC.Files.FileInfo} fileInfo1 file info
+< 			 * @param {OC.Files.FileInfo} fileInfo2 file info
+< 			 * @return {int} -1 if the first file must appear before the second one,
+< 			 * 0 if they are identify, 1 otherwise.
+< 			 */
+< 			mtime: function (fileInfo1, fileInfo2) {
+< 				return fileInfo1.mtime - fileInfo2.mtime;
+---
+> 		name: function(fileInfo1, fileInfo2) {
+> 			if (fileInfo1.type === 'dir' && fileInfo2.type !== 'dir') {
+> 				return -1;
+3848c3814,3841
+< 		};
+---
+> 			if (fileInfo1.type !== 'dir' && fileInfo2.type === 'dir') {
+> 				return 1;
+> 			}
+> 			return OC.Util.naturalSortCompare(fileInfo1.name, fileInfo2.name);
+> 		},
+> 		/**
+> 		 * Compares two file infos by size.
+> 		 *
+> 		 * @param {OC.Files.FileInfo} fileInfo1 file info
+> 		 * @param {OC.Files.FileInfo} fileInfo2 file info
+> 		 * @return {int} -1 if the first file must appear before the second one,
+> 		 * 0 if they are identify, 1 otherwise.
+> 		 */
+> 		size: function(fileInfo1, fileInfo2) {
+> 			return fileInfo1.size - fileInfo2.size;
+> 		},
+> 		/**
+> 		 * Compares two file infos by timestamp.
+> 		 *
+> 		 * @param {OC.Files.FileInfo} fileInfo1 file info
+> 		 * @param {OC.Files.FileInfo} fileInfo2 file info
+> 		 * @return {int} -1 if the first file must appear before the second one,
+> 		 * 0 if they are identify, 1 otherwise.
+> 		 */
+> 		mtime: function(fileInfo1, fileInfo2) {
+> 			return fileInfo1.mtime - fileInfo2.mtime;
+> 		}
+> 	};
+3865c3858
+< $(document).ready(function () {
+---
+> window.addEventListener('DOMContentLoaded', function() {
+3867c3860
+< 	OCA.Files.FileList.useUndo = (window.onbeforeunload) ? true : false;
+---
+> 	OCA.Files.FileList.useUndo = (window.onbeforeunload)?true:false;
+3873,3875c3866
+< 	$(window).on('unload', function () {
+< 		$(window).trigger('beforeunload');
+< 	});
+---
+> 

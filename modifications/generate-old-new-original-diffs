@@ -22,11 +22,11 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-# This script generates diffs for all of the modified files in the old nextcloud,
-# compared to the same files, if any, in the new nextcloud, indicating where and
-# how the new files differ from the latest modified versions in the old nextcloud,
-# saving the diffs in the subdirectory ./diffs-old-new/. No diff file is created
-# if the file doesn't exist in the new nextcloud.
+# This script generates diffs for all of the original versions of modified files
+# in the old nextcloud, compared to the same original files, if any, in the new nextcloud,
+# indicating where and how those files have changed between original versions, placing
+# the diffs in the subdirectory ./diffs-old-new-original/. No diff file is created if the file
+# doesn't exist in the new nextcloud or if the old and new versions are identical.
 
 source ../config/config.sh
 
@@ -34,9 +34,12 @@ for PATHNAME in `./list-modified-files`; do
     OLDPATHNAME=`echo "${PATHNAME}" | sed -e 's/nextcloud/nextcloud-old/'`
     NEWPATHNAME=`echo "${PATHNAME}" | sed -e 's/nextcloud/nextcloud-new/'`
     if [ -s "${NEWPATHNAME}" ]; then
-        DIRS=`dirname "${PATHNAME}"`
-        mkdir -p "./diffs-old-new${DIRS}"
-        diff "${OLDPATHNAME}" "${NEWPATHNAME}" > "./diffs-old-new${PATHNAME}.diff" 
+        diff "${OLDPATHNAME}.original" "${NEWPATHNAME}" > "/tmp/$$.diff" 
+        if [ -s "/tmp/$$.diff" ]; then
+            DIRS=`dirname "${PATHNAME}"`
+            mkdir -p "./diffs-old-new-original${DIRS}"
+            mv "/tmp/$$.diff" "./diffs-old-new-original${PATHNAME}.diff" 
+        fi
     fi
 done
 
