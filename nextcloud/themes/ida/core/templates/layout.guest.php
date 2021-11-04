@@ -25,7 +25,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 use \Firebase\JWT\JWT;
 
-$CURRENT_LANGUAGE = $_GET['language'];
+if (isset($_GET['language'])) {
+    $CURRENT_LANGUAGE = $_GET['language'];
+}
+else {
+    $CURRENT_LANGUAGE = 'en';
+}
 
 if ($CURRENT_LANGUAGE != 'en' && $CURRENT_LANGUAGE != 'fi' && $CURRENT_LANGUAGE != 'sv') {
     if (array_key_exists('HTTP_HOST', $_SERVER)) {
@@ -68,7 +73,15 @@ $IDA_LANGUAGES = array(
 
 function SSOActive()
 {
-    return \OC::$server->getSystemConfig()->getValue('SSO_AUTHENTICATION') === true || $_GET['sso_authentication'] === 'true';
+    if (\OC::$server->getSystemConfig()->getValue('SSO_AUTHENTICATION') === true) {
+        return true;
+    }
+    if (isset($_GET['sso_authentication'])) {
+        if ($_GET['sso_authentication'] === 'true') {
+            return true;
+        }
+    }
+    return false;
 }
 
 function FDWEActive()
@@ -81,8 +94,10 @@ function localLoginActive()
     if (!SSOActive()) {
         return true;
     }
-    if ($_GET['local_login'] === 'true') {
-        return true;
+    if (isset($_GET['local_login'])) {
+        if ($_GET['local_login'] === 'true') {
+            return true;
+        }
     }
     return \OC::$server->getSystemConfig()->getValue('LOCAL_LOGIN') === true;
 }

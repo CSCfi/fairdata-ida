@@ -14,7 +14,7 @@ a { border:0; color:#000; text-decoration:none;}
 a, a *, input, input *, select, .button span, label { cursor:pointer; }
 ul { list-style:none; }
 
-body {
+bodyx {
 	background-color: #ffffff;
 	font-weight: normal;
 	/* bring the default font size up to 14px */
@@ -35,12 +35,12 @@ body {
 }
 
 /* Various fonts settings */
-#body-login a {
+#body-login #ida-login a {
 	color: #fff;
 	font-weight: 600;
 }
-#body-login a:not(.button):hover,
-#body-login a:not(.button):focus {
+#body-login #ida-login a:not(.button):hover,
+#body-login #ida-login a:not(.button):focus {
 	text-decoration: underline;
 	text-decoration-skip-ink: auto;
 }
@@ -99,20 +99,20 @@ body {
 }
 
 .wrapper {
-	width: 100%;
-	max-width: 700px;
+	width: 300px;
 	margin-top: 10vh;
 }
 
 /* Default FORM */
 form {
 	position: relative;
+	width: 280px;
 	margin: auto;
 	padding: 0;
 }
 form fieldset {
-	width: 260px;
-	margin: auto auto 20px;
+	margin-bottom: 20px;
+	text-align: left;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
@@ -234,7 +234,7 @@ form #datadirField legend {
 
 
 input, textarea, select, button, div[contenteditable=true] {
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+	font-family: 'Nunito', 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
 }
 input,
 input:not([type='range']),
