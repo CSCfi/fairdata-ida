@@ -118,23 +118,55 @@ class LoginController extends Controller {
 	 * @return RedirectResponse
 	 */
 	public function logout() {
+
+		// Log out of IDA.
+		//
+		// If login was via SSO, redirects to the Fairdata SSO so that the SSO session is
+		// terminated, ultimately being redirected back to the IDA home page.
+		//
+		// if login was via local Nextcloud authentication, redirects directly to the IDA
+		// home page.
+		
+		$uid = $this->userSession->getUser()->getUID();
+        $language = $this->config->getUserValue($uid, 'core', 'lang');
+		$redirect_url = $this->config->getSystemValue('IDA_HOME');
+
+		if ($this->config->getSystemValue('SSO_AUTHENTICATION') === true) {
+		    $domain = $this->config->getSystemValue('SSO_DOMAIN');
+			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+			if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])) {
+			    $redirect_url = $this->config->getSystemValue('SSO_API') . '/logout?service=IDA&redirect_url=' . urlencode($redirect_url) . '&language=' . $language;
+		        Util::writeLog('ida', 'LoginController.php: logout: active SSO session cookie found', \OCP\Util::DEBUG);
+			}
+		}
+
+		Util::writeLog('ida', 'LoginController.php: logout: uid=' . $uid . ' redirect_url: ' . $redirect_url, \OCP\Util::DEBUG);
+
 		$loginToken = $this->request->getCookie('nc_token');
+
 		if (!is_null($loginToken)) {
 			$this->config->deleteUserValue($this->userSession->getUser()->getUID(), 'login_token', $loginToken);
 		}
+
 		$this->userSession->logout();
 
+		$response = new RedirectResponse($redirect_url);
+		$response->addHeader('Clear-Site-Data', '"cache", "storage", "executionContexts"');
+		/*
 		$response = new RedirectResponse($this->urlGenerator->linkToRouteAbsolute(
 			'core.login.showLoginForm',
 			['clear' => true] // this param the the code in login.js may be removed when the "Clear-Site-Data" is working in the browsers
 		));
+		*/
 
 		$this->session->set('clearingExecutionContexts', '1');
 		$this->session->close();
 
+		/*
 		if (!$this->request->isUserAgent([Request::USER_AGENT_CHROME, Request::USER_AGENT_ANDROID_MOBILE_CHROME])) {
 			$response->addHeader('Clear-Site-Data', '"cache", "storage"');
 		}
+		*/
 
 		return $response;
 	}
@@ -154,7 +186,10 @@ class LoginController extends Controller {
 			return new RedirectResponse(OC_Util::getDefaultPageUrl());
 		}
 
+		$parameters = array();
 		$loginMessages = $this->session->get('loginMessages');
+		$errors = [];
+		$messages = [];
 		if (is_array($loginMessages)) {
 			list($errors, $messages) = $loginMessages;
 			$this->initialStateService->provideInitialState('core', 'loginMessages', $messages);
@@ -246,6 +281,7 @@ class LoginController extends Controller {
 	 * @return bool
 	 */
 	private function canResetPassword(?string $passwordLink, ?IUser $user): bool {
+		return false;
 		if ($passwordLink === 'disabled') {
 			return false;
 		}

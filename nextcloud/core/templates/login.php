@@ -3,96 +3,31 @@
 script('core', 'dist/login');
 $CURRENT_LANGUAGE = $l->getLanguageCode();
 $CURRENT_LANGUAGE = $CURRENT_LANGUAGE ? substr($CURRENT_LANGUAGE, 0, 2) : 'en';
-use OC\Core\Controller\LoginController;
 ?>
 
-<!--
-<div id="login"></div>
--->
-
-<form method="post" name="login">
-	<fieldset>
+<form method="post" name="login" action="/login">
+    <fieldset>
 		<?php if (!empty($_['redirect_url'])) {
 			print_unescaped('<input type="hidden" name="redirect_url" value="' . \OCP\Util::sanitizeHTML($_['redirect_url']) . '">');
 		} ?>
-		<?php if (isset($_['apacheauthfailed']) && $_['apacheauthfailed']) { ?>
-			<div class="warning">
-				<?php p($l->t('Server side authentication failed!')); ?><br>
-				<small><?php p($l->t('Please contact your administrator.')); ?></small>
-			</div>
-		<?php } ?>
-		<?php if (isset($_['messages'])) { ?>
-		<?php foreach ($_['messages'] as $message) : ?>
-			<div class="warning">
-				<?php p($message); ?><br>
-			</div>
-		<?php endforeach; ?>
-		<?php } ?>
-		<?php if (isset($_['apacheauthfailed']) && $_['apacheauthfailed']) { ?>
-		<?php if (isset($_['internalexception']) && $_['internalexception']) { ?>
-			<div class="warning">
-				<?php p($l->t('An internal error occurred.')); ?><br>
-				<small><?php p($l->t('Please try again or contact your administrator.')); ?></small>
-			</div>
-		<?php } ?>
-		<?php } ?>
-		<div id="message" class="hidden">
-			<img class="float-spinner" alt="" src="<?php p(image_path('core', 'loading-dark.gif')); ?>">
-			<span id="messageText"></span>
-			<!-- the following div ensures that the spinner is always inside the #message div -->
-			<div style="clear: both;"></div>
-		</div>
-
-		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			<input type="text" name="user" id="user" placeholder="Username" value="<?php p($_['loginName']); ?>" <?php p($_['user_autofocus'] ? 'autofocus' : ''); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
+        <div id="message" class="hidden">
+            <img alt="" src="/core/img/loading-dark.gif" class="float-spinner"> <span id="messageText"></span> 
+            <div style="clear: both;"></div>
+        </div>
+        <p class="grouptop">
+			<input id="user" type="text" name="user" autocapitalize="off" autocomplete="on" placeholder="Username" aria-label="Username" required="required">
 			<label for="user" class="infield">Username</label>
 		</p>
-		<p class="login-field<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?> shake<?php } ?>">
-			<input type="password" name="password" id="password" value="" placeholder="Password" <?php p($_['user_autofocus'] ? '' : 'autofocus'); ?> autocomplete="<?php p($_['login_form_autocomplete']); ?>" autocapitalize="none" autocorrect="off" required>
-			<label for="password" class="infield">Password</label>
+        <p class="groupbottom">
+			<input id="password" type="password" name="password" autocomplete="on" placeholder="External password" aria-label="Password" required="required" class="password-with-toggle">
+			<label for="password" class="infield"></label>
 		</p>
-		<div id="submit-wrapper">
-			<input type="submit" id="submit" class="login primary" title="" value="Login" disabled="disabled" />
-			<div class="submit-icon icon-confirm-white"></div>
-		</div>
-
-		<?php if (!empty($_[LoginController::LOGIN_MSG_INVALIDPASSWORD])) { ?>
-			<p class="warning wrongPasswordMsg">
-				<?php p($l->t('Wrong username or password.')); ?>
-			</p>
-		<?php } else if (!empty($_[LoginController::LOGIN_MSG_USERDISABLED])) { ?>
-			<p class="warning userDisabledMsg">
-				<?php p(\OC::$server->getL10N('lib')->t('User disabled')); ?>
-			</p>
-		<?php } ?>
-
-		<?php if ($_['throttle_delay'] > 5000) { ?>
-			<p class="warning throttledMsg">
-				<?php p($l->t('We have detected multiple invalid login attempts from your IP. Therefore your next login is throttled up to 30 seconds.')); ?>
-			</p>
-		<?php } ?>
-
-		<?php if (!empty($_['canResetPassword'])) { ?>
-			<div id="reset-password-wrapper" style="display: none;">
-				<input type="submit" id="reset-password-submit" class="login primary" title="" value="<?php p($l->t('Reset password')); ?>" disabled="disabled" />
-				<div class="submit-icon icon-confirm-white"></div>
-			</div>
-		<?php } ?>
-
-		<div class="login-additional"></div>
-
+        <div id="submit-wrapper">
+            <input id="submit-form" type="submit" title="" class="login primary" value="Login"> 
+            <div class="submit-icon icon-confirm-white"></div>
+        </div>
 		<input type="hidden" name="timezone_offset" id="timezone_offset" />
 		<input type="hidden" name="timezone" id="timezone" />
 		<input type="hidden" name="requesttoken" value="<?php p($_['requesttoken']) ?>">
-	</fieldset>
+    </fieldset>
 </form>
-
-<?php if (false && !empty($_['alt_login'])) { ?>
-    <div id="alternative-logins">
-        <?php foreach ($_['alt_login'] as $login): ?>
-            <a class="button <?php p($login['style'] ?? ''); ?>" href="<?php print_unescaped($login['href']); ?>" >
-                <?php p($login['name']); ?>
-            </a>
-        <?php endforeach; ?>
-    </div>
-<?php } ?>
