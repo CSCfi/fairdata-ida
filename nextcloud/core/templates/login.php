@@ -19,7 +19,7 @@ $CURRENT_LANGUAGE = $CURRENT_LANGUAGE ? substr($CURRENT_LANGUAGE, 0, 2) : 'en';
 			<label for="user" class="infield">Username</label>
 		</p>
         <p class="groupbottom">
-			<input id="password" type="password" name="password" autocomplete="on" placeholder="External password" aria-label="Password" required="required" class="password-with-toggle">
+			<input id="password" type="password" name="password" autocomplete="on" placeholder="Password" aria-label="Password" required="required">
 			<label for="password" class="infield"></label>
 		</p>
         <div id="submit-wrapper">
