@@ -61,8 +61,11 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 >> Execute /var/ida/utils/fix-permissions
 >> Execute /var/ida/utils/restart-www
 >> Open Nextcloud in browser, and approve the update process when prompted
->> Log in as admin and disable all apps except those listed in essential_nextcloud_apps, and disable / do not enable the IDA app
->> Go to the admin/settings/overview page and follow guidance as recommended and relevant
+>> Log in as admin and do the following:
+   - Disable all apps except those listed in essential_nextcloud_apps
+   - Disable / do not enable the IDA app
+   - Update all settings to match production options as closely as possible
+   - Go to the admin/settings/overview page and follow guidance as recommended and relevant
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
 >> Execute /var/ida/utils/restart-www
 >> Log in as admin and enable IDA app
