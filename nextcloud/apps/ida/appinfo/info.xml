@@ -49,7 +49,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <author>servicedesk@csc.fi</author>
     <version>2</version>
     <dependencies>
-        <nextcloud min-version="16" max-version="21"/>
+        <nextcloud min-version="21" max-version="21"/>
         <database>pgsql</database>
         <database>mysql</database>
         <lib>curl</lib>
