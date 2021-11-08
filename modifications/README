@@ -54,9 +54,11 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 >> Download and unzip the latest Nextcloud package as /nextcloud
 >> Copy /nextcloud-old/themes/ida to /nextcloud/themes/ida
 >> Copy /nextcloud-old/apps/ida to /nextcloud/apps/ida
+>> Copy /nextcloud-old/apps/idafirstrunwizard to /nextcloud/apps/idafirstrunwizard
 >> Copy /nextcloud-old/.htaccess to /nextcloud/.htaccess
 >> Copy /nextcloud-old/config/config.php to /nextcloud/config/config.php
->> Edit /var/ida/nextcloud/apps/ida/appinfo/info.xml and update max-version to new Nextcloud major version
+>> Edit /var/ida/nextcloud/apps/ida/appinfo/info.xml and update min-version and max-version to new Nextcloud major version
+>> Edit /var/ida/nextcloud/apps/idafirstrunwizard/appinfo/info.xml and update min-version and max-version to new Nextcloud major version
 >> Edit /nextcloud/config.php to update the Nextcloud version to the newly installed version (c.f. /nextcloud/version.php)
 >> Execute /var/ida/utils/fix-permissions
 >> Execute /var/ida/utils/restart-www
@@ -68,9 +70,13 @@ modification of the /nextcloud directory tree after updating Nextcloud.
    - Go to the admin/settings/overview page and follow guidance as recommended and relevant
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
 >> Execute /var/ida/utils/restart-www
->> Log in as admin and enable IDA app
+>> Log in as admin and enable IDA app and IDA First Run Wizard app
 >> Create new '.original' copies within /nextcloud of all modified files listed by the list-modified-files script (see below) 
 >> ANALYZE AND UPDATE ALL OF THE MODIFIED FILES AND ANY NEW FILES, AS REQUIRED, DEBUG, DEBUG, DEBUG...
+
+Note that not all files which were modified previously will necessarily exist in the new version of Nextcloud, in which 
+case the new code base will have to be analyzed to determine where the modifications made previously will have to be made
+per the changes between versions of Nextcloud.
 
 
 -- UTILITY SCRIPTS
