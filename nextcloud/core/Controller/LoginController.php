@@ -152,21 +152,9 @@ class LoginController extends Controller {
 
 		$response = new RedirectResponse($redirect_url);
 		$response->addHeader('Clear-Site-Data', '"cache", "storage", "executionContexts"');
-		/*
-		$response = new RedirectResponse($this->urlGenerator->linkToRouteAbsolute(
-			'core.login.showLoginForm',
-			['clear' => true] // this param the the code in login.js may be removed when the "Clear-Site-Data" is working in the browsers
-		));
-		*/
 
 		$this->session->set('clearingExecutionContexts', '1');
 		$this->session->close();
-
-		/*
-		if (!$this->request->isUserAgent([Request::USER_AGENT_CHROME, Request::USER_AGENT_ANDROID_MOBILE_CHROME])) {
-			$response->addHeader('Clear-Site-Data', '"cache", "storage"');
-		}
-		*/
 
 		return $response;
 	}

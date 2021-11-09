@@ -66,7 +66,6 @@ use OCP\Session\Exceptions\SessionNotAvailableException;
 use OCP\User\Events\PostLoginEvent;
 use OCP\Util;
 use Symfony\Component\EventDispatcher\GenericEvent;
-use \Firebase\JWT\JWT;
 
 /**
  * Class Session
@@ -414,40 +413,6 @@ class Session implements IUserSession, Emitter {
 		]);
 		if ($this->isLoggedIn()) {
 			$this->prepareUserLogin($firstTimeLogin, $regenerateSessionId);
-
-			// If Fairdata language cookie exists, set Nextcloud language setting to user specified
-			// language in cookie. Else set to English.
-
-			Util::writeLog('User', 'Session.php: completeLogin:' . ' uid=' . $user->getUID(), \OCP\Util::DEBUG);
-
-			$lang = 'en';
-			$locale = 'en_US';
-
-			$hostname = $_SERVER['SERVER_NAME'];
-			$domain = substr($hostname, strpos($hostname, '.') + 1);
-			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-			$cookie = $prefix . '_fd_sso_session';
-	        if (array_key_exists($cookie, $_COOKIE)) {
-                $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
-		        $session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
-				if ($session && $session->language) {
-		            $lang = $session->language;
-				    if ($lang == 'fi') {
-			            $locale = 'fi_FI';
-				    }
-				    elseif ($lang == 'sv'){
-			            $locale = 'sv_FI';
-				    }
-                }
-	        }
-
-			// Update user language and locale in Nextcloud settings
-
-			$uid = $user->getUID();
-
-			$this->config->setUserValue($uid, 'core', 'lang', $lang);
-			$this->config->setUserValue($uid, 'core', 'locale', $locale);
-
 			return true;
 		}
 
@@ -814,22 +779,6 @@ class Session implements IUserSession, Emitter {
 	 * @return boolean
 	 */
 	private function validateToken($token, $user = null) {
-
-        // If SSO session, check same session ID as in cookie
-		if ($token === $this->config->getSystemValue('SSO_PASSWORD')) {
-			Util::writeLog('User', 'Session.php: validateToken (SSO_PASSWORD)', \OCP\Util::DEBUG);
-			$domain = $this->config->getSystemValue('SSO_DOMAIN');
-			$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
-			if (isset($_COOKIE[$prefix . '_fd_sso_session_id'])) {
-				$ssoSessionId = $_COOKIE[$prefix . '_fd_sso_session_id'];
-				Util::writeLog('User', 'Session.php: validateToken: ssoSessionId=' . $ssoSessionId, \OCP\Util::DEBUG);
-				if ($ssoSessionId == $this->session->get('fd_sso_session_id')) {
-					return true;
-				}
-			}
-			return false;
-		}
-
 		try {
 			$dbToken = $this->tokenProvider->getToken($token);
 		} catch (InvalidTokenException $ex) {
@@ -905,32 +854,6 @@ class Session implements IUserSession, Emitter {
 	}
 
 	/**
-	 * perform login using Fairdata SSO session details
-	 *
-	 * @param string $ssoSessionId   the session id token
-	 * @param string $uid            the authenticated Fairdata username
-	 * @return bool
-	 */
-	public function loginWithSSOSession($ssoSessionId, $uid)
-	{
-		Util::writeLog('User', 'Session.php: loginWithSSOSession: ssoSessionId=' . $ssoSessionId . ' uid=' . $uid, \OCP\Util::DEBUG);
-
-		$user = $this->manager->get($uid);
-
-		if (is_null($user)) {
-			// user does not exist
-			return false;
-		}
-
-		$ssoPassword = $this->config->getSystemValue('SSO_PASSWORD');
-		$this->session->set('app_password', $ssoPassword);
-		$this->session->set('fd_sso_session_id', $ssoSessionId);
-
-		return $this->completeLogin($user, ['loginName' => $uid, 'password' => $ssoPassword], false);
-	}
-
-
-	/**
 	 * perform login using the magic cookie (remember login)
 	 *
 	 * @param string $uid the username
@@ -939,7 +862,6 @@ class Session implements IUserSession, Emitter {
 	 * @return bool
 	 */
 	public function loginWithCookie($uid, $currentToken, $oldSessionId) {
-
 		$this->session->regenerateId();
 		$this->manager->emit('\OC\User', 'preRememberedLogin', [$uid]);
 		$user = $this->manager->get($uid);
