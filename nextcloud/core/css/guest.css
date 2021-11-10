@@ -345,10 +345,8 @@ button.primary:not(:disabled):focus,
 a.primary:not(:disabled):hover,
 a.primary:not(:disabled):focus {
 	color: rgba(255, 255, 255, .8);
-	/*
 	background-image: linear-gradient(40deg, #0082c9 0%, #30b6ff 100%);
 	background-position: initial;
-	*/
 }
 
 /* Checkboxes - white only for login */

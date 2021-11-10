@@ -9,4 +9,3 @@
 @import 'tooltip.scss';
 @import 'toast.scss';
 @import 'public.scss';
-@import 'fonts.scss';
