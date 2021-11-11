@@ -609,12 +609,17 @@ class OC {
 		//this doesn´t work always depending on the webserver and php configuration.
 		//Let´s try to overwrite some defaults anyway
 
-		//try to set the maximum execution time to 60min
+		//try to set execution time limits to 30 days
 		if (strpos(@ini_get('disable_functions'), 'set_time_limit') === false) {
-			@set_time_limit(3600);
+			@set_time_limit(2592000);
 		}
-		@ini_set('max_execution_time', '3600');
-		@ini_set('max_input_time', '3600');
+		@ini_set('max_execution_time',2592000);
+		@ini_set('max_input_time', 2592000);
+		
+		//try to set the maximum filesize to 10TB and upload of up to 1 million files
+		@ini_set('upload_max_filesize', '10000G');
+		@ini_set('post_max_size', '10000G');
+		@ini_set('file_uploads', '1000000');
 
 		self::setRequiredIniValues();
 		self::handleAuthHeaders();

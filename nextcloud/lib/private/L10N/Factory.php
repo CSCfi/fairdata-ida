@@ -61,7 +61,7 @@ class Factory implements IFactory {
 	/**
 	 * @var array Structure: App => string[]
 	 */
-	protected $availableLanguages = [];
+	protected $availableLanguages = ['en', 'fi', 'sv'];
 
 	/**
 	 * @var array
@@ -71,7 +71,7 @@ class Factory implements IFactory {
 	/**
 	 * @var array
 	 */
-	protected $availableLocales = [];
+	protected $availableLocales = ['en_US', 'fi_FI', 'sv_FI'];
 
 	/**
 	 * @var array Structure: string => callable
@@ -79,8 +79,7 @@ class Factory implements IFactory {
 	protected $pluralFunctions = [];
 
 	public const COMMON_LANGUAGE_CODES = [
-		'en', 'es', 'fr', 'de', 'de_DE', 'ja', 'ar', 'ru', 'nl', 'it',
-		'pt_BR', 'pt_PT', 'da', 'fi_FI', 'nb_NO', 'sv', 'tr', 'zh_CN', 'ko'
+		'en', 'fi', 'sv', 'en_US', 'en_UK', 'en_GB', 'fi_FI', 'sv_SV', 'sv_FI'
 	];
 
 	/** @var IConfig */
@@ -162,57 +161,28 @@ class Factory implements IFactory {
 	 * @return string language If nothing works it returns 'en'
 	 */
 	public function findLanguage($app = null) {
-		$forceLang = $this->config->getSystemValue('force_language', false);
-		if (is_string($forceLang)) {
-			$this->requestLanguage = $forceLang;
-		}
 
-		if ($this->requestLanguage !== '' && $this->languageExists($app, $this->requestLanguage)) {
-			return $this->requestLanguage;
-		}
-
-		/**
-		 * At this point Nextcloud might not yet be installed and thus the lookup
-		 * in the preferences table might fail. For this reason we need to check
-		 * whether the instance has already been installed
-		 *
-		 * @link https://github.com/owncloud/core/issues/21955
-		 */
-		if ($this->config->getSystemValue('installed', false)) {
-			$userId = !is_null($this->userSession->getUser()) ? $this->userSession->getUser()->getUID() :  null;
-			if (!is_null($userId)) {
-				$userLang = $this->config->getUserValue($userId, 'core', 'lang', null);
-			} else {
-				$userLang = null;
-			}
-		} else {
-			$userId = null;
-			$userLang = null;
-		}
-
-		if ($userLang) {
-			$this->requestLanguage = $userLang;
-			if ($this->languageExists($app, $userLang)) {
-				return $userLang;
+		if (array_key_exists('HTTP_HOST', $_SERVER)) {
+	        $hostname = $_SERVER['HTTP_HOST'];
+	        $domain = substr($hostname, strpos($hostname, ".") + 1);
+	        $prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+	        $cookie = $prefix . '_fd_sso_session';
+	        if (array_key_exists($cookie, $_COOKIE)) {
+                $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+		        $session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+				if ($session && $session->language) {
+		            return $session->language;
+                }
 			}
 		}
 
 		try {
-			// Try to get the language from the Request
 			$lang = $this->getLanguageFromRequest($app);
-			if ($userId !== null && $app === null && !$userLang) {
-				$this->config->setUserValue($userId, 'core', 'lang', $lang);
+            if ($lang == 'en' || $lang == 'fi' || $lang == 'sv') {
+			    return $lang;
 			}
-			return $lang;
-		} catch (LanguageNotFoundException $e) {
-			// Finding language from request failed fall back to default language
-			$defaultLanguage = $this->config->getSystemValue('default_language', false);
-			if ($defaultLanguage !== false && $this->languageExists($app, $defaultLanguage)) {
-				return $defaultLanguage;
-			}
-		}
+		} catch (LanguageNotFoundException $e) { ; }
 
-		// We could not find any language so fall back to english
 		return 'en';
 	}
 
@@ -223,38 +193,15 @@ class Factory implements IFactory {
 	 * @return null|string
 	 */
 	public function findLocale($lang = null) {
-		$forceLocale = $this->config->getSystemValue('force_locale', false);
-		if (is_string($forceLocale) && $this->localeExists($forceLocale)) {
-			return $forceLocale;
+
+		if ($lang == 'fi') {
+			return 'fi_FI';
 		}
 
-		if ($this->config->getSystemValue('installed', false)) {
-			$userId = null !== $this->userSession->getUser() ? $this->userSession->getUser()->getUID() :  null;
-			$userLocale = null;
-			if (null !== $userId) {
-				$userLocale = $this->config->getUserValue($userId, 'core', 'locale', null);
-			}
-		} else {
-			$userId = null;
-			$userLocale = null;
+		if ($lang == 'sv'){
+			return 'sv_FI';
 		}
 
-		if ($userLocale && $this->localeExists($userLocale)) {
-			return $userLocale;
-		}
-
-		// Default : use system default locale
-		$defaultLocale = $this->config->getSystemValue('default_locale', false);
-		if ($defaultLocale !== false && $this->localeExists($defaultLocale)) {
-			return $defaultLocale;
-		}
-
-		// If no user locale set, use lang as locale
-		if (null !== $lang && $this->localeExists($lang)) {
-			return $lang;
-		}
-
-		// At last, return USA
 		return 'en_US';
 	}
 

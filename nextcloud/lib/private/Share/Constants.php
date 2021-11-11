@@ -83,7 +83,7 @@ class Constants {
 
 	public const RESPONSE_FORMAT = 'json'; // default resonse format for ocs calls
 
-	public const TOKEN_LENGTH = 15; // old (oc7) length is 32, keep token length in db at least that for compatibility
+	public const TOKEN_LENGTH = 12; // old (oc7) length is 32, keep token length in db at least that for compatibility
 
 	protected static $shareTypeUserAndGroups = -1;
 	protected static $shareTypeGroupUserUnique = 2;

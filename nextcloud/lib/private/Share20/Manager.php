@@ -758,6 +758,7 @@ class Manager implements IManager {
 				 * For now ignore a set token.
 				 */
 				$share->setToken(
+					'NOT_FOR_PUBLICATION_' .
 					$this->secureRandom->generate(
 						\OC\Share\Constants::TOKEN_LENGTH,
 						\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE
@@ -776,6 +777,7 @@ class Manager implements IManager {
 				}
 			} elseif ($share->getShareType() === IShare::TYPE_EMAIL) {
 				$share->setToken(
+					'NOT_FOR_PUBLICATION_' .
 					$this->secureRandom->generate(
 						\OC\Share\Constants::TOKEN_LENGTH,
 						\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE
