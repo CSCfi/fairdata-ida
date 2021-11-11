@@ -467,7 +467,7 @@ table td.selection {
 
 /* File checkboxes */
 #fileList tr td.selection>.selectCheckBox + label:before {
-	opacity: 0.3;
+	opacity: 1;
 	margin-right: 0;
 }
 
@@ -609,7 +609,7 @@ a.action > img {
 		display: inline;
 		padding: 17px 8px;
 		line-height: 50px;
-		opacity: .3;
+		opacity: 1;
 		&.action-share {
 			padding: 17px 14px;
 			&.permanent:not(.shared-style) .icon-shared + span {
@@ -635,18 +635,18 @@ a.action > img {
 		}
 		&.no-permission {
 			&:hover, &:focus {
-				opacity: .3;
+				opacity: 1;
 			}
 		}
 		&.disabled {
 			&:hover, &:focus,
 			img {
-				opacity: .3;
+				opacity: 1;
 			}
 			&.action-download {
-				opacity: .7;
+				opacity: 1;
 				&:hover, &:focus {
-					opacity: .7;
+					opacity: 1;
 				}
 			}
 		}
@@ -659,7 +659,7 @@ a.action > img {
 		}
 	}
 	.fileActionsMenu a.action, a.action.action-share.shared-style {
-		opacity: .7;
+		opacity: 1;
 	}
 	.fileActionsMenu .action.permanent {
 		opacity: 1;
@@ -707,6 +707,7 @@ a.action > img {
 
 .summary {
 	color: var(--color-text-maxcontrast);
+	opacity: 1;
 	/* add whitespace to bottom of files list to correctly show dropdowns */
 	$action-menu-items-count: 7; // list view has currently max 7 items in its action menu 
 	height: 44px * ($action-menu-items-count + 0.5); // 0.5 is added to show some whitespace below

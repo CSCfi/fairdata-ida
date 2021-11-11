@@ -1089,7 +1089,10 @@
 			if (!this.isAllSelected()) {
 				files = _.pluck(this.getSelectedFiles(), 'name');
 			}
-			this.do_delete(files);
+			var response = confirm(t('ida', 'Are you sure you want to delete the selected item(s)? THIS ACTION CANNOT BE UNDONE!'));
+			if (response) {
+				this.do_delete(files);
+			}
 			event.preventDefault();
 		},
 
@@ -1241,7 +1244,7 @@
 				mtime: parseInt($el.attr('data-mtime'), 10),
 				type: $el.attr('data-type'),
 				etag: $el.attr('data-etag'),
-				quotaAvailableBytes: $el.attr('data-quota'),
+				//quotaAvailableBytes: $el.attr('data-quota'),
 				permissions: parseInt($el.attr('data-permissions'), 10),
 				hasPreview: $el.attr('data-has-preview') === 'true',
 				isEncrypted: $el.attr('data-e2eencrypted') === 'true'
@@ -1501,7 +1504,7 @@
 				"data-mime": mime,
 				"data-mtime": mtime,
 				"data-etag": fileData.etag,
-				"data-quota": fileData.quotaAvailableBytes,
+				//"data-quota": fileData.quotaAvailableBytes,
 				"data-permissions": permissions,
 				"data-has-preview": fileData.hasPreview !== false,
 				"data-e2eencrypted": fileData.isEncrypted === true
@@ -1721,6 +1724,42 @@
 			);
 			tr.find('.filesize').text(simpleSize);
 			tr.append(td);
+
+			try {
+				if (path != null && path == '/') {
+				    spans = tr.find("span.nametext");
+				    if (spans.length > 0) {
+					    path = '/' + name;
+					    projectName = OCA.IDA.Util.extractProjectName(path);
+					    projectTitle = OCA.IDA.Util.getProjectTitle(projectName);
+					    tr.attr('data-project-name', projectName);
+					    tr.attr('data-project-title', projectTitle);
+					    var projectArea = t('ida', 'Frozen');
+					    if (name.substr(name.length - 1) == '+') {
+						    projectArea = t('ida', 'Staging');
+					    }
+						var htmlInsertion = "<span class=\"projectDetails\">";
+                        // Use slightly tighter spacing in production since all project names are shorter
+						if (location.hostname == 'ida.fairdata.fi') {
+							htmlInsertion = "<span class=\"projectDetails projectDetailsTight\">";
+						}
+						htmlInsertion = htmlInsertion + "<span class=\"projectArea\">" + projectArea + "</span>";
+						if (projectTitle != projectName) {
+							if (projectTitle.length > 50) {
+								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\" title=\"" + projectTitle + "\">" + projectTitle + "</span>";
+							}
+							else {
+								htmlInsertion = htmlInsertion + "<span class=\"projectTitle\">" + projectTitle + "</span>";
+							}
+						}
+						htmlInsertion = htmlInsertion + "</span>";
+						spans[0].insertAdjacentHTML('afterend', htmlInsertion);
+					}
+				}
+			} catch (error) {
+				;
+			}
+
 			return tr;
 		},
 
@@ -2300,6 +2339,10 @@
 
 		_updateDirectoryPermissions: function() {
 			var isCreatable = (this.dirInfo.permissions & OC.PERMISSION_CREATE) !== 0 && this.$el.find('#free_space').val() !== '0';
+			// IDA users are not allowed to create anything in their root folder
+			if (this.getCurrentDirectory() === '/') {
+				isCreatable = false;
+			}
 			this.$el.find('#permissions').val(this.dirInfo.permissions);
 			this.$el.find('.creatable').toggleClass('hidden', !isCreatable);
 			this.$el.find('.notCreatable').toggleClass('hidden', isCreatable);
@@ -2315,6 +2358,10 @@
 				// make sure to display according to permissions
 				var permissions = this.getDirectoryPermissions();
 				var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+				// IDA users are not allowed to create anything in their root folder
+				if (this.getCurrentDirectory() === '/') {
+					isCreatable = false;
+				}
 				this.$el.find('.creatable').toggleClass('hidden', !isCreatable);
 				this.$el.find('.notCreatable').toggleClass('hidden', isCreatable);
 				// remove old style breadcrumbs (some apps might create them)
@@ -2744,6 +2791,22 @@
 
 					if (newName !== oldName) {
 						checkInput();
+						var dir = self.getCurrentDirectory();
+						var pathname = dir + '/' + newName;
+						var project = OCA.IDA.Util.extractProjectName(pathname);
+						var scope = OCA.IDA.Util.stripRootFolder(pathname);
+						try {
+						    var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                            if (message !== false) {
+                                OC.Notification.show(t('ida', message), {type: 'error'});
+								updateInList(oldFileInfo);
+								return false;
+                            }
+						} catch (error) {
+							OC.Notification.show(error, { type: 'error' });
+							updateInList(oldFileInfo);
+							return false;
+						}
 						// mark as loading (temp element)
 						self.showFileBusyState(tr, true);
 						tr.attr('data-file', newName);
@@ -2860,6 +2923,14 @@
 			name = this.getUniqueName(name);
 			var targetPath = this.getCurrentDirectory() + '/' + name;
 
+			var project = OCA.IDA.Util.extractProjectName(targetPath);
+			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+
+			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+            if (message !== false) {
+                throw t('ida', message);
+            }
+
 			self.filesClient.putFileContents(
 					targetPath,
 					' ', // dont create empty files which fails on some storage backends
@@ -2918,6 +2989,14 @@
 
 			name = this.getUniqueName(name);
 			var targetPath = this.getCurrentDirectory() + '/' + name;
+
+			var project = OCA.IDA.Util.extractProjectName(targetPath);
+			var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+
+			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+            if (message !== false) {
+                throw t('ida', message);
+            }
 
 			this.filesClient.createDirectory(targetPath)
 				.done(function() {
@@ -3085,6 +3164,16 @@
 
 			dir = dir || this.getCurrentDirectory();
 
+			// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+			// compromise to having overly complex mods to the existing logic...
+			var project = OCA.IDA.Util.extractProjectName(dir);
+			var scope = OCA.IDA.Util.stripRootFolder(dir);
+
+			var message = OCA.IDA.Util.scopeNotOK(project, scope);
+            if (message !== false) {
+                throw t('ida', message);
+            }
+
 			var removeFunction = function(fileName) {
 				var $tr = self.findFileEl(fileName);
 				self.showFileBusyState($tr, true);
@@ -3136,6 +3225,10 @@
 		updateEmptyContent: function() {
 			var permissions = this.getDirectoryPermissions();
 			var isCreatable = (permissions & OC.PERMISSION_CREATE) !== 0;
+			// IDA users are not allowed to create anything in their root folder
+			if (this.getCurrentDirectory() === '/') {
+				isCreatable = false;
+			}
 			this.$el.find('#emptycontent').toggleClass('hidden', !this.isEmpty);
 			this.$el.find('#emptycontent').toggleClass('hidden', !this.isEmpty);
 			this.$el.find('#emptycontent .uploadmessage').toggleClass('hidden', !isCreatable || !this.isEmpty);
@@ -3421,7 +3514,7 @@
 		 * Shows a "permission denied" notification
 		 */
 		_showPermissionDeniedNotification: function() {
-			var message = t('files', 'You don’t have permission to upload or create files here');
+			var message = t('ida', 'Files can be added only in the Staging area (root folder ending in +)');
 			OC.Notification.show(message, {type: 'error'});
 		},
 
@@ -3495,6 +3588,10 @@
 				} else {
 					// cancel uploads to current dir if no permission
 					var isCreatable = (self.getDirectoryPermissions() & OC.PERMISSION_CREATE) !== 0;
+					// IDA users are not allowed to create anything in their root folder
+					if (self.getCurrentDirectory() === '/') {
+						isCreatable = false;
+					}
 					if (!isCreatable) {
 						self._showPermissionDeniedNotification();
 						e.stopPropagation();
@@ -3505,9 +3602,47 @@
 					// upload the file to the current directory
 					data.targetDir = self.getCurrentDirectory();
 				}
+
+				// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+				// compromise to having overly complex mods to the existing logic...
+				var project = OCA.IDA.Util.extractProjectName(data.targetDir);
+				var scope = OCA.IDA.Util.stripRootFolder(data.targetDir);
+				try {
+			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                    if (message !== false) {
+                        OC.Notification.show(t('ida', message), {type: 'error'});
+						e.stopPropagation();
+						return false;
+                    }
+				} catch (error) {
+					OC.Notification.show(error, { type: 'error' });
+					e.stopPropagation();
+					return false;
+				}
 			});
 			uploader.on('add', function(e, data) {
 				self._uploader.log('filelist handle fileuploadadd', e, data);
+
+								// This particular use case is a bit brute force and coarser granulartity than optimal, but is a
+				// compromise to having overly complex mods to the existing logic...
+				if (!data.targetDir) {
+					targetDir = self.getCurrentDirectory();
+				}
+				else {
+					targetDir = data.targetDir;
+				}
+				var project = OCA.IDA.Util.extractProjectName(targetDir);
+				var scope = OCA.IDA.Util.stripRootFolder(targetDir);
+				try {
+			        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                    if (message !== false) {
+                        OC.Notification.show(t('ida', message), {type: 'error'});
+                        return;
+                    }
+				} catch (error) {
+					OC.Notification.show(error, { type: 'error' });
+					return;
+				}
 
 				// add ui visualization to existing folder
 				if (data.context && data.context.data('type') === 'dir') {

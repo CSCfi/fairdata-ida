@@ -634,6 +634,24 @@
 				permissions: OC.PERMISSION_UPDATE,
 				iconClass: 'icon-rename',
 				actionHandler: function (filename, context) {
+					if (context.$file.attr('data-mounttype') === 'shared-root') {
+                        OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+                        return;
+                    }
+                    var dir = context.dir || context.fileList.getCurrentDirectory();
+                    var pathname = dir + '/' + filename;
+                    var project = OCA.IDA.Util.extractProjectName(pathname);
+                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
+                    try {
+						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                        if (message !== false) {
+                            OC.Notification.show(t('ida', message), {type: 'error'});
+                            return;
+                        }
+                    } catch (error) {
+                        OC.Notification.show(error, {type: 'error'});
+                        return;
+                    }
 					context.fileList.rename(filename);
 				}
 			});
@@ -652,6 +670,24 @@
 				permissions: $('#isPublic').val() ? OC.PERMISSION_UPDATE : OC.PERMISSION_READ,
 				iconClass: 'icon-external',
 				actionHandler: function (filename, context) {
+					if (context.$file.attr('data-mounttype') === 'shared-root') {
+                        OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+                        return;
+                    }
+                    var dir = context.dir || context.fileList.getCurrentDirectory();
+                    var pathname = dir + '/' + filename;
+                    var project = OCA.IDA.Util.extractProjectName(pathname);
+                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
+                    try {
+						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                        if (message !== false) {
+                            OC.Notification.show(t('ida', message), {type: 'error'});
+                            return;
+                        }
+                    } catch (error) {
+                        OC.Notification.show(error, {type: 'error'});
+                        return;
+                    }
 					var permissions = context.fileInfoModel.attributes.permissions;
 					var actions = OC.dialogs.FILEPICKER_TYPE_COPY;
 					if (permissions & OC.PERMISSION_UPDATE) {
@@ -663,9 +699,41 @@
 					}
 					OC.dialogs.filepicker(t('files', 'Choose target folder'), function(targetPath, type) {
 						if (type === OC.dialogs.FILEPICKER_TYPE_COPY) {
+							if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+                                OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+                                return;
+                            }
+                            var project = OCA.IDA.Util.extractProjectName(targetPath);
+                            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+                            try {
+						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                                if (message !== false) {
+                                    OC.Notification.show(t('ida', message), {type: 'error'});
+                                    return;
+                                }
+                            } catch (error) {
+                                OC.Notification.show(error, {type: 'error'});
+                                return;
+                            }
 							context.fileList.copy(filename, targetPath, false, context.dir);
 						}
 						if (type === OC.dialogs.FILEPICKER_TYPE_MOVE) {
+							if (targetPath == null || targetPath == '' || targetPath == '/' || OCA.IDA.Util.testIfFrozen(targetPath)) {
+                                OC.Notification.show(t('ida', 'Files can be added only in the Staging area (root folder ending in +)'), {type: 'error'});
+                                return;
+                            }
+                            var project = OCA.IDA.Util.extractProjectName(targetPath);
+                            var scope = OCA.IDA.Util.stripRootFolder(targetPath);
+                            try {
+						        var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                                if (message !== false) {
+                                    OC.Notification.show(t('ida', message), {type: 'error'});
+                                    return;
+                                }
+                            } catch (error) {
+                                OC.Notification.show(error, {type: 'error'});
+                                return;
+                            }
 							context.fileList.move(filename, targetPath, false, context.dir);
 						}
 						context.fileList.dirInfo.dirLastCopiedTo = targetPath;
@@ -711,11 +779,32 @@
 				permissions: OC.PERMISSION_DELETE,
 				iconClass: 'icon-delete',
 				actionHandler: function(fileName, context) {
+					if (context.$file.attr('data-mounttype') === 'shared-root') {
+                        OC.Notification.show(t('files', 'Root project folders may not be modified.'), {type: 'error'});
+                        return;
+                    }
+                    var dir = context.dir || context.fileList.getCurrentDirectory();
+                    var pathname = dir + '/' + filename;
+                    var project = OCA.IDA.Util.extractProjectName(pathname);
+                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
+                    try {
+						var message = OCA.IDA.Util.scopeNotOK(project, scope);
+                        if (message !== false) {
+                            OC.Notification.show(t('ida', message), {type: 'error'});
+                            return;
+                        }
+                    } catch (error) {
+                        OC.Notification.show(error, {type: 'error'});
+                        return;
+                    }
 					// if there is no permission to delete do nothing
 					if((context.$file.data('permissions') & OC.PERMISSION_DELETE) === 0) {
 						return;
 					}
-					context.fileList.do_delete(fileName, context.dir);
+                    var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
+                    if (response) {
+					    context.fileList.do_delete(filename, context.dir);
+                    }
 					$('.tipsy').remove();
 
 					// close sidebar on delete

@@ -71,6 +71,7 @@
 		render: function() {
 			var self = this;
 			var fileActions = this._context.fileActions;
+			var inRoot = this._context.dir === '/';
 			var actions = fileActions.getActions(
 				fileActions.getCurrentMimeType(),
 				fileActions.getCurrentType(),
@@ -81,6 +82,19 @@
 
 			var items = _.filter(actions, function(actionSpec) {
 				return !defaultAction || actionSpec.name !== defaultAction.name;
+			});
+			items = items.filter(function(item) {
+				if (inRoot) {
+					if (
+						item.name === 'Remove'
+						|| item.name === 'MoveCopy'
+						|| item.name === 'Delete'
+						|| item.name === 'Unshare'
+						|| item.name === 'Rename'
+					)
+					return false;
+				}
+				return true;
 			});
 			items = _.map(items, function(item) {
 				if (_.isFunction(item.displayName)) {

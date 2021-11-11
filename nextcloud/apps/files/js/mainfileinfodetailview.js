@@ -43,8 +43,8 @@
 		events: {
 			'click a.action-favorite': '_onClickFavorite',
 			'click a.action-default': '_onClickDefaultAction',
-			'click a.permalink': '_onClickPermalink',
-			'focus .permalink-field>input': '_onFocusPermalink'
+			//'click a.permalink': '_onClickPermalink',
+			//'focus .permalink-field>input': '_onFocusPermalink'
 		},
 
 		template: function(data) {
@@ -67,6 +67,7 @@
 		},
 
 		_setupClipboard: function() {
+			return;
 			var clipboard = new Clipboard('.permalink');
 			clipboard.on('success', function(e) {
 				var $el = $(e.trigger);
@@ -91,11 +92,12 @@
 		},
 
 		_onClickPermalink: function(e) {
-			e.preventDefault();
+			//e.preventDefault();
 			return;
 		},
 
 		_onFocusPermalink: function() {
+			return;
 			this.$('.permalink-field>input').select();
 		},
 
@@ -174,8 +176,8 @@
 					hasFavoriteAction: hasFavoriteAction,
 					starAltText: isFavorite ? t('files', 'Favorited') : t('files', 'Favorite'),
 					starClass: isFavorite ? 'icon-starred' : 'icon-star',
-					permalink: this._makePermalink(this.model.get('id')),
-					permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
+					//permalink: this._makePermalink(this.model.get('id')),
+					//permalinkTitle: t('files', 'Copy direct link (only works for users who have access to this file/folder)')
 				}));
 
 				// TODO: we really need OC.Previews

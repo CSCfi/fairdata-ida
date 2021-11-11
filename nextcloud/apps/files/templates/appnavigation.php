@@ -11,6 +11,70 @@ script(\OCA\Files\AppInfo\Application::APP_ID, 'dist/files-app-settings');
 			$pinned = NavigationListElements($item, $l, $pinned);
 		}
 		?>
+			</ul>
+
+<?php if($l->getLanguageCode() == 'fi') { ?>
+<div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
+	<p>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;pikaopas</a><br>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;käyttöopas</a>
+	</p>
+</div>
+<div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
+	<p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
+		<b>Huomaa:</b>&nbsp;Tiedostot&nbsp;ovat<br>
+		varsinaisessa&nbsp;säilytyksessä<br>
+		IDAssa&nbsp;vasta&nbsp;kun&nbsp;ne&nbsp;ovat<br>
+		Jäädytetyllä&nbsp;alueella.<br>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas#projektin-datan-sailytysalueet" rel="noreferrer noopener" target="_blank">Lisätietoja&nbsp;...</a>
+	</p>
+</div>
+<?php } elseif($l->getLanguageCode() == 'sv') { ?>
+<div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
+	<p>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
+	</p>
+	</div>
+	<div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
+		<p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
+		<b>Notera:</b>&nbsp;Filerna&nbsp;är&nbsp;i&nbsp;egentlig<br>
+		lagring&nbsp;först&nbsp;då&nbsp;de&nbsp;är&nbsp;frysta.<br>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" rel="noreferrer noopener" target="_blank">Läs mer&nbsp;...</a>
+	</p>
+</div>
+<?php } else { ?>
+<div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
+	<p>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
+	</p>
+	</div>
+	<div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 30px;">
+		<p style="padding: 7px; border: 1px; border-style:solid; border-color:#555; color:#555; line-height: 120%">
+		<b>Note:</b>&nbsp;Files&nbsp;are&nbsp;safely&nbsp;stored<br>
+		in&nbsp;the&nbsp;IDA&nbsp;service&nbsp;when&nbsp;they<br>
+		are&nbsp;in&nbsp;the&nbsp;Frozen&nbsp;area.<br>
+		<a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" rel="noreferrer noopener" target="_blank">More information&nbsp;...</a>
+	</p>
+</div>
+<?php } ?>
+
+<div id="app-settings" style="visibility: hidden">
+	<div id="app-settings-header">
+		<button class="settings-button"
+				data-apps-slide-toggle="#app-settings-content">
+			<?php p($l->t('Settings')); ?>
+		</button>
+	</div>
+	<div id="app-settings-content">
+		<div id="files-setting-showhidden">
+			<input class="checkbox" id="showhiddenfilesToggle"
+				   checked="checked" type="checkbox" checked>
+			<label for="showhiddenfilesToggle"><?php p($l->t('Show hidden files')); ?></label>
+		</div>
+	</div>
+</div>
 
 </div>
 

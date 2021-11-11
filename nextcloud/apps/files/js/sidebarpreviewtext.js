@@ -18,6 +18,7 @@
 		},
 
 		handlePreview: function (model, $thumbnailDiv, $thumbnailContainer, fallback) {
+			/*
 			var previewWidth = $thumbnailContainer.parent().width() + 50;  // 50px for negative margins
 			var previewHeight = previewWidth / (16 / 9);
 
@@ -32,6 +33,8 @@
 			}, function () {
 				fallback();
 			});
+			*/
+			fallback();
 		},
 
 		getFileContent: function (path) {

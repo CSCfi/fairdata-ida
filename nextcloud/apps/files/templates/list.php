@@ -5,8 +5,7 @@
 		</div>
 		<div id="file_action_panel"></div>
 		<div class="notCreatable notPublic hidden">
-			<div class="icon-alert-outline"></div>
-			<?php p($l->t('You don’t have permission to upload or create files here'))?>
+            <?php p($l->t('Files can be added only in the Staging area (root folder ending in +)'))?>
 		</div>
 	<?php /* Note: the template attributes are here only for the public page. These are normally loaded
 			 through ajax instead (updateStorageStatistics).
