@@ -400,15 +400,23 @@ class ShareAPIController extends OCSController {
 			throw new OCSNotFoundException($this->l->t('Wrong share ID, share doesn\'t exist'));
 		}
 
-		// if it's a group share or a room share
-		// we don't delete the share, but only the
-		// mount point. Allowing it to be restored
-		// from the deleted shares
-		if ($this->canDeleteShareFromSelf($share)) {
-			$this->shareManager->deleteFromSelf($share, $this->currentUser);
-		} else {
-			if (!$this->canDeleteShare($share)) {
-				throw new OCSForbiddenException($this->l->t('Could not delete share'));
+		if (($share->getShareType() === Share::SHARE_TYPE_GROUP ||
+		    $share->getShareType() === Share::SHARE_TYPE_ROOM) &&
+	        $share->getShareOwner() !== $this->currentUser &&
+	        $share->getSharedBy() !== $this->currentUser) {
+	        // If node is a shared project folder, do nothing and throw exception
+	        throw new OCSForbiddenException($this->l->t('Root project folders may not be modified.'));
+        } else {
+		    // if it's a group share or a room share
+		    // we don't delete the share, but only the
+		    // mount point. Allowing it to be restored
+		    // from the deleted shares
+		    if ($this->canDeleteShareFromSelf($share)) {
+			    $this->shareManager->deleteFromSelf($share, $this->currentUser);
+		    } else {
+			    if (!$this->canDeleteShare($share)) {
+				    throw new OCSForbiddenException($this->l->t('Could not delete share'));
+			    }
 			}
 
 			$this->shareManager->deleteShare($share);
