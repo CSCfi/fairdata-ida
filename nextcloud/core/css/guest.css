@@ -14,7 +14,7 @@ a { border:0; color:#000; text-decoration:none;}
 a, a *, input, input *, select, .button span, label { cursor:pointer; }
 ul { list-style:none; }
 
-body {
+body-disabled {
 	background-color: #ffffff;
 	font-weight: normal;
 	/* bring the default font size up to 14px */

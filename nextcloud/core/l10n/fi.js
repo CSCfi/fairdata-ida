@@ -1,6 +1,8 @@
 OC.L10N.register(
     "core",
     {
+    "Note to recipient" : "Viesti vastaanottajalle",
+    "Security" : "Turvallisuus",
     "Please select a file." : "Valitse tiedosto.",
     "File is too big" : "Tiedosto on liian suuri",
     "The selected file is not an image." : "Valittu tiedosto ei ole kuva.",

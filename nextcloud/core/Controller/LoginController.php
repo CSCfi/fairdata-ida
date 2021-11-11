@@ -184,6 +184,11 @@ class LoginController extends Controller {
 			$this->initialStateService->provideInitialState('core', 'loginErrors', $errors);
 		}
 		$this->session->remove('loginMessages');
+		foreach ($errors as $value) {
+			$parameters[$value] = true;
+		}
+
+		$parameters['messages'] = $messages;
 
 		if ($user !== null && $user !== '') {
 			$this->initialStateService->provideInitialState('core', 'loginUsername', $user);
