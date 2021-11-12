@@ -69,18 +69,14 @@ function FDWEActive()
 				<ul id="appmenu" <?php if ($_['themingInvertMenu']) { ?>class="inverted"<?php } ?>>
 					<?php foreach ($_['navigation'] as $entry): ?>
 						<li data-id="<?php p($entry['id']); ?>" class="hidden" tabindex="-1">
-							<a href="<?php print_unescaped($entry['href']); ?>"
-								<?php if ($entry['active']): ?> class="active"<?php endif; ?>
-								aria-label="<?php p($entry['name']); ?>">
-									<svg width="20" height="20" viewBox="0 0 20 20" alt="">
-										<?php if ($_['themingInvertMenu']) { ?>
-										<defs><filter id="invertMenuMain-<?php p($entry['id']); ?>"><feColorMatrix in="SourceGraphic" type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0" /></filter></defs>
-										<?php } ?>
-										<image x="0" y="0" width="20" height="20" preserveAspectRatio="xMinYMin meet"<?php if ($_['themingInvertMenu']) { ?> filter="url(#invertMenuMain-<?php p($entry['id']); ?>)"<?php } ?> xlink:href="<?php print_unescaped($entry['icon'] . '?v=' . $_['versionHash']); ?>"  class="app-icon"></image>
-									</svg>
-								<span>
-									<?php p($entry['name']); ?>
-								</span>
+						    <a href="<?php print_unescaped($entry['href']); ?>" tabindex="3" <?php if ($entry['active']) : ?> class="active" <?php endif; ?>>
+							    <p class="ida-app-title" tabindex="-1">
+                                    <?php 
+                                         $label = strtoupper(!empty($entry['name']) ? $entry['name'] : $l->t('Apps'));
+                                         if ($label == 'ÅTGäRDER') { $label = 'ÅTGÄRDER'; }
+                                         p($label);
+                                     ?>
+							    </p>
 							</a>
 						</li>
 					<?php endforeach; ?>
@@ -102,13 +98,6 @@ function FDWEActive()
 						    </a>
 					    </div>
 				    </li>
-					<li id="more-apps" class="menutoggle"
-						aria-haspopup="true" aria-controls="navigation" aria-expanded="false">
-						<a href="#" aria-label="<?php p($l->t('More apps')); ?>">
-							<div class="icon-more-white"></div>
-							<span><?php p($l->t('More')); ?></span>
-						</a>
-					</li>
 				</ul>
 
 				<nav role="navigation">
