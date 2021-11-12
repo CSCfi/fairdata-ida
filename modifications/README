@@ -71,8 +71,11 @@ modification of the /nextcloud directory tree after updating Nextcloud.
 >> Edit /nextcloud/config.php to define 'theme' => 'ida' (removed during update process)
 >> Execute /var/ida/utils/restart-www
 >> Log in as admin and enable IDA app and IDA First Run Wizard app
->> Create new '.original' copies within /nextcloud of all modified files listed by the list-modified-files script (see below) 
->> ANALYZE AND UPDATE ALL OF THE MODIFIED FILES AND ANY NEW FILES, AS REQUIRED, DEBUG, DEBUG, DEBUG...
+>> Use the utility script list-modified-files to identify all files that were modified during the last upgrade
+>> Analyze all previously modified files and compare to existing new files, and modify accordingly
+>> IMPORTANT! Be sure to create new '.original' copies of new files BEFORE modifying them, for use during the next upgrade!!!
+>> Where previously modified files don't exist in the new codebase, determine where those modifications need to be made
+>> DEBUG, DEBUG, DEBUG...
 
 Note that not all files which were modified previously will necessarily exist in the new version of Nextcloud, in which 
 case the new code base will have to be analyzed to determine where the modifications made previously will have to be made
