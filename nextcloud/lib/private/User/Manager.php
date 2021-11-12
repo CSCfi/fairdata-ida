@@ -433,9 +433,10 @@ class Manager extends PublicEmitter implements IUserManager {
 			throw new \InvalidArgumentException($l->t('Username must not consist of dots only'));
 		}
 
-		if (!$this->verifyUid($uid)) {
-			throw new \InvalidArgumentException($l->t('Username is invalid because files already exist for this user'));
-		}
+		// IDA admin tools control this and pre-create the PSO user root folder so it's OK to remove this check
+		//if (!$this->verifyUid($uid)) {
+		//	throw new \InvalidArgumentException($l->t('Username is invalid because files already exist for this user'));
+		//}
 
 		// No empty password
 		if (trim($password) === '') {
