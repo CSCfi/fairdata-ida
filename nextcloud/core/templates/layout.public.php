@@ -1,3 +1,10 @@
+<?php
+function FDWEActive()
+{
+    return \OC::$server->getSystemConfig()->getValue('FDWE_URL', null) != null;
+}
+?>
+
 <!DOCTYPE html>
 <html class="ng-csp" data-placeholder-focus="false" lang="<?php p($_['language']); ?>" data-locale="<?php p($_['locale']); ?>" >
 <head data-requesttoken="<?php p($_['requesttoken']); ?>">
@@ -26,6 +33,15 @@
 	<?php emit_css_loading_tags($_); ?>
 	<?php emit_script_loading_tags($_); ?>
 	<?php print_unescaped($_['headers']); ?>
+
+    <?php if (FDWEActive()) : ?>
+    <meta name="fdwe-service" content="IDA">
+    <?php if (strpos($_SERVER["REQUEST_URI"], "NOT_FOR_PUBLICATION") !== false ) : ?>
+    <meta name="fdwe-scope" content="FILES / SHARE / ACCESS">
+    <?php endif; ?>
+    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
+    <?php endif; ?>
+
 </head>
 <body id="<?php p($_['bodyid']);?>">
 <?php include('layout.noscript.warning.php'); ?>
@@ -92,17 +108,6 @@
 	<?php if (isset($template) && $template->getFooterVisible()) { ?>
 	<footer>
 		<p><?php print_unescaped($theme->getLongFooter()); ?></p>
-		<?php
-		if ($_['showSimpleSignUpLink']) {
-			?>
-			<p>
-				<a href="https://nextcloud.com/signup/" target="_blank" rel="noreferrer noopener">
-					<?php p($l->t('Get your own free account')); ?>
-				</a>
-			</p>
-			<?php
-		}
-		?>
 	</footer>
 	<?php } ?>
 

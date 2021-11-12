@@ -1,3 +1,10 @@
+<?php
+function FDWEActive()
+{
+    return \OC::$server->getSystemConfig()->getValue('FDWE_URL', null) != null;
+}
+?>
+
 <!DOCTYPE html>
 <html class="ng-csp" data-placeholder-focus="false" lang="<?php p($_['language']); ?>" data-locale="<?php p($_['locale']); ?>" >
 	<head data-user="<?php p($_['user_uid']); ?>" data-user-displayname="<?php p($_['user_displayname']); ?>" data-requesttoken="<?php p($_['requesttoken']); ?>">
@@ -26,6 +33,14 @@
 		<?php emit_css_loading_tags($_); ?>
 		<?php emit_script_loading_tags($_); ?>
 		<?php print_unescaped($_['headers']); ?>
+
+		<?php if (FDWEActive()) : ?>
+        <meta name="fdwe-service" content="IDA">
+        <?php if (strpos($_SERVER["REQUEST_URI"], "NOT_FOR_PUBLICATION") !== false ) : ?>
+        <meta name="fdwe-scope" content="FILES / SHARE / ACCESS">
+        <?php endif; ?>
+        <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
+        <?php endif; ?>
 	</head>
 	<body id="<?php p($_['bodyid']);?>">
 	<?php include 'layout.noscript.warning.php'; ?>
@@ -69,6 +84,24 @@
 							</a>
 						</li>
 					<?php endforeach; ?>
+					    
+				    <li id="ida-notifications" style="display: inline-flex;">
+					    <div id="ida-failed-actions-icon" class="ida-notification-icon" style="display: none">
+						    <a href="/apps/ida/actions/failed">
+					    	    <img title="<?php p($l->t('Failed Actions')); ?>" src="/apps/ida/img/failed-actions-icon.png" style="width: 20px; height: 20px; padding: 15px;">
+						    </a>
+					    </div>
+					    <div id="ida-pending-actions-icon" class="ida-notification-icon" style="display: none">
+						    <a href="/apps/ida/actions/pending">
+							    <img title="<?php p($l->t('Pending Actions')); ?>" src="/apps/ida/img/pending-actions-icon.png" style="width: 20px; height: 20px; padding: 15px;">
+						    </a>
+					    </div>
+					    <div id="ida-suspended-icon" class="ida-notification-icon" style="display: none">
+						    <a href="/apps/ida/actions/pending">
+						        <img title="<?php p($l->t('Project Suspended')); ?>" src="/apps/ida/img/suspended-icon.png" style="width: 20px; height: 20px; padding: 15px;">
+						    </a>
+					    </div>
+				    </li>
 					<li id="more-apps" class="menutoggle"
 						aria-haspopup="true" aria-controls="navigation" aria-expanded="false">
 						<a href="#" aria-label="<?php p($l->t('More apps')); ?>">
@@ -105,30 +138,10 @@
 			<div class="header-right">
 				<div id="notifications"></div>
 				<div id="unified-search"></div>
-				<div id="contactsmenu">
-					<div class="icon-contacts menutoggle" tabindex="0" role="button"
-					aria-haspopup="true" aria-controls="contactsmenu-menu" aria-expanded="false">
-						<span class="hidden-visually"><?php p($l->t('Contacts'));?></span>
-					</div>
-					<div id="contactsmenu-menu" class="menu"
-						aria-label="<?php p($l->t('Contacts menu'));?>"></div>
-				</div>
 				<div id="settings">
 					<div id="expand" tabindex="0" role="button" class="menutoggle"
 						aria-label="<?php p($l->t('Settings'));?>"
 						aria-haspopup="true" aria-controls="expanddiv" aria-expanded="false">
-						<div class="avatardiv<?php if ($_['userAvatarSet']) {
-				print_unescaped(' avatardiv-shown');
-			} else {
-				print_unescaped('" style="display: none');
-			} ?>">
-							<?php if ($_['userAvatarSet']): ?>
-								<img alt="" width="32" height="32"
-								src="<?php p(\OC::$server->getURLGenerator()->linkToRoute('core.avatar.getAvatar', ['userId' => $_['user_uid'], 'size' => 32, 'v' => $_['userAvatarVersion']]));?>"
-								srcset="<?php p(\OC::$server->getURLGenerator()->linkToRoute('core.avatar.getAvatar', ['userId' => $_['user_uid'], 'size' => 64, 'v' => $_['userAvatarVersion']]));?> 2x, <?php p(\OC::$server->getURLGenerator()->linkToRoute('core.avatar.getAvatar', ['userId' => $_['user_uid'], 'size' => 128, 'v' => $_['userAvatarVersion']]));?> 4x"
-								>
-							<?php endif; ?>
-						</div>
 						<div id="expandDisplayName" class="icon-settings-white"></div>
 					</div>
 					<nav class="settings-menu" id="expanddiv" style="display:none;"
