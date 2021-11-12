@@ -1,5 +1,4 @@
 <?php
-declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2020, Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -21,11 +20,4 @@ declare(strict_types=1);
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-script('settings', [
-	'vue-settings-personal-webauthn',
-]);
-
 ?>
-
-<div id="security-webauthn" class="section"></div>

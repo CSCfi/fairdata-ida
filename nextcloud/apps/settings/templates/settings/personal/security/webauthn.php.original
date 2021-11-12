@@ -1,15 +1,9 @@
 <?php
-/*
- * This file is part of the IDA research data storage service
- * 
- * @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
- * @link     https://research.csc.fi/
- */
-
+declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2017 Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @copyright Copyright (c) 2020, Roeland Jago Douma <roeland@famdouma.nl>
  *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -29,14 +23,9 @@
  */
 
 script('settings', [
-	'templates',
-	'vue-settings-personal-security',
+	'vue-settings-personal-webauthn',
 ]);
 
 ?>
 
-<div id="security" class="section"></div>
-
-<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>">
-    document.title = "Security - Settings - IDA"; 
-</script>
+<div id="security-webauthn" class="section"></div>
