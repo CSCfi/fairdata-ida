@@ -88,6 +88,10 @@ if [ "$1" = "ADD" ]; then
         errorExit "$OUT"
     fi
 
+    # force initialization of user root directory, because Nextcloud won't do it until first login otherwise
+    mkdir -p -m g+rw,o-rwx "$STORAGE_OC_DATA_ROOT/$USER/files"
+    php "$OCC" files:scan "$USER" >/dev/null
+
 fi
 
 if [ "$1" = "REMOVE" ]; then
