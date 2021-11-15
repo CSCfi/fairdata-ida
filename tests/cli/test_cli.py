@@ -133,14 +133,8 @@ class TestIdaCli(unittest.TestCase):
 
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
-            cmd = "%s DISABLE %s" % (self.ida_project, self.project_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
-
-            cmd = "%s DELETE PSO_%s" % (self.ida_user, self.project_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
-
-            cmd = "%s DELETE %s" % (self.ida_user, self.user_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            os.system(cmd)
 
         self.assertTrue(self.success)
 

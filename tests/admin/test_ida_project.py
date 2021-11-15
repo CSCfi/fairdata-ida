@@ -67,11 +67,8 @@ class TestIdaProject(unittest.TestCase):
 
             print("(cleaning)")
 
-            cmd = "%s DISABLE %s 1 2>&1" % (self.ida_project, self.project_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
-    
-            cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
-            subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            os.system(cmd)
 
         self.assertTrue(self.success)
 
