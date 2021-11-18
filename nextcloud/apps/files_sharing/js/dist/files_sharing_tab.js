@@ -44051,7 +44051,7 @@
                             },
                             "close": t.onMenuClose
                         }
-                    }, [t.share ? [t.share.canEdit && t.canReshare ? [n("ActionInput", {
+                    }, [t.share ? [t.share.canEdit && t.canReshare ? [n("span", {}) /*n("ActionInput", {
                         directives: [{
                             name: "tooltip",
                             rawName: "v-tooltip.auto",
@@ -44138,7 +44138,7 @@
                                 return t.queueUpdate("hideDownload")
                             }
                         }
-                    }, [t._v("\n\t\t\t\t\t" + t._s(t.t("files_sharing", "Hide download")) + "\n\t\t\t\t")]), t._v(" "), n("ActionCheckbox", {
+                    }, [t._v("\n\t\t\t\t\t" + t._s(t.t("files_sharing", "Hide download")) + "\n\t\t\t\t")])*/, t._v(" "), n("ActionCheckbox", {
                         staticClass: "share-link-password-checkbox",
                         attrs: {
                             "checked": t.isPasswordProtected,
