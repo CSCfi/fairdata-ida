@@ -97,6 +97,7 @@ function localLoginOrSharePasswordActive()
 	<title>
 	<?php p($theme->getTitle()); ?>
 	</title>
+	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/core/js/jquery-2.2.4.js"></script>
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
 	<?php if ($theme->getiTunesAppId() !== '') { ?>
@@ -110,7 +111,6 @@ function localLoginOrSharePasswordActive()
 	<?php emit_css_loading_tags($_); ?>
 	<?php emit_script_loading_tags($_); ?>
 	<link rel="stylesheet" href="/themes/ida/core/css/fairdata.css">
-	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/core/js/jquery.js"></script>
 	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-guest.js"></script>
 
     <?php if (SSOActive()) : ?>
