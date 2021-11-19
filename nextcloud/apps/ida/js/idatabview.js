@@ -569,14 +569,13 @@
                 var fileInfo = this.fileInfo;
                 var fullPath = fileInfo.getFullPath();
 
-                $('#spinner').hide();
-
-                $('#freezeFolderButton').bind('click', { param: fileInfo }, freezeFolder);
-                $('#freezeFileButton').bind('click', { param: fileInfo }, freezeFile);
-                $('#unfreezeFolderButton').bind('click', { param: fileInfo }, unfreezeFolder);
-                $('#unfreezeFileButton').bind('click', { param: fileInfo }, unfreezeFile);
-                $('#deleteFolderButton').bind('click', { param: fileInfo }, deleteFolder);
-                $('#deleteFileButton').bind('click', { param: fileInfo }, deleteFile);
+                this.$el.find('#spinner').hide();
+                this.$el.find('#freezeFolderButton').bind('click', { param: fileInfo }, freezeFolder);
+                this.$el.find('#freezeFileButton').bind('click', { param: fileInfo }, freezeFile);
+                this.$el.find('#unfreezeFolderButton').bind('click', { param: fileInfo }, unfreezeFolder);
+                this.$el.find('#unfreezeFileButton').bind('click', { param: fileInfo }, unfreezeFile);
+                this.$el.find('#deleteFolderButton').bind('click', { param: fileInfo }, deleteFolder);
+                this.$el.find('#deleteFileButton').bind('click', { param: fileInfo }, deleteFile);
 
                 var isFolder = this.fileInfo.isDirectory();
                 var isFrozen = OCA.IDA.Util.testIfFrozen(fullPath);
@@ -584,8 +583,8 @@
                 if (isFrozen) {
 
                     if (isFolder) {
-                        $('#frozenFolder').show();
-                        $('#frozenFolder').focus();
+                        this.$el.find('#frozenFolder').show();
+                        this.$el.find('#frozenFolder').focus();
                     }
 
                     else {
@@ -621,45 +620,45 @@
                                         var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
 
                                         if (isPending) {
-                                            $('#frozenFilePendingAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            $('#frozenFilePending').show();
-                                            $('#frozenFilePending').focus();
+                                            this.$el.find('#frozenFilePendingAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            this.$el.find('#frozenFilePending').show();
+                                            this.$el.find('#frozenFilePending').focus();
                                         }
                                         else {
-                                            $('#frozenFileAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            $('#frozenFileId').html(filePid);
-                                            $('#frozenFileFrozen').html(fileFrozen);
-                                            $('#frozenFileSize').html(fileSize);
-                                            $('#frozenFileChecksum').html(fileChecksum);
-                                            $('#frozenFile').show();
-                                            $('#frozenFile').focus();
+                                            this.$el.find('#frozenFileAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            this.$el.find('#frozenFileId').html(filePid);
+                                            this.$el.find('#frozenFileFrozen').html(fileFrozen);
+                                            this.$el.find('#frozenFileSize').html(fileSize);
+                                            this.$el.find('#frozenFileChecksum').html(fileChecksum);
+                                            this.$el.find('#frozenFile').show();
+                                            this.$el.find('#frozenFile').focus();
                                         }
                                     },
 
                                     error: function (x) {
                                         // This shouldn't ever happen, but we'll fail gracefully...
-                                        $('#frozenFile').show();
-                                        $('#frozenFile').focus();
+                                        this.$el.find('#frozenFile').show();
+                                        this.$el.find('#frozenFile').focus();
                                     }
                                 });
                             },
 
                             error: function (x) {
                                 // This shouldn't ever happen, but we'll fail gracefully...
-                                $('#frozenFile').show();
-                                $('#frozenFile').focus();
+                                this.$el.find('#frozenFile').show();
+                                this.$el.find('#frozenFile').focus();
                             }
                         });
                     }
                 }
                 else {
                     if (isFolder) {
-                        $('#stagingFolder').show();
-                        $('#stagingFolder').focus();
+                        this.$el.find('#stagingFolder').show();
+                        this.$el.find('#stagingFolder').focus();
                     }
                     else {
-                        $('#stagingFile').show();
-                        $('#stagingFile').focus();
+                        this.$el.find('#stagingFile').show();
+                        this.$el.find('#stagingFile').focus();
                     }
                 }
 
