@@ -180,6 +180,7 @@ class Application extends App
      * @return null
      */
     public static function loadScripts() {
+        Util::addScript('core', 'jquery');
         Util::addScript('files', 'detailtabview');
         Util::addScript('ida', 'constants');
         Util::addScript('ida', 'idatabview');

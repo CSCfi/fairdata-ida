@@ -227,7 +227,7 @@
                 }
             );
 
-            //fileList.registerTabView(new OCA.IDA.IDATabView('IDATabView', {order: -30}));
+            fileList.registerTabView(new OCA.IDA.IDATabView('IDATabView', {order: -30}));
         }
     };
 

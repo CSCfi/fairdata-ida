@@ -110,7 +110,7 @@ function localLoginOrSharePasswordActive()
 	<?php emit_css_loading_tags($_); ?>
 	<?php emit_script_loading_tags($_); ?>
 	<link rel="stylesheet" href="/themes/ida/core/css/fairdata.css">
-	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/core/doc/user/_static/jquery.js"></script>
+	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/core/js/jquery.js"></script>
 	<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/themes/ida/core/js/ida-guest.js"></script>
 
     <?php if (SSOActive()) : ?>
