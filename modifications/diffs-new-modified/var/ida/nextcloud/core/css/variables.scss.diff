@@ -1,0 +1,29 @@
+--- /var/ida/nextcloud/core/css/variables.scss	2021-11-11 16:56:51.449264517 +0000
++++ /var/ida/nextcloud/core/css/variables.scss.original	2021-11-03 10:50:54.932539774 +0000
+@@ -63,12 +63,9 @@
+ // rgb(118, 118, 118) / #767676
+ // min. color contrast for normal text on white background according to WCAG AA
+ // (Works as well: color: #000; opacity: 0.57;)
+-//$color-text-maxcontrast: nc-lighten($color-main-text, 33%) !default;
+-//$color-text-light: $color-main-text !default;
+-//$color-text-lighter: $color-text-maxcontrast !default;
+-$color-text-maxcontrast: #222 !default;
+-$color-text-light: #222 !default;
+-$color-text-lighter: #222 !default;
++$color-text-maxcontrast: nc-lighten($color-main-text, 33%) !default;
++$color-text-light: $color-main-text !default;
++$color-text-lighter: $color-text-maxcontrast !default;
+ 
+ $image-logo: url('../img/logo/logo.svg?v=1') !default;
+ $image-login-background: url('../img/background.png?v=2') !default;
+@@ -89,8 +86,9 @@
+ // Pill-style button, value is large so big buttons also have correct roundness
+ $border-radius-pill: 100px !default;
+ 
+-$font-face: 'Nunito', 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif !default;
++$font-face: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Cantarell, Ubuntu, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !default;
+ $default-font-size: 15px;
++
+ $default-line-height: 24px;
+ 
+ $animation-quick: 100ms;

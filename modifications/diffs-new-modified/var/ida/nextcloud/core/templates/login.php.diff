@@ -1,0 +1,46 @@
+--- /var/ida/nextcloud/core/templates/login.php	2021-11-05 14:38:39.842840613 +0000
++++ /var/ida/nextcloud/core/templates/login.php.original	2021-11-03 10:50:54.983540082 +0000
+@@ -1,33 +1,16 @@
+ <?php /** @var \OCP\IL10N $l */ ?>
+ <?php
+ script('core', 'dist/login');
+-$CURRENT_LANGUAGE = $l->getLanguageCode();
+-$CURRENT_LANGUAGE = $CURRENT_LANGUAGE ? substr($CURRENT_LANGUAGE, 0, 2) : 'en';
+ ?>
+ 
+-<form method="post" name="login" action="/login">
+-    <fieldset>
+-		<?php if (!empty($_['redirect_url'])) {
+-			print_unescaped('<input type="hidden" name="redirect_url" value="' . \OCP\Util::sanitizeHTML($_['redirect_url']) . '">');
+-		} ?>
+-        <div id="message" class="hidden">
+-            <img alt="" src="/core/img/loading-dark.gif" class="float-spinner"> <span id="messageText"></span> 
+-            <div style="clear: both;"></div>
+-        </div>
+-        <p class="grouptop">
+-			<input id="user" type="text" name="user" autocapitalize="off" autocomplete="on" placeholder="Username" aria-label="Username" required="required">
+-			<label for="user" class="infield">Username</label>
+-		</p>
+-        <p class="groupbottom">
+-			<input id="password" type="password" name="password" autocomplete="on" placeholder="Password" aria-label="Password" required="required">
+-			<label for="password" class="infield"></label>
+-		</p>
+-        <div id="submit-wrapper">
+-            <input id="submit-form" type="submit" title="" class="login primary" value="Login"> 
+-            <div class="submit-icon icon-confirm-white"></div>
++<div id="login"></div>
++
++<?php if (!empty($_['alt_login'])) { ?>
++    <div id="alternative-logins">
++        <?php foreach ($_['alt_login'] as $login): ?>
++            <a class="button <?php p($login['style'] ?? ''); ?>" href="<?php print_unescaped($login['href']); ?>" >
++                <?php p($login['name']); ?>
++            </a>
++        <?php endforeach; ?>
+         </div>
+-		<input type="hidden" name="timezone_offset" id="timezone_offset" />
+-		<input type="hidden" name="timezone" id="timezone" />
+-		<input type="hidden" name="requesttoken" value="<?php p($_['requesttoken']) ?>">
+-    </fieldset>
+-</form>
++<?php } ?>

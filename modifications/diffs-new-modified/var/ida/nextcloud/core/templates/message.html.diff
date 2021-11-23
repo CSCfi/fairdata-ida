@@ -1,0 +1,7 @@
+--- /var/ida/nextcloud/core/templates/message.html	2021-11-11 17:21:56.975065913 +0000
++++ /var/ida/nextcloud/core/templates/message.html.original	2021-11-03 10:50:54.988540112 +0000
+@@ -1,3 +1,3 @@
+ <div id="{dialog_name}" title="{title} ">
+-	<p>{message}</p>
++	<p><span class="ui-icon ui-icon-{type}"></span>{message}</p>
+ </div>

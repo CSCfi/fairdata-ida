@@ -1,0 +1,11 @@
+--- /var/ida/nextcloud/core/l10n/fi.js	2021-11-11 17:03:19.882789781 +0000
++++ /var/ida/nextcloud/core/l10n/fi.js.original	2021-11-03 10:50:54.958539931 +0000
+@@ -1,8 +1,6 @@
+ OC.L10N.register(
+     "core",
+     {
+-    "Note to recipient" : "Viesti vastaanottajalle",
+-    "Security" : "Turvallisuus",
+     "Please select a file." : "Valitse tiedosto.",
+     "File is too big" : "Tiedosto on liian suuri",
+     "The selected file is not an image." : "Valittu tiedosto ei ole kuva.",

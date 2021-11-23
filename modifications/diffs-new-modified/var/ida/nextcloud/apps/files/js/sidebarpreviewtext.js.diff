@@ -1,0 +1,19 @@
+--- /var/ida/nextcloud/apps/files/js/sidebarpreviewtext.js	2021-11-11 13:57:37.270227069 +0000
++++ /var/ida/nextcloud/apps/files/js/sidebarpreviewtext.js.original	2021-11-03 10:50:54.843539235 +0000
+@@ -18,7 +18,6 @@
+ 		},
+ 
+ 		handlePreview: function (model, $thumbnailDiv, $thumbnailContainer, fallback) {
+-			/*
+ 			var previewWidth = $thumbnailContainer.parent().width() + 50;  // 50px for negative margins
+ 			var previewHeight = previewWidth / (16 / 9);
+ 
+@@ -33,8 +32,6 @@
+ 			}, function () {
+ 				fallback();
+ 			});
+-			*/
+-			fallback();
+ 		},
+ 
+ 		getFileContent: function (path) {

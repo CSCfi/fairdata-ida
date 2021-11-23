@@ -1,0 +1,30 @@
+--- /var/ida/nextcloud/apps/files/js/fileactionsmenu.js	2021-11-11 13:25:27.956225514 +0000
++++ /var/ida/nextcloud/apps/files/js/fileactionsmenu.js.original	2021-11-03 10:50:54.823539113 +0000
+@@ -71,7 +71,6 @@
+ 		render: function() {
+ 			var self = this;
+ 			var fileActions = this._context.fileActions;
+-			var inRoot = this._context.dir === '/';
+ 			var actions = fileActions.getActions(
+ 				fileActions.getCurrentMimeType(),
+ 				fileActions.getCurrentType(),
+@@ -83,19 +82,6 @@
+ 			var items = _.filter(actions, function(actionSpec) {
+ 				return !defaultAction || actionSpec.name !== defaultAction.name;
+ 			});
+-			items = items.filter(function(item) {
+-				if (inRoot) {
+-					if (
+-						item.name === 'Remove'
+-						|| item.name === 'MoveCopy'
+-						|| item.name === 'Delete'
+-						|| item.name === 'Unshare'
+-						|| item.name === 'Rename'
+-					)
+-					return false;
+-				}
+-				return true;
+-			});
+ 			items = _.map(items, function(item) {
+ 				if (_.isFunction(item.displayName)) {
+ 					item = _.extend({}, item);

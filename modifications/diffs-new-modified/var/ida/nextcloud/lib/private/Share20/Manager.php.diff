@@ -1,0 +1,18 @@
+--- /var/ida/nextcloud/lib/private/Share20/Manager.php	2021-11-11 17:39:42.266036162 +0000
++++ /var/ida/nextcloud/lib/private/Share20/Manager.php.original	2021-11-03 10:50:55.007540227 +0000
+@@ -758,7 +758,6 @@
+ 				 * For now ignore a set token.
+ 				 */
+ 				$share->setToken(
+-					'NOT_FOR_PUBLICATION_' .
+ 					$this->secureRandom->generate(
+ 						\OC\Share\Constants::TOKEN_LENGTH,
+ 						\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE
+@@ -777,7 +776,6 @@
+ 				}
+ 			} elseif ($share->getShareType() === IShare::TYPE_EMAIL) {
+ 				$share->setToken(
+-					'NOT_FOR_PUBLICATION_' .
+ 					$this->secureRandom->generate(
+ 						\OC\Share\Constants::TOKEN_LENGTH,
+ 						\OCP\Security\ISecureRandom::CHAR_HUMAN_READABLE
