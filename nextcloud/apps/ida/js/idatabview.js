@@ -620,33 +620,33 @@
                                         var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
 
                                         if (isPending) {
-                                            this.$el.find('#frozenFilePendingAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            this.$el.find('#frozenFilePending').show();
-                                            this.$el.find('#frozenFilePending').focus();
+                                            $(document).find('#frozenFilePendingAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            $(document).find('#frozenFilePending').show();
+                                            $(document).find('#frozenFilePending').focus();
                                         }
                                         else {
-                                            this.$el.find('#frozenFileAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            this.$el.find('#frozenFileId').html(filePid);
-                                            this.$el.find('#frozenFileFrozen').html(fileFrozen);
-                                            this.$el.find('#frozenFileSize').html(fileSize);
-                                            this.$el.find('#frozenFileChecksum').html(fileChecksum);
-                                            this.$el.find('#frozenFile').show();
-                                            this.$el.find('#frozenFile').focus();
+                                            $(document).find('#frozenFileAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
+                                            $(document).find('#frozenFileId').html(filePid);
+                                            $(document).find('#frozenFileFrozen').html(fileFrozen);
+                                            $(document).find('#frozenFileSize').html(fileSize);
+                                            $(document).find('#frozenFileChecksum').html(fileChecksum);
+                                            $(document).find('#frozenFile').show();
+                                            $(document).find('#frozenFile').focus();
                                         }
                                     },
 
                                     error: function (x) {
                                         // This shouldn't ever happen, but we'll fail gracefully...
-                                        this.$el.find('#frozenFile').show();
-                                        this.$el.find('#frozenFile').focus();
+                                        $(document).find('#frozenFile').show();
+                                        $(document).find('#frozenFile').focus();
                                     }
                                 });
                             },
 
                             error: function (x) {
                                 // This shouldn't ever happen, but we'll fail gracefully...
-                                this.$el.find('#frozenFile').show();
-                                this.$el.find('#frozenFile').focus();
+                                $(document).find('#frozenFile').show();
+                                $(document).find('#frozenFile').focus();
                             }
                         });
                     }
