@@ -121,7 +121,7 @@ class FreezingController extends Controller
         $this->userId = $userId;
         $this->fsView = null;
         try {
-            Filesystem::init($userId, '/');
+            Filesystem::init($userId, '/' . $userId . '/files');
             $this->fsView = Filesystem::getView();
         } catch (\Exception $e) {
         }
