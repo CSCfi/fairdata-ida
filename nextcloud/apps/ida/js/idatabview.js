@@ -350,7 +350,7 @@
                             t('ida', 'It is safe to log out from the IDA service and close your browser. Ongoing background operations will not be affected.'),
                             t('ida', 'Action initiated successfully. Files deleted.'),
                             'info',
-                            OCdialogs.OK_BUTTON,
+                            OC.OK_BUTTON,
                             function (result) {
                                 $('#spinner').show();
                                 window.location.reload(true);
