@@ -84,7 +84,7 @@ function FDWEActive()
 						</li>
 					<?php endforeach; ?>
 					    
-				    <li id="ida-notifications" style="display: inline-flex;">
+				    <li id="ida-notifications" style="display: inline-flex; cursor: default;">
 					    <div id="ida-failed-actions-icon" class="ida-notification-icon" style="display: none">
 						    <a href="/apps/ida/actions/failed">
 					    	    <img title="<?php p($l->t('Failed Actions')); ?>" src="/apps/ida/img/failed-actions-icon.png" style="width: 20px; height: 20px; padding: 15px;">
@@ -96,9 +96,7 @@ function FDWEActive()
 						    </a>
 					    </div>
 					    <div id="ida-suspended-icon" class="ida-notification-icon" style="display: none">
-						    <a href="/apps/ida/actions/pending">
-						        <img title="<?php p($l->t('Project Suspended')); ?>" src="/apps/ida/img/suspended-icon.png" style="width: 20px; height: 20px; padding: 15px;">
-						    </a>
+						     <img title="<?php p($l->t('Project Suspended')); ?>" src="/apps/ida/img/suspended-icon.png" style="width: 20px; height: 20px; padding: 15px;">
 					    </div>
 				    </li>
 				</ul>
