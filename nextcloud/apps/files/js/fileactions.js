@@ -784,7 +784,7 @@
                         return;
                     }
                     var dir = context.dir || context.fileList.getCurrentDirectory();
-                    var pathname = dir + '/' + filename;
+                    var pathname = dir + '/' + fileName;
                     var project = OCA.IDA.Util.extractProjectName(pathname);
                     var scope = OCA.IDA.Util.stripRootFolder(pathname);
                     try {
@@ -803,7 +803,7 @@
 					}
                     var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
                     if (response) {
-					    context.fileList.do_delete(filename, context.dir);
+					    context.fileList.do_delete(fileName, context.dir);
                     }
 					$('.tipsy').remove();
 
