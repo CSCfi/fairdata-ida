@@ -125,7 +125,7 @@ class FileController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects === null) {
-                    return API::unauthorizedErrorResponse('Session user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
                 // If any projects are specified with the request, reduce the user project list to the
@@ -200,7 +200,7 @@ class FileController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects == null) {
-                    return API::unauthorizedErrorResponse('The current user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('The current user does not belong to any projects.');
                 } // Else set the project list to the list of user projects
                 else {
                     $projects = $userProjects;
@@ -254,7 +254,7 @@ class FileController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects == null) {
-                    return API::unauthorizedErrorResponse('The current user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('The current user does not belong to any projects.');
                 } // Else set the project list to the list of user projects
                 else {
                     $projects = $userProjects;
@@ -305,7 +305,7 @@ class FileController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects == null) {
-                    return API::unauthorizedErrorResponse('The current user does not belong to any projects.');
+                    return API::forbiddenErrorResponse('The current user does not belong to any projects.');
                 } // Else set the project list to the list of user projects
                 else {
                     $projects = $userProjects;
@@ -373,7 +373,7 @@ class FileController extends Controller
 
             // Restrict to admin and PSO user for the specified project
             if ($this->userId != 'admin' && $this->userId != Constants::PROJECT_USER_PREFIX . $project) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             if ($node === null) {
@@ -484,12 +484,10 @@ class FileController extends Controller
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
-            // Restrict to admin and PSO user for the specified project. In order to prevent unauthorized users
-            // determining whether certain entities exist by randomly trying PIDs, we treat this as a not found
-            // error rather than an unauthorized error.
+            // Restrict to admin and PSO user for the specified project. 
 
             if ($this->userId != 'admin' && $this->userId != strtolower(Constants::PROJECT_USER_PREFIX . $fileEntity->getProject())) {
-                return API::notFoundErrorResponse('The specified file was not found.');
+                return API::forbiddenErrorResponse('Session user does not have permission to modify the specified file.');
             }
 
             // Clear all specified parameter values defined explicitly as the string 'null'
@@ -590,12 +588,10 @@ class FileController extends Controller
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
-            // Restrict to admin and PSO user for the specified project. In order to prevent unauthorized users
-            // determining whether certain entities exist by randomly trying PIDs, we treat this as a not found
-            // error rather than an unauthorized error.
+            // Restrict to admin and PSO user for the specified project. 
 
             if ($this->userId != 'admin' && $this->userId != strtolower(Constants::PROJECT_USER_PREFIX . $fileEntity->getProject())) {
-                return API::notFoundErrorResponse('The specified file was not found.');
+                return API::forbiddenErrorResponse('Session user does not have permission to modify the specified file.');
             }
 
             $this->fileMapper->deleteFile($pid);
