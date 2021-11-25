@@ -42,6 +42,8 @@ function FDWEActive()
         <?php endif; ?>
         <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="<?php p(\OC::$server->getSystemConfig()->getValue('FDWE_URL')); ?>"></script>
         <?php endif; ?>
+
+	    <script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()) ?>" src="/apps/ida/js/showicons.js"></script>
 	</head>
 	<body id="<?php p($_['bodyid']);?>">
 	<?php include 'layout.noscript.warning.php'; ?>

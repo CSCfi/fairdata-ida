@@ -31,32 +31,6 @@
     OCA.IDA.Util = {
 
         /**
-         * Makes all relevant notification icons visible based on the status of the projects
-         * to which the current user belongs.
-         */
-        showNotificationIcons: function () {
-
-            $.ajax({
-                url: OC.generateUrl('/apps/ida/api/status'),
-                type: 'GET',
-                contentType: 'application/json',
-                cache: false,
-                async: false,
-                success: function(response) {
-                    if (response['failed'] === true) {
-                        $("#ida-failed-actions-icon").show();
-                    }
-                    if (response['pending'] === true) {
-                        $("#ida-pending-actions-icon").show();
-                    }
-                    if (response['suspended'] === true) {
-                        $("#ida-suspended-icon").show();
-                    }
-                }
-            });
-        },
-
-        /**
          * Returns false if the service is available, the project is not suspended, and the specified scope does not
          * intersect the scope of any initiating action; else returns an error message string.
          *
