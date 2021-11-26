@@ -82,7 +82,7 @@
         '<div id="frozenFolder" style="display: none" tabindex="0">' +
         '<table class="idaTable">' +
         '<tr><td>' +
-        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFolderButton"/>' +
+        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFolderButton"/>' + '<br/>' +
         '<input type="button" value="' + t('ida', 'Delete') + '" id="deleteFolderButton"/>' +
         '</td></tr>' +
         '</table>' +
@@ -112,7 +112,7 @@
         '<tr><th>' + t('ida', 'Size') + ':</th><td id="frozenFileSize"></td></tr>' +
         '<tr><th>' + t('ida', 'Checksum') + ':</th><td id="frozenFileChecksum"></td></tr>' +
         '<tr><td colspan="2" align="center">' +
-        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFileButton"/>' +
+        '<input type="button" value="' + t('ida', 'Unfreeze') + '" id="unfreezeFileButton"/>' + '<br/>' +
         '<input type="button" value="' + t('ida', 'Delete') + '" id="deleteFileButton"/>' +
         '</td></tr>' +
         '</table>' +
