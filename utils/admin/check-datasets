@@ -1,0 +1,99 @@
+[root@uida-man] /var/ida/utils/admin > cat check-datasets 
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2019 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license GNU Affero General Public License, version 3
+# @link https://research.csc.fi/
+#--------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT project nodeId pathname
+       $SCRIPT -h
+
+       project  = the project name
+       nodeId   = the Nextcloud node ID of the file or folder
+       pathname = a relative pathmame within the frozen area
+
+       Pathnames may correspond to either files or folders. 
+"
+
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$#" -ne 3 ]; then
+    echo "$USAGE" >&2
+    errorExit "Invalid number of arguments"
+fi
+
+NODEID="$2"
+PATHNAME="$3"
+
+#--------------------------------------------------------------------------------
+
+ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
+
+REQUEST_URL="https://ida.fairdata.fi/apps/ida/api/datasets?project=${PROJECT}&nextcloudNodeId=${NODEID}&pathname=${ENCODED_PATHNAME}&token=${BATCH_ACTION_TOKEN}"
+
+echo "Checking for dataset intersections for pathname ${PATHNAME} in project ${PROJECT}..."
+
+# NOTE: The X-SIMULATE-AGENTS header is only used by automated testing, to skip
+# postprocessing for test cases that do not need them, so that the tests run most
+# efficiently.
+
+if [ "$DEBUG" = "true" ]; then
+    if [ "$SIMULATE_AGENTS" = "true" ]; then
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+    else
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+    fi
+fi
+
+if [ "$SIMULATE_AGENTS" = "true" ]; then
+    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+else
+    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+fi
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR`
+    echoAndLog "$MSG"
+    errorExit "Dataset intersection check failed for pathname $PATHNAME in project $PROJECT"
+fi
+
+rm $ERR 2>/dev/null
+
+echo "$OUT"
+
+addToLog "DONE"
