@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/l10n/sv.js	2021-11-11 17:13:06.023603101 +0000
+--- /var/ida/nextcloud/core/l10n/sv.js	2021-11-29 13:44:49.894860542 +0000
 +++ /var/ida/nextcloud/core/l10n/sv.js.original	2021-11-11 17:11:14.817000000 +0000
 @@ -1,19 +1,6 @@
  OC.L10N.register(

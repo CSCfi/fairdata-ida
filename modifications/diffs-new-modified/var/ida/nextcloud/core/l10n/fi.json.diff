@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/l10n/fi.json	2021-11-11 17:05:59.468827273 +0000
+--- /var/ida/nextcloud/core/l10n/fi.json	2021-11-29 13:44:49.893860536 +0000
 +++ /var/ida/nextcloud/core/l10n/fi.json.original	2021-11-03 10:50:54.965539973 +0000
 @@ -1,19 +1,4 @@
  { "translations": {

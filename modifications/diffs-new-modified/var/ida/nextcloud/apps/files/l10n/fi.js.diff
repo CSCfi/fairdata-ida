@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files/l10n/fi.js	2021-11-11 14:07:29.418160058 +0000
+--- /var/ida/nextcloud/apps/files/l10n/fi.js	2021-11-29 13:44:49.845860236 +0000
 +++ /var/ida/nextcloud/apps/files/l10n/fi.js.original	2021-11-11 14:04:20.696906420 +0000
 @@ -1,32 +1,16 @@
  OC.L10N.register(

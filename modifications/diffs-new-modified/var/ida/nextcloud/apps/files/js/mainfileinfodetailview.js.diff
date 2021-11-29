@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files/js/mainfileinfodetailview.js	2021-11-11 13:56:28.059767488 +0000
+--- /var/ida/nextcloud/apps/files/js/mainfileinfodetailview.js	2021-11-29 13:44:49.844860230 +0000
 +++ /var/ida/nextcloud/apps/files/js/mainfileinfodetailview.js.original	2021-11-03 10:50:54.837539198 +0000
 @@ -43,8 +43,8 @@
  		events: {

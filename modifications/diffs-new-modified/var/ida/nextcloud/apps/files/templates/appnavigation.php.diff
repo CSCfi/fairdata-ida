@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files/templates/appnavigation.php	2021-11-11 14:11:53.153911994 +0000
+--- /var/ida/nextcloud/apps/files/templates/appnavigation.php	2021-11-29 13:44:49.846860242 +0000
 +++ /var/ida/nextcloud/apps/files/templates/appnavigation.php.original	2021-11-03 10:50:54.904539604 +0000
 @@ -11,56 +11,26 @@
  			$pinned = NavigationListElements($item, $l, $pinned);

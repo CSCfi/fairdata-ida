@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/css/server.scss	2021-11-18 07:42:04.235283086 +0000
+--- /var/ida/nextcloud/core/css/server.scss	2021-11-29 13:44:49.891860523 +0000
 +++ /var/ida/nextcloud/core/css/server.scss.original	2021-11-10 11:11:09.038000000 +0000
 @@ -9,4 +9,3 @@
  @import 'tooltip.scss';

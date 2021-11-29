@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files/js/fileactions.js	2021-11-11 13:21:42.188696414 +0000
+--- /var/ida/nextcloud/apps/files/js/fileactions.js	2021-11-29 13:44:49.842860217 +0000
 +++ /var/ida/nextcloud/apps/files/js/fileactions.js.original	2021-11-03 10:50:54.817539077 +0000
 @@ -634,24 +634,6 @@
  				permissions: OC.PERMISSION_UPDATE,
@@ -101,7 +101,7 @@
 -                        return;
 -                    }
 -                    var dir = context.dir || context.fileList.getCurrentDirectory();
--                    var pathname = dir + '/' + filename;
+-                    var pathname = dir + '/' + fileName;
 -                    var project = OCA.IDA.Util.extractProjectName(pathname);
 -                    var scope = OCA.IDA.Util.stripRootFolder(pathname);
 -                    try {
@@ -120,9 +120,8 @@
  					}
 -                    var response = confirm(t('ida', 'Are you sure you want to delete the selected item? THIS ACTION CANNOT BE UNDONE!'));
 -                    if (response) {
--					    context.fileList.do_delete(filename, context.dir);
+ 					    context.fileList.do_delete(fileName, context.dir);
 -                    }
-+					context.fileList.do_delete(fileName, context.dir);
  					$('.tipsy').remove();
  
  					// close sidebar on delete

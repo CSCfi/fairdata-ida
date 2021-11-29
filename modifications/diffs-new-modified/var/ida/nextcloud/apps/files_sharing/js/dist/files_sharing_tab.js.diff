@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files_sharing/js/dist/files_sharing_tab.js	2021-11-18 11:47:53.824587822 +0000
+--- /var/ida/nextcloud/apps/files_sharing/js/dist/files_sharing_tab.js	2021-11-29 13:44:49.866860367 +0000
 +++ /var/ida/nextcloud/apps/files_sharing/js/dist/files_sharing_tab.js.original	2021-10-27 15:54:07.023752803 +0000
 @@ -1,48418 +1,2 @@
 -! function(t) {

@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files/js/filelist.js	2021-11-11 13:51:36.836833670 +0000
+--- /var/ida/nextcloud/apps/files/js/filelist.js	2021-11-29 13:44:49.844860230 +0000
 +++ /var/ida/nextcloud/apps/files/js/filelist.js.original	2021-11-03 10:50:54.830539156 +0000
 @@ -1089,10 +1089,7 @@
  			if (!this.isAllSelected()) {

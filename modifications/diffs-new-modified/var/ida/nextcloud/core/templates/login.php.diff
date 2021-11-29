@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/templates/login.php	2021-11-05 14:38:39.842840613 +0000
+--- /var/ida/nextcloud/core/templates/login.php	2021-11-29 13:44:49.896860554 +0000
 +++ /var/ida/nextcloud/core/templates/login.php.original	2021-11-03 10:50:54.983540082 +0000
 @@ -1,33 +1,16 @@
  <?php /** @var \OCP\IL10N $l */ ?>

@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/3rdparty/composer/autoload_classmap.php	2021-11-09 08:35:37.180394954 +0000
+--- /var/ida/nextcloud/3rdparty/composer/autoload_classmap.php	2021-11-29 13:44:49.819860073 +0000
 +++ /var/ida/nextcloud/3rdparty/composer/autoload_classmap.php.original	2021-11-09 08:35:05.200000000 +0000
 @@ -1246,11 +1246,6 @@
      'Egulias\\EmailValidator\\Warning\\QuotedString' => $vendorDir . '/egulias/email-validator/src/Warning/QuotedString.php',

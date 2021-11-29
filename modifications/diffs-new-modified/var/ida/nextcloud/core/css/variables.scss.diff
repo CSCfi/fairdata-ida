@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/css/variables.scss	2021-11-11 16:56:51.449264517 +0000
+--- /var/ida/nextcloud/core/css/variables.scss	2021-11-29 13:44:49.892860529 +0000
 +++ /var/ida/nextcloud/core/css/variables.scss.original	2021-11-03 10:50:54.932539774 +0000
 @@ -63,12 +63,9 @@
  // rgb(118, 118, 118) / #767676

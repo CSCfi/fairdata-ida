@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/Controller/LoginController.php	2021-11-11 16:44:27.747386045 +0000
+--- /var/ida/nextcloud/core/Controller/LoginController.php	2021-11-29 13:44:49.891860523 +0000
 +++ /var/ida/nextcloud/core/Controller/LoginController.php.original	2021-11-03 10:50:54.918539689 +0000
 @@ -118,32 +118,7 @@
  	 * @return RedirectResponse

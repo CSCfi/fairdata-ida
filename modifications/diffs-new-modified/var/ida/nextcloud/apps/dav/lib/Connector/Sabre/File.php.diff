@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/dav/lib/Connector/Sabre/File.php	2021-11-11 16:38:05.801873174 +0000
+--- /var/ida/nextcloud/apps/dav/lib/Connector/Sabre/File.php	2021-11-29 13:44:49.823860099 +0000
 +++ /var/ida/nextcloud/apps/dav/lib/Connector/Sabre/File.php.original	2021-11-03 10:50:54.798538961 +0000
 @@ -134,69 +134,6 @@
  		// verify path of the target

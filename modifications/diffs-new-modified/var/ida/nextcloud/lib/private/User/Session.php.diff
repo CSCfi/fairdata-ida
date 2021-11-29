@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/lib/private/User/Session.php	2021-11-09 07:54:14.265619333 +0000
+--- /var/ida/nextcloud/lib/private/User/Session.php	2021-11-29 13:44:49.899860573 +0000
 +++ /var/ida/nextcloud/lib/private/User/Session.php.original	2021-11-09 07:34:04.342000000 +0000
 @@ -66,7 +66,6 @@
  use OCP\User\Events\PostLoginEvent;

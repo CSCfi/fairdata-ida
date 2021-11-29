@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/files/templates/list.php	2021-11-11 14:13:58.600745311 +0000
+--- /var/ida/nextcloud/apps/files/templates/list.php	2021-11-29 13:44:49.847860248 +0000
 +++ /var/ida/nextcloud/apps/files/templates/list.php.original	2021-11-03 10:50:54.911539647 +0000
 @@ -5,7 +5,8 @@
  		</div>

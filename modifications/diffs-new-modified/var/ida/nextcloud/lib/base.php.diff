@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/lib/base.php	2021-11-11 17:26:00.564654580 +0000
+--- /var/ida/nextcloud/lib/base.php	2021-11-29 13:44:49.897860561 +0000
 +++ /var/ida/nextcloud/lib/base.php.original	2021-11-03 10:50:54.994540149 +0000
 @@ -68,8 +68,6 @@
  use OC\Encryption\HookManager;

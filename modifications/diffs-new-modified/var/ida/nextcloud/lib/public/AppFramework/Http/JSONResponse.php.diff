@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/lib/public/AppFramework/Http/JSONResponse.php	2021-11-12 07:53:09.603298819 +0000
+--- /var/ida/nextcloud/lib/public/AppFramework/Http/JSONResponse.php	2021-11-29 13:44:49.899860573 +0000
 +++ /var/ida/nextcloud/lib/public/AppFramework/Http/JSONResponse.php.original	2021-11-03 10:50:55.019540300 +0000
 @@ -70,7 +70,7 @@
  	 * @throws \Exception If data could not get encoded

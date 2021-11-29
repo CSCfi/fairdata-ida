@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/3rdparty/composer/autoload_static.php	2021-11-09 08:39:30.749878957 +0000
+--- /var/ida/nextcloud/3rdparty/composer/autoload_static.php	2021-11-29 13:44:49.822860092 +0000
 +++ /var/ida/nextcloud/3rdparty/composer/autoload_static.php.original	2021-11-09 08:37:47.038000000 +0000
 @@ -246,7 +246,6 @@
          ),

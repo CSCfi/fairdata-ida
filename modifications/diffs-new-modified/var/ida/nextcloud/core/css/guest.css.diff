@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/core/css/guest.css	2021-11-11 16:56:31.285133427 +0000
+--- /var/ida/nextcloud/core/css/guest.css	2021-11-29 13:44:49.891860523 +0000
 +++ /var/ida/nextcloud/core/css/guest.css.original	2021-11-08 08:31:34.521934627 +0000
 @@ -14,7 +14,7 @@
  a, a *, input, input *, select, .button span, label { cursor:pointer; }

@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/apps/settings/templates/settings/personal/personal.info.php	2021-11-12 11:00:30.128025676 +0000
+--- /var/ida/nextcloud/apps/settings/templates/settings/personal/personal.info.php	2021-11-29 13:44:49.890860517 +0000
 +++ /var/ida/nextcloud/apps/settings/templates/settings/personal/personal.info.php.original	2021-11-12 10:52:31.294000000 +0000
 @@ -34,92 +34,340 @@
  ]);

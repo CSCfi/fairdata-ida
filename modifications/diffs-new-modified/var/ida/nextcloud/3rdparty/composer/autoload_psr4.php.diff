@@ -1,4 +1,4 @@
---- /var/ida/nextcloud/3rdparty/composer/autoload_psr4.php	2021-11-09 08:36:47.608842427 +0000
+--- /var/ida/nextcloud/3rdparty/composer/autoload_psr4.php	2021-11-29 13:44:49.820860080 +0000
 +++ /var/ida/nextcloud/3rdparty/composer/autoload_psr4.php.original	2021-11-09 08:36:30.256000000 +0000
 @@ -74,7 +74,6 @@
      'GuzzleHttp\\' => array($vendorDir . '/guzzlehttp/guzzle/src'),
