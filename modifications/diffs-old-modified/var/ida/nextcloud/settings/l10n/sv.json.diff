@@ -1,8 +1,0 @@
---- /var/ida/nextcloud-old/settings/l10n/sv.json	2021-10-27 10:25:31.419497558 +0000
-+++ /var/ida/nextcloud-old/settings/l10n/sv.json.original	2021-10-27 10:25:31.419497558 +0000
-@@ -1,5 +1,4 @@
- { "translations": {
--    "Personal info" : "Personlig information",
-     "{actor} added you to group {group}" : "{actor} adderade dig till gruppen {group}",
-     "You added {user} to group {group}" : "Du adderade {user} till gruppen {group}",
-     "{actor} added {user} to group {group}" : "{actor} adderade {user} till gruppen {group}",

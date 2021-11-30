@@ -1,8 +1,0 @@
---- /var/ida/nextcloud-old/settings/l10n/fi.json	2021-10-27 10:25:31.402497518 +0000
-+++ /var/ida/nextcloud-old/settings/l10n/fi.json.original	2021-10-27 10:25:31.402497518 +0000
-@@ -1,5 +1,4 @@
- { "translations": {
--    "Personal info" : "Henkilökohtaiset tiedot",
-     "{actor} added you to group {group}" : "{actor} lisäsi sinut ryhmään {group}",
-     "You added {user} to group {group}" : "Lisäsit käyttäjän {user} ryhmään {group}",
-     "{actor} added {user} to group {group}" : "{actor} lisäsi käyttäjän {user} ryhmään {group}",
