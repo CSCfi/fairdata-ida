@@ -43,6 +43,7 @@ use OCP\IUser;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
 use OCP\L10N\ILanguageIterator;
+use Firebase\JWT\JWT;
 
 /**
  * A factory that generates language instances
