@@ -196,7 +196,7 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_s, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        suspendedSentinelFile = "%s/control/SUSPENDED" % self.config.get('IDA_DATA_ROOT', '/mnt/storage_vol01/ida')
+        suspendedSentinelFile = "%s/control/SUSPENDED" % self.config.get('STORAGE_OC_DATA_ROOT', '/mnt/storage_vol01/ida')
 
         with open(suspendedSentinelFile, 'a') as sentinelFile:
             sentinelFile.write("TEST")
