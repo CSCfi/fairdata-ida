@@ -49,6 +49,7 @@ class TestIdaUser(unittest.TestCase):
         self.project_name = "test_project_a"
         self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config["HTTPD_USER"], self.config["ROOT"])
         self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        self.offlineSentinelFile = "%s/control/OFFLINE" % self.config.get('STORAGE_OC_DATA_ROOT', '/mnt/storage_vol01/ida')
 
         # clear any residual accounts, if they exist from a prior run
         self.success = True
@@ -78,6 +79,9 @@ class TestIdaUser(unittest.TestCase):
 
             print("(cleaning)")
     
+            if (os.path.exists(self.offlineSentinelFile)) :
+                os.remove(self.offlineSentinelFile)
+
             cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             os.system(cmd)
 
@@ -135,6 +139,15 @@ class TestIdaUser(unittest.TestCase):
         cmd = "%s DELETE PSO_%s 2>&1" % (self.ida_user, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
+
+        print("Attempt to create new user while service in OFFLINE mode")
+        with open(self.offlineSentinelFile, 'a') as sentinelFile:
+            sentinelFile.write("TEST")
+            sentinelFile.close()
+        cmd = "%s ADD user_2_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
+        OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        self.assertEqual(OUT, 1, "Sentinel file ignored")
+        os.remove(self.offlineSentinelFile)
 
         self.success = True
 
