@@ -28,8 +28,7 @@ USAGE="Usage: $SCRIPT [ ADD proj_name quota | MODIFY proj_name quota | DISABLE p
 # checks
 
 if [ -e "${STORAGE_OC_DATA_ROOT}/control/OFFLINE" ]; then
-    echo "The IDA service is in OFFLINE mode. Exiting." >&2
-    exit 1
+    errorExit "The IDA service is in OFFLINE mode. Ignoring request: $SCRIPT $*"
 fi
 
 TEST_NAME=`echo "$2" | tr [:lower:] [:upper:]`
