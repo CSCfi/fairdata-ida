@@ -1,0 +1,153 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2021 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script initializes a folder named "OneMillionFiles" in the root folder of the
+# staging area of the project specified as the first argument to the script,
+# containing empty files.
+#
+# Since the file count of this script is very large, use the script with caution. It
+# should be safe to execute it in non-production.
+
+# The project must ALREADY exist and the folder "OneMillionFiles" folder must NOT exist;
+# or else the script will exit with an error. This ensures against accidental
+# corruption of existing data or creation of new projects in production.
+#
+# The test data is organized so that the IDA freeze/unfreeze/delete operations
+# can be tested on scopes with varying large numbers of files.
+#
+# The script uses the hard-coded value ONE_MILLION_FILE_COUNT (1000000).
+#
+# The total number of files in the scope of the "OneMillionFiles" folder will be
+# one file more than the maximum allowed number of files, and therefore should
+# be rejected if an attempt is made to freeze the entire root folder. The total
+# number of files in the scope of each subfolder below the "OneMillionFiles" folder
+# reflects the total number of files in that folder.
+#
+# E.g. if the limit is 500 files, then the generated hierarchy is as follows:
+#
+# /testdata//OneMillionFiles/test_file.dat
+# /testdata//OneMillionFiles/500_files/100_files_01/10_files_01/test_file_01.dat
+# /testdata//OneMillionFiles/500_files/100_files_01/10_files_01/...
+# /testdata//OneMillionFiles/500_files/100_files_01/10_files_01/test_file_10.dat
+# /testdata//OneMillionFiles/500_files/100_files_01/10_files_02/test_file_01.dat
+# /testdata//OneMillionFiles/500_files/100_files_01/...
+# /testdata//OneMillionFiles/500_files/100_files_01/10_files_10/test_file_10.dat
+# /testdata//OneMillionFiles/500_files/...
+# /testdata//OneMillionFiles/500_files/100_files_02/10_files_01/test_file_01.dat
+# /testdata//OneMillionFiles/500_files/...
+# /testdata//OneMillionFiles/500_files/100_files_05/10_files_10/test_file_10.dat
+#
+#--------------------------------------------------------------------------------
+. `dirname $0`/../../lib/init_script.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT="$1"
+
+if [ "$1" = "" ]; then
+    errorExit "Error: The project name must be specified as the first argument to the script"
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ "$ROOT" = "" ]; then
+    errorExit "Error: The ROOT configuration variable must be defined"
+fi
+
+if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
+    errorExit "Error: The STAGING_FOLDER_SUFFIX configuration variable must be defined"
+fi
+
+if [ "$PROJECT_USER_PREFIX" = "" ]; then
+    errorExit "Error: The PROJECT_USER_PREFIX configuration variable must be defined"
+fi
+
+if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
+    errorExit "Error: The STORAGE_OC_DATA_ROOT configuration variable must be defined"
+fi
+
+#--------------------------------------------------------------------------------
+
+PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PSO_USER}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
+ONE_MILLION_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/testdata/OneMillionFiles"
+
+echo "Generating OneMillionFiles test data for project ${PROJECT}..."
+echo "Target folder: $ONE_MILLION_FILES_FOLDER"
+
+#--------------------------------------------------------------------------------
+
+echo "Ensuring project exists and OneMillionFiles folder does not exist..."
+
+if [ ! -d "$PROJECT_STAGING_FOLDER" ]; then
+    errorExit "Error: The project ${PROJECT} does not exist"
+fi
+
+if [ -d "$ONE_MILLION_FILES_FOLDER" ]; then
+    errorExit "Error: The target folder already exists in the root of the staging area of project ${PROJECT}"
+fi
+
+#--------------------------------------------------------------------------------
+
+ONE_MILLION_FILE_COUNT=1000000
+MAX_SET_COUNT=`echo "$ONE_MILLION_FILE_COUNT / 500" | bc`
+
+echo "Generating $MAX_SET_COUNT multiples of 500 files"
+
+#--------------------------------------------------------------------------------
+
+mkdir -p "${ONE_MILLION_FILES_FOLDER}"
+touch "${ONE_MILLION_FILES_FOLDER}/test_file.dat"
+
+mkdir -p "${ONE_MILLION_FILES_FOLDER}/${ONE_MILLION_FILE_COUNT}_files"
+
+while [ $MAX_SET_COUNT -gt 0 ]; do
+    echo -n "."
+    SET_DIR="${ONE_MILLION_FILES_FOLDER}/${ONE_MILLION_FILE_COUNT}_files/500_files_${MAX_SET_COUNT}"
+    mkdir -p "${SET_DIR}"
+    for i in "1" "2" "3" "4" "5"; do
+        mkdir -p "${SET_DIR}/100_files_${i}"
+        for j in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
+            mkdir -p "${SET_DIR}/100_files_${i}/10_files_${j}"
+            for k in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
+                touch "${SET_DIR}/100_files_${i}/10_files_${j}/test_file_${k}.dat"
+            done
+        done
+    done
+    MAX_SET_COUNT=`echo "$MAX_SET_COUNT - 1" | bc`
+done
+
+echo ""
+
+#--------------------------------------------------------------------------------
+
+echo "Updating Nextcloud file cache..."
+
+$OCC files:scan -q $PSO_USER
+
