@@ -21,7 +21,19 @@
 # @link https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-The metadata agent responds to freeze and unfreeze events, and ensures
-that the file specific metadata maintained in METAX is kept up-to-date,
-generating PIDs, checksums, and aggregating all relevant metadata
+The metadata agent (which is a RabbitMQ consumer) responds to freeze and unfreeze
+events, and ensures that the file specific metadata maintained in METAX is kept 
+up-to-date, generating PIDs, checksums, and aggregating all relevant metadata
 accordingly.
+
+The metadata agent handles events from the following RabbitMQ queues:
+
+1) Standard actions (user-initiated):
+
+- metadata
+- metadata-failed
+
+2) Batch actions (admin-initiated)
+
+- batch-metadata
+- batch-metadata-failed

@@ -44,7 +44,7 @@ if __name__ == '__main__':
     Repeat.
     """
 
-    logger = get_logger('agent.run_all.py')
+    logger = get_logger('agents.run_all.py')
     logger.info('---- running all rabbitmq agents ---')
 
     MdA = MetadataAgent()

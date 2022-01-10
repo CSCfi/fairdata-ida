@@ -25,19 +25,21 @@ This is the root directory for all event-driven agents which
 perform core IDA service operations in response to events initiated
 by users or by other components or processes of the service.
 
-Agents are implemented as RabbitMQ listener agents which respond to freeze,
-unfreeze, delete, and repair messages published by the IDA service.
+In the IDA RabbitMQ context, the terms "agent" and "consumer" are synonymous.
+
+Agents are implemented as RabbitMQ listener agents which respond to `freeze`,
+`unfreeze`, `delete`, and repair messages published by the IDA service.
 
 The metadata agent responds to all action messages, and ensures
 that the file specific metadata maintained in METAX is kept up-to-date,
 generating PIDs, checksums (SHA-256), and aggregating all relevant metadata
-accordingly. In practice, unfreeze and delete events are treated the same
-(files are simply marked as deleted in METAX). Once done, for freeze and
-repair actions, the metadata agent publishes a replication message to the
+accordingly. In practice, `unfreeze` and `delete` events are treated the same
+(files are simply marked as deleted in METAX). Once done, for `freeze` and
+`repair` actions, the metadata agent publishes a replication message to the
 designated replication agent RabbitMQ exchange. For other actions, the
 metadata agent marks the action as completed.
 
-The replication agent responds only to freeze and repair action messages. It
+The replication agent responds only to `freeze` and `repair` action messages. It
 copies all files associated with a given action, from the frozen area of the
 project to the configured replication location, employing checksum validation
 on each copied file. However, if the execution environment is 'TEST', or if
@@ -45,7 +47,7 @@ the action is a repair action, and the file both already exists in the replicati
 location and the file size of both the frozen file and replicated file are the
 same, the file is skipped.
 
-# agent installation
+# Agent installation
 
 Assuming IDA has been installed to /var/ida.
 
@@ -88,9 +90,9 @@ python -m agents.metadata.metadata_agent
 python -m agents.run_all
 ```
 
-## testing
+## Testing
 
-### unit tests
+### Unit tests
 
 To execute all unit tests, in directory /var/ida execute:
 
@@ -110,12 +112,12 @@ api uses as its "database".
 In test environments, the replication location does not have to be mounted; it is treated as a
 normal directory, and will be created when necessary.
 
-### behavioral tests
+### Behavioral tests
 
 Behavioral testing of the postprocessing agents is part of the wider Nextcloud tests
 in various test files in tests/.
 
-# settings
+# Settings
 
 The general, global settings in config/config.sh are also used by the agents.
 Additionally, there are some settings in agents/settings.py, most importantly
@@ -128,20 +130,20 @@ agents/utils/rabbitmq.py.
 When executing tests, the variables from config/config.sh are used, but some variables
 are overrided using tests/agents/config/config.sh to use a different rabbitmq vhost etc.
 
-## enabling/disabling metax dependency
+## Enabling/disabling metax dependency
 
 Setting the METAX_AVAILABLE option in config/config.sh to 0 indicates that actions
 should be marked as completed without connecting to Metax, effectively allowing
 IDA to function without depending on Metax being there.
 
 In practice, if METAX_AVAILABLE is 0:
-* freeze-actions are marked as completed once checksums have been saved to nodes in IDA.
+* `freeze` actions are marked as completed once checksums have been saved to nodes in IDA.
   i.e., file metadata is not published to Metax.
-* unfreeze/delete actions are marked completed immediately, without informing Metax.
+* `unfreeze` and `delete` actions are marked completed immediately, without informing Metax.
 
 For normal operation, value of METAX_AVAILABLE should be 1.
 
-# rabbitmq exchanges, queues, retry mechanics
+# RabbitMQ exchanges, queues, retry mechanics
 
 When freezing/unfreezing/deleting files in IDA, an action (a message) of specific
 type is published to a specific rabbitmq exchange. The agents are listening on
@@ -160,9 +162,12 @@ The exchanges used are:
 
 exchange | type | comment
 ----|------|-------
-actions | fanout | The initial freeze/unfreeze/delete message is published here only.
+actions | fanout | The initial `freeze`, `unfreeze`, or `delete` message is published here only.
 replication | fanout | Once metadata publication has been successfully processed, a message is published here.
 actions-failed | direct | When an action fails even once, all subsequent message handling occurs here.
+batch-actions | fanout | For batch actions, the initial `freeze`, `unfreeze`, or `delete` message is published here only.
+batch-replication | fanout | For batch actions, once metadata publication has been successfully processed, a message is published here.
+batch-actions-failed | direct | For batch actions, when an action fails even once, all subsequent message handling occurs here.
 
 The various queues used are:
 
@@ -175,48 +180,43 @@ actions-failed | metadata-failed-waiting | | | x | metadata-failed
 actions-failed | replication-failed-waiting | | | x | replication-failed
 actions-failed | metadata-failed | metadata | (checksums&#124;metadata)-failed-waiting | |
 actions-failed | replication-failed | replication | replication-failed-waiting | |
+batch-actions | batch-metadata | metadata | batch-(checksums&#124;metadata)-failed-waiting | |
+batch-replication | batch-replication | replication | batch-replication-failed-waiting | |
+batch-actions-failed | batch-checksums-failed-waiting | | | x | batch-metadata-failed
+batch-actions-failed | batch-metadata-failed-waiting | | | x | batch-metadata-failed
+batch-actions-failed | batch-replication-failed-waiting | | | x | batch-replication-failed
+batch-actions-failed | batch-metadata-failed | metadata | batch-(checksums&#124;metadata)-failed-waiting | |
+batch-actions-failed | batch-replication-failed | replication | batch-replication-failed-waiting | |
 
-The retry-mechanics are implemented using the so called 'dead-letter-exchanges', nicely described [here](https://stackoverflow.com/a/17014585/1201945), which require a few extra queues and configuration.
+The retry-mechanics are implemented using the so called 'dead-letter-exchanges', nicely described [here](https://stackoverflow.com/a/17014585/1201945),
+which require a few extra queues and configuration.
 
-## message lifecycle
+## Message lifecycle
 
 A short description of the lifecycle of a message through these exchanges and queues:
 
-When an action is initially published, it is published to the 'actions' exchange, from
-where the action flows to its only queue, the metadata queue, for first processing attempt.
-If the processing is successful, checksum- and metadata sub-actions are marked completed, and
-a new message is published to the replication-exchange. The initial message is acked by the
-metadata agent, and removed from circulation. The replication agent consumes the new message
-from the replication-queue, and begins its work. Once done, it marks the sub-action as completed,
-acks the message, removing it from criculation.
+When an action is initially published, it is published to the `actions` (standard action) or the `batch-actions` (batch action) exchange, from where the action flows to either the `metadata` or the `batch-metadata` queue, for first processing attempt. If the processing is successful, checksum- and metadata sub-actions are marked completed, and a new message is published to the `replication` or the `batch-replication` exchange. The initial message is acked by the common `metadata` consumer/agent, and removed from circulation. The common `replication` consumer/agent consumes the new message from the `replication` or the `batch-replication` queue, and begins its work. Once done, it marks the sub-action as completed, acks the message, removing it from criculation.
 
-### message lifecycle during errors
+### Message lifecycle during errors
 
-If the processing fails, say in metadata publication phase, the message is republished to
-the queue metadata-failed-waiting, which has no consumers. The message will sit for a period
-of time (specified in settings.py, retry_policy->metadata->retry_interval), and be automatically
-republished to the queue metadata-failed, which does have consumers (the metadata agent), and from where
-the retry attempt will be made from. A success in the retry will remove the message
-from circulation, while a failure will increment the retry count in the message, and republish
-again to queue metadata-failed-waiting - unless max_retries is exceeded, in which case the message
-is marked as failed instead, and removed from circulation.
+Depending on if a message is a standard message or a batch message, different lifecycles will be used. Standard messages use the standard queues and batch messages uses the batch queues. All batch queues are prefixed with `batch-`. Standard queues have no prefix. Otherwise the lifecycles are identical.
 
-In other words, when a message is first published, it enters the 'actions' exchange. If processing
-fails even once, for the rest of its life the message exists only in the 'actions-failed' exchange
-and its several queues.
+If the processing fails, say in metadata publication phase, the message is republished to the queue `metadata-failed-waiting`/`batch-metadata-failed-waiting`. These queues have no consumers/agents. The message will sit for a period of time (specified in `settings.py`, `retry_policy` -> `metadata` -> `retry_interval`). The message is then automatically republished to the queue `metadata-failed`/`batch-metadata-failed`. These queues have an attached consumer/agent (the `metadata` agent). From these queues, a retry attempt will be executed. 
 
-If the message processing never succeeded, and was marked as failed, a manual
-republish of the message should target the main 'actions' exchange, so that it may begin the
-complete cycle again.
+A success in the retry will remove the message from circulation, while a failure will increment the retry count in the message, and republish again to the queue `metadata-failed-waiting`/`batch-metadata-failed-waiting`) - unless `max_retries` is exceeded, in which case the message is marked as failed instead, and removed from circulation.
 
-### potential improvements
+In other words, when a message is first published, it enters the `actions`/`batch-actions` exchange. If processing fails even once, for the rest of its life the message exists only in the `actions-failed`/`batch-actions-failed` exchange and its several queues.
+
+If the message processing never succeeded, and was marked as failed, a manual republish of the message should target the `actions`/`batch-actions` exchange, so that it may begin the complete cycle again.
+
+### Potential improvements
 
 Since the volume of messages circulating in the exchanges is most probably not going to be a performance issue,
 the current retry mechanism using the dead-letter-exchanges could be made more sophisticated by simply creating
 more delayed queues, with varying delays. As an example, for metadata publication: Create three waiting queues,
 first queue has a republish delay of 1 minute, the second would have 6 hours, third could have 3 days.
 
-# agent processing logic
+# Agent processing logic
 
 When an agent is started, the agent will try to retrieve a single message from its
 designated main queue, and process it. After a message is processed from the main queue, the corresponding queue
@@ -228,7 +228,7 @@ For simplicity, the agents should be executed in their own processes, to ensure 
 blocking and delaying the other agent's work. Multiple agents may be started on a single machine, or on multiple servers,
 they should not interfere with each other.
 
-# agent monitoring
+# Agent monitoring
 
 When an agent is in the middle of processing some action, the agent creates a monitoring file in directory
 RABBIT_MONITORING_DIR (see config/config.sh), which tells how long an agent has been processing a message.
@@ -243,3 +243,17 @@ monitoring files when processing of an action has concluded, and when an agent i
 A monitoring script intended for use by Nagios can be found in monitoring/.
 
 To clear an alert from a file, "touch" the file update the last-modified timestamp.
+
+# Connection between FreezingController and RabbitMQ exchanges
+
+```
+                                                                      RabbitMQ exchanges
+API call            FreezingController    registerAction call		      actions		batch-actions
+--------            ------------------    -------------------         -------   -------------
+/api/freeze         freezeFiles()         registerAction('freeze')	  x		      x
+/api/unfreeze       unfreezeFiles()       registerAction('unfreeze')	x		      x
+/api/delete         deleteFiles()         registerAction('delete')	  x		      x
+'/api/retry/{pid}   retryAction()         registerAction()            x         x
+/api/bootstrap      bootStrapProject()    registerAction($action)		  -		      x
+/api/repair         repairProject()       registerAction('repair')	  -		      x
+```

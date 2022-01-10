@@ -21,6 +21,18 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-The replication agent responds to freeze and unfreeze events, and ensures
-that all frozen files are properly replicated, and copies of unfrozen files
+The replication agent (which is a RabbitMQ consumer) responds to freeze and unfreeze events, 
+and ensures that all frozen files are properly replicated, and copies of unfrozen files
 are properly purged.
+
+The replication agent handles events from the following RabbitMQ queues:
+
+1) Standard actions (user-initiated):
+
+- replication
+- replication-failed
+
+2) Batch actions (admin-initiated)
+
+- batch-replication
+- batch-replication-failed

@@ -70,6 +70,22 @@ EXCHANGES = [
             { 'name': 'replication' }
         ]
     },
+    {
+        'name': 'batch-actions',
+        'type': 'fanout',
+        'arguments': {},
+        'queues': [
+            { 'name': 'batch-metadata' },
+        ]
+    },
+    {
+        'name': 'batch-replication',
+        'type': 'fanout',
+        'arguments': {},
+        'queues': [
+            { 'name': 'batch-replication' }
+        ]
+    },
 ]
 
 SUCCESS_CODES = (200, 201, 204)
@@ -118,7 +134,7 @@ def _publish_action(args):
     pid = argv[1]
     action_json = _get_action_from_ida(pid)
     print('Publishing action %s:\n%s\n...' % (pid, str(action_json)))
-    publish_action_messages('actions', action_json)
+    publish_action_messages('batch-actions', action_json)
     print('Action published')
 
 if __name__ == '__main__':
