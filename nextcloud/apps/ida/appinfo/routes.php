@@ -243,6 +243,7 @@ return [
             'url'  => '/api/bootstrap',
             'verb' => 'POST'
             // Restricted to PSO user. Project name is derived from PSO username
+            // This API call uses the 'batch-actions' RabbitMQ exchange
         ],
         
         // Project Repair Operations
@@ -253,6 +254,7 @@ return [
             'url'  => '/api/repair',
             'verb' => 'POST'
             // Restricted to PSO user. Project name is derived from PSO username
+            // This API call uses the 'batch-actions' RabbitMQ exchange
         ],
         
         // Scope Intersection Tests

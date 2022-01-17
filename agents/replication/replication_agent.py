@@ -34,22 +34,26 @@ class ReplicationAgent(GenericAgent):
 
     def __init__(self):
         super(ReplicationAgent, self).__init__()
+
+        # Queue initialization
         self.main_queue_name = 'replication'
         self.failed_queue_name = 'replication-failed'
+        self.main_batch_queue_name = 'batch-replication'
+        self.failed_batch_queue_name = 'batch-replication-failed'
 
         # diagnostic variables for development and testing
         self.last_number_of_files_replicated = 0
 
-    def process_queue(self, channel, method, properties, action):
+    def process_queue(self, channel, method, properties, action, queue):
         """
         The main method which executes a single action.
         """
         if action['action'] == 'freeze' or action['action'] == 'repair':
-            self._handle_freeze_action(action, method)
+            self._handle_freeze_action(action, method, queue)
         else:
             self._logger.error('Action type = %s is not something we can handle...' % action['action'])
 
-    def _handle_freeze_action(self, action, method):
+    def _handle_freeze_action(self, action, method, queue):
         if self._sub_action_processed(action, 'replication'):
             self._logger.info('Replication already processed')
         else:
@@ -57,7 +61,7 @@ class ReplicationAgent(GenericAgent):
                 self._process_replication(action)
             except Exception as e:
                 self._logger.exception('Replication processing failed')
-                self._republish_or_fail_action(method, action, 'replication', e)
+                self._republish_or_fail_action(method, action, 'replication', queue, e)
                 return
         self._ack_message(method)
 
@@ -176,7 +180,7 @@ class ReplicationAgent(GenericAgent):
         node['_updated'] = True
         node['_copied'] = True
 
-    def _republish_or_fail_action(self, method, action, sub_action_name, exception):
+    def _republish_or_fail_action(self, method, action, sub_action_name, queue, exception):
         """
         Parameter 'method' is rabbitmq message method, needed to ack the message.
 
@@ -185,7 +189,13 @@ class ReplicationAgent(GenericAgent):
         if isinstance(exception, ReplicationRootNotMounted):
             # probably a service break or such. failure does not count towards retry attempts
             try:
-                self.publish_message(action, routing_key='%s-failed-waiting' % sub_action_name, exchange='actions-failed')
+                if queue == 'replication' or queue == 'replication-failed':
+                    used_exchange = 'actions-failed'
+                elif queue == 'batch-replication' or queue == 'batch-replication-failed':
+                    used_exchange = 'batch-actions-failed'
+                else:
+                    used_exchange = 'actions-failed'
+                self.publish_message(action, routing_key='%s-failed-waiting' % sub_action_name, exchange=used_exchange)
             except Exception:
                 self._logger.warning(
                     'Action republish failed. Message will return to original '
@@ -194,7 +204,7 @@ class ReplicationAgent(GenericAgent):
             else:
                 self._ack_message(method)
         else:
-            return super(ReplicationAgent, self)._republish_or_fail_action(method, action, sub_action_name, exception)
+            return super(ReplicationAgent, self)._republish_or_fail_action(method, action, sub_action_name, queue, exception)
 
 
 if __name__ == '__main__':

@@ -57,14 +57,21 @@ class GenericAgent():
             self.__class__.__name__,
             self._process_pid
         )
-        self.name = self._get_name()    # name of the agent, displayed in logs
-        self.main_queue_name = None     # the queue with original, new actions
-        self.failed_queue_name = None   # the queue with republished, failed actions
-        self.rabbitmq_message = None    # the currently being processed message from a queue
+        self.name = self._get_name()        # The name of the agent, displayed in logs
+
+        # Normal queues
+        self.main_queue_name = None         # Queue with original, new actions
+        self.failed_queue_name = None       # Queue with republished, failed actions
+
+        # Batch queues
+        self.main_batch_queue_name = None   # Queue with original, new batch actions
+        self.failed_batch_queue_name = None  # Queue with republished, failed batch actions
+
+        self.rabbitmq_message = None        # The message currently being processed from a queue
         self._graceful_shutdown_started = False
         self.gevent = None
 
-        # diagnostic variables for development and testing
+        # Diagnostic variables for development and testing
         self.last_completed_sub_action = {}
         self.last_failed_action = {}
         self.last_updated_action = {}
@@ -73,7 +80,7 @@ class GenericAgent():
         self.connect()
         self._cleanup_old_sentinel_monitoring_files()
 
-        # on process close, try to remove sentinel monitoring files
+        # On process close, try to remove sentinel monitoring files
         signal.signal(signal.SIGTERM, lambda signal, frame: self._signal_shutdown_started())
         signal.signal(signal.SIGINT, lambda signal, frame: self._signal_shutdown_started())
 
@@ -159,16 +166,31 @@ class GenericAgent():
 
         while True:
 
+            # Add offline sentinel code here
+            
+
             while self.messages_in_queue(self.failed_queue_name):
-                # messages in the failed-queue are only published when their
+                # Messages in the failed standard queue are only published when their
                 # retry-delay has passed, so these messages are ripe for retry,
                 # and have higher priority than new messages.
-                # process messages in queue until it is empty, and then
-                # start processing new messages
+                #
+                # Process messages in the failed standard queue until it is empty,
+                # then start processing new messages.
+                #
                 self.consume_one(self.failed_queue_name)
 
             if self.messages_in_queue(self.main_queue_name):
+                # This consumes messages from the main standard queue
                 self.consume_one(self.main_queue_name)
+            else:
+                # When all messages are consumed from the standard queues, start consuming
+                # messages from the batch queues (failed_batch_queue and main_batch_queue)
+                self._logger.info('Started consuming queue %s' % self.main_batch_queue_name)
+
+                while self.messages_in_queue(self.failed_batch_queue_name):
+                    self.consume_one(self.failed_batch_queue_name)
+                if self.messages_in_queue(self.main_batch_queue_name):
+                    self.consume_one(self.main_batch_queue_name)
 
             if self.gevent:
                 # other agents being executed in the same process. the main loop will
@@ -210,7 +232,7 @@ class GenericAgent():
 
             if action:
                 self._logger.info('Started processing %s-action with pid %s' % (action['action'], action['pid']))
-                self.process_queue(self._channel, method, properties, action)
+                self.process_queue(self._channel, method, properties, action, queue)
             else:
                 self._logger.info(
                     'Rabbitmq message did not match an action in IDA. Discarding. Received: %s'
@@ -226,7 +248,7 @@ class GenericAgent():
             raise
         except:
             self._logger.exception(
-                'Unhandled exception durin process_queue(). Rejecting message back to original queue,'
+                'Unhandled exception during process_queue(). Rejecting message back to original queue,'
                 ' hopefully the problem will be fixed by then.'
             )
             try:
@@ -409,7 +431,7 @@ class GenericAgent():
             return self.rabbitmq_message[sub_action_retry_info]['retry'] < self._settings['retry_policy'][sub_action_name]['max_retries']
         return True
 
-    def _republish_or_fail_action(self, method, action, sub_action_name, exception):
+    def _republish_or_fail_action(self, method, action, sub_action_name, queue, exception):
         """
         All exceptions raised during message processing go through this method, where
         the exception is evaluated whether or not it should be retried.

@@ -441,6 +441,8 @@ class FreezingController extends Controller
      * If the user is the PSO user, and a specified token parameter matches the batch action token
      * defined in the service configuration, no file limit will be imposed.
      *
+     * This function uses either the 'actions' or the 'batch-actions' RabbitMQ exchange
+     *
      * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
      * @param string $project         project to which the files belong
      * @param string $pathname        relative pathname of the root node of the scope to be frozen, within the root staging folder
@@ -513,11 +515,22 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
 
+            // If $token is defined, it means that this is a batch action, and $batch should be true
+            if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ) {
+                $batch = true;
+                Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
+            } else {
+                $batch = false;
+                Util::writeLog('ida', '$token is not set, proceeding with normal action', \OCP\Util::INFO);
+            }
+
             // Store freeze action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked.
 
-            $actionEntity = $this->registerAction($nextcloudNodeId, 'freeze', $project, $this->userId, $pathname);
+            $actionEntity = $this->registerAction($nextcloudNodeId, 'freeze', $project, $this->userId, $pathname, $batch);
 
             // Ensure specified pathname identifies a node in the staging area
 
@@ -610,7 +623,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($actionEntity);
+            $this->publishActionMessage($actionEntity, $batch);
 
             // Unlock project and return new action details
 
@@ -640,6 +653,8 @@ class FreezingController extends Controller
      *
      * If the user is the PSO user, and a specified token parameter matches the batch action token
      * defined in the service configuration, no file limit will be imposed.
+     *
+     * This function uses either the 'actions' or the 'batch-actions' RabbitMQ exchange
      *
      * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
      * @param string $project         project to which the files belong
@@ -713,11 +728,22 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
 
+            // If $token is defined, it means that this is a batch action, and $batch should be true
+            if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ) {
+                $batch = true;
+                Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
+            } else {
+                $batch = false;
+                Util::writeLog('ida', '$token is not set, proceeding with normal action', \OCP\Util::INFO);
+            }
+
             // Store unfreeze action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked.
 
-            $actionEntity = $this->registerAction($nextcloudNodeId, 'unfreeze', $project, $this->userId, $pathname);
+            $actionEntity = $this->registerAction($nextcloudNodeId, 'unfreeze', $project, $this->userId, $pathname, $batch);
 
             // Ensure specified pathname identifies a node in the frozen area
 
@@ -805,7 +831,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($actionEntity);
+            $this->publishActionMessage($actionEntity, $batch);
 
             // Unlock project and return new action details
 
@@ -835,6 +861,8 @@ class FreezingController extends Controller
      *
      * If the user is the PSO user, and a specified token parameter matches the batch action token
      * defined in the service configuration, no file limit will be imposed.
+     *
+     * This function uses either the 'actions' or the 'batch-actions' RabbitMQ exchange
      *
      * @param int    $nextcloudNodeId Nextcloud node ID of the root node specifying the scope
      * @param string $project         project to which the files belong
@@ -909,11 +937,22 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
 
+            // If $token is defined, it means that this is a batch action, and $batch should be true
+            if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ) {
+                $batch = true;
+                Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
+            } else {
+                $batch = false;
+                Util::writeLog('ida', '$token is not set, proceeding with normal action', \OCP\Util::INFO);
+            }
+
             // Store delete action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked.
 
-            $actionEntity = $this->registerAction($nextcloudNodeId, 'delete', $project, $this->userId, $pathname);
+            $actionEntity = $this->registerAction($nextcloudNodeId, 'delete', $project, $this->userId, $pathname, $batch);
 
             // Ensure specified pathname identifies a node in the frozen area
 
@@ -997,7 +1036,7 @@ class FreezingController extends Controller
                 $this->actionMapper->update($actionEntity);
             } else {
 
-                $this->publishActionMessage($actionEntity);
+                $this->publishActionMessage($actionEntity, $batch);
             }
 
             // Unlock project and return new action details
@@ -1094,6 +1133,17 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
             }
 
+            // If $token is defined, it means that this is a batch action, and $batch should be true
+            if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
+            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ) {
+                $batch = true;
+                Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
+            } else {
+                $batch = false;
+                Util::writeLog('ida', '$token is not set, proceeding with normal action', \OCP\Util::INFO);
+            }
+
             // Store retry action details (the action will be deleted if a conflict arises).
             // Creating the action immediately ensures that any attempted operations in the staging area with an
             // intersecting scope will be blocked. Create new retry action with failed action details.
@@ -1103,7 +1153,8 @@ class FreezingController extends Controller
                 $failedActionEntity->getAction(),
                 $failedActionEntity->getProject(),
                 $failedActionEntity->getUser(),
-                $failedActionEntity->getPathname()
+                $failedActionEntity->getPathname(),
+                $batch
             );
 
             // Set reference to failed action being retried
@@ -1232,7 +1283,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($retryActionEntity);
+            $this->publishActionMessage($retryActionEntity, $batch);
 
             // Unlock project and return new action details
 
@@ -1345,14 +1396,18 @@ class FreezingController extends Controller
      * @param string $project         the project to which the node belongs
      * @param string $user            the username of the user initiating the action
      * @param string $pathname        the relative pathname of the node within the shared project staging or frozen folder
+     * @param bool   $batch           specifies whether the action in question is a batch action or a normal action
      *
      * @return Entity
      * 
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    protected function registerAction($nextcloudNodeId, $action, $project, $user, $pathname)
+    protected function registerAction($nextcloudNodeId, $action, $project, $user, $pathname, $batch = false)
     {
+
+        // Convert boolean to string for logging
+        $batch_string = var_export($batch, true);
 
         Util::writeLog(
             'ida',
@@ -1361,7 +1416,8 @@ class FreezingController extends Controller
                 . ' action=' . $action
                 . ' project=' . $project
                 . ' user=' . $user
-                . ' pathname=' . $pathname,
+                . ' pathname=' . $pathname
+                . ' batch=' . $batch_string,
             \OCP\Util::INFO
         );
 
@@ -3184,6 +3240,7 @@ class FreezingController extends Controller
      * input pathnames will be bootstrapped.
      *
      * Restricted to PSO user. Project name is derived from PSO username
+     * This function uses the 'batch-actions' RabbitMQ exchange
      *
      * @param string $action    one of 'migrate-s' (staging) or 'migrate-f' (frozen)
      * @param array  $checksums associative array of pathname to checksum mappings
@@ -3259,7 +3316,7 @@ class FreezingController extends Controller
 
             $fileEntities = [];
 
-            $actionEntity = $this->registerAction(0, $action, $project, 'service', '/');
+            $actionEntity = $this->registerAction(0, $action, $project, 'service', '/', true);
             $timestamp = Generate::newTimestamp();
             $actionEntity->setStorage($timestamp);
             if ($action === 'migrate-f') {
@@ -3322,6 +3379,7 @@ class FreezingController extends Controller
      * active frozen file records will be associated with a special 'repair' action.
      *
      * Restricted to PSO user. Project name is derived from PSO username.
+     * This function uses the 'batch-actions' RabbitMQ exchange
      *
      * The project is suspended while the repair is ongoing, forcing the project into read-only mode.
      *
@@ -3384,7 +3442,7 @@ class FreezingController extends Controller
             // Create repair action, which will suspend project and keep project into read-only mode until the action
             // is recorded as completed, due to the root scope.
 
-            $repairActionEntity = $this->registerAction(0, 'repair', $project, 'service', '/');
+            $repairActionEntity = $this->registerAction(0, 'repair', $project, 'service', '/', true);
 
             // Retrieve all active frozen file records
 
@@ -3419,7 +3477,7 @@ class FreezingController extends Controller
 
             // Publish new action message to RabbitMQ
 
-            $this->publishActionMessage($repairActionEntity);
+            $this->publishActionMessage($repairActionEntity, true);
 
             // Unlock project
 
@@ -3495,11 +3553,12 @@ class FreezingController extends Controller
      * completed and no action message is published to rabbitmq.
      *
      * @param Entity $actionEntity database entity for the new action about which the message should be published
-     * 
+     * @param bool $batch specifies whether to use the actions or the batch-actions RabbitMQ exchange
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    protected function publishActionMessage($actionEntity)
+    protected function publishActionMessage($actionEntity, $batch = false)
     {
 
         $rabbitMQconnection = null;
@@ -3507,6 +3566,9 @@ class FreezingController extends Controller
         try {
 
             if ($actionEntity) {
+
+                // Convert boolean to string for logging
+                $batch_string = var_export($batch, true);
 
                 Util::writeLog(
                     'ida',
@@ -3516,7 +3578,8 @@ class FreezingController extends Controller
                         . ' project=' . $actionEntity->getProject()
                         . ' user=' . $actionEntity->getUser()
                         . ' pathname=' . $actionEntity->getPathname()
-                        . ' initiated=' . $actionEntity->getInitiated(),
+                        . ' initiated=' . $actionEntity->getInitiated()
+                        . ' batch=' . $batch_string,
                     \OCP\Util::INFO
                 );
 
@@ -3553,9 +3616,16 @@ class FreezingController extends Controller
                         throw $e;
                     }
 
+                    // Use 'batch-actions' exchange for batch actions, otherwise 'actions'
+                    if ($batch === true) {
+                        $exchange = 'batch-actions';
+                    } else {
+                        $exchange = 'actions';
+                    }
+
                     $channel = $rabbitMQconnection->channel();
                     $message = new AMQPMessage(json_encode($actionEntity));
-                    $channel->basic_publish($message, 'actions', $actionEntity->getAction());
+                    $channel->basic_publish($message, $exchange, $actionEntity->getAction());
                     $channel->close();
                     $rabbitMQconnection->close();
 
