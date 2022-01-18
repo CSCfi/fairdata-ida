@@ -166,8 +166,15 @@ class GenericAgent():
 
         while True:
 
-            # Add offline sentinel code here
-            
+            sleeping_logged = False
+
+            # Do not consume messages if the sentinel offline file exists
+            while self._is_offline():
+                # Log sleeping only the first time
+                if not sleeping_logged:
+                    self._logger.info('Sentinel offline file present. Sleeping...')
+                    sleeping_logged = True
+                sleep(60)
 
             while self.messages_in_queue(self.failed_queue_name):
                 # Messages in the failed standard queue are only published when their
@@ -623,6 +630,16 @@ class GenericAgent():
         if checksum.startswith('sha256:'):
             return checksum
         return 'sha256:%s' % checksum
+
+    def _is_offline(self):
+        """
+        Check if the sentinel offline file exists.
+        """
+        _sentinel_offline_file = "%s/control/OFFLINE" % self._uida_conf_vars['STORAGE_OC_DATA_ROOT']
+        if os.path.isfile(_sentinel_offline_file):
+            return True
+        else:
+            return False
 
     def _set_sentinel_monitoring_file(self, action_pid):
         """
