@@ -1763,10 +1763,3 @@ doesnotexist:-o-prefocus, .strengthify-wrapper {
 		}
 	}
 }
-
-label {
-	color: currentColor;
-	display: inline-block;
-	pointer-events: none;
-	text-decoration: none;
-}
