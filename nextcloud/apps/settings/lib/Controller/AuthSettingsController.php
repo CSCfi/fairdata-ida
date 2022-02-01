@@ -50,8 +50,10 @@ use OCP\ILogger;
 use OCP\IRequest;
 use OCP\ISession;
 use OCP\IUserSession;
+use OCP\Util;
 use OCP\Security\ISecureRandom;
 use OCP\Session\Exceptions\SessionNotAvailableException;
+use \Firebase\JWT\JWT;
 
 class AuthSettingsController extends Controller {
 
@@ -121,8 +123,14 @@ class AuthSettingsController extends Controller {
 	 * @return JSONResponse
 	 */
 	public function create($name) {
+
+		Util::writeLog('Settings', 'AuthSettingsController.php: create: name=' . $name, \OCP\Util::DEBUG);
+
 		if ($this->checkAppToken()) {
-			return $this->getServiceNotAvailableResponse();
+			// If app_token isn't SSO token, reject request
+			if ($this->session->get('app_password') != \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD')) {
+			    return $this->getServiceNotAvailableResponse();
+			}
 		}
 
 		try {
@@ -134,18 +142,36 @@ class AuthSettingsController extends Controller {
 			return $this->getServiceNotAvailableResponse();
 		}
 
-		try {
-			$sessionToken = $this->tokenProvider->getToken($sessionId);
-			$loginName = $sessionToken->getLoginName();
-			try {
-				$password = $this->tokenProvider->getPassword($sessionToken, $sessionId);
-			} catch (PasswordlessTokenException $ex) {
-				$password = null;
+		if ($this->session->get('app_password') == \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD')) {
+		    $hostname = $_SERVER['SERVER_NAME'];
+		    $domain = substr($hostname, strpos($hostname, '.') + 1);
+		    $prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+ 
+		    if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
+ 
+			    $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+			    $session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+    
+			    if ($session) {
+		            $password = \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD'); 
+					$loginName = $session->fairdata_user->id;
+			    }
 			}
-		} catch (InvalidTokenException $ex) {
-			return $this->getServiceNotAvailableResponse();
 		}
-
+		else {
+		    try {
+			    $sessionToken = $this->tokenProvider->getToken($sessionId);
+			    $loginName = $sessionToken->getLoginName();
+			    try {
+				    $password = $this->tokenProvider->getPassword($sessionToken, $sessionId);
+			    } catch (PasswordlessTokenException $ex) {
+				    $password = null;
+			    }
+		    } catch (InvalidTokenException $ex) {
+			    return $this->getServiceNotAvailableResponse();
+		    }
+		}
+    
 		$token = $this->generateRandomDeviceToken();
 		$deviceToken = $this->tokenProvider->generateToken($token, $this->uid, $loginName, $password, $name, IToken::PERMANENT_TOKEN);
 		$tokenData = $deviceToken->jsonSerialize();
@@ -178,6 +204,9 @@ class AuthSettingsController extends Controller {
 	 * @return string
 	 */
 	private function generateRandomDeviceToken() {
+
+		Util::writeLog('Settings', 'AuthSettingsController.php: generateRandomDeviceToken', \OCP\Util::DEBUG);
+
 		$groups = [];
 		for ($i = 0; $i < 5; $i++) {
 			$groups[] = $this->random->generate(5, ISecureRandom::CHAR_HUMAN_READABLE);
@@ -186,6 +215,10 @@ class AuthSettingsController extends Controller {
 	}
 
 	private function checkAppToken(): bool {
+
+		Util::writeLog('Settings', 'AuthSettingsController.php: checkApptoken', \OCP\Util::DEBUG);
+		Util::writeLog('Settings', 'AuthSettingsController.php: exists(app_password)=' . json_encode($this->session->exists('app_password')), \OCP\Util::DEBUG);
+
 		return $this->session->exists('app_password');
 	}
 
@@ -198,7 +231,10 @@ class AuthSettingsController extends Controller {
 	 */
 	public function destroy($id) {
 		if ($this->checkAppToken()) {
-			return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+			// If app_token isn't SSO token, reject request
+			if ($this->session->get('app_password') != \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD')) {
+			    return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+			}
 		}
 
 		try {
@@ -226,7 +262,10 @@ class AuthSettingsController extends Controller {
 	 */
 	public function update($id, array $scope, string $name) {
 		if ($this->checkAppToken()) {
-			return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+			// If app_token isn't SSO token, reject request
+			if ($this->session->get('app_password') != \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD')) {
+			    return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+			}
 		}
 
 		try {
@@ -264,6 +303,8 @@ class AuthSettingsController extends Controller {
 			->setAuthor($this->uid)
 			->setSubject($subject, $parameters)
 			->setObject('app_token', $id, 'App Password');
+
+		\OCP\Util::writeLog('Settings', 'AuthSettingsController.php: publishActivity uid=' . json_encode($this->uid) . ' subject=' . json_encode($subject) . ' parameters=' . json_encode($parameters), \OCP\Util::DEBUG);
 
 		try {
 			$this->activityManager->publish($event);
@@ -304,7 +345,10 @@ class AuthSettingsController extends Controller {
 	 */
 	public function wipe(int $id): JSONResponse {
 		if ($this->checkAppToken()) {
-			return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+			// If app_token isn't SSO token, reject request
+			if ($this->session->get('app_password') != \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD')) {
+			    return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+			}
 		}
 
 		try {
