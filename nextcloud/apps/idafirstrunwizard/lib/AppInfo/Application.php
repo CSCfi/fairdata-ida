@@ -110,6 +110,8 @@ class Application extends App {
 	}
 
 	protected function registerNotificationNotifier() {
+		$this->getContainer()->getServer()->getNotificationManager()->registerNotifierService(Notifier::class);
+		/*
 		$this->getContainer()->getServer()->getNotificationManager()->registerNotifier(function() {
 			return $this->getContainer()->query(Notifier::class);
 		}, function() {
@@ -119,5 +121,6 @@ class Application extends App {
 				'name' => $l->t('IDA first run wizard'),
 			];
 		});
+		*/
 	}
 }
