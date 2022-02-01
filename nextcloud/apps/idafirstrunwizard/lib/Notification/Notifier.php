@@ -85,7 +85,7 @@ class Notifier implements INotifier {
 	 * @throws \InvalidArgumentException When the notification was not prepared by a notifier
 	 * @since 9.0.0
 	 */
-	public function prepare(INotification $notification, $languageCode) {
+	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== 'idafirstrunwizard') {
 			// Not my app => throw
 			throw new \InvalidArgumentException();
@@ -109,6 +109,10 @@ class Notifier implements INotifier {
 				throw new \InvalidArgumentException();
 		}
 	}
+
+	public function getID(): string { return "idafirstrunwizard"; }
+
+	public function getName(): string { return "IDA first run wizard"; }
 
 	/**
 	 * @param INotification $notification
