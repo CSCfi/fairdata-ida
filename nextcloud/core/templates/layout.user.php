@@ -61,6 +61,7 @@ function FDWEActive()
 		<header role="banner" id="header">
 			<div class="header-left">
 				<a href="<?php print_unescaped(link_to('', 'index.php')); ?>"
+					style=" color: currentColor; display: inline-block; pointer-events: none; text-decoration: none;"
 					id="nextcloud">
 					<div class="logo logo-icon">
 						<h1 class="hidden-visually">
