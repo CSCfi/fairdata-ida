@@ -35,7 +35,14 @@ script('files', 'jquery.fileupload');
 		<?php
 		}
 		foreach ($_['forms']['personal'] as $form) {
-			if (isset ($form['section-name']) && ($form['section-name'] == 'Personal info' || $form['section-name'] == 'Security') && isset($form['anchor'])) {
+			if (isset ($form['section-name'])
+			    && ($form['section-name'] == 'Personal info'
+				    || $form['section-name'] == 'Security'
+				    || $form['section-name'] == 'Henkilökohtaiset tiedot'
+				    || $form['section-name'] == 'Turvallisuus'
+				    || $form['section-name'] == 'Personlig information'
+				    || $form['section-name'] == 'Säkerhet')
+				&& isset($form['anchor'])) {
 				$anchor = \OC::$server->getURLGenerator()->linkToRoute('settings.PersonalSettings.index', ['section' => $form['anchor']]);
 				$class = 'nav-icon-' . $form['anchor'];
 				$sectionName = $form['section-name'];
