@@ -26,19 +26,23 @@
 }
 
 #frozenFile:focus {
-  outline-offset: 5px;
+    outline-width: 0;
 }
 
 #frozenFolder:focus {
-  outline-offset: 5px;
+    outline-width: 0;
+}
+
+#frozenFolderPending:focus {
+    outline-width: 0;
 }
 
 #stagingFile:focus {
-  outline-offset: 5px;
+    outline-width: 0;
 }
 
 #stagingFolder:focus {
-  outline-offset: 5px;
+    outline-width: 0;
 }
 
 #idaTabView input {

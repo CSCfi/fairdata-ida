@@ -37,8 +37,8 @@ for PATHNAME in `./list-modified-files`; do
     NEWPATHNAME=`echo "${PATHNAME}" | sed -e 's/nextcloud/nextcloud-new/'`
     if [ -s "${NEWPATHNAME}" ]; then
         DIRS=`dirname "${PATHNAME}"`
-        mkdir -p "./diffs-old-new${DIRS}"
-        diff $OPTS "${NEWPATHNAME}" "${OLDPATHNAME}" > "./diffs-old-new${PATHNAME}.diff" 
+        mkdir -p "./diffs/diffs-old-new${DIRS}"
+        diff $OPTS "${NEWPATHNAME}" "${OLDPATHNAME}" > "./diffs/diffs-old-new${PATHNAME}.diff" 
     fi
 done
 
