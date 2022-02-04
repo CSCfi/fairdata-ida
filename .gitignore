@@ -19,6 +19,7 @@ project.sublime-project
 /venv
 /snapshots
 /storage
+/modifications/diffs
 tmp/
 __pycache__/
 /nextcloud/config

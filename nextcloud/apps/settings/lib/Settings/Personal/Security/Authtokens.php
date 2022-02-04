@@ -37,6 +37,7 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\ISession;
 use OCP\Session\Exceptions\SessionNotAvailableException;
 use OCP\Settings\ISettings;
+use \Firebase\JWT\JWT;
 
 class Authtokens implements ISettings {
 
@@ -91,23 +92,35 @@ class Authtokens implements ISettings {
 
 	private function getAppTokens(): array {
 		$tokens = $this->tokenProvider->getTokenByUser($this->uid);
+		$sessionToken = null;
+		$session = null;
 
-		try {
-			$sessionId = $this->session->getId();
-		} catch (SessionNotAvailableException $ex) {
-			return [];
+		$hostname = $_SERVER['SERVER_NAME'];
+		$domain = substr($hostname, strpos($hostname, '.') + 1);
+		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
+		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
+			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
+			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
 		}
-		try {
-			$sessionToken = $this->tokenProvider->getToken($sessionId);
-		} catch (InvalidTokenException $ex) {
-			return [];
+
+		if (!$session || $session->fairdata_user->id != $this->uid) {
+		    try {
+			    $sessionId = $this->session->getId();
+		    } catch (SessionNotAvailableException $ex) {
+			    return [];
+		    }
+		    try {
+			    $sessionToken = $this->tokenProvider->getToken($sessionId);
+		    } catch (InvalidTokenException $ex) {
+			    return [];
+		    }
 		}
 
 		return array_map(function (IToken $token) use ($sessionToken) {
 			$data = $token->jsonSerialize();
 			$data['canDelete'] = true;
 			$data['canRename'] = $token instanceof INamedToken;
-			if ($sessionToken->getId() === $token->getId()) {
+			if ($sessionToken && $sessionToken->getId() === $token->getId()) {
 				$data['canDelete'] = false;
 				$data['canRename'] = false;
 				$data['current'] = true;

@@ -39,8 +39,8 @@ for PATHNAME in `./list-modified-files`; do
         diff $OPTS "${NEWPATHNAME}" "${OLDPATHNAME}.original" > "/tmp/$$.diff" 
         if [ -s "/tmp/$$.diff" ]; then
             DIRS=`dirname "${PATHNAME}"`
-            mkdir -p "./diffs-old-new-original${DIRS}"
-            mv "/tmp/$$.diff" "./diffs-old-new-original${PATHNAME}.diff" 
+            mkdir -p "./diffs/diffs-old-new-original${DIRS}"
+            mv "/tmp/$$.diff" "./diffs/diffs-old-new-original${PATHNAME}.diff" 
         fi
     fi
 done

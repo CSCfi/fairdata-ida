@@ -568,6 +568,7 @@
 
                 var fileInfo = this.fileInfo;
                 var fullPath = fileInfo.getFullPath();
+                var idaTabSegment = null;
 
                 this.$el.find('#spinner').hide();
                 this.$el.find('#freezeFolderButton').bind('click', { param: fileInfo }, freezeFolder);
@@ -583,8 +584,9 @@
                 if (isFrozen) {
 
                     if (isFolder) {
-                        this.$el.find('#frozenFolder').show();
-                        this.$el.find('#frozenFolder').focus();
+                        idaTabSegment = this.$el.find('#frozenFolder');
+                        idaTabSegment.show();
+                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                     }
 
                     else {
@@ -618,11 +620,13 @@
                                     success: function (actionInfo) {
 
                                         var isPending = actionInfo ? !(actionInfo['completed'] || actionInfo['failed'] || actionInfo['cleared']) : false;
+                                        var idaTabSegment = null;
 
                                         if (isPending) {
                                             $(document).find('#frozenFilePendingAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
-                                            $(document).find('#frozenFilePending').show();
-                                            $(document).find('#frozenFilePending').focus();
+                                            idaTabSegment = $(document).find('#frozenFilePending');
+                                            idaTabSegment.show();
+                                            setTimeout(() => { idaTabSegment.focus(); }, 300);
                                         }
                                         else {
                                             $(document).find('#frozenFileAction').html('<a href="/apps/ida/action/' + actionPid + '">' + actionPid + '</a>');
@@ -630,35 +634,42 @@
                                             $(document).find('#frozenFileFrozen').html(fileFrozen);
                                             $(document).find('#frozenFileSize').html(fileSize);
                                             $(document).find('#frozenFileChecksum').html(fileChecksum);
-                                            $(document).find('#frozenFile').show();
-                                            $(document).find('#frozenFile').focus();
+                                            idaTabSegment = $(document).find('#frozenFile');
+                                            idaTabSegment.show();
+                                            setTimeout(() => { idaTabSegment.focus(); }, 300);
                                         }
                                     },
 
                                     error: function (x) {
                                         // This shouldn't ever happen, but we'll fail gracefully...
-                                        $(document).find('#frozenFile').show();
-                                        $(document).find('#frozenFile').focus();
+                                        var idaTabSegment = null;
+                                        idaTabSegment = $(document).find('#frozenFile');
+                                        idaTabSegment.show();
+                                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                                     }
                                 });
                             },
 
                             error: function (x) {
                                 // This shouldn't ever happen, but we'll fail gracefully...
-                                $(document).find('#frozenFile').show();
-                                $(document).find('#frozenFile').focus();
+                                var idaTabSegment = null;
+                                idaTabSegment = $(document).find('#frozenFile');
+                                idaTabSegment.show();
+                                setTimeout(() => { idaTabSegment.focus(); }, 300);
                             }
                         });
                     }
                 }
                 else {
                     if (isFolder) {
-                        this.$el.find('#stagingFolder').show();
-                        this.$el.find('#stagingFolder').focus();
+                        idaTabSegment = this.$el.find('#stagingFolder');
+                        idaTabSegment.show();
+                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                     }
                     else {
-                        this.$el.find('#stagingFile').show();
-                        this.$el.find('#stagingFile').focus();
+                        idaTabSegment = this.$el.find('#stagingFile');
+                        idaTabSegment.show();
+                        setTimeout(() => { idaTabSegment.focus(); }, 300);
                     }
                 }
 

@@ -32,7 +32,7 @@ OPTS="-u --ignore-all-space --ignore-blank-lines"
 
 for PATHNAME in `./list-new-modified-files`; do
     DIRS=`dirname "${PATHNAME}"`
-    mkdir -p "./diffs-new-modified${DIRS}"
-    diff $OPTS "${PATHNAME}" "${PATHNAME}.original" > "./diffs-new-modified${PATHNAME}.diff" 
+    mkdir -p "./diffs/diffs-new-modified${DIRS}"
+    diff $OPTS "${PATHNAME}" "${PATHNAME}.original" > "./diffs/diffs-new-modified${PATHNAME}.diff" 
 done
 

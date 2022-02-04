@@ -5457,9 +5457,13 @@
         "use strict";
 
         function o() {
+            console.log("t=" + JSON.stringify(t) + " e=" + JSON.stringify(e));
+            return Promise.resolve();
+            /*
             return "undefined" == typeof OC ? Promise.reject(new Error("OC not defined")) : void 0 === OC.PasswordConfirmation ? Promise.reject(new Error("OC.PasswordConfirmation not defined")) : OC.PasswordConfirmation.requiresPasswordConfirmation() ? new Promise((function(t, e) {
                 OC.PasswordConfirmation.requirePasswordConfirmation(t, {}, e)
             })) : Promise.resolve()
+            */
         }
         n.r(e), n.d(e, "default", (function() {
             return o
@@ -43756,7 +43760,7 @@
                                 return e.stopPropagation(), e.preventDefault(), t.revoke.apply(null, arguments)
                             }
                         }
-                    }, [t._v("\n\t\t\t\t\t\t" + t._s(t.t("settings", "Revoke")) + "\n\t\t\t\t\t")]), t._v(" "), n("ActionButton", {
+                    }, [t._v("\n\t\t\t\t\t\t" + t._s(t.t("settings", "Revoke")) + "\n\t\t\t\t\t")]), /* t._v(" "), n("ActionButton", {
                         attrs: {
                             "icon": "icon-delete"
                         },
@@ -43765,7 +43769,7 @@
                                 return e.stopPropagation(), e.preventDefault(), t.wipe.apply(null, arguments)
                             }
                         }
-                    }, [t._v("\n\t\t\t\t\t\t" + t._s(t.t("settings", "Wipe device")) + "\n\t\t\t\t\t")])] : 2 === t.token.type ? n("ActionButton", {
+                    }, [t._v("\n\t\t\t\t\t\t" + t._s(t.t("settings", "Wipe device")) + "\n\t\t\t\t\t")])*/] : 2 === t.token.type ? n("ActionButton", {
                         attrs: {
                             "icon": "icon-delete",
                             "title": t.t("settings", "Revoke")
