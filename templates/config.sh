@@ -69,6 +69,7 @@ OCC="$ROOT/nextcloud/occ"
 LOG="/mnt/storage_vol01/log/ida-test.log"
 
 IDA_API_ROOT_URL="https://localhost/apps/ida/api"
+IDA_CLI_ROOT="/var/ida-tools"
 
 URL_BASE_SHARE='https://localhost/ocs/v1.php/apps/files_sharing/api/v1/shares'
 URL_BASE_FILE='https://localhost/remote.php/webdav'
