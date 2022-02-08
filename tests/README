@@ -26,6 +26,10 @@ their related utilities and resources, used to validate proper behavior and
 functionality of the IDA service in a manner agnostic to its underlying 
 implementation.
 
+NOTE! The separate automated tests command line tools, located in the IDA
+command line tools repository, should be run against updated versions of
+the IDA service before deployment to production! 
+
 The organization of the test subdirectories mirror the organization of the code
 in general, such that each significant component within the /ida subtree should
 have a like named subdirectory with one or more tests.

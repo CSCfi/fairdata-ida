@@ -142,12 +142,6 @@ else
         exit 1
     fi
 
-    python -W ignore -m unittest discover -f -q tests.cli
-
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-
     python -W ignore -m unittest discover -f -q tests.agents
 
     if [ $? -ne 0 ]; then
