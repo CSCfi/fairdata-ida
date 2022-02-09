@@ -232,7 +232,7 @@ class Application extends App {
 				'script' => 'list.php',
 				'order' => 18,
 				'name' => $l->t('Shares'),
-				'classes' => 'collapsible',
+				'classes' => '',//'collapsible',
 				'sublist' => $sharingSublistArray,
 				'expandedState' => 'show_sharing_menu'
 			];
