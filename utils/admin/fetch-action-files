@@ -58,7 +58,7 @@ ACTION="$2"
 
 #--------------------------------------------------------------------------------
 
-URL="https://localhost/apps/ida/api/files/action/${ACTION}"
+URL="$IDA_API_ROOT_URL/files/action/${ACTION}"
 
 if [ "$DEBUG" = "true" ]
 then

@@ -60,7 +60,7 @@ INACTIVE="$3"
 
 #--------------------------------------------------------------------------------
 
-URL="https://localhost/apps/ida/api/files/${FILE}"
+URL="$IDA_API_ROOT_URL/files/${FILE}"
 
 if [ "$INACTIVE" = "-i" ]; then
     URL="${URL}?includeInactive=true"

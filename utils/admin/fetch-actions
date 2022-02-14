@@ -99,7 +99,7 @@ then
     fi
 fi
 
-URL="https://localhost/apps/ida/api/actions${STATUS_PARAMETER}${PROJECT_PARAMETER}"
+URL="$IDA_API_ROOT_URL/actions${STATUS_PARAMETER}${PROJECT_PARAMETER}"
 
 if [ "$DEBUG" = "true" ]
 then
