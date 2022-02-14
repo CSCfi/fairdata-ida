@@ -57,11 +57,11 @@ class TestAgents(unittest.TestCase):
 
         # ensure we start with a fresh setup of projects, user accounts, and data
 
-        cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
-        cmd = "sudo -u %s %s/tests/utils/initialize_max_files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
@@ -75,7 +75,7 @@ class TestAgents(unittest.TestCase):
 
         if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             os.system(cmd)
             if self.config["METAX_AVAILABLE"] != 1:
                 print('')

@@ -44,19 +44,22 @@
 # number of files in the scope of each subfolder below the "OneMillionFiles" folder
 # reflects the total number of files in that folder.
 #
-# E.g. if the limit is 500 files, then the generated hierarchy is as follows:
+# The generated hierarchy is as follows:
 #
-# /testdata//OneMillionFiles/test_file.dat
-# /testdata//OneMillionFiles/500_files/100_files_01/10_files_01/test_file_01.dat
-# /testdata//OneMillionFiles/500_files/100_files_01/10_files_01/...
-# /testdata//OneMillionFiles/500_files/100_files_01/10_files_01/test_file_10.dat
-# /testdata//OneMillionFiles/500_files/100_files_01/10_files_02/test_file_01.dat
-# /testdata//OneMillionFiles/500_files/100_files_01/...
-# /testdata//OneMillionFiles/500_files/100_files_01/10_files_10/test_file_10.dat
-# /testdata//OneMillionFiles/500_files/...
-# /testdata//OneMillionFiles/500_files/100_files_02/10_files_01/test_file_01.dat
-# /testdata//OneMillionFiles/500_files/...
-# /testdata//OneMillionFiles/500_files/100_files_05/10_files_10/test_file_10.dat
+# /testdata/OneMillionFiles/test_file.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_1/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_1/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_1/test_file_10.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_2/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_10/test_file_10.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_2/10_files_1/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_10/10_files_10/test_file_10.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_2/100_files_1/10_files_1/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_200/1000_files_10/100_files_10/10_files_10/test_file_10.dat
 #
 #--------------------------------------------------------------------------------
 . `dirname $0`/../../lib/init_script.sh
@@ -116,9 +119,9 @@ fi
 #--------------------------------------------------------------------------------
 
 ONE_MILLION_FILE_COUNT=1000000
-MAX_SET_COUNT=`echo "$ONE_MILLION_FILE_COUNT / 500" | bc`
+MAX_SET_COUNT=`echo "$ONE_MILLION_FILE_COUNT / 5000" | bc`
 
-echo "Generating $MAX_SET_COUNT multiples of 500 files"
+echo "Generating $MAX_SET_COUNT multiples of 5000 files"
 
 #--------------------------------------------------------------------------------
 
@@ -129,14 +132,17 @@ mkdir -p "${ONE_MILLION_FILES_FOLDER}/${ONE_MILLION_FILE_COUNT}_files"
 
 while [ $MAX_SET_COUNT -gt 0 ]; do
     echo -n "."
-    SET_DIR="${ONE_MILLION_FILES_FOLDER}/${ONE_MILLION_FILE_COUNT}_files/500_files_${MAX_SET_COUNT}"
+    SET_DIR="${ONE_MILLION_FILES_FOLDER}/${ONE_MILLION_FILE_COUNT}_files/5000_files_${MAX_SET_COUNT}"
     mkdir -p "${SET_DIR}"
     for i in "1" "2" "3" "4" "5"; do
-        mkdir -p "${SET_DIR}/100_files_${i}"
+        mkdir -p "${SET_DIR}/1000_files_${i}"
         for j in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
-            mkdir -p "${SET_DIR}/100_files_${i}/10_files_${j}"
+            mkdir -p "${SET_DIR}/1000_files_${i}/100_files_${j}"
             for k in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
-                touch "${SET_DIR}/100_files_${i}/10_files_${j}/test_file_${k}.dat"
+                mkdir -p "${SET_DIR}/1000_files_${i}/100_files_${j}/10_files_${k}"
+                for l in "1" "2" "3" "4" "5" "6" "7" "8" "9" "10"; do
+                    touch "${SET_DIR}/1000_files_${i}/100_files_${j}/10_files_${k}/test_file_${l}.dat"
+                done
             done
         done
     done

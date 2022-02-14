@@ -27,6 +27,7 @@
 # containing empty files.
 #
 # This script is safe to execute in any environment, including production.
+#
 
 # The project must ALREADY exist and the folder "MaxFiles" folder must NOT exist;
 # or else the script will exit with an error. This ensures against accidental
@@ -47,17 +48,17 @@
 #
 # E.g. if the limit is 500 files, then the generated hierarchy is as follows:
 #
-# /testdata//MaxFiles/test_file.dat
-# /testdata//MaxFiles/500_files/100_files_01/10_files_01/test_file_01.dat
-# /testdata//MaxFiles/500_files/100_files_01/10_files_01/...
-# /testdata//MaxFiles/500_files/100_files_01/10_files_01/test_file_10.dat
-# /testdata//MaxFiles/500_files/100_files_01/10_files_02/test_file_01.dat
-# /testdata//MaxFiles/500_files/100_files_01/...
-# /testdata//MaxFiles/500_files/100_files_01/10_files_10/test_file_10.dat
-# /testdata//MaxFiles/500_files/...
-# /testdata//MaxFiles/500_files/100_files_02/10_files_01/test_file_01.dat
-# /testdata//MaxFiles/500_files/...
-# /testdata//MaxFiles/500_files/100_files_05/10_files_10/test_file_10.dat
+# /testdata/MaxFiles/test_file.dat
+# /testdata/MaxFiles/5000_files/500_files_1/100_files_1/10_files_1/test_file_1.dat
+# /testdata/MaxFiles/5000_files/500_files_1/100_files_1/10_files_1/...
+# /testdata/MaxFiles/5000_files/500_files_1/100_files_1/10_files_1/test_file_10.dat
+# /testdata/MaxFiles/5000_files/500_files_1/100_files_1/10_files_2/test_file_1.dat
+# /testdata/MaxFiles/5000_files/500_files_1/100_files_1/...
+# /testdata/MaxFiles/5000_files/500_files_1/100_files_1/10_files_10/test_file_10.dat
+# /testdata/MaxFiles/5000_files/500_files_2/...
+# /testdata/MaxFiles/5000_files/500_files_2/100_files_2/10_files_1/test_file_1.dat
+# /testdata/MaxFiles/5000_files/500_files_5/...
+# /testdata/MaxFiles/5000_files/500_files_5/100_files_5/10_files_10/test_file_10.dat
 #
 #--------------------------------------------------------------------------------
 . `dirname $0`/../../lib/init_script.sh

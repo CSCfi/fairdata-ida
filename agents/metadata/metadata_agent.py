@@ -32,24 +32,29 @@ class MetadataAgent(GenericAgent):
     def __init__(self):
         super(MetadataAgent, self).__init__()
         self._metax_api_url = self._uida_conf_vars['METAX_API_ROOT_URL']
+
+        # Queue initialization
         self.main_queue_name = 'metadata'
         self.failed_queue_name = 'metadata-failed'
+        self.main_batch_queue_name = 'batch-metadata'
+        self.failed_batch_queue_name = 'batch-metadata-failed'
+
         self.file_storage = self._uida_conf_vars['METAX_FILE_STORAGE_ID']
 
-    def process_queue(self, channel, method, properties, action):
+    def process_queue(self, channel, method, properties, action, queue):
         """
         The main method which executes a single action.
         """
         if action['action'] == 'freeze':
-            self._handle_freeze_action(action, method)
+            self._handle_freeze_action(action, method, queue)
         elif action['action'] in ('unfreeze', 'delete'):
-            self._handle_unfreeze_action(action, method)
+            self._handle_unfreeze_action(action, method, queue)
         elif action['action'] == 'repair':
-            self._handle_repair_action(action, method)
+            self._handle_repair_action(action, method, queue)
         else:
             self._logger.error('Action type = %s is not something we can handle...' % action['action'])
 
-    def _handle_freeze_action(self, action, method):
+    def _handle_freeze_action(self, action, method, queue):
 
         # if sub-actions are being successfully executed sequentially, then
         # nodes downloaded during checksums processing will be re-used for
@@ -63,7 +68,7 @@ class MetadataAgent(GenericAgent):
                 nodes = self._process_checksums(action)
             except Exception as e:
                 self._logger.exception('Checksum processing failed')
-                self._republish_or_fail_action(method, action, 'checksums', e)
+                self._republish_or_fail_action(method, action, 'checksums', queue, e)
                 return
 
         if self._complete_actions_without_metax():
@@ -76,18 +81,24 @@ class MetadataAgent(GenericAgent):
                 self._process_metadata_publication(action, nodes)
             except Exception as e:
                 self._logger.exception('Metadata publication failed')
-                self._republish_or_fail_action(method, action, 'metadata', e)
+                self._republish_or_fail_action(method, action, 'metadata', queue, e)
                 return
 
         if self._sub_action_processed(action, 'replication'):
             self._logger.error('Replication already processed...? Okay... Something weird has happened here')
         else:
-            self.publish_message(action, exchange='replication')
+            if queue == 'metadata' or queue == 'metadata-failed':
+                used_exchange = 'replication'
+            elif queue == 'batch-metadata' or queue == 'batch-metadata-failed':
+                used_exchange = 'batch-replication'
+            else:
+                used_exchange = 'replication'
+            self.publish_message(action, exchange=used_exchange)
             self._logger.info('Publishing action %s to replication queue...' % action['pid'])
 
         self._ack_message(method)
 
-    def _handle_unfreeze_action(self, action, method):
+    def _handle_unfreeze_action(self, action, method, queue):
         if self._complete_actions_without_metax():
             self._logger.info('Note: Completing action without Metax')
             self._save_action_completion_timestamp(action, 'metadata')
@@ -99,11 +110,11 @@ class MetadataAgent(GenericAgent):
                 self._process_metadata_deletion(action)
             except Exception as e:
                 self._logger.exception('Metadata deletion failed')
-                self._republish_or_fail_action(method, action, 'metadata', e)
+                self._republish_or_fail_action(method, action, 'metadata', queue, e)
                 return
         self._ack_message(method)
 
-    def _handle_repair_action(self, action, method):
+    def _handle_repair_action(self, action, method, queue):
 
         # nodes obtained during checksums processing
         nodes = None
@@ -121,7 +132,7 @@ class MetadataAgent(GenericAgent):
                 nodes = self._process_checksums(action)
             except Exception as e:
                 self._logger.exception('Checksum processing failed')
-                self._republish_or_fail_action(method, action, 'checksums', e)
+                self._republish_or_fail_action(method, action, 'checksums', queue, e)
                 return
 
         # Repair published metadata as required
@@ -136,7 +147,7 @@ class MetadataAgent(GenericAgent):
                 self._process_metadata_repair(action, nodes)
             except Exception as e:
                 self._logger.exception('Metadata repair failed')
-                self._republish_or_fail_action(method, action, 'metadata', e)
+                self._republish_or_fail_action(method, action, 'metadata', queue, e)
                 return
 
         # Publish action message to replication queue
@@ -144,7 +155,13 @@ class MetadataAgent(GenericAgent):
         if self._sub_action_processed(action, 'replication'):
             self._logger.error('Replication already processed...? Okay... Something weird has happened here')
         else:
-            self.publish_message(action, exchange='replication')
+            if queue == 'metadata' or queue == 'metadata-failed':
+                used_exchange = 'replication'
+            elif queue == 'batch-metadata' or queue == 'batch-metadata-failed':
+                used_exchange = 'batch-replication'
+            else:
+                used_exchange = 'replication'
+            self.publish_message(action, exchange=used_exchange)
             self._logger.info('Publishing action %s to replication queue...' % action['pid'])
 
         self._ack_message(method)
@@ -540,7 +557,7 @@ class MetadataAgent(GenericAgent):
         without even trying to connect to metax.
 
         If value is 0, metax is not connected during action processing:
-        - freeze-actions are marked as completed once checksums have been
+        - freeze actions are marked as completed once checksums have been
           saved to nodes in IDA
         - unfreeze/delete actions are marked completed immediately
         """

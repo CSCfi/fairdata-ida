@@ -57,14 +57,21 @@ class GenericAgent():
             self.__class__.__name__,
             self._process_pid
         )
-        self.name = self._get_name()    # name of the agent, displayed in logs
-        self.main_queue_name = None     # the queue with original, new actions
-        self.failed_queue_name = None   # the queue with republished, failed actions
-        self.rabbitmq_message = None    # the currently being processed message from a queue
+        self.name = self._get_name()        # The name of the agent, displayed in logs
+
+        # Normal queues
+        self.main_queue_name = None         # Queue with original, new actions
+        self.failed_queue_name = None       # Queue with republished, failed actions
+
+        # Batch queues
+        self.main_batch_queue_name = None   # Queue with original, new batch actions
+        self.failed_batch_queue_name = None  # Queue with republished, failed batch actions
+
+        self.rabbitmq_message = None        # The message currently being processed from a queue
         self._graceful_shutdown_started = False
         self.gevent = None
 
-        # diagnostic variables for development and testing
+        # Diagnostic variables for development and testing
         self.last_completed_sub_action = {}
         self.last_failed_action = {}
         self.last_updated_action = {}
@@ -73,7 +80,7 @@ class GenericAgent():
         self.connect()
         self._cleanup_old_sentinel_monitoring_files()
 
-        # on process close, try to remove sentinel monitoring files
+        # On process close, try to remove sentinel monitoring files
         signal.signal(signal.SIGTERM, lambda signal, frame: self._signal_shutdown_started())
         signal.signal(signal.SIGINT, lambda signal, frame: self._signal_shutdown_started())
 
@@ -159,16 +166,38 @@ class GenericAgent():
 
         while True:
 
+            sleeping_logged = False
+
+            # Do not consume messages if the sentinel offline file exists
+            while self._is_offline():
+                # Log sleeping only the first time
+                if not sleeping_logged:
+                    self._logger.info('Sentinel offline file present. Sleeping...')
+                    sleeping_logged = True
+                sleep(60)
+
             while self.messages_in_queue(self.failed_queue_name):
-                # messages in the failed-queue are only published when their
+                # Messages in the failed standard queue are only published when their
                 # retry-delay has passed, so these messages are ripe for retry,
                 # and have higher priority than new messages.
-                # process messages in queue until it is empty, and then
-                # start processing new messages
+                #
+                # Process messages in the failed standard queue until it is empty,
+                # then start processing new messages.
+                #
                 self.consume_one(self.failed_queue_name)
 
             if self.messages_in_queue(self.main_queue_name):
+                # This consumes messages from the main standard queue
                 self.consume_one(self.main_queue_name)
+            else:
+                # When all messages are consumed from the standard queues, start consuming
+                # messages from the batch queues (failed_batch_queue and main_batch_queue)
+                self._logger.info('Started consuming queue %s' % self.main_batch_queue_name)
+
+                while self.messages_in_queue(self.failed_batch_queue_name):
+                    self.consume_one(self.failed_batch_queue_name)
+                if self.messages_in_queue(self.main_batch_queue_name):
+                    self.consume_one(self.main_batch_queue_name)
 
             if self.gevent:
                 # other agents being executed in the same process. the main loop will
@@ -210,7 +239,7 @@ class GenericAgent():
 
             if action:
                 self._logger.info('Started processing %s-action with pid %s' % (action['action'], action['pid']))
-                self.process_queue(self._channel, method, properties, action)
+                self.process_queue(self._channel, method, properties, action, queue)
             else:
                 self._logger.info(
                     'Rabbitmq message did not match an action in IDA. Discarding. Received: %s'
@@ -226,7 +255,7 @@ class GenericAgent():
             raise
         except:
             self._logger.exception(
-                'Unhandled exception durin process_queue(). Rejecting message back to original queue,'
+                'Unhandled exception during process_queue(). Rejecting message back to original queue,'
                 ' hopefully the problem will be fixed by then.'
             )
             try:
@@ -409,7 +438,7 @@ class GenericAgent():
             return self.rabbitmq_message[sub_action_retry_info]['retry'] < self._settings['retry_policy'][sub_action_name]['max_retries']
         return True
 
-    def _republish_or_fail_action(self, method, action, sub_action_name, exception):
+    def _republish_or_fail_action(self, method, action, sub_action_name, queue, exception):
         """
         All exceptions raised during message processing go through this method, where
         the exception is evaluated whether or not it should be retried.
@@ -417,7 +446,7 @@ class GenericAgent():
         Parameter 'method' is rabbitmq message method, needed to ack the message.
         """
         if self._action_should_be_retried(sub_action_name):
-            success = self._republish_action(sub_action_name, exception)
+            success = self._republish_action(sub_action_name, exception, queue)
         else:
             success = self._save_action_failed_timestamp(action, exception)
 
@@ -428,7 +457,7 @@ class GenericAgent():
             # getting ack'd, and action will return to queue
             pass
 
-    def _republish_action(self, sub_action_name, exception):
+    def _republish_action(self, sub_action_name, exception, queue):
         """
         An action has information about a sub-action's retries saved in the key
         'sub_action_name + _retry_info'. No key present means it has never been retried yet.
@@ -467,9 +496,14 @@ class GenericAgent():
                 % (action[sub_action_retry_info]['retry'], sub_action_name, retry_interval))
 
         try:
-            # publish action to i.e. checksums-failed-waiting, from where it will be dead-lettered
-            # to a queue called metadata-failed, once its specified retry_interval has expired.
-            self.publish_message(action, routing_key='%s-failed-waiting' % sub_action_name, exchange='actions-failed')
+            # Publish action to i.e. checksums-failed-waiting or batch-checksums-failed-waiting, 
+            # from where it will be dead-lettered to a queue called metadata-failed or batch-metadata-failed
+            # once its specified retry_interval has expired.
+            if queue == 'replication' or queue == 'replication-failed' or queue == 'metadata' or queue == 'metadata-failed':
+                self.publish_message(action, routing_key='%s-failed-waiting' % sub_action_name, exchange='actions-failed')
+            elif queue == 'batch-replication' or queue == 'batch-replication-failed' or queue == 'batch-metadata' or queue == 'batch-metadata-failed':
+                self.publish_message(action, routing_key='batch-%s-failed-waiting' % sub_action_name, exchange='batch-actions-failed')
+
         except:
             # could not publish? doesnt matter, the message will return to its queue and be retried
             # at some point.
@@ -601,6 +635,16 @@ class GenericAgent():
         if checksum.startswith('sha256:'):
             return checksum
         return 'sha256:%s' % checksum
+
+    def _is_offline(self):
+        """
+        Check if the sentinel offline file exists.
+        """
+        _sentinel_offline_file = "%s/control/OFFLINE" % self._uida_conf_vars['STORAGE_OC_DATA_ROOT']
+        if os.path.isfile(_sentinel_offline_file):
+            return True
+        else:
+            return False
 
     def _set_sentinel_monitoring_file(self, action_pid):
         """

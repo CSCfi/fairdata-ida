@@ -1,8 +1,8 @@
 #!/bin/bash
-# --------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2022 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -20,35 +20,9 @@
 # @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
-# --------------------------------------------------------------------------------
-# Initialize script with common definitions
-
-SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT"
-PROJECT="null"
-
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
-
-if [ -e $INIT_FILE ]
-then
-    . $INIT_FILE
-else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
-    exit 1
-fi
-
 #--------------------------------------------------------------------------------
 
-OUT=`$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
-    tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend\"" | \
-    sed -e 's/^.*"project": *"//' | sed -e 's/".*$//' | sort -u`
-
-if [ -s $ERR ]; then
-    MSG=`cat $ERR`
-    addToLog "$MSG"
-    errorExit "Failed to retrieve pending actions for project"
-fi
-
-echo "$OUT"
-
-addToLog "DONE"
+for APP in accessibility activity comments contactsinteraction dashboard encryption federation files_external files_pdfviewer files_rightclick files_trashbin files_versions files_videoplayer firstrunwizard logreader nextcloud_announcements notifications password_policy photos privacy recommendations serverinfo sharebymail support survey_client systemtags text theming updatenotification user_ldap user_status weather_status
+do
+    /var/ida/nextcloud/occ app:disable $APP
+done
