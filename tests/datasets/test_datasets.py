@@ -107,7 +107,7 @@ class TestDatasets(unittest.TestCase):
         self.flushDatasets()
 
         # ensure we start with a fresh setup of projects, user accounts, and data
-        cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
@@ -122,7 +122,7 @@ class TestDatasets(unittest.TestCase):
 
             self.flushDatasets()
 
-            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEquals(result, 0)
 

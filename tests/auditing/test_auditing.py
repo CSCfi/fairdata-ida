@@ -62,7 +62,7 @@ class TestAuditing(unittest.TestCase):
         print("(initializing)")
 
         # ensure we start with a fresh setup of projects, user accounts, and data
-        cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
@@ -73,7 +73,7 @@ class TestAuditing(unittest.TestCase):
 
         if self.success:
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEquals(result, 0)
 

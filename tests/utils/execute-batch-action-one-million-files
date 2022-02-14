@@ -1,0 +1,218 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2022 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script is a companion script to:
+# /initialize-one-million-files
+# 
+# This script performs a batch action on a folder named "OneMillionFiles" in the root 
+# folder of the staging area. The folder "OneMillionFiles" is generated with:
+# /initialize-one-million-files
+#
+# Use the script with caution. It should be safe to execute it in non-production.
+
+# The project and the folder "OneMillionFiles" folder must ALREADY exist,
+# or else the script will exit with an error. This ensures against accidental
+# corruption of existing data.
+#
+# The script uses the hard-coded value ONE_MILLION_FILE_COUNT (1000000).
+#
+# The generated hierarchy (to be used) is as follows:
+#
+# /testdata/OneMillionFiles/test_file.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_1/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_1/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_1/test_file_10.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_2/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_1/10_files_10/test_file_10.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_2/10_files_1/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_1/100_files_10/10_files_10/test_file_10.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files_1/1000_files_2/100_files_1/10_files_1/test_file_1.dat
+# /testdata/OneMillionFiles/1000000_files/5000_files/...
+# /testdata/OneMillionFiles/1000000_files/5000_files_200/1000_files_10/100_files_10/10_files_10/test_file_10.dat
+#
+#--------------------------------------------------------------------------------
+
+# Initialization from /tests/utils/
+#--------------------------------------------------------------------------------
+
+. `dirname $0`/../../lib/init_script.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT="$1"
+
+if [ "$1" = "" ]; then
+    errorExit "Error: The project name must be specified as the first argument to the script"
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ "$ROOT" = "" ]; then
+    errorExit "Error: The ROOT configuration variable must be defined"
+fi
+
+if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
+    errorExit "Error: The STAGING_FOLDER_SUFFIX configuration variable must be defined"
+fi
+
+if [ "$PROJECT_USER_PREFIX" = "" ]; then
+    errorExit "Error: The PROJECT_USER_PREFIX configuration variable must be defined"
+fi
+
+if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
+    errorExit "Error: The STORAGE_OC_DATA_ROOT configuration variable must be defined"
+fi
+
+#--------------------------------------------------------------------------------
+
+PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PSO_USER}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
+ONE_MILLION_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/testdata/OneMillionFiles"
+
+#--------------------------------------------------------------------------------
+
+echo "Ensuring project and folder exist..."
+
+if [ ! -d "$PROJECT_STAGING_FOLDER" ]; then
+    errorExit "Error: The project ${PROJECT} does not exist"
+fi
+
+if [ ! -d "$ONE_MILLION_FILES_FOLDER" ]; then
+    errorExit "Error: The target folder ($ONE_MILLION_FILES_FOLDER) does not exist in the root of the staging area of project ${PROJECT}"
+fi
+
+#--------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT project action
+       $SCRIPT -h
+
+       project  = the project name
+       action   = one of 'freeze', 'unfreeze', or 'delete'
+"
+
+#--------------------------------------------------------------------------------
+# Initialize admin script with common definitions
+
+INIT_FILE=`dirname `../../utils/admin/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Process command line arguments
+
+if [ "$#" -ne 2 ]; then
+    echo "$USAGE" >&2
+    errorExit "Invalid number of arguments"
+fi
+
+ACTION="$2"
+
+case $ACTION in
+    "freeze")
+        ;;
+    "unfreeze")
+        ;;
+    "delete")
+        ;;
+    *)
+        errorExit "Invalid action: ${ACTION}"
+        ;;
+esac
+
+#--------------------------------------------------------------------------------
+
+ONE_MILLION_FILE_COUNT=1000000
+MAX_SET_COUNT=`echo "$ONE_MILLION_FILE_COUNT / 5000" | bc`
+
+while [ $MAX_SET_COUNT -gt 0 ]; do
+    echo -n "."
+
+    REQUEST_URL="$IDA_API_ROOT_URL/${ACTION}?project=${PROJECT}&pathname=/testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT}&token=${BATCH_ACTION_TOKEN}"
+    echo "Executing ${ACTION} action for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project ${PROJECT}..."
+
+    # NOTE: The X-SIMULATE-AGENTS header is only used by automated testing, to skip
+    # postprocessing for test cases that do not need them, so that the tests run most
+    # efficiently.
+
+    if [ "$DEBUG" = "true" ]; then
+        if [ "$SIMULATE_AGENTS" = "true" ]; then
+            echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+        else
+            echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+        fi
+    fi
+
+    if [ "$SIMULATE_AGENTS" = "true" ]; then
+        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+    else
+        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+    fi
+
+    if [ -s $ERR ]; then
+        MSG=`cat $ERR`
+        echoAndLog "$MSG"
+        errorExit "Action $ACTION failed for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project $PROJECT"
+    fi
+
+    PID=`echo $OUT | grep '"pid":'`
+
+    if [ "$PID" = "" ]; then
+        echoAndLog "$OUT"
+        errorExit "$ACTION action failed for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project $PROJECT"
+    fi
+
+    rm $ERR 2>/dev/null
+
+    echoAndLog "Initiated $ACTION action successfully for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project $PROJECT. Postprocessing ongoing..."
+
+    addToLog "DONE"
+
+    MAX_SET_COUNT=`echo "$MAX_SET_COUNT - 1" | bc`
+done
+
+echo ""
+
+#--------------------------------------------------------------------------------
+
+echo "Updating Nextcloud file cache..."
+
+$OCC files:scan -q $PSO_USER
+

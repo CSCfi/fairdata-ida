@@ -62,7 +62,7 @@ INACTIVE="$3"
 
 PATHNAME=$(urlEncode "${PATHNAME}")
 
-URL="https://localhost/apps/ida/api/files/byProjectPathname/${PROJECT}?pathname=${PATHNAME}"
+URL="$IDA_API_ROOT_URL/files/byProjectPathname/${PROJECT}?pathname=${PATHNAME}"
 
 if [ "$INACTIVE" = "-i" ]; then
     URL="${URL}&includeInactive=true"

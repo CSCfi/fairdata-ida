@@ -58,15 +58,15 @@ class TestIdaApp(unittest.TestCase):
 
         # ensure we start with a fresh setup of projects, user accounts, and data
 
-        cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
-        cmd = "sudo -u %s %s/tests/utils/initialize_max_files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
-        cmd = "sudo -u %s %s/tests/utils/initialize_max_files test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEquals(result, 0)
 
@@ -79,7 +79,7 @@ class TestIdaApp(unittest.TestCase):
 
         if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize_test_accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             os.system(cmd)
 
         self.assertTrue(self.success)

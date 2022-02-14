@@ -97,6 +97,6 @@ $CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups/${PROJ
 
 echo "Action status: "
 
-$CURL_GET $PROJECT_USER_CREDENTIALS "https://localhost/apps/ida/api/status" | python -m json.tool | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
+$CURL_GET $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/status" | python -m json.tool | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
 
 addToLog "DONE"

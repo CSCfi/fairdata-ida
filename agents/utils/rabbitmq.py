@@ -67,6 +67,22 @@ EXCHANGES = [
         ]
     },
     {
+        'name': 'batch-actions',
+        'type': 'fanout',
+        'arguments': {},
+        'queues': [
+            { 'name': 'batch-metadata' },
+        ]
+    },
+    {
+        'name': 'batch-replication',
+        'type': 'fanout',
+        'arguments': {},
+        'queues': [
+            { 'name': 'batch-replication' }
+        ]
+    },
+    {
         'name': 'actions-failed',
         'type': 'direct',
         'arguments': {},
@@ -113,6 +129,48 @@ EXCHANGES = [
             {
                 'name': 'replication-failed',
                 'routing_key': 'replication-failed'
+            },
+        ]
+    },
+    {
+        'name': 'batch-actions-failed',
+        'type': 'direct',
+        'arguments': {},
+        'queues': [
+            {
+                'name': 'batch-checksums-failed-waiting',
+                'routing_key': 'batch-checksums-failed-waiting',
+                'arguments': {
+                    'x-message-ttl': settings['retry_policy']['checksums']['retry_interval'] * 1000,
+                    'x-dead-letter-exchange': 'batch-actions-failed',
+                    'x-dead-letter-routing-key': 'batch-metadata-failed'
+                }
+            },
+            {
+                'name': 'batch-metadata-failed-waiting',
+                'routing_key': 'batch-metadata-failed-waiting',
+                'arguments': {
+                    'x-message-ttl': settings['retry_policy']['metadata']['retry_interval'] * 1000,
+                    'x-dead-letter-exchange': 'batch-actions-failed',
+                    'x-dead-letter-routing-key': 'batch-metadata-failed'
+                }
+            },
+            {
+                'name': 'batch-replication-failed-waiting',
+                'routing_key': 'batch-replication-failed-waiting',
+                'arguments': {
+                    'x-message-ttl': settings['retry_policy']['replication']['retry_interval'] * 1000,
+                    'x-dead-letter-exchange': 'batch-actions-failed',
+                    'x-dead-letter-routing-key': 'batch-replication-failed'
+                }
+            },
+            {
+                'name': 'batch-metadata-failed',
+                'routing_key': 'batch-metadata-failed'
+            },
+            {
+                'name': 'batch-replication-failed',
+                'routing_key': 'batch-replication-failed'
             },
         ]
     },
@@ -269,7 +327,8 @@ def _publish_action(args):
     pid = argv[1].split('=')[1]
     action_json = _get_action_from_ida(pid)
     print('Publishing action %s:\n%s\n...' % (pid, str(action_json)))
-    publish_action_messages('actions', action_json)
+
+    publish_action_messages('batch-actions', action_json)
     print('Action published')
 
 
