@@ -460,17 +460,11 @@ span.nametext {
 span.fileactions {
 	padding-left: 50px;
     z-index: 0;
-    background: white;
 }
 
 td.filesize {
-    background: white;
     position: relative;
     z-index: 999;
-}
-
-td.date {
-    background: white;
 }
 
 span.projectDetails {
