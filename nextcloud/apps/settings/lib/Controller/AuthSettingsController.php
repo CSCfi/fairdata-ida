@@ -153,7 +153,7 @@ class AuthSettingsController extends Controller {
 			    $session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
     
 			    if ($session) {
-		            $password = \OC::$server->getConfig()->getSystemValue('SSO_PASSWORD'); 
+		            $password = null;
 					$loginName = $session->fairdata_user->id;
 			    }
 			}
