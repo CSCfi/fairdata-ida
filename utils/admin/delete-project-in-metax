@@ -51,6 +51,6 @@ fi
 
 echo "Marking all project files as deleted in METAX..."
 
-$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/delete_project?project_identifier=$PROJECT" 
+$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 
 
 addToLog "DONE"
