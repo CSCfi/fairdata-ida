@@ -143,7 +143,7 @@ class FreezingController extends Controller
     {
         try {
 
-            Util::writeLog('ida', 'getFileInventory:' . ' project=' . $project, \OCP\Util::INFO);
+            Util::writeLog('ida', 'getFileInventory:' . ' project=' . $project, \OCP\Util::DEBUG);
 
             $totalStagedFiles = 0;
             $totalFrozenFiles = 0;
@@ -223,7 +223,7 @@ class FreezingController extends Controller
                     . ' totalFiles=' . $totalFiles
                     . ' totalStagedFiles=' . $totalStagedFiles
                     . ' totalFrozenFiles=' . $totalFrozenFiles,
-                \OCP\Util::INFO
+                \OCP\Util::DEBUG
             );
 
             return new DataResponse(array(
@@ -2092,7 +2092,7 @@ class FreezingController extends Controller
                     Util::writeLog('ida', 'checkIntersectionWithExistingFiles: INTERSECTION EXISTS'
                         . ' project=' . $project
                         . ' action=' . $action
-                        . ' pathname=' . $targetPathname, \OCP\Util::INFO);
+                        . ' pathname=' . $targetPathname, \OCP\Util::DEBUG);
 
                     return true;
                 }
@@ -2178,7 +2178,7 @@ class FreezingController extends Controller
                                 . ' project=' . $project
                                 . ' action=' . $actionPid
                                 . ' pathname=' . $pathname,
-                            \OCP\Util::INFO
+                            \OCP\Util::DEBUG
                         );
 
                         return true;
@@ -2275,7 +2275,7 @@ class FreezingController extends Controller
                 . ' project=' . $project
                 . ' pathname=' . $pathname
                 . ' limit=' . $limit,
-            \OCP\Util::INFO
+            \OCP\Util::DEBUG
         );
 
         $result = array('filecount' => 0, 'nodes' => array());
@@ -2287,7 +2287,7 @@ class FreezingController extends Controller
             'getNextcloudNodes:'
                 . ' filecount=' . $result['filecount']
                 . ' nodecount=' . count($result['nodes']),
-            \OCP\Util::INFO
+            \OCP\Util::DEBUG
         );
 
         return ($result['nodes']);
@@ -2367,7 +2367,7 @@ class FreezingController extends Controller
                             'getNextcloudNodesR:'
                                 . ' filecount=' . $result['filecount']
                                 . ' file=' . $child->getPath(),
-                            \OCP\Util::INFO
+                            \OCP\Util::DEBUG
                         );
                     } else {
                         $folders[] = $child;
@@ -2389,14 +2389,12 @@ class FreezingController extends Controller
             } else {
                 $result['nodes'][] = $fileInfo;
                 $result['filecount'] = $result['filecount'] + 1;
-                // Logging the file pathname as INFO here allows one to see all files included in the scope of
-                // an action which has had its initiation logged previously
                 Util::writeLog(
                     'ida',
                     'getNextcloudNodesR:'
                         . ' filecount=' . $result['filecount']
                         . ' file=' . $fileInfo->getPath(),
-                    \OCP\Util::INFO
+                    \OCP\Util::DEBUG
                 );
             }
         }
@@ -2535,7 +2533,7 @@ class FreezingController extends Controller
             'cloneFiles:'
                 . ' failedActionPid=' . $failedActionPid
                 . ' retryActionPid=' . $retryActionPid,
-            \OCP\Util::INFO
+            \OCP\Util::DEBUG
         );
 
         $timestamp = Generate::newTimestamp();
@@ -2618,7 +2616,7 @@ class FreezingController extends Controller
                 . ' action=' . $action
                 . ' project=' . $project
                 . ' pathname=' . $pathname,
-            \OCP\Util::INFO
+            \OCP\Util::DEBUG
         );
 
         if ($action === 'freeze') {
@@ -2662,7 +2660,7 @@ class FreezingController extends Controller
                 . ' action=' . $action
                 . ' project=' . $project
                 . ' pathname=' . $pathname,
-            \OCP\Util::INFO
+            \OCP\Util::DEBUG
         );
 
         // If pathname is the root folder '/', move all children within the scope of the root folder.
@@ -2815,7 +2813,7 @@ class FreezingController extends Controller
             'deleteNextcloudNodeChildren:'
                 . ' project=' . $project
                 . ' pathname=' . $pathname,
-            \OCP\Util::INFO
+            \OCP\Util::DEBUG
         );
 
         $sourcePathname = $this->buildFullPathname('unfreeze', $project, $pathname);

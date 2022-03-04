@@ -55,7 +55,6 @@ use OCP\Files\IMimeTypeLoader;
 use OCP\Files\Search\ISearchQuery;
 use OCP\Files\Storage\IStorage;
 use OCP\IDBConnection;
-use OCP\Util;
 
 /**
  * Metadata cache for a storage
@@ -270,9 +269,6 @@ class Cache implements ICache {
 	 * @throws \RuntimeException
 	 */
 	public function insert($file, array $data) {
-
-		\OCP\Util::writeLog('Cache', 'insert:' . ' file=' . $file, \OCP\Util::INFO);
-
 		// normalize file
 		$file = $this->normalize($file);
 
@@ -299,38 +295,32 @@ class Cache implements ICache {
 		$storageId = $this->getNumericStorageId();
 		$values['storage'] = $storageId;
 
-		// First check if file exists in table and if so, simply update
-		if (($id = $this->getId($file)) > -1) {
-			$this->update($id, $data);
-			return $id;
-		} else {
-		    try {
-			    $builder = $this->connection->getQueryBuilder();
-			    $builder->insert('filecache');
+		try {
+			$builder = $this->connection->getQueryBuilder();
+			$builder->insert('filecache');
     
-			    foreach ($values as $column => $value) {
-				    $builder->setValue($column, $builder->createNamedParameter($value));
-			    }
+			foreach ($values as $column => $value) {
+				$builder->setValue($column, $builder->createNamedParameter($value));
+			}
     
-			    if ($builder->execute()) {
-				    $fileId = $builder->getLastInsertId();
+			if ($builder->execute()) {
+				$fileId = $builder->getLastInsertId();
     
-				    if (count($extensionValues)) {
-					    $query = $this->getQueryBuilder();
-					    $query->insert('filecache_extended');
+				if (count($extensionValues)) {
+					$query = $this->getQueryBuilder();
+					$query->insert('filecache_extended');
     
-					    $query->setValue('fileid', $query->createNamedParameter($fileId, IQueryBuilder::PARAM_INT));
-					    foreach ($extensionValues as $column => $value) {
-						    $query->setValue($column, $query->createNamedParameter($value));
-					    }
-					    $query->execute();
-				    }
+					$query->setValue('fileid', $query->createNamedParameter($fileId, IQueryBuilder::PARAM_INT));
+					foreach ($extensionValues as $column => $value) {
+						$query->setValue($column, $query->createNamedParameter($value));
+					}
+					$query->execute();
+				}
     
-				    $event = new CacheEntryInsertedEvent($this->storage, $file, $fileId, $storageId);
-				    $this->eventDispatcher->dispatch(CacheInsertEvent::class, $event);
-				    $this->eventDispatcher->dispatchTyped($event);
-				    return $fileId;
-			    }
+				$event = new CacheEntryInsertedEvent($this->storage, $file, $fileId, $storageId);
+				$this->eventDispatcher->dispatch(CacheInsertEvent::class, $event);
+				$this->eventDispatcher->dispatchTyped($event);
+				return $fileId;
 		    } catch (UniqueConstraintViolationException $e) {
 			    // entry exists already
 			    if ($this->connection->inTransaction()) {
@@ -356,11 +346,9 @@ class Cache implements ICache {
 	 * @param array $data [$key => $value] the metadata to update, only the fields provided in the array will be updated, non-provided values will remain unchanged
 	 */
 	public function update($id, array $data) {
-
 		if (isset($data['path'])) {
 			// normalize path
 			$data['path'] = $this->normalize($data['path']);
-		    \OCP\Util::writeLog('Cache', 'insert:' . ' path=' . $data['path'], \OCP\Util::INFO);
 		}
 
 		if (isset($data['name'])) {
@@ -391,9 +379,17 @@ class Cache implements ICache {
 
 		if (count($extensionValues)) {
 
-		    // First check if file exists in table and if so, simply update
-
-		    if ($this->checkIdExtended($id) > -1) {
+			try {
+				$query = $this->getQueryBuilder();
+				$query->insert('filecache_extended');
+    
+				$query->setValue('fileid', $query->createNamedParameter($id, IQueryBuilder::PARAM_INT));
+				foreach ($extensionValues as $column => $value) {
+					$query->setValue($column, $query->createNamedParameter($value));
+				}
+    
+				$query->execute();
+			} catch (UniqueConstraintViolationException $e) {
 				$query = $this->getQueryBuilder();
 				$query->update('filecache_extended')
 					->whereFileId($id)
@@ -403,39 +399,12 @@ class Cache implements ICache {
 							$query->expr()->isNull($key)
 						);
 					}, array_keys($extensionValues), array_values($extensionValues))));
-
+    
 				foreach ($extensionValues as $key => $value) {
 					$query->set($key, $query->createNamedParameter($value));
 				}
+    
 				$query->execute();
-		    } else {
-			    try {
-				    $query = $this->getQueryBuilder();
-				    $query->insert('filecache_extended');
-    
-				    $query->setValue('fileid', $query->createNamedParameter($id, IQueryBuilder::PARAM_INT));
-				    foreach ($extensionValues as $column => $value) {
-					    $query->setValue($column, $query->createNamedParameter($value));
-				    }
-    
-				    $query->execute();
-			    } catch (UniqueConstraintViolationException $e) {
-				    $query = $this->getQueryBuilder();
-				    $query->update('filecache_extended')
-					    ->whereFileId($id)
-					    ->andWhere($query->expr()->orX(...array_map(function ($key, $value) use ($query) {
-						    return $query->expr()->orX(
-							    $query->expr()->neq($key, $query->createNamedParameter($value)),
-							    $query->expr()->isNull($key)
-						    );
-					    }, array_keys($extensionValues), array_values($extensionValues))));
-    
-				    foreach ($extensionValues as $key => $value) {
-					    $query->set($key, $query->createNamedParameter($value));
-				    }
-    
-				    $query->execute();
-			    }
 			}
 		}
 
@@ -511,8 +480,6 @@ class Cache implements ICache {
 		// normalize file
 		$file = $this->normalize($file);
 
-		\OCP\Util::writeLog('Cache', 'getId:' . ' file=' . $file, \OCP\Util::DEBUG);
-
 		$query = $this->getQueryBuilder();
 		$query->select('fileid')
 			->from('filecache')
@@ -523,35 +490,7 @@ class Cache implements ICache {
 		$id = $result->fetchOne();
 		$result->closeCursor();
 
-		\OCP\Util::writeLog('Cache', 'getId:' . ' id=' . $id, \OCP\Util::DEBUG);
-
 		return $id === false ? -1 : (int)$id;
-	}
-
-	/**
-	 * Check if the file id for a file is already present in the filecache_extended table.
-	 *
-	 * Returns the provided file id if it exists in the table, else returns -1
-	 *
-	 * @param string $file
-	 * @return int
-	 */
-	public function checkIdExtended($id) {
-
-		\OCP\Util::writeLog('Cache', 'checkIdExtended:' . ' id=' . $id, \OCP\Util::DEBUG);
-
-		$query = $this->getQueryBuilder();
-		$query->select('fileid')
-			->from('filecache_extended')
-			->whereFileid($id);
-
-		$result = $query->execute();
-		$fileId = $result->fetchOne();
-		$result->closeCursor();
-
-		\OCP\Util::writeLog('Cache', 'checkIdExtended:' . ' fileid=' . $fileId, \OCP\Util::DEBUG);
-
-		return $fileId === false ? -1 : (int)$fileId;
 	}
 
 	/**

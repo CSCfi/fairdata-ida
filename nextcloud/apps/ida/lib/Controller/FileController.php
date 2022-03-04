@@ -617,7 +617,7 @@ class FileController extends Controller
      */
     public function getProjectTitle($project) {
 
-        Util::writeLog('ida', 'getProjectTitle: project=' . $project , \OCP\Util::INFO);
+        Util::writeLog('ida', 'getProjectTitle: project=' . $project , \OCP\Util::DEBUG);
 
         try {
             try {
