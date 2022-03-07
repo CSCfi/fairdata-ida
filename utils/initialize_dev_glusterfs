@@ -52,12 +52,11 @@
 #     # If necessary, remove any existing version of glusterfs
 #     sudo yum remove glusterfs gluster-cli glusterfs-api glusterfs-libs glusterfs-server
 #
-#     # Initialize v5 release of glusterfs (currently running glusterfs v5.11 in production)
-#     sudo yum install centos-release-gluster5.noarch
+#     # Initialize v9.5 release of glusterfs
+#     sudo yum install centos-release-gluster9.noarch
 #
-#     # Install glusterfs v5.11, then glusterfs-server v5.11
-#     sudo yum install glusterfs-5.11-1.el7.x86_64
-#     sudo yum install glusterfs-server-5.11-1.el7.x86_64
+#     # Install glusterfs v9.5
+#     sudo yum install glusterfs-9.5
 #
 #     # Enable glusterfs to start on boot, start and check glusterfs
 #     sudo systemctl enable glusterd
