@@ -100,7 +100,7 @@ fi
 #--------------------------------------------------------------------------------
 
 if [ ! -d /var/ida-storage/ ]; then
-    errorExit "Error: The root volume directory /var/ida-storage/ does not exist! Aborting."
+    echo "Error: The root volume directory /var/ida-storage/ does not exist! Aborting." >&2
     exit 1
 fi
 
