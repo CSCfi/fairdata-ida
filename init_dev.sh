@@ -76,7 +76,7 @@ initialize_rabbitmq() {
 
 initialize_test_accounts () {
   echo "9. IDA NextCloud container: Initializing test accounts for development environment..."
-  docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/utils/initialize_test_accounts > /dev/null
+  docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/utils/initialize-test-accounts > /dev/null
 }
 
 install_shell_config
