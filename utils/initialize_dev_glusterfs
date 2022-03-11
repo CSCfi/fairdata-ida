@@ -73,6 +73,12 @@
 #     python3 setup.py install
 #
 #     # Add the following to /etc/hosts:
+#     ::1 ida201.local
+#     ::1 ida202.local
+#     ::1 ida203.local
+#     ::1 ida204.local
+#     ::1 ida191.local
+#     ::1 ida192.local
 #     127.0.0.1 ida201.local
 #     127.0.0.1 ida202.local
 #     127.0.0.1 ida203.local
