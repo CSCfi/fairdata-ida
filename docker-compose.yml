@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ida-nextcloud:
-    image: fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
+    image: fairdata-ida-nextcloud
     volumes:
       # Map each wanted subdirectory separately since Nextcloud user needs write permission to the nextcloud
       # subdirectory within the container - feel free to come up with a prettier solution...
@@ -63,7 +63,7 @@ services:
       - 443:443
 
   ida-metadata:
-    image: fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
+    image: fairdata-ida-metadata
     volumes:
       - ./agents:/var/ida/agents
       - type: volume
@@ -77,7 +77,7 @@ services:
         target: '/var/ida/config/config.sh'
 
   ida-replication:
-    image: fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
+    image: fairdata-ida-replication
     volumes:
       - ./agents:/var/ida/agents
       - type: volume

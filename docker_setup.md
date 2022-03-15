@@ -23,12 +23,12 @@ entry to your `/etc/hosts` file (Linux/Mac):
 
 Git clone the fairdata-ida repository into your local development folder on your machine
 
-Option 1
+Option 1: Internal users
 ```
 git clone ssh://git@gitlab.ci.csc.fi/fairdata/fairdata-ida.git
 ```
 
-Option 2
+Option 2: External users
 ```
 git clone ssh://git@ci.fd-staging.csc.fi:10022/fairdata/fairdata-ida.git
 ```
@@ -39,50 +39,62 @@ Make sure your local Docker instance or engine is running.
 
 If you are using Mac and Docker desktop, make sure you have started Docker desktop.
 
-### 1.5 Optional: access to Artifactory for externals
+### 1.5 Access to Artifactory
+
+If you are accessing Artifactory as a non-external, authenticate with your user and internal password:
+
+```
+docker login fairdata-docker.artifactory.ci.csc.fi
+```
 
 If you are accessing Artifactory as an external, see:
 ```
 https://ci.fd-staging.csc.fi/fairdata/fairdata-docker/-/blob/staging/proxy_access/external_access_to_artifactory_gitlab.md#docker-client-configuration-mac
 ```
 
-## 2 Prepare Docker images
+## 2. Set up fairdata-secrets (config) repository
 
-### 2.1 Pull the images
+Clone the fairdata-secrets repository. This repository can be placed next to the `fairdata-ida` repository, for instance (i.e. next to each other, in the same folder).
 
-Option 1:
+Option 1: Internal users
+```
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets
+```
+
+Option 2: External users
+```
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
+```
+
+If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
+
+## 3 Pull Docker images
+
+If you are on an Intel Mac, do the following:
 ```
 docker pull fairdata-docker.artifactory.ci.csc.fi/postgres:12
 docker pull fairdata-docker.artifactory.ci.csc.fi/rabbitmq:management
 docker pull fairdata-docker.artifactory.ci.csc.fi/redis:latest
 docker pull fairdata-docker.artifactory.ci.csc.fi/nginx:latest
-```
-
-Option 2:
-```
-docker pull postgres:12
-docker pull rabbitmq:management
-docker pull redis:latest
-docker pull nginx:latest
-```
-
-### 2.2 Pull or build IDA images
-
-Option 1: If you are accessing the images as an external, also do a pull on the IDA-specific images
-```
 docker pull fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud:latest
 docker pull fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication:latest
 docker pull fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata:latest
 ```
 
-Option 2: Otherwise, run the following command in the `fairdata-ida` repository root.
+If you are on an M1 Mac, do the following:
 ```
-docker build . -f Dockerfile -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
-docker build . -f Dockerfile.replication -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
-docker build . -f Dockerfile.metadata -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
+docker pull postgres:12
+docker pull rabbitmq:management
+docker pull redis:latest
+docker pull nginx:latest
+docker build . -f Dockerfile -t fairdata-ida-nextcloud
+docker build . -f Dockerfile.replication -t fairdata-ida-replication
+docker build . -f Dockerfile.metadata -t fairdata-ida-metadata
 ```
 
-## 3. Initialize docker swarm
+## 4. Initialize the docker swarm and deploy required configurations
+
+### 4.1 Initialize docker swarm
 
 A `docker swarm` must be running in order to proceed with
 
@@ -90,31 +102,16 @@ A `docker swarm` must be running in order to proceed with
 docker swarm init
 ```
 
-## 4. fairdata-secrets
-
-### 4.1. Set up fairdata-secrets (config) repository
-
-Clone the fairdata-secrets repository. This repository can be placed next to the `fairdata-ida` repository, for instance (i.e. next to each other, in the same folder).
-
-Option 1:
-```
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets
-```
-
-Option 2:
-```
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
-```
-
-If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
-
 ### 4.2. Deploy required configurations from fairdata-secrets
 
-Once `fairdata-secrets` is cloned, configurations can be deployed with stacks included in Fairdata-Secrets repository by running the following commands at
-the `fairdata-secrets` repository root.
+Once `fairdata-secrets` is cloned, configurations can be deployed with stacks included in Fairdata-Secrets repository by running the following commands at the `fairdata-secrets` repository root.
 
+Ensure you are in the staging branch and it is fully up-to-date, and you are using the latest secrets:
 ```
 cd fairdata-secrets
+git fetch
+git checkout staging
+git pull
 ./reveal_configs.sh
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
@@ -126,8 +123,12 @@ Create the IDA stack for Docker Swarm by running the following command at the `f
 
 ### 5.1 Deployment command
 
+Ensure you are in the master branch and it is fully up-to-date:
 ```
 cd fairdata-ida
+git fetch
+git checkout master
+git pull
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
 ```
 
@@ -137,7 +138,7 @@ docker stack deploy --with-registry-auth --resolve-image always -c docker-compos
 docker service ls
 ```
 
-According to the above command, when all services are listed as `MODE` = "replicated" and the value of all `REPLICAS` is "1/1", the stack is deployed. If you go to `ida.fd-dev.csc.fi`, you should now see:
+According to the above command, when all services are listed as `MODE` = "replicated" and the value of all `REPLICAS` is "1/1", the stack is deployed. If you go to `https://ida.fd-dev.csc.fi`, you should now see:
 
 ```
 Error
@@ -155,7 +156,7 @@ the `fairdata-ida` repository root:
 ./init_dev.sh
 ```
 
-Note: if you have restarted your workstation and are seeing issues with NextCloud when visiting `ida.fd-dev.csc.fi`, you may need to rerun this script.
+Note: if you have restarted your workstation and are seeing issues with NextCloud when visiting `https://ida.fd-dev.csc.fi`, you may need to rerun this script.
 
 ## 7. Login to https://ida.fd-dev.csc.fi
 
@@ -167,12 +168,51 @@ test
 
 # After setup
 
-## Pushing Docker images
+## Updating the development environment and pushing updates to Artifactory
 
-When there are updates to docker images packages, you can push the built and tagged docker images:
+Build any updated images:
+```
+docker build . -f Dockerfile -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
+docker build . -f Dockerfile.replication -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
+docker build . -f Dockerfile.metadata -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
+```
 
+Push any updated images to artifactory:
 ```
 docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
 docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
 docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
 ```
+
+## Redeploying the development environment after pulling or building new images
+
+Redeploy
+```
+docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
+```
+
+Run the init_dev.sh script
+```
+./init_dev.sh
+```
+
+## Removing the docker development environment
+
+To remove the docker development environment entirely from your machine, do the following:
+
+Warning: this will delete all images from your docker environment, not only those which are part of the IDA development environment. If you have other images you don't want to delete, then you will need to delete each IDA development docker image manually.
+
+```
+# Shut down the swarm, force stopping all running containers
+docker swarm leave --force
+
+# Remove all images
+docker rmi -f `docker images -qa`
+
+# Remove all volumes
+docker volume rm $(docker volume ls -q)
+```
+
+## Rebuilding the development environment cleanly
+
+Remove the docker environment components as detailed immediately above, then follow steps 3 through 7 above to re-deploy and configure the development environment.

@@ -3,43 +3,23 @@
 
 This documentation describes how to run utility scripts, inspect logs, and do other tasks with a Dockerized version of IDA.
 
-# 1 Updating the development environment
-```
-# Build any updated images
+# 1 Nextcloud
 
-docker build . -f Dockerfile -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
-docker build . -f Dockerfile.replication -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
-docker build . -f Dockerfile.metadata -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
-
-# Push any updated images
-docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
-docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
-docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
-
-# Redeploy
-docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
-
-# Run init_dev.sh script
-./init_dev.sh
-```
-
-# 2 Nextcloud
-
-## 2.1 How to enter the NextCloud Docker container
+## 1.1 How to enter the NextCloud Docker container
 
 ```
 # Enter container
 docker exec -it $(docker ps -q -f name=ida-nextcloud) sudo su -l www-data -s /bin/bash
 ```
 
-### 2.1.1 Inspect logs
+### 1.1.1 Inspect logs
 
 Logs are available at:
 ```
 /mnt/storage_vol01/log/
 ```
 
-### 2.1.2 Available utility scripts
+### 1.1.2 Available utility scripts
 
 Below are listed scripts that can be run with a basic Docker setup of IDA. These scripts should be run inside the NextCloud Docker container.
 
@@ -91,25 +71,25 @@ cd /var/ida/utils/admin
 ./execute-batch-action test_project_a freeze /testdata/MaxFiles/5000_files/500_files_1/100_files_1
 ```
 
-# 3 Postprocessing
+# 2 Postprocessing
 
-## 3.1 Postprocessing agent containers
+## 2.1 Postprocessing agent containers
 ```
 docker exec -it $(docker ps -q -f name=fairdata-dev_ida-metadata) sh
 
 docker exec -it $(docker ps -q -f name=fairdata-dev_ida-replication) sh
 ```
 
-## 3.2 Inspect postprocessing logs
+## 2.2 Inspect postprocessing logs
 
 Inside each of the postprocessing containers, the RabbitMQ log is available:
 ```
 cat /mnt/storage_vol01/log/agents-ida-test.log
 ```
 
-# 4 RabbitMQ
+# 3 RabbitMQ
 
-## 4.1 RabbitMQ container
+## 3.1 RabbitMQ container
 
 ```
 docker exec -it $(docker ps -q -f name=fairdata-dev_ida-rabbitmq) sh
@@ -119,7 +99,7 @@ rabbitmqctl list_users --vhost ida-vhost
 rabbitmqctl list_exchanges --vhost ida-vhost
 ```
 
-## 4.2 RabbitMQ web console
+## 3.2 RabbitMQ web console
 
 The RabbitMQ web console is available at `0.0.0.0:15672`. You can login with the following default values:
 
