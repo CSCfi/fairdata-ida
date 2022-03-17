@@ -74,9 +74,9 @@ initialize_rabbitmq() {
   docker rm $METADATA $REPLICATION > /dev/null
 }
 
-initialize_test_accounts () {
-  echo "9. IDA NextCloud container: Initializing test accounts for development environment..."
-  docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/utils/initialize-test-accounts > /dev/null
+initialize_fairdata_test_accounts () {
+  echo "9. IDA NextCloud container: Initializing Fairdata test accounts for development environment..."
+  docker exec -it $(docker ps -q -f name=ida-nextcloud) python3 /var/fairdata-test-accounts/initialize-ida-accounts > /dev/null
 }
 
 install_shell_config
@@ -87,4 +87,4 @@ disable_nextcloud_apps
 enable_nextcloud_apps
 index_database
 initialize_rabbitmq
-initialize_test_accounts
+initialize_fairdata_test_accounts

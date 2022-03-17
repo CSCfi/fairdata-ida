@@ -115,6 +115,7 @@ git pull
 ./reveal_configs.sh
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
+docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
 ```
 
 ## 5. Deploy the IDA dev stack
@@ -149,8 +150,7 @@ At this point you can proceed.
 
 ## 6. Initialize IDA nextcloud
 
-Finally, the Nextcloud application can be initialized using a utility script included in ida repository. Run the following command at
-the `fairdata-ida` repository root:
+Finally, the Nextcloud application can be initialized using a utility script included in ida repository. Run the following command at the `fairdata-ida` repository root:
 
 ```
 ./init_dev.sh
@@ -160,11 +160,7 @@ Note: if you have restarted your workstation and are seeing issues with NextClou
 
 ## 7. Login to https://ida.fd-dev.csc.fi
 
-You should now be able to login to `https://ida.fd-dev.csc.fi` using the test account(s), for instance:
-```
-test_user_a
-test
-```
+You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page or SSO login, using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
 
 # After setup
 
