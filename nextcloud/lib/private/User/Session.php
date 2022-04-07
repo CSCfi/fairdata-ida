@@ -982,6 +982,7 @@ class Session implements IUserSession, Emitter {
 			$password = $this->tokenProvider->getPassword($token, $sessionId);
 		} catch (PasswordlessTokenException $ex) {
 			// Ignore
+		    $password = null;
 		}
 		$this->manager->emit('\OC\User', 'postRememberedLogin', [$user, $password]);
 		return true;
