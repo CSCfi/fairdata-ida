@@ -38,8 +38,7 @@ else
 fi
 
 if [ "$CSC_DATA_DELETION_MICROSERVICE" == "" ]; then
-    echo "The variable CSC_DATA_DELETION_MICROSERVICE is not defined in the configuration. Aborting." >&2
-    exit 1
+    errorExit "The variable CSC_DATA_DELETION_MICROSERVICE is not defined in the configuration. Aborting." >&2
 fi
 
 WORKFLOW_ID="$1"
@@ -58,7 +57,7 @@ if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
     echo "$MSG"
-    errorExit "Failed to retrieve workflow details"
+    errorExit "Failed to retrieve workflow details."
 fi
 
 MSG=`echo $OUT | tr "\n" " " `

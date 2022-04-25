@@ -36,13 +36,42 @@ else
 fi
 
 if [ "$CSC_DATA_DELETION_MICROSERVICE" == "" ]; then
-    echo "The variable CSC_DATA_DELETION_MICROSERVICE is not defined in the configuration. Aborting." >&2
-    exit 1
+    errorExit "The variable CSC_DATA_DELETION_MICROSERVICE is not defined in the configuration. Aborting." >&2
 fi
 
 if [ "$CSC_DATA_DELETION_SECURITY_TOKEN" == "" ]; then
-    echo "The variable CSC_DATA_DELETION_SECURITY_TOKEN is not defined in the configuration. Aborting." >&2
-    exit 1
+    errorExit "The variable CSC_DATA_DELETION_SECURITY_TOKEN is not defined in the configuration. Aborting." >&2
+fi
+
+#--------------------------------------------------------------------------------
+
+for NEEDS_PROG in jq
+do
+    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
+    if [ ! -e "$PROG_LOCATION" ]; then
+        errorExit "Can't find $NEEDS_PROG in your \$PATH. Aborting."
+    fi
+done
+
+OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
+
+PROJECT_NAME=`echo "$OUT" | jq '.[0].project'`
+PROJECT_STATE=`echo "$OUT" | jq '.[0].state'`
+PROJECT_IDA=`echo "$OUT" | jq '.[0].services[] | select(. == "IDA")'`  
+
+if [ "$PROJECT_NAME" != "\"$PROJECT\"" ]
+then
+    errorExit "Failed to retrieve details of project $PROJECT from microservice. Aborting."
+fi
+
+if [ "$PROJECT_STATE" != "\"deletedata\"" ]
+then
+    errorExit "Project $PROJECT does not have a data deletion process state of 'deletedata'. Aborting."
+fi
+
+if [ "$PROJECT_IDA" != "\"IDA\"" ]
+then
+    errorExit "Project $PROJECT is not active in the IDA service. Aborting."
 fi
 
 #--------------------------------------------------------------------------------
@@ -53,7 +82,7 @@ if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
     echo "$MSG"
-    errorExit "Failed to report data deleted for project"
+    errorExit "Failed to report data deleted for project."
 fi
 
 MSG=`echo $OUT | tr "\n" " " `
