@@ -34,7 +34,7 @@ then
     rm -fr ./config
 fi
 
-if [ -d ./nextcloud/config/config.php ]
+if [ -d ./nextcloud/config ]
 then
     rm -fr ./nextcloud/config
 fi
