@@ -58,6 +58,15 @@ If you do not have access to the encrypted configuration files in `fairdata-secr
 
 ## 3 Pull and build the docker images
 
+Ensure you are in the master branch of the fairdata-ida cloned repository and that it is fully up-to-date, and permissions are open:
+```
+cd fairdata-ida
+git fetch
+git checkout master
+git pull
+chmod -R go+rwX .
+```
+
 Pull the following images:
 ```
 docker pull postgres:12
@@ -94,6 +103,7 @@ git fetch
 git checkout staging
 git pull
 ./reveal_configs.sh
+chmod -R go+rwX .
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
@@ -105,12 +115,8 @@ Create the IDA stack for Docker Swarm by running the following command at the `f
 
 ### 5.1 Deployment command
 
-Ensure you are in the master branch and it is fully up-to-date:
 ```
 cd fairdata-ida
-git fetch
-git checkout master
-git pull
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
 ```
 
