@@ -1,3 +1,4 @@
+
 # IDA Development Environment setup instructions
 
 These instructions specify how to setup a containerized development environment for [Fairdata IDA](https://gitlab.ci.csc.fi/fairdata/fairdata-ida/).
@@ -19,7 +20,7 @@ entry to your `/etc/hosts` file (Linux/Mac):
 0.0.0.0 ida.fd-dev.csc.fi
 ```
 
-### 1.3 Set up repository and branch
+### 1.3 Set up IDA git repository
 
 Git clone the fairdata-ida repository into your local development folder on your machine
 
@@ -39,19 +40,6 @@ Make sure your local Docker instance or engine is running.
 
 If you are using Mac and Docker desktop, make sure you have started Docker desktop.
 
-### 1.5 Access to Artifactory
-
-If you are accessing Artifactory as a non-external, authenticate with your user and internal password:
-
-```
-docker login fairdata-docker.artifactory.ci.csc.fi
-```
-
-If you are accessing Artifactory as an external, see:
-```
-https://ci.fd-staging.csc.fi/fairdata/fairdata-docker/-/blob/staging/proxy_access/external_access_to_artifactory_gitlab.md#docker-client-configuration-mac
-```
-
 ## 2. Set up fairdata-secrets (config) repository
 
 Clone the fairdata-secrets repository. This repository can be placed next to the `fairdata-ida` repository, for instance (i.e. next to each other, in the same folder).
@@ -68,28 +56,21 @@ git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
 
 If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
 
-## 3 Pull Docker images
+## 3 Pull and build the docker images
 
-If you are on an Intel Mac, do the following:
-```
-docker pull fairdata-docker.artifactory.ci.csc.fi/postgres:12
-docker pull fairdata-docker.artifactory.ci.csc.fi/rabbitmq:management
-docker pull fairdata-docker.artifactory.ci.csc.fi/redis:latest
-docker pull fairdata-docker.artifactory.ci.csc.fi/nginx:latest
-docker pull fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud:latest
-docker pull fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication:latest
-docker pull fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata:latest
-```
-
-If you are on an M1 Mac, do the following:
+Pull the following images:
 ```
 docker pull postgres:12
 docker pull rabbitmq:management
 docker pull redis:latest
 docker pull nginx:latest
-docker build . -f Dockerfile -t fairdata-ida-nextcloud
-docker build . -f Dockerfile.replication -t fairdata-ida-replication
-docker build . -f Dockerfile.metadata -t fairdata-ida-metadata
+```
+
+Build the following images locally:
+```
+docker build --no-cache . -f Dockerfile -t fairdata-ida-nextcloud
+docker build --no-cache . -f Dockerfile.replication -t fairdata-ida-replication
+docker build --no-cache . -f Dockerfile.metadata -t fairdata-ida-metadata
 ```
 
 ## 4. Initialize the docker swarm and deploy required configurations
@@ -153,32 +134,32 @@ At this point you can proceed.
 Finally, the Nextcloud application can be initialized using a utility script included in ida repository. Run the following command at the `fairdata-ida` repository root:
 
 ```
-./init_dev.sh
+./docker_init_dev.sh
 ```
 
 Note: if you have restarted your workstation and are seeing issues with NextCloud when visiting `https://ida.fd-dev.csc.fi`, you may need to rerun this script.
 
 ## 7. Login to https://ida.fd-dev.csc.fi
 
-You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page or SSO login, using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
+You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page or if you optionally generated the Fairdata test accounts (see below) with SSO login, using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
+
+## 8. Run automated tests
+
+To verify that the IDA service is fully functional, run the following command:
+
+```
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
+```
+
+## 9. Initialize Fairdata test accounts
+
+If needed, initialize the Fairdata test accounts by running the following command:
+
+```
+docker exec -it $(docker ps -q -f name=ida-nextcloud) python3 /var/fairdata-test-accounts/initialize-ida-accounts 
+```
 
 # After setup
-
-## Updating the development environment and pushing updates to Artifactory
-
-Build any updated images:
-```
-docker build . -f Dockerfile -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
-docker build . -f Dockerfile.replication -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
-docker build . -f Dockerfile.metadata -t fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
-```
-
-Push any updated images to artifactory:
-```
-docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-nextcloud
-docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-replication
-docker push fairdata-docker.artifactory.ci.csc.fi/fairdata-ida-metadata
-```
 
 ## Redeploying the development environment after pulling or building new images
 
@@ -189,7 +170,7 @@ docker stack deploy --with-registry-auth --resolve-image always -c docker-compos
 
 Run the init_dev.sh script
 ```
-./init_dev.sh
+./docker_init_dev.sh
 ```
 
 ## Removing the docker development environment
@@ -207,6 +188,9 @@ docker rmi -f `docker images -qa`
 
 # Remove all volumes
 docker volume rm $(docker volume ls -q)
+
+# Purge cache
+docker system prune -a
 ```
 
 ## Rebuilding the development environment cleanly

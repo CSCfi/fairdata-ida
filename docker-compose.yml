@@ -4,44 +4,7 @@ services:
   ida-nextcloud:
     image: fairdata-ida-nextcloud
     volumes:
-      # Map each wanted subdirectory separately since Nextcloud user needs write permission to the nextcloud
-      # subdirectory within the container - feel free to come up with a prettier solution...
-      - ./utils:/var/ida/utils
-#     - ./nextcloud/3rdparty:/var/ida/nextcloud/3rdparty
-#     - ./nextcloud/core:/var/ida/nextcloud/core
-#     - ./nextcloud/lib:/var/ida/nextcloud/lib
-#     - ./nextcloud/ocs:/var/ida/nextcloud/ocs
-#     - ./nextcloud/ocs-provider:/var/ida/nextcloud/ocs-provider
-#     - ./nextcloud/resources:/var/ida/nextcloud/resources
-#     - ./nextcloud/settings:/var/ida/nextcloud/settings
-      - ./nextcloud/themes:/var/ida/nextcloud/themes
-#     - ./nextcloud/updater:/var/ida/nextcloud/updater
-#     - ./nextcloud/.user.ini:/var/ida/nextcloud/.user.ini
-#     - ./nextcloud/console.php:/var/ida/nextcloud/console.php
-#     - ./nextcloud/cron.php:/var/ida/nextcloud/cron.php
-#     - ./nextcloud/index.html:/var/ida/nextcloud/index.html
-#     - ./nextcloud/index.php:/var/ida/nextcloud/index.php
-#     - ./nextcloud/public.php:/var/ida/nextcloud/public.php
-#     - ./nextcloud/remote.php:/var/ida/nextcloud/remote.php
-#     - ./nextcloud/robots.txt:/var/ida/nextcloud/robots.txt
-#     - ./nextcloud/status.php:/var/ida/nextcloud/status.php
-#     - ./nextcloud/version.php:/var/ida/nextcloud/version.php
-
-#     # ...likewise write permission is needed for nextcloud/apps directory
-#     - ./nextcloud/apps/admin_audit:/var/ida/nextcloud/apps/admin_audit
-#     - ./nextcloud/apps/cloud_federation_api:/var/ida/nextcloud/apps/cloud_federation_api
-#     - ./nextcloud/apps/dav:/var/ida/nextcloud/apps/dav
-#     - ./nextcloud/apps/federatedfilesharing:/var/ida/nextcloud/apps/federatedfilesharing
-#     - ./nextcloud/apps/files:/var/ida/nextcloud/apps/files
-#     - ./nextcloud/apps/files_sharing:/var/ida/nextcloud/apps/files_sharing
-      - ./nextcloud/apps/ida:/var/ida/nextcloud/apps/ida
-#     - ./nextcloud/apps/idafirstrunwizard:/var/ida/nextcloud/apps/idafirstrunwizard
-#     - ./nextcloud/apps/lookup_server_connector:/var/ida/nextcloud/apps/lookup_server_connector
-#     - ./nextcloud/apps/oauth2:/var/ida/nextcloud/apps/oauth2
-#     - ./nextcloud/apps/provisioning_api:/var/ida/nextcloud/apps/provisioning_api
-#     - ./nextcloud/apps/twofactor_backupcodes:/var/ida/nextcloud/apps/twofactor_backupcodes
-#     - ./nextcloud/apps/user_saml:/var/ida/nextcloud/apps/user_saml
-#     - ./nextcloud/apps/workflowengine:/var/ida/nextcloud/apps/workflowengine
+      - .:/var/ida
       - type: volume
         source: ida-storage-vol
         target: /mnt/storage_vol01/ida
