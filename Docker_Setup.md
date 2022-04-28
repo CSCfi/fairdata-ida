@@ -20,18 +20,25 @@ entry to your `/etc/hosts` file (Linux/Mac):
 0.0.0.0 ida.fd-dev.csc.fi
 ```
 
-### 1.3 Set up IDA git repository
+### 1.3 Set up the IDA git repositories
 
-Git clone the fairdata-ida repository into your local development folder on your machine
+Git clone the IDA git repositories into your local development folder on your machine.
+
+```
+mkdir ~/dev
+cd ~/dev
+```
 
 Option 1: Internal users
 ```
 git clone ssh://git@gitlab.ci.csc.fi/fairdata/fairdata-ida.git
+git clone ssh://git@gitlab.ci.csc.fi/fairdata/ida-command-line-tools.git
 ```
 
 Option 2: External users
 ```
 git clone ssh://git@ci.fd-staging.csc.fi:10022/fairdata/fairdata-ida.git
+git clone ssh://git@ci.fd-staging.csc.fi:10022/fairdata/ida-command-line-tools.git
 ```
 
 ### 1.4 Start Docker
@@ -60,7 +67,7 @@ If you do not have access to the encrypted configuration files in `fairdata-secr
 
 Ensure you are in the master branch of the fairdata-ida cloned repository and that it is fully up-to-date, and permissions are open:
 ```
-cd fairdata-ida
+cd ~/dev/fairdata-ida
 git fetch
 git checkout master
 git pull
@@ -95,7 +102,7 @@ Once `fairdata-secrets` is cloned, configurations can be deployed with stacks in
 
 Ensure you are in the staging branch and it is fully up-to-date, and you are using the latest secrets:
 ```
-cd fairdata-secrets
+cd ~/dev/fairdata-secrets
 git fetch
 git checkout staging
 git pull
@@ -114,7 +121,7 @@ Create the IDA stack for Docker Swarm by running the following command at the `f
 
 Ensure you are back in the IDA repository and deploy:
 ```
-cd fairdata-ida
+cd ~/dev/fairdata-ida
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
 ```
 
@@ -155,12 +162,18 @@ To verify that the IDA service is fully functional, run the following command:
 docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
 ```
 
-## 9. Initialize Fairdata test accounts
-
-If needed, initialize the Fairdata test accounts by running the following command:
+The automated tests for the IDA command line tools can be run with the following command:
 
 ```
-docker exec -u root -it $(docker ps -q -f name=ida-nextcloud) /var/ida/venv/bin/python /var/fairdata-test-accounts/initialize-ida-accounts 
+docker exec -w /var/ida-tools -it $(docker ps -q -f name=ida-nextcloud) /var/ida-tools/tests/run-tests
+```
+
+## 9. Initialize Fairdata test accounts
+
+If needed, initialize the Fairdata test accounts, to be used with SSO login by CSC account, by running the following command:
+
+```
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/venv/bin/python /var/fairdata-test-accounts/initialize-ida-accounts 
 ```
 
 # After setup

@@ -53,10 +53,5 @@ RUN mkdir -p /mnt/storage_vol01/ida \
  && mkdir -p /mnt/storage_vol01/log 
 RUN chown -R www-data:www-data /mnt/storage_vol01
 
-# Set up ida command line tools
-RUN apt-get install -y git
-RUN git clone https://github.com/CSCfi/ida2-command-line-tools /var/ida-tools \
- && chown www-data:www-data -R /var/ida-tools
-
 # Install some useful utilities
-RUN apt-get install -y vim zsh
+RUN apt-get install -y git vim zsh

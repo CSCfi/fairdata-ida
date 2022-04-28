@@ -5,6 +5,7 @@ services:
     image: fairdata-ida-nextcloud
     volumes:
       - .:/var/ida
+      - ../ida-command-line-tools:/var/ida-tools
     configs:
       - source: ida-httpd-config
         target: '/etc/apache2/sites-enabled/ida.conf'
