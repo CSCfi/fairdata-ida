@@ -2,8 +2,8 @@ FROM php:7.3-apache
 
 # Install required debian packages
 RUN apt-get update -y \
- && apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev libpq-dev libicu-dev postgresql \
-                       librabbitmq-dev libgmp-dev
+ && apt-get install -y man bc jq \
+   libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev libpq-dev libicu-dev postgresql librabbitmq-dev libgmp-dev
 
 # Install php extensions
 RUN docker-php-ext-configure gd --with-freetype-dir=DIR \
@@ -36,11 +36,10 @@ RUN ln -s /etc/apache2/mods-available/ssl.conf /etc/apache2/mods-enabled/ssl.con
  && ln -s /etc/apache2/mods-available/rewrite.load /etc/apache2/mods-enabled/rewrite.load \
  && ln -s /etc/apache2/mods-available/headers.load /etc/apache2/mods-enabled/headers.load
 
-WORKDIR /var/ida
-
 # Copy PHP configuration files
 COPY templates/php.ini $PHP_INI_DIR/php.ini
 COPY templates/10-opcache.ini $PHP_INI_DIR/conf.d/10-opcache.ini
+RUN chmod go+rwX $PHP_INI_DIR/php.ini $PHP_INI_DIR/conf.d/10-opcache.ini
 
 # Install python3
 RUN apt-get install -y sudo python3 python3-venv python3-pip \
@@ -49,12 +48,15 @@ RUN apt-get install -y sudo python3 python3-venv python3-pip \
 # Initialize directories
 RUN mkdir -p /mnt/storage_vol01/ida \
  && mkdir -p /mnt/storage_vol01/ida/control \
+ && mkdir -p /mnt/storage_vol01/ida_replication \
+ && mkdir -p /mnt/storage_vol01/ida_trash \
  && mkdir -p /mnt/storage_vol01/log 
-RUN chown www-data:www-data -R /mnt/storage_vol01
+RUN chown -R www-data:www-data /mnt/storage_vol01
 
 # Set up ida command line tools
 RUN apt-get install -y git
 RUN git clone https://github.com/CSCfi/ida2-command-line-tools /var/ida-tools \
  && chown www-data:www-data -R /var/ida-tools
 
-RUN apt-get install -y bc jq
+# Install some useful utilities
+RUN apt-get install -y vim zsh

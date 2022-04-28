@@ -5,12 +5,6 @@ services:
     image: fairdata-ida-nextcloud
     volumes:
       - .:/var/ida
-      - type: volume
-        source: ida-storage-vol
-        target: /mnt/storage_vol01/ida
-      - type: volume
-        source: ida-replication-storage-vol
-        target: /mnt/storage_vol01/ida_replication
     configs:
       - source: ida-httpd-config
         target: '/etc/apache2/sites-enabled/ida.conf'
@@ -33,41 +27,13 @@ services:
     ports:
       - 443:443
 
-  ida-metadata:
-    image: fairdata-ida-metadata
-    volumes:
-      - ./agents:/var/ida/agents
-      - type: volume
-        source: ida-storage-vol
-        target: /mnt/storage_vol01/ida
-      - type: volume
-        source: ida-replication-storage-vol
-        target: /mnt/storage_vol01/ida_replication
-    configs:
-      - source: ida-sh-config
-        target: '/var/ida/config/config.sh'
-
-  ida-replication:
-    image: fairdata-ida-replication
-    volumes:
-      - ./agents:/var/ida/agents
-      - type: volume
-        source: ida-storage-vol
-        target: /mnt/storage_vol01/ida
-      - type: volume
-        source: ida-replication-storage-vol
-        target: /mnt/storage_vol01/ida_replication
-    configs:
-      - source: ida-sh-config
-        target: '/var/ida/config/config.sh'
-
   ida-db:
     image: postgres:12
     hostname: ida-db
     environment:
       POSTGRES_USER: nextcloud
       POSTGRES_PASSWORD: nextcloud
-      POSTGRES_DB: foo
+      POSTGRES_DB: postgres
 
   ida-redis:
     image: redis
@@ -82,20 +48,6 @@ services:
       - source: ida-rabbitmq-config
         target: '/etc/rabbitmq/rabbitmq.conf'
 
-  fairdata-nginx:
-    image: nginx
-    configs:
-      - source: fairdata-nginx-config
-        target: '/etc/nginx/nginx.conf'
-      - source: fairdata-ssl-certificate
-        target: '/etc/pki/tls/certs/ssl.crt.pem'
-      - source: fairdata-ssl-certificate-key
-        target: '/etc/pki/tls/private/ssl.key.pem'
-      - source: ida-nginx-config
-        target: '/etc/nginx/sites-enabled/ida'
-#    ports:
-#      - 443:443
-
 configs:
   ida-php-config:
     external: True
@@ -103,18 +55,12 @@ configs:
     external: True
   ida-httpd-config:
     external: True
-  ida-nginx-config:
-    external: True
   ida-rabbitmq-config:
-    external: True
-
-  fairdata-nginx-config:
     external: True
   fairdata-ssl-certificate:
     external: True
   fairdata-ssl-certificate-key:
     external: True
-
   fairdata-test-accounts-projects:
     external: True
   fairdata-test-accounts-users:
@@ -122,10 +68,4 @@ configs:
   fairdata-test-accounts-credentials:
     external: True
   fairdata-test-accounts-initialize:
-    external: True
-
-volumes:
-  ida-storage-vol:
-    external: True
-  ida-replication-storage-vol:
     external: True

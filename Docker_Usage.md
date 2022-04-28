@@ -74,16 +74,30 @@ cd /var/ida/utils/admin
 
 # 2 Postprocessing
 
-## 2.1 Postprocessing agent containers
+## 2.1 Restarting the postprocessing agents
+
+Identify the process numbers of the running agents with the following command:
+
 ```
-docker exec -it $(docker ps -q -f name=fairdata-dev_ida-metadata) sh
-
-docker exec -it $(docker ps -q -f name=fairdata-dev_ida-replication) sh
+docker exec -it $(docker ps -q -f name=ida-nextcloud) ps auxw | grep agents
 ```
 
-## 2.2 Inspect postprocessing logs
+Then kill one or either of the running agents as needed where `N` is the process number of the running agent to be stopped:
 
-Inside each of the postprocessing containers, the RabbitMQ log is available:
+```
+docker exec -it $(docker ps -q -f name=ida-nextcloud) sudo kill -9 N
+```
+
+Then restart one or both of the agents:
+
+```
+docker exec -u www-data --detach -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.metadata.metadata_agent
+docker exec -u www-data --detach -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.replication.replication_agent
+```
+
+## 2.2 Inspect the postprocessing logs
+
+Inside each of the IDA container, the postprocessing agent log is available as follows:
 ```
 cat /mnt/storage_vol01/log/agents-ida-test.log
 ```
@@ -107,4 +121,18 @@ The RabbitMQ web console is available at `0.0.0.0:15672`. You can login with the
 ```
 username = admin
 password = test
+```
+
+# 4 Automated tests
+
+Run all automated tests:
+
+```
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
+```
+
+Run a specific test module (see /var/ida/utils/run-tests for module list), e.g.:
+
+```
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests tests.nextcloud_apps.ida
 ```

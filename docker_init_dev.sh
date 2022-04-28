@@ -44,46 +44,47 @@ then
     rm -fr ./venv
 fi
 
-echo "IDA NextCloud container: Installing config.sh..."
+echo "Installing config.sh..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/config > /dev/null
 docker cp $FAIRDATA_SECRETS/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh > /dev/null
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R www-data:www-data /var/ida/config > /dev/null
 
-echo "IDA NextCloud container: Installing Nextcloud..."
+echo "Installing Nextcloud..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/nextcloud/config > /dev/null
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown www-data:www-data /var/ida/nextcloud/config > /dev/null
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) cp /var/ida/nextcloud/.htaccess /tmp/.htaccess > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ maintenance:install --database "pgsql" --database-name "nextcloud" --database-host "ida-db" --database-user "nextcloud" --database-pass "nextcloud" --admin-user "admin" --admin-pass "admin" --data-dir "/mnt/storage_vol01/ida" #> /dev/null
+docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ maintenance:install --database "pgsql" --database-name "nextcloud" --database-host "ida-db" --database-user "nextcloud" --database-pass "nextcloud" --admin-user "admin" --admin-pass "admin" --data-dir "/mnt/storage_vol01/ida" 
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) mv /tmp/.htaccess /var/ida/nextcloud/.htaccess > /dev/null
 
-echo "IDA NextCloud container: Installing Nextcloud config.php..."
+echo "Installing Nextcloud config.php..."
 docker cp $FAIRDATA_SECRETS/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php > /dev/null
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R www-data:www-data /var/ida/nextcloud/config > /dev/null
 
-echo "IDA NextCloud container: Enabling essential Nextcloud apps..."
+echo "Enabling essential Nextcloud apps..."
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable files_sharing > /dev/null
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable admin_audit > /dev/null
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable ida > /dev/null
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable idafirstrunwizard > /dev/null
 
-echo "IDA NetxCloud container: Disabling unused Nextcloud apps..."
+echo "Disabling unused Nextcloud apps..."
 docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/disable_nextcloud_apps > /dev/null
 
-echo "Database container: Adding optimization indices to database..."
+echo "Adding optimization indices to database..."
 docker cp ./utils/create_db_indices.pgsql $(docker ps -q -f name=ida-db):/tmp/create_db_indices.pgsql > /dev/null
 docker exec -u www-data -it $(docker ps -q -f name=ida-db) psql -f /tmp/create_db_indices.pgsql nextcloud > /dev/null
 
-echo "Metadata & replication containers: Initializing rabbitmq and restarting containers..."
-docker exec -it $(docker ps -q -f name=ida-metadata) python -m agents.utils.rabbitmq > /dev/null
-METADATA=$(docker ps -q -f name=ida-metadata)
-REPLICATION=$(docker ps -q -f name=ida-replication)
-docker kill $METADATA $REPLICATION > /dev/null
-docker rm $METADATA $REPLICATION > /dev/null
+echo "Creating basic local project test_project and user account test_user..."
+docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 > /dev/null
+docker exec -u www-data -e OC_PASS=test -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project > /dev/null
 
-echo "IDA NextCloud container: Initializing Python3 virtual environment..."
-docker cp requirements.txt $(docker ps -q -f name=ida-nextcloud):/var/ida/requirements.txt > /dev/null
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
-
-echo "IDA NextCloud container: Fixing file ownership and permissions..."
+echo "Fixing file ownership and permissions..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permissions > /dev/null
-docker exec -it $(docker ps -q -f name=ida-nextcloud) chown 33:33 /mnt/storage_vol01/ida_replication > /dev/null
+
+echo "Initializing rabbitmq and starting postprocessing agents..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) pip install -r /var/ida/requirements.txt > /dev/null
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.utils.rabbitmq > /dev/null
+docker exec -u www-data --detach -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.metadata.metadata_agent
+docker exec -u www-data --detach -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.replication.replication_agent
+
+echo "Initializing python3 virtual environment used for automated tests..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null

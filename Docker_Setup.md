@@ -64,22 +64,19 @@ cd fairdata-ida
 git fetch
 git checkout master
 git pull
-chmod -R go+rwX .
+chmod -R g+rwX,o+rX .
 ```
 
-Pull the following images:
+Pull the following supporting images:
 ```
 docker pull postgres:12
 docker pull rabbitmq:management
 docker pull redis:latest
-docker pull nginx:latest
 ```
 
-Build the following images locally:
+Build the IDA image locally:
 ```
 docker build --no-cache . -f Dockerfile -t fairdata-ida-nextcloud
-docker build --no-cache . -f Dockerfile.replication -t fairdata-ida-replication
-docker build --no-cache . -f Dockerfile.metadata -t fairdata-ida-metadata
 ```
 
 ## 4. Initialize the docker swarm and deploy required configurations
@@ -103,7 +100,7 @@ git fetch
 git checkout staging
 git pull
 ./reveal_configs.sh
-chmod -R go+rwX .
+chmod -R g+rwX,o+rX .
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
@@ -115,6 +112,7 @@ Create the IDA stack for Docker Swarm by running the following command at the `f
 
 ### 5.1 Deployment command
 
+Ensure you are back in the IDA repository and deploy:
 ```
 cd fairdata-ida
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
@@ -147,14 +145,14 @@ Note: if you have restarted your workstation and are seeing issues with NextClou
 
 ## 7. Login to https://ida.fd-dev.csc.fi
 
-You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page or if you optionally generated the Fairdata test accounts (see below) with SSO login, using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
+You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `admin` with password `admin` or as `test_user` with pasword `test`, or if you optionally generated the Fairdata test accounts (see below) with SSO login, using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
 
 ## 8. Run automated tests
 
 To verify that the IDA service is fully functional, run the following command:
 
 ```
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
 ```
 
 ## 9. Initialize Fairdata test accounts
@@ -162,7 +160,7 @@ docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
 If needed, initialize the Fairdata test accounts by running the following command:
 
 ```
-docker exec -it $(docker ps -q -f name=ida-nextcloud) python3 /var/fairdata-test-accounts/initialize-ida-accounts 
+docker exec -u root -it $(docker ps -q -f name=ida-nextcloud) /var/ida/venv/bin/python /var/fairdata-test-accounts/initialize-ida-accounts 
 ```
 
 # After setup
@@ -196,8 +194,10 @@ docker rmi -f `docker images -qa`
 docker volume rm $(docker volume ls -q)
 
 # Purge cache
-docker system prune -a
+docker system prune -a -f
 ```
+
+Note: there is a utility script `docker_purge_all` in the root of the fairdata-ida repository which executes the above four steps.
 
 ## Rebuilding the development environment cleanly
 
