@@ -10,7 +10,7 @@ body { line-height:1.5; }
 table { border-collapse:separate; border-spacing:0; white-space:nowrap; }
 caption, th, td { text-align:left; font-weight:normal; }
 table, td, th { vertical-align:middle; }
-a { border:0; color:#000; text-decoration:none;}
+a { border:0; color:#000; text-decoration: none;}
 a, a *, input, input *, select, .button span, label { cursor:pointer; }
 ul { list-style:none; }
 
@@ -41,7 +41,7 @@ body-disabled {
 }
 #body-login #ida-login a:not(.button):hover,
 #body-login #ida-login a:not(.button):focus {
-	text-decoration: underline;
+	text-decoration: none;
 	text-decoration-skip-ink: auto;
 }
 
