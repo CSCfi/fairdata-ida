@@ -213,13 +213,15 @@ echo "Deleting any residual project share owner directories and links..."
 for PROJECT in $PROJECTS; do
     for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}; do
         TARGET="${CANDIDATE_STORAGE_VOLUME}/${PROJECT_USER_PREFIX}${PROJECT}"
-        STEP="   Deleting $TARGET "
-        printf "%${PADDING}s" "$STEP"
-        OUT=`rm -fr "$TARGET"`
-        if [ "$?" -ne 0 ]; then
-            failure "$OUT (ignored)"
-        else
-            success
+        if [ -e "$TARGET" ]; then
+            STEP="   Deleting $TARGET "
+            printf "%${PADDING}s" "$STEP"
+            OUT=`rm -fr "$TARGET"`
+            if [ "$?" -ne 0 ]; then
+                failure "$OUT (ignored)"
+            else
+                success
+            fi
         fi
     done
 done

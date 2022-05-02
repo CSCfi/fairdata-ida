@@ -114,7 +114,7 @@ if [ "$1" == "ADD" ]; then
         fi
     done
 
-    # If project folder does not exist, create it in whichever volume has the most available free space
+    # If project folder does not exist, create it
 
     if [ ! -e "$STORAGE_OC_DATA_ROOT/$PROJECT_USER" ]; then
 
@@ -122,19 +122,26 @@ if [ "$1" == "ADD" ]; then
             rm -f "$STORAGE_OC_DATA_ROOT/$PROJECT_USER"
         fi
 
-        AVAILABLE_SPACE=0
-
-        for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}
-        do
-            CANDIDATE_AVAILABLE_SPACE=`df -k "$CANDIDATE_STORAGE_VOLUME" | tail -1 | sed -e 's/  */\t/g' | cut -f 4 | sed -e 's/[^0-9]//g'`
-            if [ "$CANDIDATE_AVAILABLE_SPACE" = "" ]; then
-                errorExit "Failed to determine available space of volume: $CANDIDATE_STORAGE_VOLUME"
-            fi
-            if [ $CANDIDATE_AVAILABLE_SPACE -ge $AVAILABLE_SPACE ]; then
-                AVAILABLE_SPACE=$CANDIDATE_AVAILABLE_SPACE
-                STORAGE_VOLUME=$CANDIDATE_STORAGE_VOLUME
-            fi
-        done
+        # For non production environments, randomly select a storage volume for the new project
+        if [ "$ENVIRONMENT" != "PRODUCTION" ]; then
+            SC_SIZE=${#STORAGE_CANDIDATES[@]}
+            SC_INDEX=$(($RANDOM % $SC_SIZE))
+            STORAGE_VOLUME="${STORAGE_CANDIDATES[$SC_INDEX]}"
+        # Else in production, select the storage volume with the most available space
+        else
+            AVAILABLE_SPACE=0
+            for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}
+            do
+                CANDIDATE_AVAILABLE_SPACE=`df -k "$CANDIDATE_STORAGE_VOLUME" | tail -1 | sed -e 's/  */\t/g' | cut -f 4 | sed -e 's/[^0-9]//g'`
+                if [ "$CANDIDATE_AVAILABLE_SPACE" = "" ]; then
+                    errorExit "Failed to determine available space of volume: $CANDIDATE_STORAGE_VOLUME"
+                fi
+                if [ $CANDIDATE_AVAILABLE_SPACE -ge $AVAILABLE_SPACE ]; then
+                    AVAILABLE_SPACE=$CANDIDATE_AVAILABLE_SPACE
+                    STORAGE_VOLUME=$CANDIDATE_STORAGE_VOLUME
+                fi
+            done
+        fi
 
         echoAndLog "Creating new project share owner folder: $STORAGE_VOLUME/$PROJECT_USER"
 
