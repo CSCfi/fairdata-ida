@@ -131,28 +131,21 @@ docker stack deploy --with-registry-auth --resolve-image always -c docker-compos
 docker service ls
 ```
 
-According to the above command, when all services are listed as `MODE` = "replicated" and the value of all `REPLICAS` is "1/1", the stack is deployed. If you go to `https://ida.fd-dev.csc.fi`, you should now see:
-
-```
-Error
-It looks like you are trying to reinstall your Nextcloud...
-```
+According to the above command, when all services are listed as `MODE` = "replicated" and the value of all `REPLICAS` is "1/1", the stack is deployed. 
 
 At this point you can proceed.
 
 ## 6. Initialize IDA nextcloud
 
-Finally, the Nextcloud application can be initialized using a utility script included in ida repository. Run the following command at the `fairdata-ida` repository root:
+The Nextcloud application can be initialized using a utility script included in ida repository. Run the following command at the `fairdata-ida` repository root:
 
 ```
 ./docker_init_dev.sh
 ```
 
-Note: if you have restarted your workstation and are seeing issues with NextCloud when visiting `https://ida.fd-dev.csc.fi`, you may need to rerun this script.
-
 ## 7. Login to https://ida.fd-dev.csc.fi
 
-You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `admin` with password `admin` or as `test_user` with pasword `test`, or if you optionally generated the Fairdata test accounts (see below) with SSO login, using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
+You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `admin` with password `admin` or as `test_user` with pasword `test`, or if you optionally generated the Fairdata test accounts (see below) you should be able to log in with SSO login using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
 
 ## 8. Run automated tests
 
@@ -178,14 +171,31 @@ docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/venv/bin/python /
 
 # After setup
 
-## Redeploying the development environment after pulling or building new images
+## Redeploying the development environment after pulling and/or building new images
 
-Redeploy
+This may also need to be done if after stopping and restarting docker, the environment behaves strangely.
+
+First shut down and discard all running containers and volumes:
+
 ```
+docker swarm leave --force
+docker volume rm $(docker volume ls -q)
+```
+
+Then reinitialize the swarm, initialize secrets, and redeploy the stack:
+
+```
+docker swarm init
+cd ~/dev/fairdata-secrets
+docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
+docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
+docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
+cd ~/dev/fairdata-ida
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
 ```
 
-Run the init_dev.sh script
+Check with `docker service ls` until all containers are running. The pre-initialize the IDA container:
+
 ```
 ./docker_init_dev.sh
 ```
