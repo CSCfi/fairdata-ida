@@ -86,28 +86,17 @@
 #     127.0.0.1 ida191.local
 #     127.0.0.1 ida192.local
 #
-#     # Create top level storage directories:
-#
-#     sudo mkdir /var/ida-storage
-#     chown apache:apache /var/ida-storage
-#
-#     sudo mkdir /mnt/storage_vol01
-#     sudo mkdir /mnt/storage_vol02
-#     sudo mkdir /mnt/storage_vol03
-#     sudo mkdir /mnt/storage_vol04
-#     chown apache:apache /mnt/storage_vol*
-
-#     # In /var/ida/config/config.sh, define the following pathnames:
+#     # In /var/ida/config/config.sh, ensure the following pathnames are defined as specified below:
 #
 #     STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
 #     STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida" "/mnt/storage_vol03/ida" "/mnt/storage_vol04/ida")
-#     DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
-#     TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
+#     DATA_REPLICATION_ROOT="/mnt/storage_vol01/ida_replication"
+#     TRASH_DATA_ROOT="/mnt/storage_vol01/ida_trash"
 #     LOG="/var/ida/storage/mnt/storage_vol01/log/ida.log"
 #     RABBIT_WORKER_LOG_FILE="/mnt/storage_vol01/log/agents.log"
 #     RABBIT_MONITORING_DIR="/mnt/storage_vol01/log/rabbitmq_monitoring"
 #
-#     # In /var/ida/nextcloud/config/config.php, define the following pathnames:
+#     # In /var/ida/nextcloud/config/config.php, ensure the following pathnames are defined as specified below:
 #
 #     'datadirectory' => '/mnt/storage_vol01/ida',
 #     'logfile' => '/mnt/storage_vol01/log/nextcloud.log',
@@ -194,8 +183,6 @@ if [ -d /mnt/storage_vol04/ ]; then
 fi
 
 mkdir -p /var/ida-storage
-chown -R $HTTPD_USER:$HTTPD_USER /var/ida-storage
-chmod -R g+rwX,o-rwx /var/ida-storage
 
 #--------------------------------------------------------------------------------
 
@@ -263,8 +250,6 @@ done
 #--------------------------------------------------------------------------------
 
 echo "Creating glusterfs volumes..."
-
-systemctl restart glusterd
 
 gluster volume create storage_vol01 \
     ida201.local:/var/ida-storage/ida201/mnt/storage_brick1/brick \

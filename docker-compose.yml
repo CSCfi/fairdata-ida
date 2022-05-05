@@ -1,11 +1,14 @@
 version: '3.8'
 
 services:
+
   ida-nextcloud:
     image: fairdata-ida-nextcloud
+    hostname: ida.fd-dev.csc.fi
     volumes:
       - .:/var/ida
       - ../ida-command-line-tools:/var/ida-tools
+      - ../fairdata-ida-healthcheck:/var/ida-healthcheck
     configs:
       - source: ida-httpd-config
         target: '/etc/apache2/sites-enabled/ida.conf'
@@ -32,9 +35,9 @@ services:
     image: postgres:12
     hostname: ida-db
     environment:
-      POSTGRES_USER: nextcloud
-      POSTGRES_PASSWORD: nextcloud
-      POSTGRES_DB: postgres
+      POSTGRES_USER: nextcloud      # = /var/ida/config.sh:$DBUSER
+      POSTGRES_PASSWORD: nextcloud  # = /var/ida/config.sh:$DBPASSWORD
+      POSTGRES_DB: nextcloud        # = /var/ida/config.sh:$DBNAME
 
   ida-redis:
     image: redis

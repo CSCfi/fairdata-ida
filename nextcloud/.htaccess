@@ -118,4 +118,4 @@ Header always set Referrer-Policy "no-referrer"
 Header always set Strict-Transport-Security "max-age=15552000; includeSubDomains"
 <IfModule mod_headers.c>
   Header set X-XSS-Protection "0"
-</IfModule>
+</IfModule>         

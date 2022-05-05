@@ -52,8 +52,9 @@ fi
 PROJECT_GROUP="$3"
 USER="$2"
 
-# if not otherwise already defined in the environment, a new user account gets the static
-# password "test" if in a non-production environment, else gets a random password
+# If not otherwise already defined in the environment, a new user account gets the static
+# password "$TEST_USER_PASS" (defined in config.sh) if in a non-production environment, else
+# gets a random password
 if [ "$OC_PASS" = "" ]; then
     if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
         export OC_PASS="$TEST_USER_PASS"

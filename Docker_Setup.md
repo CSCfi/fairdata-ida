@@ -20,9 +20,9 @@ entry to your `/etc/hosts` file (Linux/Mac):
 0.0.0.0 ida.fd-dev.csc.fi
 ```
 
-### 1.3 Set up the IDA git repositories
+### 1.3 Clone the necessary IDA and Fairdata git repositories locally
 
-Git clone the IDA git repositories into your local development folder on your machine.
+Clone the IDA git repositories into your local development folder on your machine.
 
 ```
 mkdir ~/dev
@@ -31,15 +31,21 @@ cd ~/dev
 
 Option 1: Internal users
 ```
-git clone ssh://git@gitlab.ci.csc.fi/fairdata/fairdata-ida.git
-git clone ssh://git@gitlab.ci.csc.fi/fairdata/ida-command-line-tools.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida
+git clone https://gitlab.ci.csc.fi/fairdata/ida-command-line-tools
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-healthcheck
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets
 ```
 
 Option 2: External users
 ```
-git clone ssh://git@ci.fd-staging.csc.fi:10022/fairdata/fairdata-ida.git
-git clone ssh://git@ci.fd-staging.csc.fi:10022/fairdata/ida-command-line-tools.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida
+git clone https://ci.fd-staging.csc.fi/fairdata/ida-command-line-tools
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-healthcheck
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
 ```
+
+If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
 
 ### 1.4 Start Docker
 
@@ -49,19 +55,17 @@ If you are using Mac and Docker desktop, make sure you have started Docker deskt
 
 ## 2. Set up fairdata-secrets (config) repository
 
-Clone the fairdata-secrets repository. This repository can be placed next to the `fairdata-ida` repository, for instance (i.e. next to each other, in the same folder).
+Decrypt and unpack the configuration files in the fairdata-secrets repository:
 
-Option 1: Internal users
 ```
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets
-```
-
-Option 2: External users
-```
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
+cd ~/dev/fairdata-secrets
+git fetch
+git checkout staging
+git pull
+./reveal_configs.sh
 ```
 
-If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
+Answer 'Y' to all prompts.
 
 ## 3 Pull and build the docker images
 
@@ -100,13 +104,8 @@ docker swarm init
 
 Once `fairdata-secrets` is cloned, configurations can be deployed with stacks included in Fairdata-Secrets repository by running the following commands at the `fairdata-secrets` repository root.
 
-Ensure you are in the staging branch and it is fully up-to-date, and you are using the latest secrets:
 ```
 cd ~/dev/fairdata-secrets
-git fetch
-git checkout staging
-git pull
-./reveal_configs.sh
 chmod -R g+rwX,o+rX .
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
@@ -119,9 +118,10 @@ Create the IDA stack for Docker Swarm by running the following command at the `f
 
 ### 5.1 Deployment command
 
-Ensure you are back in the IDA repository and deploy:
+Ensure you are in the IDA repository, permissions are open, and deploy:
 ```
 cd ~/dev/fairdata-ida
+chmod -R g+rwX,o+rX .
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
 ```
 
@@ -145,15 +145,21 @@ The Nextcloud application can be initialized using a utility script included in 
 
 ## 7. Login to https://ida.fd-dev.csc.fi
 
-You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `admin` with password `admin` or as `test_user` with pasword `test`, or if you optionally generated the Fairdata test accounts (see below) you should be able to log in with SSO login using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
+You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `$NC_ADMIN_USER` with password `$NC_ADMIN_PASS` or as `test_user` with pasword `$TEST_USER_PASS`, as defined in `/var/ida/config/config.sh`, or if you optionally generated the Fairdata test accounts (see below) you should be able to log in with SSO login using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
 
 ## 8. Run automated tests
 
-To verify that the IDA service is fully functional, run the following command:
+To verify that all components of the IDA service are fully functional, run the automated tests.
+
+### 8.1 Core IDA automated tests
+
+The automated tests for the core IDA service and postprocessing agents can be run with the following command:
 
 ```
 docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
 ```
+
+### 8.2 IDA command line tools automated tests
 
 The automated tests for the IDA command line tools can be run with the following command:
 
@@ -161,40 +167,50 @@ The automated tests for the IDA command line tools can be run with the following
 docker exec -w /var/ida-tools -it $(docker ps -q -f name=ida-nextcloud) /var/ida-tools/tests/run-tests
 ```
 
+### 8.3 IDA healthcheck service automated tests
+
+The automated tests for the IDA healthcheck service can be run with the following command:
+
+```
+docker exec -w /var/ida-healthcheck -it $(docker ps -q -f name=ida-nextcloud) /var/ida-healthcheck/tests/run-tests
+```
+
 ## 9. Initialize Fairdata test accounts
 
 If needed, initialize the Fairdata test accounts, to be used with SSO login by CSC account, by running the following command:
 
 ```
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/venv/bin/python /var/fairdata-test-accounts/initialize-ida-accounts 
+docker exec -it $(docker ps -q -f name=ida-nextcloud) python3 /var/fairdata-test-accounts/initialize-ida-accounts 
 ```
 
 # After setup
 
-## Redeploying the development environment after pulling and/or building new images
+## Redeploying the development environment after pulling and/or building new images, or if environment malfunctioning
 
-This may also need to be done if after stopping and restarting docker, the environment behaves strangely.
+The development environment should be redeployed cleanly after pulling or building any new images.
 
-First shut down and discard all running containers and volumes:
+This may also need to be done if after stopping and restarting docker, the environment behaves strangely. Normally, when
+restarting docker after shutting it down properly the swarm should resume execution without issues. However sometimes things
+go amiss an the environment needs to be redepoloyed cleanly.
+
+First shut down and discard all running containers and remove all existing volumes, then reinitialize the swarm, initialize
+secrets, and redeploy the stack:
 
 ```
 docker swarm leave --force
 docker volume rm $(docker volume ls -q)
-```
-
-Then reinitialize the swarm, initialize secrets, and redeploy the stack:
-
-```
 docker swarm init
 cd ~/dev/fairdata-secrets
+chmod -R g+rwX,o+rX .
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
 cd ~/dev/fairdata-ida
+chmod -R g+rwX,o+rX .
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
 ```
 
-Check with `docker service ls` until all containers are running. The pre-initialize the IDA container:
+Repeatedly check with `docker service ls` until all containers are running. Then initialize the IDA container:
 
 ```
 ./docker_init_dev.sh
@@ -202,7 +218,8 @@ Check with `docker service ls` until all containers are running. The pre-initial
 
 ## Removing the docker development environment
 
-To remove the docker development environment entirely from your machine, do the following:
+To remove the docker development environment entirely from your machine, either for good or before 
+rebuilding the environment fully cleanly, do the following:
 
 Warning: this will delete all images from your docker environment, not only those which are part of the IDA development environment. If you have other images you don't want to delete, then you will need to delete each IDA development docker image manually.
 

@@ -21,12 +21,31 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
-
 # Note: This script assumes that it is being executed at the root of the fairdata-ida
 # repository and that the fairdata-secrets repository is cloned as a sibling directory
-# of the fairdata-ida repository. If not, the pathname below should be edited accordingly.
+# of the fairdata-ida repository, as specified in the instructions in Docker_Setup.md.
+#--------------------------------------------------------------------------------
 
-FAIRDATA_SECRETS="../fairdata-secrets"
+if [ ! -e ../fairdata-secrets/ida/config/config.dev.sh ]; then
+    echo "Error: Could not find the IDA configuration file. Aborting." >&2
+    exit 1
+fi
+
+. ../fairdata-secrets/ida/config/config.dev.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify that we are in a test environment
+
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    errorExit "Error: This script can not be run in a production environment. Aborting."
+fi
+
+#--------------------------------------------------------------------------------
 
 echo "Cleaning up any previous installation configurations..."
 if [ -d ./config ]
@@ -45,46 +64,52 @@ then
 fi
 
 echo "Installing config.sh..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/config > /dev/null
-docker cp $FAIRDATA_SECRETS/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh > /dev/null
-docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R www-data:www-data /var/ida/config > /dev/null
+docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/config
+docker cp ../fairdata-secrets/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/config
 
 echo "Installing Nextcloud..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/nextcloud/config > /dev/null
-docker exec -it $(docker ps -q -f name=ida-nextcloud) chown www-data:www-data /var/ida/nextcloud/config > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) cp /var/ida/nextcloud/.htaccess /tmp/.htaccess > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ maintenance:install --database "pgsql" --database-name "nextcloud" --database-host "ida-db" --database-user "nextcloud" --database-pass "nextcloud" --admin-user "admin" --admin-pass "admin" --data-dir "/mnt/storage_vol01/ida" 
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) mv /tmp/.htaccess /var/ida/nextcloud/.htaccess > /dev/null
+docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/nextcloud/config
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) cp /var/ida/nextcloud/.htaccess /tmp/.htaccess
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ maintenance:install --database $DBTYPE --database-name $DBNAME --database-host $DBHOST --database-user $DBUSER --database-pass $DBPASSWORD --admin-user $NC_ADMIN_USER --admin-pass $NC_ADMIN_PASS --data-dir $STORAGE_OC_DATA_ROOT
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) mv /tmp/.htaccess /var/ida/nextcloud/.htaccess
 
 echo "Installing Nextcloud config.php..."
-docker cp $FAIRDATA_SECRETS/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php > /dev/null
-docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R www-data:www-data /var/ida/nextcloud/config > /dev/null
+docker cp ../fairdata-secrets/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
 
 echo "Enabling essential Nextcloud apps..."
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable files_sharing > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable admin_audit > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable ida > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable idafirstrunwizard > /dev/null
-
-echo "Disabling unused Nextcloud apps..."
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/disable_nextcloud_apps > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable files_sharing > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable admin_audit > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable ida > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable idafirstrunwizard > /dev/null echo "Disabling unused Nextcloud apps..."
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/disable_nextcloud_apps > /dev/null
 
 echo "Adding optimization indices to database..."
-docker cp ./utils/create_db_indices.pgsql $(docker ps -q -f name=ida-db):/tmp/create_db_indices.pgsql > /dev/null
-docker exec -u www-data -it $(docker ps -q -f name=ida-db) psql -f /tmp/create_db_indices.pgsql nextcloud > /dev/null
+docker cp ./utils/create_db_indices.pgsql $(docker ps -q -f name=ida-db):/tmp/create_db_indices.pgsql
+docker exec -it $(docker ps -q -f name=ida-db) psql -U $DBUSER -f /tmp/create_db_indices.pgsql $DBNAME > /dev/null
 
 echo "Creating basic local project test_project and user account test_user..."
-docker exec -u www-data -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 > /dev/null
-docker exec -u www-data -e OC_PASS=test -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project > /dev/null
 
-echo "Fixing file ownership and permissions..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permissions > /dev/null
-
-echo "Initializing rabbitmq and starting postprocessing agents..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) pip install -r /var/ida/requirements.txt > /dev/null
-docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.utils.rabbitmq > /dev/null
-docker exec -u www-data --detach -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.metadata.metadata_agent
-docker exec -u www-data --detach -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) python -m agents.replication.replication_agent
-
-echo "Initializing python3 virtual environment used for automated tests..."
+echo "Initializing IDA python3 virtual environment..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
+
+echo "Initializing rabbitmq..."
+APP_ROOT=/var/ida
+APP_VENV=$APP_ROOT/venv
+docker exec -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.utils.rabbitmq > /dev/null
+
+echo "Starting IDA postprocessing agents..."
+docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.metadata.metadata_agent
+docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.replication.replication_agent
+
+echo "Initializing healthcheck service python3 virtual environment..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida-healthcheck/utils/initialize-venv > /dev/null
+
+echo "Starting IDA healthcheck service..."
+APP_ROOT=/var/ida-healthcheck
+APP_VENV=$APP_ROOT/venv
+docker exec --detach -e APP_ROOT=$APP_ROOT -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m wsgi

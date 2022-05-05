@@ -19,14 +19,8 @@ RUN cd /tmp \
  && ln -s python3.8 python3 \
  && ln -s python3.8 python \
  && ln -s pip3.8 pip3 \
- && ln -s pip3.8 pip \
- && ./pip install --upgrade pip \
- && ./pip install virtualenv 
-
-RUN ln -s /opt/fairdata/python3/bin/python3.8 /usr/bin/python3 \
- && ln -s /opt/fairdata/python3/bin/python3.8 /usr/bin/python \
- && ln -s /opt/fairdata/python3/bin/pip3.8 /usr/bin/pip3 \
- && ln -s /opt/fairdata/python3/bin/pip3.8 /usr/bin/pip
+ && ./pip3 install --upgrade pip \
+ && ./pip3 install virtualenv 
 
 # Install php extensions
 RUN docker-php-ext-configure gd --with-freetype-dir=DIR \
@@ -64,13 +58,27 @@ COPY templates/php.ini $PHP_INI_DIR/php.ini
 COPY templates/10-opcache.ini $PHP_INI_DIR/conf.d/10-opcache.ini
 RUN chmod go+rwX $PHP_INI_DIR/php.ini $PHP_INI_DIR/conf.d/10-opcache.ini
 
-# Initialize directories
-RUN mkdir -p /mnt/storage_vol01/ida \
+# Install some useful utilities for working inside the container
+RUN apt-get install -y git vim zsh
+
+# Initialize directories and simulated mount sentinel files
+RUN mkdir -p /mnt/storage_vol01/log \
+ && mkdir -p /mnt/storage_vol01/ida \
  && mkdir -p /mnt/storage_vol01/ida/control \
  && mkdir -p /mnt/storage_vol01/ida_replication \
  && mkdir -p /mnt/storage_vol01/ida_trash \
- && mkdir -p /mnt/storage_vol01/log 
-RUN chown -R www-data:www-data /mnt/storage_vol01
-
-# Install some useful utilities
-RUN apt-get install -y git vim zsh
+ && mkdir -p /mnt/storage_vol02/ida \
+ && mkdir -p /mnt/storage_vol03/ida \
+ && mkdir -p /mnt/storage_vol04/ida
+RUN touch /mnt/storage_vol01/DO_NOT_DELETE_sentinel_file \
+ && touch /mnt/storage_vol02/DO_NOT_DELETE_sentinel_file \
+ && touch /mnt/storage_vol03/DO_NOT_DELETE_sentinel_file \
+ && touch /mnt/storage_vol04/DO_NOT_DELETE_sentinel_file
+RUN chown -R www-data:www-data /mnt/storage_vol01 \
+ && chown -R www-data:www-data /mnt/storage_vol02 \
+ && chown -R www-data:www-data /mnt/storage_vol03 \
+ && chown -R www-data:www-data /mnt/storage_vol04 \
+ && chmod -R g+rwX,o+rX-w /mnt/storage_vol01 \
+ && chmod -R g+rwX,o+rX-w /mnt/storage_vol02 \
+ && chmod -R g+rwX,o+rX-w /mnt/storage_vol03 \
+ && chmod -R g+rwX,o+rX-w /mnt/storage_vol04

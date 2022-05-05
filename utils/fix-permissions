@@ -60,11 +60,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PERMS="g+rwX,o-rwx"
-
-if [ "$IDA_ENVIRONMENT" = "TEST" ]; then
-    PERMS="go+rwX"
-fi
+PERMS="g+rwX,o+rX-w"
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT
 chmod -R $PERMS $ROOT
