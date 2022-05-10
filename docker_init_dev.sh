@@ -79,6 +79,12 @@ echo "Installing Nextcloud config.php..."
 docker cp ../fairdata-secrets/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
 
+echo "Initializing IDA python3 virtual environment..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
+
+echo "Ensuring correct ownership and permissions in installation directory branch..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permissions > /dev/null
+
 echo "Enabling essential Nextcloud apps..."
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable files_sharing > /dev/null
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable admin_audit > /dev/null
@@ -93,9 +99,6 @@ docker exec -it $(docker ps -q -f name=ida-db) psql -U $DBUSER -f /tmp/create_db
 echo "Creating basic local project test_project and user account test_user..."
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 > /dev/null
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project > /dev/null
-
-echo "Initializing IDA python3 virtual environment..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
 
 echo "Initializing rabbitmq..."
 APP_ROOT=/var/ida
