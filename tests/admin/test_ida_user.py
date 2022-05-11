@@ -47,6 +47,7 @@ class TestIdaUser(unittest.TestCase):
     def setUp(self):
         self.config = load_configuration()
         self.project_name = "test_project_a"
+        self.user_name = "test_user_a"
         self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config["HTTPD_USER"], self.config["ROOT"])
         self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config["HTTPD_USER"], self.config["ROOT"])
         self.offlineSentinelFile = "%s/control/OFFLINE" % self.config.get('STORAGE_OC_DATA_ROOT', '/mnt/storage_vol01/ida')
@@ -91,42 +92,42 @@ class TestIdaUser(unittest.TestCase):
     def test_ida_user(self):
 
         print("Create new user")
-        cmd = "%s ADD user_1_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
+        cmd = "%s ADD %s %s 2>&1" % (self.ida_user, self.user_name, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User already exists")
 
         print("Attempt to create existing user")
-        cmd = "%s ADD user_1_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
+        cmd = "%s ADD %s %s 2>&1" % (self.ida_user, self.user_name, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 1, "User does not exist")
 
         print("Disable active user")
-        cmd = "%s DISABLE user_1_%s 2>&1" % (self.ida_user, self.project_name)
+        cmd = "%s DISABLE %s 2>&1" % (self.ida_user, self.user_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "Seems like user does not exist")
 
         print("Enable disabled user")
-        cmd = "%s ENABLE user_1_%s 2>&1" % (self.ida_user, self.project_name)
+        cmd = "%s ENABLE %s 2>&1" % (self.ida_user, self.user_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
 
         print("Attempt to disable non-existent user")
-        cmd = "%s DISABLE user_X_%s 2>&1" % (self.ida_user, self.project_name)
+        cmd = "%s DISABLE %s_X 2>&1" % (self.ida_user, self.user_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 1, "User exists")
 
         print("Remove user from a project")
-        cmd = "%s REMOVE user_1_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
+        cmd = "%s REMOVE %s %s 2>&1" % (self.ida_user, self.user_name, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
 
         print("Add existing user to a project")
-        cmd = "%s JOIN user_1_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
+        cmd = "%s JOIN %s %s 2>&1" % (self.ida_user, self.user_name, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
 
         print("Delete user")
-        cmd = "%s DELETE user_1_%s 2>&1" % (self.ida_user, self.project_name)
+        cmd = "%s DELETE %s 2>&1" % (self.ida_user, self.user_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
 

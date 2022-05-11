@@ -208,6 +208,21 @@ for PROJECT in $PROJECTS; do
     fi
 done
 
+echo "Deleting any residual test user directories..."
+
+for USER in $USERS; do
+    if [ -d "$STORAGE_OC_DATA_ROOT/$USER" ]; then
+        STEP="   Deleting $USER "
+        printf "%${PADDING}s" "$STEP"
+        OUT=`rm -fr "$STORAGE_OC_DATA_ROOT/$USER"`
+        if [ "$?" -ne 0 ]; then
+            failure "$OUT (ignored)"
+        else
+            success
+        fi
+    fi
+done
+
 echo "Deleting any residual project share owner directories and links..."
 
 for PROJECT in $PROJECTS; do
@@ -292,7 +307,8 @@ for PROJECT in $PROJECTS; do
         continue
     fi
 
-    chmod -R u+w,g+rw,o-rwx "$STORAGE_OC_DATA_ROOT/$USER/files"
+    chown -R $HTTPD_USER:$HTTPD_USER "$STORAGE_OC_DATA_ROOT/$USER"
+    chmod -R u+w,g+rwX,o-rwx "$STORAGE_OC_DATA_ROOT/$USER"
 
     # Update Nextcloud filesystem records
     OUT=`$OCC files:scan -q $USER`

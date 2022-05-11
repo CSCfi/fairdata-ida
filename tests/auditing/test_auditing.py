@@ -150,31 +150,6 @@ class TestAuditing(unittest.TestCase):
         return report_data
 
 
-    def repairProject(self, project):
-        """
-        Repair the specified project.
-        """
-
-        print ("(repairing project %s)" % project)
-
-        print("Verify repair was successful")
-        report_pathname = "%s/audits/%s_%s.%s" % (self.config["LOG_ROOT"], start, project, suffix)
-        path = Path(report_pathname)
-        self.assertTrue(path.exists(), report_pathname)
-        self.assertTrue(path.is_file(), report_pathname)
-
-        print("(loading audit report)")
-        try:
-            report_data = json.load(open(report_pathname))
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-        self.assertEquals(report_data.get("project", None), project)
-        self.assertEquals(report_data.get("start", None), start)
-
-        return report_data
-
-
-
     def test_auditing(self):
 
         """
