@@ -60,7 +60,14 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PERMS="g+rwX,o+rX-w"
+# If in development environment, open permissions so IDE's can modify files,
+# else, disallow modification by other users
+if [ "$IDA_ENVIRONMENT" = "DEV" ]
+then
+    PERMS="go+rwX"
+else
+    PERMS="g+rwX,o+rX-w"
+fi
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT
 chmod -R $PERMS $ROOT

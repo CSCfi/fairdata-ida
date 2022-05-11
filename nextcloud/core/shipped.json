@@ -57,6 +57,8 @@
     "settings",
     "twofactor_backupcodes",
     "viewer",
-    "workflowengine"
+    "workflowengine",
+    "ida",
+    "idafirstrunwizard"
   ]
 }

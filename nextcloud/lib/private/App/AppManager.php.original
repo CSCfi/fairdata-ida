@@ -578,28 +578,7 @@ class AppManager implements IAppManager {
 			}
 			$content = json_decode(file_get_contents($shippedJson), true);
 			$this->shippedApps = $content['shippedApps'];
-			$alwaysEnabled = $content['alwaysEnabled'];
-			# Absolutely ensure that the IDA apps are included in the set of apps that are always enabled
-			if (!in_array("ida", $alwaysEnabled)) {
-			    array_push ($alwaysEnabled, "ida");
-			}
-			if (! in_array($alwaysEnabled, "idafirstrunwizard")) {
-			    array_push ($alwaysEnabled, "idafirstrunwizard");
-			}
-			$this->alwaysEnabled = $alwaysEnabled;
-		}
-		else {
-			# Absolutely ensure that the IDA apps are included in the set of apps that are always enabled
-			if ( (!in_array("ida", $this->alwaysEnabled)) || (! in_array("idafirstrunwizard", $this->alwaysEnabled)) ) {
-			    $alwaysEnabled = $this->alwaysEnabled;
-			    if (!in_array("ida", $alwaysEnabled)) {
-			        array_push ($alwaysEnabled, "ida");
-			    }
-			    if (! in_array("idafirstrunwizard", $alwaysEnabled)) {
-			        array_push ($alwaysEnabled, "idafirstrunwizard");
-			    }
-			    $this->alwaysEnabled = $alwaysEnabled;
-			}
+			$this->alwaysEnabled = $content['alwaysEnabled'];
 		}
 	}
 

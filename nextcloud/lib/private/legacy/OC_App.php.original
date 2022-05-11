@@ -177,11 +177,9 @@ class OC_App {
 				'app' => $app,
 			]);
 		} elseif ($hasAppPhpFile) {
-			/*
 			\OC::$server->getLogger()->debug('/appinfo/app.php is deprecated, use \OCP\AppFramework\Bootstrap\IBootstrap on the application class instead.', [
 				'app' => $app,
 			]);
-			*/
 			\OC::$server->getEventLogger()->start('load_app_' . $app, 'Load app: ' . $app);
 			try {
 				self::requireAppFile($app);
