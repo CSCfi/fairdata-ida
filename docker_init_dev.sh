@@ -88,8 +88,10 @@ docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permiss
 echo "Enabling essential Nextcloud apps..."
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable files_sharing > /dev/null
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable admin_audit > /dev/null
-docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable ida > /dev/null
-docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable idafirstrunwizard > /dev/null echo "Disabling unused Nextcloud apps..."
+#docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable ida > /dev/null
+#docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable idafirstrunwizard > /dev/null
+
+echo "Disabling unused Nextcloud apps..."
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/disable_nextcloud_apps > /dev/null
 
 echo "Adding optimization indices to database..."
