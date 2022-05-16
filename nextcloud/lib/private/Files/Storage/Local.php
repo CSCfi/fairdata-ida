@@ -118,14 +118,18 @@ class Local extends \OC\Files\Storage\Common {
 					$it->next();
 					continue;
 				} elseif ($file->isDir()) {
-					rmdir($file->getPathname());
+					// rmdir($file->getPathname());  BUG: This fails if the directory is not empty. Using system call instead.
+					@system('rm -rf -- ' . escapeshellarg($file->getPathname()), $retval);
+					if ($retval != 0) {
+				        throw new \Exception('Failed to remove directory: ' . $file->getPathname(), false);
+					}
 				} elseif ($file->isFile() || $file->isLink()) {
-					unlink($file->getPathname());
+					@unlink($file->getPathname());
 				}
 				$it->next();
 			}
 			clearstatcache(true, $this->getSourcePath($path));
-			return rmdir($this->getSourcePath($path));
+			return @rmdir($this->getSourcePath($path));
 		} catch (\UnexpectedValueException $e) {
 			return false;
 		}
@@ -360,7 +364,7 @@ class Local extends \OC\Files\Storage\Common {
 
 	public function fopen($path, $mode) {
 		$oldMask = umask(022);
-		$result = fopen($this->getSourcePath($path), $mode);
+		$result = @fopen($this->getSourcePath($path), $mode);
 		umask($oldMask);
 		return $result;
 	}

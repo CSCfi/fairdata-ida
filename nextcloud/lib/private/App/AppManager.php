@@ -583,7 +583,7 @@ class AppManager implements IAppManager {
 			if (!in_array("ida", $alwaysEnabled)) {
 			    array_push ($alwaysEnabled, "ida");
 			}
-			if (! in_array($alwaysEnabled, "idafirstrunwizard")) {
+			if (!in_array("idafirstrunwizard", $alwaysEnabled)) {
 			    array_push ($alwaysEnabled, "idafirstrunwizard");
 			}
 			$this->alwaysEnabled = $alwaysEnabled;
@@ -595,7 +595,7 @@ class AppManager implements IAppManager {
 			    if (!in_array("ida", $alwaysEnabled)) {
 			        array_push ($alwaysEnabled, "ida");
 			    }
-			    if (! in_array("idafirstrunwizard", $alwaysEnabled)) {
+			    if (!in_array("idafirstrunwizard", $alwaysEnabled)) {
 			        array_push ($alwaysEnabled, "idafirstrunwizard");
 			    }
 			    $this->alwaysEnabled = $alwaysEnabled;

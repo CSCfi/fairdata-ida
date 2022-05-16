@@ -135,7 +135,4 @@ interface IFactory {
 	 * @since 20.0.0
 	 */
 	public function getUserLanguage(IUser $user = null): string;
-	
-	/* Added missing definition */
-	public function getLanguages();
 }

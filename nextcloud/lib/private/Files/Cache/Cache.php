@@ -316,14 +316,30 @@ class Cache implements ICache {
 				    $fileId = $builder->getLastInsertId();
     
 				    if (count($extensionValues)) {
-					    $query = $this->getQueryBuilder();
-					    $query->insert('filecache_extended');
-    
-					    $query->setValue('fileid', $query->createNamedParameter($fileId, IQueryBuilder::PARAM_INT));
-					    foreach ($extensionValues as $column => $value) {
-						    $query->setValue($column, $query->createNamedParameter($value));
-					    }
-					    $query->execute();
+			            try {
+				            $query = $this->getQueryBuilder();
+				            $query->insert('filecache_extended');
+            
+				            $query->setValue('fileid', $query->createNamedParameter($id, IQueryBuilder::PARAM_INT));
+				            foreach ($extensionValues as $column => $value) {
+					            $query->setValue($column, $query->createNamedParameter($value));
+				            }
+				            $query->execute();
+			            } catch (UniqueConstraintViolationException $e) {
+				            $query = $this->getQueryBuilder();
+				            $query->update('filecache_extended')
+					            ->whereFileId($id)
+					            ->andWhere($query->expr()->orX(...array_map(function ($key, $value) use ($query) {
+						            return $query->expr()->orX(
+							            $query->expr()->neq($key, $query->createNamedParameter($value)),
+							            $query->expr()->isNull($key)
+						            );
+					            }, array_keys($extensionValues), array_values($extensionValues))));
+				            foreach ($extensionValues as $key => $value) {
+					            $query->set($key, $query->createNamedParameter($value));
+				            }
+				            $query->execute();
+			            }
 				    }
     
 				    $event = new CacheEntryInsertedEvent($this->storage, $file, $fileId, $storageId);

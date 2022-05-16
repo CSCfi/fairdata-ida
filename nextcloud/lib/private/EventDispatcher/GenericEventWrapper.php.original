@@ -52,9 +52,6 @@ class GenericEventWrapper extends GenericEvent {
 	}
 
 	private function log() {
-		// Do not log any deprecation notices at all.
-		return;
-
 		if ($this->deprecationNoticeLogged) {
 			return;
 		}

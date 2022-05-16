@@ -144,15 +144,17 @@ class File extends Node implements IFile {
 		
 			// Retrieve stream metadata
 			$metadata = stream_get_meta_data($data);
-		
+
 			if ($metadata != null && is_array($metadata) && isset($metadata['uri'])) {
 				// First, we'll attempt to get the filesize based on the URI defined in the
 				// stream metadata, assuming the stream wrapper type supports os.filesize;
 				// which if not, it will either return false or throw an exception
 				$test_basis = 'filesize-stat';
-				$file_uri = $metadata['uri'];
 				try {
-					$filesize = filesize($file_uri);
+				    $file_uri = $metadata['uri'];
+					if (is_file($file_uri)) {
+					    $filesize = @filesize($file_uri);
+					}
 					if ($filesize === 0) {
 						$zero_size = true;
 					}
@@ -165,12 +167,16 @@ class File extends Node implements IFile {
 				// support os.filesize, so we'll try to get the size from the content length header,
 				// if it exists
 				$test_basis = 'content-length-header';
-				$headers = get_headers($data, 1);
-				if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
-					$filesize = (int)$headers['Content-Length'];
-					if ($filesize === 0) {
-						$zero_size = true;
-					}
+				try {
+				    $headers = @get_headers((string)$data, 1);
+				    if ($headers != null && is_array($headers) && isset($headers['Content-Length'])) {
+					    $filesize = (int)$headers['Content-Length'];
+					    if ($filesize === 0) {
+						    $zero_size = true;
+					    }
+				    }
+				} catch (Exception $e) {
+					$filesize = false;
 				}
 			}
 			if ($filesize === false) {
@@ -178,13 +184,15 @@ class File extends Node implements IFile {
 				// is seekable and thus can be reset to the beginning so there is no loss
 				// of data during the actual copy operation...
 				$test_basis = 'read-first-byte';
-				if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
-					$firstbyte = fread($data, 1);
-					fseek($data, 0);
-					if (strlen($firstbyte) === 0) {
-						$zero_size = true;
-					}
-				}
+				try {
+				    if (isset($metadata['seekable']) && $metadata['seekable'] === true) {
+					    $firstbyte = @fread($data, 1);
+					    @fseek($data, 0);
+					    if (strlen($firstbyte) === 0) {
+						    $zero_size = true;
+					    }
+				    }
+				} catch (Exception $e) { ; }
 			}
 			\OC::$server->getLogger()->debug('ZERO_SIZE_CHECK: '
 			. ' metadata: '   . json_encode($metadata)

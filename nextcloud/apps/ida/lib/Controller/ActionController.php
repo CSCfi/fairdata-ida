@@ -369,7 +369,7 @@ class ActionController extends Controller
             $actionEntity->setAction($action);
             $actionEntity->setUser($this->userId);
             $actionEntity->setProject($project);
-            $actionEntity->setPathname($pathname);
+            $actionEntity->setPathname(substr($pathname, 0, 999));
             if ($storage != null) {
                 $actionEntity->setStorage($storage);
             }
@@ -389,7 +389,7 @@ class ActionController extends Controller
                 $actionEntity->setFailed($failed);
             }
             if ($error != null) {
-                $actionEntity->setError($error);
+                $actionEntity->setError(substr($error, 0, 999));
             }
             if ($cleared != null) {
                 $actionEntity->setCleared($cleared);
@@ -595,7 +595,7 @@ class ActionController extends Controller
                 $actionEntity->setFailed($failed);
             }
             if ($error != null && trim($error) != '') {
-                $actionEntity->setError($error);
+                $actionEntity->setError(substr($error, 0, 999));
             }
             if ($cleared != null) {
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
@@ -625,7 +625,7 @@ class ActionController extends Controller
                 if ($this->userId != 'admin' && $this->userId != $psoUser) {
                     return API::forbiddenErrorResponse('Session user does not have permission to update the specified value.');
                 }
-                $actionEntity->setPathname($pathname);
+                $actionEntity->setPathname(substr($pathname, 0, 999));
             }
 
             return new DataResponse($this->actionMapper->update($actionEntity));

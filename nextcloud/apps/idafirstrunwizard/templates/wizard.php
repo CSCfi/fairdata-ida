@@ -39,9 +39,13 @@ if (array_key_exists('HTTP_HOST', $_SERVER)) {
 	$cookie = $prefix . '_fd_sso_session';
 	if (array_key_exists($cookie, $_COOKIE)) {
         $key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
-		$session = JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+		try {
+		    $session = @JWT::decode($_COOKIE[$cookie], $key, array('HS256'));
+		} catch (\Exception $e) {
+			$session = null;
+		}
 		if ($session && $session->language) {
-		    return $session->language;
+		    $CURRENT_LANGUAGE = $session->language;
         }
 	}
 }

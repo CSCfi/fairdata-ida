@@ -1067,20 +1067,27 @@ class OC {
 
 			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
 
-			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+			try {
+			    $session = @JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+		    } catch (\Exception $e) {
+			    $session = null;
+		    }
 
 			if ($session) {
 
 			    Util::writeLog('ida', 'base.php: handleLogin: session=' . json_encode($session), \OCP\Util::DEBUG);
 
-				if ($session->id == $_COOKIE[$prefix . '_fd_sso_session_id']
-				    && $session->fairdata_user
-				    && $session->fairdata_user->id
-				    && $session->services 
-				    && $session->services->IDA 
-			        && $userSession->loginWithSSOSession($session->id, $session->fairdata_user->id)) {
-			        return true;
-		        }
+				try {
+				    if ($session->id == $_COOKIE[$prefix . '_fd_sso_session_id']
+				        && $session->fairdata_user
+				        && $session->fairdata_user->id
+				        && $session->services 
+				        && $session->services->IDA 
+			            && $userSession->loginWithSSOSession($session->id, $session->fairdata_user->id)) {
+			            return true;
+		            }
+				}
+				catch (\Exception $e) { ; }
 			}
 		}
 

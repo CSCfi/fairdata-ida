@@ -198,20 +198,16 @@ class PersonalInfo implements ISettings {
 		$uid = $user->getUID();
 
 		$userConfLang = $this->config->getUserValue($uid, 'core', 'lang', $this->l10nFactory->findLanguage());
+		$languages = $this->l10nFactory->getLanguages();
 
-		try {
-		    $languages = $this->l10nFactory->getLanguages();
-
-		    // associate the user language with the proper array
-		    $userLangIndex = array_search($userConfLang, array_column($languages['commonlanguages'], 'code'));
-		    $userLang = $languages['commonlanguages'][$userLangIndex];
-		    // search in the other languages
-		    if ($userLangIndex === false) {
-			    $userLangIndex = array_search($userConfLang, array_column($languages['languages'], 'code'));
-			    $userLang = $languages['languages'][$userLangIndex];
-		    }
-		} catch (\Exception $e) { ; }
-
+		// associate the user language with the proper array
+		$userLangIndex = array_search($userConfLang, array_column($languages['commonlanguages'], 'code'));
+		$userLang = $languages['commonlanguages'][$userLangIndex];
+		// search in the other languages
+		if ($userLangIndex === false) {
+			$userLangIndex = array_search($userConfLang, array_column($languages['languages'], 'code'));
+			$userLang = $languages['languages'][$userLangIndex];
+		}
 		// if user language is not available but set somehow: show the actual code as name
 		if (!is_array($userLang)) {
 			$userLang = [
@@ -240,21 +236,17 @@ class PersonalInfo implements ISettings {
 
 		$localeCodes = $this->l10nFactory->findAvailableLocales();
 
-		try {
-		    $userLocale = array_filter($localeCodes, function ($value) use ($userLocaleString) {
-			    return $userLocaleString === $value['code'];
-		    });
-		} catch (\Exception $e) { ; }
+		$userLocale = array_filter($localeCodes, function ($value) use ($userLocaleString) {
+			return $userLocaleString === $value['code'];
+		});
 
 		if (!empty($userLocale)) {
 			$userLocale = reset($userLocale);
 		}
 
-		try {
-		    $localesForLanguage = array_filter($localeCodes, function ($localeCode) use ($userLang) {
-			    return 0 === strpos($localeCode['code'], $userLang);
-		    });
-		} catch (\Exception $e) { ; }
+		$localesForLanguage = array_filter($localeCodes, function ($localeCode) use ($userLang) {
+			return 0 === strpos($localeCode['code'], $userLang);
+		});
 
 		if (!$userLocale) {
 			$userLocale = [

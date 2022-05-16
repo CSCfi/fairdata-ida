@@ -55,7 +55,7 @@ class ReplicationAgent(GenericAgent):
 
     def _handle_freeze_action(self, action, method, queue):
         if self._sub_action_processed(action, 'replication'):
-            self._logger.info('Replication already processed')
+            self._logger.debug('Replication already processed')
         else:
             try:
                 self._process_replication(action)
@@ -71,7 +71,7 @@ class ReplicationAgent(GenericAgent):
 
         Replication basically means just a regular file copy from place a to b.
         """
-        self._logger.info('Processing replication...')
+        self._logger.debug('Processing replication...')
 
         self._check_replication_root_is_mounted()
         nodes = self._get_nodes_associated_with_action(action)
@@ -110,7 +110,7 @@ class ReplicationAgent(GenericAgent):
         self.last_number_of_files_replicated = files_copied
         self._save_action_completion_timestamp(action, 'replication')
         self._save_action_completion_timestamp(action, 'completed')
-        self._logger.info('Replication processing OK')
+        self._logger.debug('Replication processing OK')
 
     def _check_replication_root_is_mounted(self):
         """
@@ -118,10 +118,10 @@ class ReplicationAgent(GenericAgent):
         In non-production environments, the replication root location is just created on the fly
         during copy if it is missing.
         """
-        self._logger.info('Checking replication root mount point...')
+        self._logger.debug('Checking replication root mount point...')
 
         if self._uida_conf_vars.get('IDA_ENVIRONMENT') != 'PRODUCTION':
-            self._logger.info('IDA_ENVIRONMENT != PRODUCTION, not expecting a real mount point. Returning')
+            self._logger.debug('IDA_ENVIRONMENT != PRODUCTION, not expecting a real mount point. Returning')
             return
 
         if not os.path.ismount(self._uida_conf_vars['DATA_REPLICATION_ROOT']):
@@ -129,7 +129,7 @@ class ReplicationAgent(GenericAgent):
                 'Replication root %s not mounted' % self._uida_conf_vars['DATA_REPLICATION_ROOT']
             )
 
-        self._logger.info('Replication root at %s OK' % self._uida_conf_vars['DATA_REPLICATION_ROOT'])
+        self._logger.debug('Replication root at %s OK' % self._uida_conf_vars['DATA_REPLICATION_ROOT'])
 
     def _copy_to_replication_location(self, node, timestamp=current_time()):
         """

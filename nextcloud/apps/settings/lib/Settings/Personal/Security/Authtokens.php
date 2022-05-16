@@ -100,7 +100,11 @@ class Authtokens implements ISettings {
 		$prefix = preg_replace('/[^a-zA-Z0-9]/', '_', $domain);
 		if (isset($_COOKIE[$prefix . '_fd_sso_session'])) {
 			$key =\OC::$server->getSystemConfig()->getValue('SSO_KEY');
-			$session = JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+			try {
+			    $session = @JWT::decode($_COOKIE[$prefix . '_fd_sso_session'], $key, array('HS256'));
+		    } catch (\Exception $e) {
+			    $session = null;
+		    }
 		}
 
 		if (!$session || $session->fairdata_user->id != $this->uid) {

@@ -62,7 +62,7 @@ class MetadataAgent(GenericAgent):
         nodes = None
 
         if self._sub_action_processed(action, 'checksums'):
-            self._logger.info('Checksums already processed')
+            self._logger.debug('Checksums already processed')
         else:
             try:
                 nodes = self._process_checksums(action)
@@ -72,10 +72,10 @@ class MetadataAgent(GenericAgent):
                 return
 
         if self._complete_actions_without_metax():
-            self._logger.info('Note: Completing action without Metax')
+            self._logger.debug('Note: Completing action without Metax')
             self._save_action_completion_timestamp(action, 'metadata')
         elif self._sub_action_processed(action, 'metadata'):
-            self._logger.info('Metadata already processed')
+            self._logger.debug('Metadata already processed')
         else:
             try:
                 self._process_metadata_publication(action, nodes)
@@ -100,11 +100,11 @@ class MetadataAgent(GenericAgent):
 
     def _handle_unfreeze_action(self, action, method, queue):
         if self._complete_actions_without_metax():
-            self._logger.info('Note: Completing action without Metax')
+            self._logger.debug('Note: Completing action without Metax')
             self._save_action_completion_timestamp(action, 'metadata')
             self._save_action_completion_timestamp(action, 'completed')
         elif self._sub_action_processed(action, 'metadata'):
-            self._logger.info('Metadata already processed')
+            self._logger.debug('Metadata already processed')
         else:
             try:
                 self._process_metadata_deletion(action)
@@ -126,7 +126,7 @@ class MetadataAgent(GenericAgent):
         # all nodes associated with the action, and is no different than for a repair action
 
         if self._sub_action_processed(action, 'checksums'):
-            self._logger.info('Checksums already processed')
+            self._logger.debug('Checksums already processed')
         else:
             try:
                 nodes = self._process_checksums(action)
@@ -138,10 +138,10 @@ class MetadataAgent(GenericAgent):
         # Repair published metadata as required
 
         if self._complete_actions_without_metax():
-            self._logger.info('Note: Completing action without Metax')
+            self._logger.debug('Note: Completing action without Metax')
             self._save_action_completion_timestamp(action, 'metadata')
         elif self._sub_action_processed(action, 'metadata'):
-            self._logger.info('Metadata repair already processed')
+            self._logger.debug('Metadata repair already processed')
         else:
             try:
                 self._process_metadata_repair(action, nodes)
@@ -167,7 +167,7 @@ class MetadataAgent(GenericAgent):
         self._ack_message(method)
 
     def _process_checksums(self, action):
-        self._logger.info('Processing checksums...')
+        self._logger.debug('Processing checksums...')
 
         nodes = self._get_nodes_associated_with_action(action)
 
@@ -240,11 +240,11 @@ class MetadataAgent(GenericAgent):
         self._save_nodes_to_db(nodes, fields=['checksum', 'size'], updated_only=True)
 
         self._save_action_completion_timestamp(action, 'checksums')
-        self._logger.info('Checksums processing OK')
+        self._logger.debug('Checksums processing OK')
         return nodes
 
     def _process_metadata_publication(self, action, nodes):
-        self._logger.info('Processing metadata publication...')
+        self._logger.debug('Processing metadata publication...')
 
         if not nodes:
             nodes = self._get_nodes_associated_with_action(action)
@@ -260,10 +260,10 @@ class MetadataAgent(GenericAgent):
 
         self._save_nodes_to_db(nodes, fields=['metadata'])
         self._save_action_completion_timestamp(action, 'metadata')
-        self._logger.info('Metadata publication OK')
+        self._logger.debug('Metadata publication OK')
 
     def _process_metadata_repair(self, action, nodes):
-        self._logger.info('Processing metadata repair...')
+        self._logger.debug('Processing metadata repair...')
 
         if not nodes:
             nodes = self._get_nodes_associated_with_action(action)
@@ -279,7 +279,7 @@ class MetadataAgent(GenericAgent):
 
         self._save_nodes_to_db(nodes, fields=['metadata'])
         self._save_action_completion_timestamp(action, 'metadata')
-        self._logger.info('Metadata repair OK')
+        self._logger.debug('Metadata repair OK')
 
     def _aggregate_technical_metadata(self, action, nodes):
         self._logger.debug('Aggregating technical metadata...')
@@ -525,7 +525,7 @@ class MetadataAgent(GenericAgent):
             )
 
     def _process_metadata_deletion(self, action):
-        self._logger.info('Processing metadata deletion...')
+        self._logger.debug('Processing metadata deletion...')
 
         nodes = self._get_nodes_associated_with_action(action)
         file_identifiers = [ n['pid'] for n in nodes ]
@@ -543,7 +543,7 @@ class MetadataAgent(GenericAgent):
         # immediately place the replication-timestamp. once some processing will happen in replication for deletion,
         # move this to its correct place.
         self._save_action_completion_timestamp(action, 'completed')
-        self._logger.info('Metadata deletion OK')
+        self._logger.debug('Metadata deletion OK')
 
     def _metax_api_request(self, method, detail_url, data=None):
         headers = {

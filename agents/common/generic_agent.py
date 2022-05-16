@@ -162,7 +162,7 @@ class GenericAgent():
         pattern instead of channel.basic_consume(callback), to properly spread work
         between different processes working on the same queue.
         """
-        self._logger.info('Started consuming queue %s' % self.main_queue_name)
+        self._logger.debug('Started consuming queue %s' % self.main_queue_name)
 
         while True:
 
@@ -172,7 +172,7 @@ class GenericAgent():
             while self._is_offline():
                 # Log sleeping only the first time
                 if not sleeping_logged:
-                    self._logger.info('Sentinel offline file present. Sleeping...')
+                    self._logger.debug('Sentinel offline file present. Sleeping...')
                     sleeping_logged = True
                 sleep(60)
 
@@ -192,7 +192,7 @@ class GenericAgent():
             else:
                 # When all messages are consumed from the standard queues, start consuming
                 # messages from the batch queues (failed_batch_queue and main_batch_queue)
-                self._logger.info('Started consuming queue %s' % self.main_batch_queue_name)
+                self._logger.debug('Started consuming queue %s' % self.main_batch_queue_name)
 
                 while self.messages_in_queue(self.failed_batch_queue_name):
                     self.consume_one(self.failed_batch_queue_name)
@@ -207,7 +207,7 @@ class GenericAgent():
                 # only this agent is being executed in this process
                 sleep(self._settings['main_loop_delay'])
 
-        self._logger.info('Stopped consuming queue %s' % self.main_queue_name)
+        self._logger.debug('Stopped consuming queue %s' % self.main_queue_name)
 
     def consume_one(self, queue=None):
         """
@@ -222,7 +222,7 @@ class GenericAgent():
         """
         queue = queue or self.main_queue_name
 
-        self._logger.info('Consuming one message from queue %s.' % queue)
+        self._logger.debug('Consuming one message from queue %s.' % queue)
 
         try:
             method, properties, body = self._channel.basic_get(queue)
@@ -241,7 +241,7 @@ class GenericAgent():
                 self._logger.info('Started processing %s-action with pid %s' % (action['action'], action['pid']))
                 self.process_queue(self._channel, method, properties, action, queue)
             else:
-                self._logger.info(
+                self._logger.warning(
                     'Rabbitmq message did not match an action in IDA. Discarding. Received: %s'
                     % str(body.decode('utf-8'))
                 )
@@ -271,7 +271,7 @@ class GenericAgent():
                 self._logger.info('Rejected action %s back to original queue'
                     % json_loads(body.decode('utf-8'))['pid'])
         else:
-            self._logger.info('Message processing ended')
+            self._logger.debug('Message processing ended')
         finally:
             self.rabbitmq_message = None
             self._remove_sentinel_monitoring_file()
@@ -293,12 +293,12 @@ class GenericAgent():
             try:
                 queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
             except Exception as e:
-                self._logger.debug('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
+                self._logger.warning('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
                 sleep(5)
                 return 0
 
         except Exception as e:
-            self._logger.debug('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
+            self._logger.warning('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
             sleep(5)
             return 0
 
@@ -335,7 +335,7 @@ class GenericAgent():
         response = self._ida_api_request('get', '/actions/%s' % message['pid'], message)
 
         if response.status_code == 404:
-            self._logger.info('Action %s not found in ida (404)' % message['pid'])
+            self._logger.warning('Action %s not found in ida (404)' % message['pid'])
             return None
         elif response.status_code != 200:
             raise Exception(
@@ -425,7 +425,7 @@ class GenericAgent():
         self._logger.debug('Saving failed-timestamp to ida db...')
         error_data = { 'failed': current_time(), 'error': str(exception) }
         self._update_action_to_db(action, error_data)
-        self._logger.info('Marked action with pid %s as failed.' % action['pid'])
+        self._logger.warning('Marked action with pid %s as failed.' % action['pid'])
         self.last_failed_action = { 'action_pid': action['pid'], 'data': error_data }
         return True
 
@@ -507,7 +507,7 @@ class GenericAgent():
         except:
             # could not publish? doesnt matter, the message will return to its queue and be retried
             # at some point.
-            self._logger.warning('Action republish failed. Message will return to original queue and be retried in the future.')
+            self._logger.debug('Action republish failed. Message will return to original queue and be retried in the future.')
             return False
 
         self._logger.info('Successfully republished action with pid %s with a delay of %d seconds.' % (action['pid'], retry_interval))

@@ -1235,7 +1235,7 @@ class FreezingController extends Controller
             } else {
                 // Get files associated with failed action
 
-                $nextcloudNodes = $this->fileMapper->findFiles($failedActionEntity);
+                $nextcloudNodes = $this->fileMapper->findFiles($failedActionEntity->getPid());
 
                 // Ensure that the files associated with the failed action do not conflict with an incomplete action
                 // (no change to failed action or associated files up to this point, so OK to bail, deleting new retry action)
@@ -2171,7 +2171,7 @@ class FreezingController extends Controller
                 $fileEntity = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId(), null, true);
                 if ($fileEntity) {
                     $actionPid = $fileEntity->getAction();
-                    if ($actionPids[$actionPid]) {
+                    if (in_array($actionPid, $actionPids, true)) {
                         Util::writeLog(
                             'ida',
                             'checkIntersectionWithIncompleteActions: INTERSECTION EXISTS'

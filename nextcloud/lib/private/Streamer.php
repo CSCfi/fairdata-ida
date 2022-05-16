@@ -129,13 +129,15 @@ class Streamer {
 				} catch (NotPermittedException $e) {
 					continue;
 				}
-				$this->addFileFromStream(
-					$fh,
-					$internalDir . $file->getName(),
-					$file->getSize(),
-					$file->getMTime()
-				);
-				fclose($fh);
+				if ($fh !== false) {
+				    $this->addFileFromStream(
+					    $fh,
+					    $internalDir . $file->getName(),
+					    $file->getSize(),
+					    $file->getMTime()
+				    );
+				    fclose($fh);
+				}
 			} elseif ($file instanceof Folder) {
 				if ($file->isReadable()) {
 					$this->addDirRecursive($dir . '/' . $file->getName(), $internalDir);
