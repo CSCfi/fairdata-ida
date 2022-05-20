@@ -21,8 +21,17 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
+SCRIPT_FOLDER=`dirname "$(realpath $0)"`
+CONFIG_FILE="$SCRIPT_FOLDER/../config/config.sh"
+
+if [ -e $CONFIG_FILE ]; then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
 
 for APP in accessibility activity comments contactsinteraction dashboard encryption federation files_external files_pdfviewer files_rightclick files_trashbin files_versions files_videoplayer firstrunwizard logreader nextcloud_announcements notifications password_policy photos privacy recommendations serverinfo sharebymail support survey_client systemtags text theming updatenotification user_ldap user_status weather_status
 do
-    /var/ida/nextcloud/occ app:disable $APP
+    sudo -u $HTTPD_USER php /var/ida/nextcloud/occ app:disable $APP
 done
