@@ -43,12 +43,18 @@ class API
     /**
      * Log the specified response details.
      *
-     * @param string $message
+     * @param string $message the message to be logged and returned in the body of the 200 OK response
+     * @param bool   $debug   if specified and equal to true, the message is logged as DEBUG rather than INFO 
      *
      * @return DataResponse
      */
-    private static function loggedDataResponse($message) {
-        Util::writeLog('ida', $message, \OCP\Util::INFO);
+    private static function loggedDataResponse($message, $debug = false) {
+        if ($debug) {
+            Util::writeLog('ida', $message, \OCP\Util::DEBUG);
+        }
+        else {
+            Util::writeLog('ida', $message, \OCP\Util::INFO);
+        }
         
         return new DataResponse(['message' => $message, 'status' => 'OK'], Http::STATUS_OK);
     }
@@ -58,8 +64,8 @@ class API
      *
      * A 5XX response is logged as an error. Other responses are logged as warnings.
      *
-     * @param string $message
-     * @param string $statusCode
+     * @param string $message    the message to be logged and returned in the body of the response
+     * @param string $statusCode the status code of the response to be returned
      *
      * @return DataResponse
      */
@@ -77,19 +83,19 @@ class API
     /**
      * Log and return success data response.
      *
-     * @param string $message the message
+     * @param string $message the message to be logged and returned in the body of the response
+     * @param bool   $debug   if specified and equal to true, the message is logged as DEBUG rather than INFO 
      *
      * @return DataResponse
      */
-    public static function successResponse($message = 'OK') {
-        Util::writeLog('ida', $message, \OCP\Util::INFO);
-        return self::loggedDataResponse($message);
+    public static function successResponse($message, $debug = false) {
+        return self::loggedDataResponse($message, $debug);
     }
     
     /**
      * Log and return not found error data response.
      *
-     * @param string $message the error message
+     * @param string $message the message to be logged and returned in the body of the response
      *
      * @return DataResponse
      */
@@ -100,7 +106,7 @@ class API
     /**
      * Log and return unauthorized error data response.
      *
-     * @param string $message the error message
+     * @param string $message the message to be logged and returned in the body of the response
      *
      * @return DataResponse
      */
@@ -111,7 +117,7 @@ class API
     /**
      * Log and return forbidden error data response.
      *
-     * @param string $message the error message
+     * @param string $message the message to be logged and returned in the body of the response
      *
      * @return DataResponse
      */
@@ -122,7 +128,7 @@ class API
     /**
      * Log and return bad request error data response.
      *
-     * @param string $message the error message
+     * @param string $message the message to be logged and returned in the body of the response
      *
      * @return DataResponse
      */
@@ -137,7 +143,7 @@ class API
      * due to an ongoing action, or there is a file intersection with a pending action, or some essential
      * component of the service is unavailable (e.g. rabbitmq), etc.
      *
-     * @param string $message the error message
+     * @param string $message the message to be logged and returned in the body of the response
      *
      * @return DataResponse
      */
@@ -148,7 +154,7 @@ class API
     /**
      * Log and return server error data response.
      *
-     * @param string $message the error message
+     * @param string $message the message to be logged and returned in the body of the response
      *
      * @return DataResponse
      */

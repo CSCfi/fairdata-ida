@@ -114,6 +114,12 @@ ErrorDocument 404 //
     </IfModule>
   </IfModule>
 </IfModule>
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{HTTP_HOST} ^193\.166\.187\.214$
+  RewriteRule ^(.*)$ https://ida.fairdata.fi/$1 [L,R=301]
+</IfModule>
 Header always set Referrer-Policy "no-referrer"
 Header always set Strict-Transport-Security "max-age=15552000; includeSubDomains"
 <IfModule mod_headers.c>

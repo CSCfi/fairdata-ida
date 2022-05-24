@@ -3702,7 +3702,10 @@ class FreezingController extends Controller
                 return API::conflictErrorResponse('The specified scope conflicts with an ongoing action in the specified project.');
             }
 
-            return API::successResponse('The specified scope does not conflict with any ongoing action in the specified project.');
+            // We only log success responses for scope checks if debug logging is enabled, otherwise, no logging is done. This is to
+            // prevent log files from being filled needlessly with success response messages, since scope checks are done frequently.
+            return API::successResponse('The specified scope does not conflict with any ongoing action in the specified project.', true);
+
         } catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());
         }

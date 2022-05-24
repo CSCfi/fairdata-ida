@@ -242,7 +242,7 @@ class PersonalInfo implements ISettings {
 
 		try {
 		    $userLocale = array_filter($localeCodes, function ($value) use ($userLocaleString) {
-			    return $userLocaleString === $value['code'];
+			    return $userLocaleString === $value['code'] ?? null;
 		    });
 		} catch (\Exception $e) { ; }
 
@@ -252,7 +252,7 @@ class PersonalInfo implements ISettings {
 
 		try {
 		    $localesForLanguage = array_filter($localeCodes, function ($localeCode) use ($userLang) {
-			    return 0 === strpos($localeCode['code'], $userLang);
+			    return 0 === strpos($localeCode['code'] ?? null, $userLang);
 		    });
 		} catch (\Exception $e) { ; }
 

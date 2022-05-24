@@ -152,9 +152,7 @@ class File extends Node implements IFile {
 				$test_basis = 'filesize-stat';
 				try {
 				    $file_uri = $metadata['uri'];
-					if (is_file($file_uri)) {
-					    $filesize = @filesize($file_uri);
-					}
+					$filesize = @filesize($file_uri);
 					if ($filesize === 0) {
 						$zero_size = true;
 					}
