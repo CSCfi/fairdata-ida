@@ -89,40 +89,17 @@ fi
 
 echo "Moving project files to project trash subfolder..."
 
-FROZEN_FOLDER="${PROJECT_STORAGE_OC_DATA_ROOT}/${PROJECT}"
-STAGING_FOLDER="${PROJECT_STORAGE_OC_DATA_ROOT}/${PROJECT}${STAGING_FOLDER_SUFFIX}"
-
-mv "${FROZEN_FOLDER}" "${PROJECT_TRASH_DATA_ROOT}/" 2>$ERR >/dev/null
+mv -t ${PROJECT_TRASH_DATA_ROOT} ${PROJECT_ROOT}/* 2>$ERR
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
-    errorExit "Failed to move frozen area folder to trash!"
-fi
-
-mv "${STAGING_FOLDER}" "${PROJECT_TRASH_DATA_ROOT}/" 2>$ERR >/dev/null
-
-if [ -s $ERR ]; then
-    MSG=`cat $ERR`
-    addToLog "$MSG"
-    errorExit "Failed to move staging area folder to trash!"
+    errorExit "Failed to move project files to trash!"
 fi
 
 #--------------------------------------------------------------------------------
 
-echo "Updating Nextcloud filesystem records..."
-
-$OCC files:scan -q $PROJECT_USER 2>$ERR >/dev/null
-
-if [ -s $ERR ]; then
-    MSG=`cat $ERR`
-    addToLog "$MSG"
-    errorExit "Failed to update Nextcloud filesystem records!"
-fi
-
-#--------------------------------------------------------------------------------
-
-echo "Exporting project action and file records from database..."
+echo "Exporting project action and frozen file records from database..."
 
 $CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?projects=${PROJECT}" 2>$ERR | \
     python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
@@ -142,7 +119,7 @@ if [ -s $ERR ]; then
     errorExit "Failed to export file records!"
 fi
 
-echo "Flushing project action and file records from the database..."
+echo "Flushing project action and frozen file records from the database..."
 
 $CURL_POST $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/flush?project=${PROJECT}" 2>$ERR >/dev/null
 
@@ -159,8 +136,26 @@ $OCC user:delete $PROJECT_USER 2>$ERR
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
-    errorExit "Failed to delete project share owner!"
+    errorExit "Failed to delete project share owner account!"
 fi
+
+echo "Deleting residual project share owner directory and link (if any)..."
+
+for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}; do
+    TARGET="${CANDIDATE_STORAGE_VOLUME}/${PROJECT_USER_PREFIX}${PROJECT}"
+    if [ -e $TARGET ]; then
+        MSG="Deleting ${TARGET}"
+        addToLog "$MSG"
+        rm -fr $TARGET 2>$ERR
+        if [ -s $ERR ]; then
+            MSG=`cat $ERR`
+            addToLog "$MSG"
+            MSG="WARNING: Failed to fully delete project share owner directory ${TARGET}!"
+            addToLog "$MSG"
+            echo "${MSG}" >&2
+        fi
+    fi
+done
 
 #--------------------------------------------------------------------------------
 
@@ -200,6 +195,6 @@ $ROOT/utils/admin/email-project-users $PROJECT \
 
 rm $ERR 2>/dev/null
 
-echoAndLog "Project ${PROJECT} removed. Project data moved to trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
+echoAndLog "Project ${PROJECT} removed. Project data copied to trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
 
 addToLog "DONE"
