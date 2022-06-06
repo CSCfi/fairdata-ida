@@ -115,7 +115,7 @@ if [ "$2" = "--delete" ]; then
 
 The project will be REMOVED from the IDA service in approximately 7 DAYS unless agreed otherwise.
 
-The project is now SUSPENDED in the IDA service. Access to the project space is now READ-ONLY.
+The project is now SUSPENDED in the IDA service.
 
 The removal is either due to having no active users in the service, or due to an agreement with the project manager and/or organization's IDA contact person.
 
