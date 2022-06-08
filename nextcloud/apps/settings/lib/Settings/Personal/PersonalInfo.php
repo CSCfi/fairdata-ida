@@ -240,21 +240,23 @@ class PersonalInfo implements ISettings {
 
 		$localeCodes = $this->l10nFactory->findAvailableLocales();
 
-		try {
-		    $userLocale = array_filter($localeCodes, function ($value) use ($userLocaleString) {
-			    return $userLocaleString === $value['code'] ?? null;
-		    });
-		} catch (\Exception $e) { ; }
+		$userLocale = array_filter($localeCodes, function ($value) use ($userLocaleString) {
+			if (isset($value['code'])) {
+			    return $userLocaleString === $value['code'];
+			}
+			return false;
+		});
 
 		if (!empty($userLocale)) {
 			$userLocale = reset($userLocale);
 		}
 
-		try {
-		    $localesForLanguage = array_filter($localeCodes, function ($localeCode) use ($userLang) {
-			    return 0 === strpos($localeCode['code'] ?? null, $userLang);
-		    });
-		} catch (\Exception $e) { ; }
+		$localesForLanguage = array_filter($localeCodes, function ($localeCode) use ($userLang) {
+			if (isset($localeCode['code'])) {
+			    return 0 === strpos($localeCode['code'], $userLang);
+			}
+			return false;
+		});
 
 		if (!$userLocale) {
 			$userLocale = [
