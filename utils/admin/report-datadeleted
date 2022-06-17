@@ -55,11 +55,11 @@ done
 
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
 
-PROJECT_NAME=`echo "$OUT" | jq '.[0].project'`
+PROJECT_NUMBER=`echo "$OUT" | jq '.[0].number'`
 PROJECT_STATE=`echo "$OUT" | jq '.[0].state'`
 PROJECT_IDA=`echo "$OUT" | jq '.[0].services[] | select(. == "IDA")'`  
 
-if [ "$PROJECT_NAME" != "\"$PROJECT\"" ]
+if [ "$PROJECT_NUMBER" != "\"$PROJECT\"" ]
 then
     errorExit "Failed to retrieve details of project $PROJECT from microservice. Aborting."
 fi
