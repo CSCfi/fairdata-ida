@@ -34,7 +34,7 @@ RABBIT_WORKER_LOG_FILE="agents/tests/tests.log"
 RABBIT_MONITORING_DIR="/tmp/rabbitmq_monitoring_tests"
 
 # leaving the urls here to make it obvious these apis are actually mocked
-IDA_API_ROOT_URL="http://mock.localhost/ida/api"
+IDA_API_ROOT_URL="https://mock.localhost/ida/api"
 METAX_API_ROOT_URL="https://mock.metax-api/rest/v1"
 
 METAX_AVAILABLE=1

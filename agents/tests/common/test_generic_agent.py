@@ -6,9 +6,12 @@ import signal
 
 from requests.exceptions import ConnectionError
 import responses
+import inspect
+import sys
 
 from agents.tests.lib import BaseAgentTestCase
 from agents.metadata import MetadataAgent
+from agents.exceptions import HttpApiNotResponding
 from agents.tests.testdata import ida as ida_test_data
 import agents.tests.utils as test_utils
 
@@ -28,7 +31,11 @@ class GenericAgentShutdownTests(BaseAgentTestCase):
         """
         Ensure receives and responds to SIGINT and SIGTERM.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         for SIG_code in [signal.SIGINT, signal.SIGTERM]:
+
             with self.subTest(SIG_code=SIG_code):
 
                 # catch the signal also in the testcase, in case the agent fails to catch it,
@@ -49,16 +56,23 @@ class GenericAgentShutdownTests(BaseAgentTestCase):
                         os.kill(os.getpid(), SIG_code)
                         return res
 
-                    def messages_in_queue(self, *args, **kwargs):
-                        """
-                        Override to break free of listening for new messages, in case the test failed
-                        and the agent never received the signal.
-                        """
-                        res = super().messages_in_queue(*args, **kwargs)
-                        self.counter += 1
-                        if self.counter > 2:
-                            raise Exception('Agent never received shutdown signal')
-                        return res
+                    # NOTE: This overridden method is now incompatible with the revised queue
+                    # consumption logic such that entire queues are not consumed on any particular
+                    # loop iteration, therefore it is correct and expected that when the iteration
+                    # loop is interrupted, that messages can remain in one or more queues. 
+                    #
+                    # Commenting this out because it is broken, but leaving it here for posterity.
+                    #
+                    #def messages_in_queue(self, *args, **kwargs):
+                    #    """
+                    #    Override to break free of listening for new messages, in case the test failed
+                    #    and the agent never received the signal.
+                    #    """
+                    #    res = super().messages_in_queue(*args, **kwargs)
+                    #    self.counter += 1
+                    #    if self.counter > 2:
+                    #        raise Exception('Agent never received shutdown signal')
+                    #    return res
 
                 self.agent = MetadataAgentShutdownTester()
 
@@ -87,6 +101,9 @@ class GenericAgentMonitoringTests(BaseAgentTestCase):
         Ensure action processing monitoring files are created and destroyed as intended
         at the beginning and end of action processing.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         class MetadataAgentMonitoringTester(MetadataAgent):
             monitoring_file_spotted = False
             monitoring_file_contents = None
@@ -114,6 +131,9 @@ class GenericAgentMonitoringTests(BaseAgentTestCase):
         """
         Ensure action processing monitoring files are cleaned up when the agent is shut down.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         class MetadataAgentMonitoringCleanupTester(MetadataAgent):
             def _get_action_record(self, *args, **kwargs):
                 res = super()._get_action_record(*args, **kwargs)
@@ -174,6 +194,9 @@ class GenericAgentWebRequestTests(BaseAgentTestCase):
 
     @responses.activate
     def test_http_requests_are_retried(self):
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         self.agent.consume_one()
         # proceeds up to retrieving nodes from IDA api, then retries a few times since the
         # mocked api only returns an error
@@ -186,6 +209,9 @@ class GenericAgentWebRequestTests(BaseAgentTestCase):
         to checksums-failed-waiting queue, and they do not have the field 'retry' set
         in checksums_retry_info, which means HTTP failures do not count towards retry limits.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         self.agent.consume_one()
 
         # ensure message is republished to failed-queue, and retries

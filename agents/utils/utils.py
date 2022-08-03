@@ -102,8 +102,13 @@ def get_settings(uida_conf_vars=None):
     if executing_test_case():
         return deepcopy(test_settings)
 
-    if uida_conf_vars != None and uida_conf_vars.get('IDA_ENVIRONMENT', False) == 'TEST':
-        return deepcopy(development_settings)
+    if uida_conf_vars != None and uida_conf_vars.get('IDA_ENVIRONMENT', False) in ('TEST', 'DEV'):
+        dev_settings = deepcopy(development_settings)
+        if uida_conf_vars.get('DEBUG', None) == "true":
+            dev_settings['log_level'] = 'DEBUG'
+        else:
+            dev_settings['log_level'] = 'INFO'
+        return dev_settings
 
     return deepcopy(production_settings)
 
@@ -126,6 +131,7 @@ def load_variables_from_uida_conf_files():
     uida_conf_vars = {
         'ROOT': server_conf.ROOT,
         'OCC': server_conf.OCC,
+        'DEBUG': server_conf.DEBUG,
         'IDA_ENVIRONMENT': server_conf.IDA_ENVIRONMENT,
         'IDA_API_ROOT_URL': server_conf.IDA_API_ROOT_URL,
         'METAX_API_ROOT_URL': server_conf.METAX_API_ROOT_URL,

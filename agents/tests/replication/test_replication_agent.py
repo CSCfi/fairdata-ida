@@ -26,6 +26,8 @@ from os.path import isfile
 from time import sleep
 
 import responses
+import inspect
+import sys
 
 from agents.metadata import MetadataAgent
 from agents.replication import ReplicationAgent
@@ -53,6 +55,9 @@ class ReplicationAgentUnitTests(ReplicationAgentTestsCommon):
         """
         Ensure the actual file copy works.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         test_action = deepcopy(ida_test_data['actions'][5])
 
         # note - an internal reads project identifier from the rabbitmq message
@@ -76,6 +81,9 @@ class ReplicationAgentUnitTests(ReplicationAgentTestsCommon):
         There should be 3 files total, one of which already has replicated-timestamp in
         place, and should not be copied again.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         test_action = deepcopy(ida_test_data['actions'][5])
 
         # note - an internal reads project identifier from the rabbitmq message
@@ -94,6 +102,9 @@ class ReplicationAgentProcessQueueTests(ReplicationAgentTestsCommon):
         ReplicationAgent should only begin its work, once MetadataAgent has finished,
         and published a new message to exchange 'replication'
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         self._publish_test_messages(index=0, exchange='actions')
         mda = MetadataAgent()
         self.assertEqual(mda.messages_in_queue(), 1)
@@ -104,6 +115,9 @@ class ReplicationAgentProcessQueueTests(ReplicationAgentTestsCommon):
         """
         Consume one replicatiom message start to finish.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         published_message = self._publish_test_messages(index=5, exchange='replication')
         self.assertEqual(self.agent.messages_in_queue(), 1)
 

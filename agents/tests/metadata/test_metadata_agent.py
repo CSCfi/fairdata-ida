@@ -25,6 +25,8 @@ from copy import deepcopy
 from time import sleep
 
 import responses
+import inspect
+import sys
 
 from agents.metadata import MetadataAgent
 from agents.utils.utils import get_settings
@@ -108,6 +110,9 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
         - the checksum sub-action completion timestamp has been saved to ida db
         - nothing ever ended up in the failed-queue
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         self.agent.rabbitmq_message = self.TEST_FREEZE_ACTION_WITH_ONE_NODE
         nodes = self.agent._process_checksums(self.TEST_FREEZE_ACTION_WITH_ONE_NODE)
 
@@ -131,6 +136,9 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
         An action, which has already processed the checksums previously, should result in
         the following file metadata for our frozen test node.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         expected_node_metadata = [{
             'byte_size': 3728,
             'file_name': 'test01.dat',
@@ -170,6 +178,9 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
 
     @responses.activate
     def test_process_metadata_publication(self):
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         self.TEST_FREEZE_ACTION_WITH_ONE_NODE['checksums'] = '2017-10-10T12:00:00Z'
         self.TEST_FREEZE_ACTION_NODE['checksum'] = self.TEST_FREEZE_NODE_CHECKSUM
         self.agent.rabbitmq_message = self.TEST_FREEZE_ACTION_WITH_ONE_NODE
@@ -187,6 +198,9 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
 
     @responses.activate
     def test_process_metadata_deletion(self):
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         # unfreeze-action with one associated node
         unfreeze_action = deepcopy(ida_test_data['actions'][4])
         self.agent.rabbitmq_message = unfreeze_action
@@ -221,6 +235,8 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         and metadata publication.
         """
 
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         # publish test action which has only one node associated with it, and 0 sub-actions completed.
         self._publish_test_messages(index=0)
         self.assertEqual(self.agent.messages_in_queue(), 1)
@@ -244,6 +260,8 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         """
         Consume one message which has checksums already completed.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
 
         # publish test action which has only one node associated with it, and checksum sub-action completed.
         published_message = self._publish_test_messages(index=2)
@@ -269,6 +287,8 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         Consume one unfreeze action.
         """
 
+        print("   %s" % inspect.currentframe().f_code.co_name)
+
         # index=4 is an unfreeze action
         published_message = self._publish_test_messages(index=4)
         self.assertEqual(self.agent.messages_in_queue(), 1)
@@ -293,6 +313,8 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         Consume one message start to finish, but with METAX_AVAILABLE=0 in config.sh.
         Action should be marked as complete without trying to publish anything to metax.
         """
+
+        print("   %s" % inspect.currentframe().f_code.co_name)
 
         # normally this flag is 1 (=True) even in test settings - set it 0 (=False) here, so that
         # the action should be marked completed without connecting metax

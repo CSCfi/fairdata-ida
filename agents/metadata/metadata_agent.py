@@ -54,6 +54,26 @@ class MetadataAgent(GenericAgent):
         else:
             self._logger.error('Action type = %s is not something we can handle...' % action['action'])
 
+    def dependencies_not_ok(self):
+        """
+        If the Metax service API is not available, return True, else return False.
+        Always return True if the dependency checks fail with an exception.
+        """
+        try:
+            response = self._metax_api_request('get', '/', auth=False)
+            if response.status_code != 200:
+                self._logger.debug('Dependencies not OK')
+                return True
+            else:
+                self._logger.debug('Dependencies OK')
+                return False
+        except SystemExit:
+            raise
+        except BaseException as e:
+            self._logger.warning('Dependency check failed')
+            self._logger.exception(e)
+            return True
+
     def _handle_freeze_action(self, action, method, queue):
 
         # if sub-actions are being successfully executed sequentially, then
@@ -545,10 +565,13 @@ class MetadataAgent(GenericAgent):
         self._save_action_completion_timestamp(action, 'completed')
         self._logger.debug('Metadata deletion OK')
 
-    def _metax_api_request(self, method, detail_url, data=None):
-        headers = {
-            'Authorization': make_ba_http_header(self._uida_conf_vars['METAX_API_USER'], self._uida_conf_vars['METAX_API_PASS'])
-        }
+    def _metax_api_request(self, method, detail_url, data=None, auth=True):
+        if auth:
+            headers = {
+                'Authorization': make_ba_http_header(self._uida_conf_vars['METAX_API_USER'], self._uida_conf_vars['METAX_API_PASS'])
+            }
+        else:
+            headers = None
         return self._http_request(method, '%s%s' % (self._metax_api_url, detail_url), data=data, headers=headers)
 
     def _complete_actions_without_metax(self):

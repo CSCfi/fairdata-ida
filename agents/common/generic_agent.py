@@ -122,6 +122,9 @@ class GenericAgent():
     def process_queue(self, *args, **kwargs):
         raise NotImplementedError('Inheriting classes must implement this method')
 
+    def dependencies_not_ok(self, *args, **kwargs):
+        raise NotImplementedError('Inheriting classes must implement this method')
+
     def publish_message(self, message, routing_key='', exchange=None, persistent=True, delay=None):
         """
         Publish a new message to an exchange.
@@ -158,45 +161,63 @@ class GenericAgent():
 
     def start_consuming(self):
         """
-        Continuously consume the designated queue, until program is aborted. Using loop
-        pattern instead of channel.basic_consume(callback), to properly spread work
-        between different processes working on the same queue.
+        Continuously consume messages from the agent's queues, according to queue priority,
+        until program is aborted. Using loop pattern instead of channel.basic_consume(callback),
+        to properly spread work between different processes working on the same queue.
+
+        If the IDA service enters offline mode, or any of the agent specific dependencies
+        are no longer OK, the agent will sleep until the IDA service is again online and all
+        agent dependencies are again OK.
         """
-        self._logger.debug('Started consuming queue %s' % self.main_queue_name)
+        self._logger.debug('Started consuming from queues...')
 
         while True:
 
-            sleeping_logged = False
+            # Only try to consume messages if there exist messages in any of the agent's queues...
+            if self.messages_in_queue(self.main_queue_name) or self.messages_in_queue(self.failed_queue_name) or self.messages_in_queue(self.main_batch_queue_name) or self.messages_in_queue(self.failed_batch_queue_name):
 
-            # Do not consume messages if the sentinel offline file exists
-            while self._is_offline():
-                # Log sleeping only the first time
-                if not sleeping_logged:
-                    self._logger.debug('Sentinel offline file present. Sleeping...')
-                    sleeping_logged = True
-                sleep(60)
+                is_offline_logged = False
+    
+                # Do not consume messages if the sentinel offline file exists 
+                while self._is_offline():
+                    # Log only the first time
+                    if not is_offline_logged:
+                        self._logger.warning('Sentinel offline file present. Sleeping...')
+                        is_offline_logged = True
+                    sleep(60)
 
-            while self.messages_in_queue(self.failed_queue_name):
-                # Messages in the failed standard queue are only published when their
-                # retry-delay has passed, so these messages are ripe for retry,
-                # and have higher priority than new messages.
-                #
-                # Process messages in the failed standard queue until it is empty,
-                # then start processing new messages.
-                #
-                self.consume_one(self.failed_queue_name)
+                if is_offline_logged:
+                    self._logger.info('Sentinel offline file no longer present. Resuming...')
 
-            if self.messages_in_queue(self.main_queue_name):
-                # This consumes messages from the main standard queue
-                self.consume_one(self.main_queue_name)
-            else:
-                # When all messages are consumed from the standard queues, start consuming
-                # messages from the batch queues (failed_batch_queue and main_batch_queue)
-                self._logger.debug('Started consuming queue %s' % self.main_batch_queue_name)
+                dependencies_not_ok_logged = False
 
-                while self.messages_in_queue(self.failed_batch_queue_name):
+                # Do not consume messages if any dependencies required by the agent are not met 
+                while self.dependencies_not_ok():
+                    # Log only the first time
+                    if not dependencies_not_ok_logged:
+                        self._logger.warning('Dependencies not OK. Sleeping...')
+                        dependencies_not_ok_logged = True
+                    sleep(60)
+
+                if dependencies_not_ok_logged:
+                    self._logger.info('Dependencies OK. Resuming...')
+
+                # On each iteration, a message is consumed from the agent's queues with the following priority:
+                #     failed_queue_name
+                #     main_queue_name
+                #     failed_batch_queue_name
+                #     main_batch_queue_name
+                # This ensures that user-initiated actions take precidence over batch actions. The prioritization
+                # is applied on each loop iteration, so that new user-initiated actions will be immediately 
+                # processed even if there are many batch actions queued.
+
+                if self.messages_in_queue(self.failed_queue_name):
+                    self.consume_one(self.failed_queue_name)
+                elif self.messages_in_queue(self.main_queue_name):
+                    self.consume_one(self.main_queue_name)
+                elif self.messages_in_queue(self.failed_batch_queue_name):
                     self.consume_one(self.failed_batch_queue_name)
-                if self.messages_in_queue(self.main_batch_queue_name):
+                elif self.messages_in_queue(self.main_batch_queue_name):
                     self.consume_one(self.main_batch_queue_name)
 
             if self.gevent:
@@ -206,8 +227,6 @@ class GenericAgent():
             else:
                 # only this agent is being executed in this process
                 sleep(self._settings['main_loop_delay'])
-
-        self._logger.debug('Stopped consuming queue %s' % self.main_queue_name)
 
     def consume_one(self, queue=None):
         """
@@ -605,7 +624,7 @@ class GenericAgent():
                     'HTTP request to %s resulted in an error: %s. This does not count towards retries. Retrying in %d seconds...'
                     % (url, str(e), retry_policy['retry_intervals'][retry_index])
                 )
-                sleep(retry_policy['retry_intervals'][i - 1])
+                sleep(retry_policy['retry_intervals'][retry_index])
 
         raise HttpApiNotResponding('HTTP request %s did not respond after %d attempts.'
             % (url, self._current_http_request_retry))

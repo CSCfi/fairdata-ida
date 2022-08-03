@@ -58,6 +58,9 @@ class BaseAgentTestCase(TestCase):
             pass
 
     def setUp(self):
+
+        print("%s" % self.__class__.__name__)
+
         test_utils.init_rabbitmq()
         self._init_files()
         self._prepare_api_responses()
@@ -167,6 +170,17 @@ class BaseAgentTestCase(TestCase):
                 '/files/%s' % node['pid'],
                 status=204
             )
+
+        # GET to metax root API URL
+        self._prepare_response(
+            responses.GET,
+            'metax',
+            '/',
+            status=200,
+            body=json_dumps({
+                'success': True
+            })
+        )
 
         # POST to metax /files
         self._prepare_response(

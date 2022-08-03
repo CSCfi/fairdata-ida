@@ -53,6 +53,26 @@ class ReplicationAgent(GenericAgent):
         else:
             self._logger.error('Action type = %s is not something we can handle...' % action['action'])
 
+    def dependencies_not_ok(self):
+        """
+        If the tape archive cache is not mounted, return True, else return False.
+        Always return True if the dependency checks fail with an exception.
+        """
+        try:
+            _sentinel_file = "%s/DO_NOT_DELETE_sentinel_file" % self._uida_conf_vars['DATA_REPLICATION_ROOT']
+            if not os.path.isfile(_sentinel_file):
+                self._logger.debug('Dependencies not OK')
+                return True
+            else:
+                self._logger.debug('Dependencies OK')
+                return False
+        except SystemExit:
+            raise
+        except BaseException as e:
+            self._logger.warning('Dependency check failed')
+            self._logger.exception(e)
+            return True
+
     def _handle_freeze_action(self, action, method, queue):
         if self._sub_action_processed(action, 'replication'):
             self._logger.debug('Replication already processed')

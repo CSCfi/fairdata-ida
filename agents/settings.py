@@ -118,41 +118,31 @@ development = {
 
     "retry_policy": {
         "checksums": {
-            "max_retries": 10,
+            "max_retries": 3,
             "retry_interval": 1, # seconds
         },
         "metadata": {
-            "max_retries": 10,
+            "max_retries": 3,
             "retry_interval": 1,
         },
         "replication": {
-            "max_retries": 10,
+            "max_retries": 3,
             "retry_interval": 1,
         },
         "http_request": {
-            "max_retries": 10,
+            "max_retries": 3,
             "retry_intervals": [
-                1,
-                1,
-                1,
-                1,
                 1,
                 3,
                 10,
-                60,
             ],
         },
         "rabbitmq_errors": {
-            "max_retries": 10,
+            "max_retries": 3,
             "retry_intervals": [
-                1,
-                1,
-                1,
-                1,
                 1,
                 3,
                 10,
-                60,
             ],
         }
     },
