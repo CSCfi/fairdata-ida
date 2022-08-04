@@ -425,6 +425,8 @@ class TestIdaApp(unittest.TestCase):
         data["pathname"] = "/testdata/MaxFiles"
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
 
         # TODO: Verify after failed freeze request that files are still in staging and no pending action exists
 
@@ -444,11 +446,15 @@ class TestIdaApp(unittest.TestCase):
         data["pathname"] = "/testdata/MaxFiles"
         response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
 
         print("Attempt to delete a frozen folder with more than max allowed files")
         data["pathname"] = "/testdata/MaxFiles"
         response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
 
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
@@ -683,21 +689,29 @@ class TestIdaApp(unittest.TestCase):
         data = {"removed": "2017-11-12"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12\" is invalid.")
 
         print("Attempt to set invalid timestamp: invalid time separator syntax")
         data = {"removed": "2017-11-12 15:48:15Z"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12 15:48:15Z\" is invalid.")
 
         print("Attempt to set invalid timestamp: invalid timezone")
-        data = {"removed": "2017-11-12T15:48+0000"}
+        data = {"removed": "2017-11-12T15:48:15+0000"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12T15:48:15+0000\" is invalid.")
 
         print("Attempt to set invalid timestamp: invalid format")
         data = {"removed": "Tue, Dec 12, 2017 10:03 UTC"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Specified timestamp \"Tue, Dec 12, 2017 10:03 UTC\" is invalid.")
 
         # --------------------------------------------------------------------------------
 
@@ -1400,6 +1414,8 @@ class TestIdaApp(unittest.TestCase):
         data = {"project": "test_project_b", "pathname": "/testdata/MaxFiles"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
 
         print("Batch freeze a folder with more than max allowed files")
         cmd = "%s test_project_b freeze /testdata/MaxFiles >/dev/null" % (cmd_base)
