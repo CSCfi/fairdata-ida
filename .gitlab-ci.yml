@@ -1,6 +1,6 @@
 include:
   - project: fairdata/fairdata-ci
-    ref: staging
+    ref: master
     # Deployment of application code
     file:
       - /templates/deploy.yml
