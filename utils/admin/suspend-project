@@ -100,6 +100,23 @@ fi
 
 rm $ERR 2>/dev/null
 
+#--------------------------------------------------------------------------------
+# The SUSPEND sentinel file in the project /files/ directory is redundant with
+# the suspend action which is the primary means of tracking whether a project
+# is suspended, and when it was suspended (and possibly unsuspended). The 
+# sentinel file provides a quick and easy way for scripts and other components
+# to test if a project is suspended without having to query the database.
+
+echo "Creating suspend sentinel file for project ${PROJECT}..."
+
+touch $PROJECT_SUSPENDED
+
+if [ ! -e $PROJECT_SUSPENDED ]; then
+    errorExit "Failed to create suspend sentinel file for project ${PROJECT}"
+fi
+
+#--------------------------------------------------------------------------------
+
 echoAndLog "Project ${PROJECT} suspended."
 
 #--------------------------------------------------------------------------------

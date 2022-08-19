@@ -135,40 +135,7 @@ try {
 	if (!$pos = strpos($pathInfo, '/', 1)) {
 		$pos = strlen($pathInfo);
 	}
-
 	$service = substr($pathInfo, 1, $pos - 1);
-
-	// BEGIN IDA MODIFICATION:
-	//
-	// If the request URL path contains a project root directory (staging or frozen), and either the
-	// entire service or the specific project is suspended, and the request method has side effects,
-	// report a conflict (return 409 response)
-
-    $projectSuspended = false;
-
-	try {
-		$parts = explode('/', $pathInfo);
-	    $project = rtrim($parts[2], '+');
-		$config = \OC::$server->getConfig();
-		$dataRootPathname = $config->getSystemValue('datadirectory', '/mnt/storage_vol01/ida');
-        $serviceSuspendedPathname = $dataRootPathname . '/control/SUSPENDED';
-        $projectSuspendedPathname = $dataRootPathname . '/' . \OCA\IDA\Util\Constants::PROJECT_USER_PREFIX . $project . '/files/SUSPENDED';
-		if (file_exists($serviceSuspendedPathname) || file_exists($projectSuspendedPathname)) {
-		    $projectSuspended = true;
-		}
-    } catch (Exception $e) { 
-		$projectSuspended = false;
-	}
-
-	if ($projectSuspended
-        && in_array($request->getMethod(), array('PUT', 'DELETE', 'MKCOL', 'COPY', 'MOVE', 'PROPPATCH', 'POST'))) {
-        // TODO: log conflicting request
-        header('Content-Type: text/plain; charset=utf-8');
-        http_response_code(409);
-        print("Project suspended. Action not permitted.");
-        die();
-	}
-	// END IDA MODIFICATION
 
 	$file = resolveService($service);
 

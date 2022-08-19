@@ -105,6 +105,17 @@ fi
 
 rm $ERR 2>/dev/null
 
+#--------------------------------------------------------------------------------
+echo "Removing suspend sentinel file for project ${PROJECT}..."
+
+rm -f $PROJECT_SUSPENDED
+
+if [ -e $PROJECT_SUSPENDED ]; then
+    errorExit "Failed to remove suspend sentinel file for project ${PROJECT}"
+fi
+
+#--------------------------------------------------------------------------------
+
 echoAndLog "Project ${PROJECT} unsuspended."
 
 #--------------------------------------------------------------------------------

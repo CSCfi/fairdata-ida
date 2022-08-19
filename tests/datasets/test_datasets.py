@@ -312,7 +312,6 @@ class TestDatasets(unittest.TestCase):
         data = { "project": "test_project_a", "pathname": "/testdata" }
         response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
-        print(response.content)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
 

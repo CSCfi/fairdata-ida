@@ -56,6 +56,15 @@ class TestIdaApp(unittest.TestCase):
 
         print("(initializing)")
 
+        self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
+        self.suspendedSentinelFile = "%s/control/SUSPENDED" % self.config["STORAGE_OC_DATA_ROOT"]
+
+        # ensure service is not suspended
+
+        if (os.path.exists(self.suspendedSentinelFile)):
+            os.remove(self.suspendedSentinelFile)
+        self.assertFalse(os.path.exists(self.suspendedSentinelFile))
+
         # ensure we start with a fresh setup of projects, user accounts, and data
 
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
@@ -74,6 +83,13 @@ class TestIdaApp(unittest.TestCase):
 
 
     def tearDown(self):
+
+        # ensure service is not suspended
+
+        if (os.path.exists(self.suspendedSentinelFile)):
+            os.remove(self.suspendedSentinelFile)
+        self.assertFalse(os.path.exists(self.suspendedSentinelFile))
+
         # flush all test projects, user accounts, and data, but only if all tests passed,
         # else leave projects and data as-is so test project state can be inspected
 
@@ -81,6 +97,8 @@ class TestIdaApp(unittest.TestCase):
             print("(cleaning)")
             cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             os.system(cmd)
+
+        # verify all tests passed
 
         self.assertTrue(self.success)
 
@@ -259,7 +277,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(file_data["size"], 446)
 
         print("Freeze a folder")
-        data["pathname"] = "/testdata/2017-08/Experiment_1"
+        data["pathname"] = "/testdata/2017-08"
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
@@ -272,11 +290,11 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
-        self.assertEqual(len(file_set_data), 12)
+        self.assertEqual(len(file_set_data), 26)
         # file count for this freeze folder action should never change, even if files are unfrozen/deleted
         # (store this action PID and verify after all unfreeze and delete actions that count has not changed)
         original_freeze_folder_action_pid = action_pid
-        original_freeze_folder_action_file_count = 12
+        original_freeze_folder_action_file_count = 26
 
         print("Retrieve file details from hidden frozen file")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/.hidden_file"}
@@ -482,6 +500,268 @@ class TestIdaApp(unittest.TestCase):
 
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
+
+        # --------------------------------------------------------------------------------
+
+        print("--- WebDAV Access Limitations")
+
+        print("Attempt to duplicate file to frozen area with COPY request to WebDAV API")
+        url = "%s/test_project_a+/testdata/2017-11/Experiment_6/test01.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_a/testdata/2017-11/Experiment_6/test01.dat" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='COPY', url=url, headers=headers, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to rename file to frozen area with MOVE request to WebDAV API")
+        url = "%s/test_project_a+/testdata/2017-11/Experiment_6/test01.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_a/testdata/2017-11/Experiment_6/test01.dat" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='MOVE', url=url, headers=headers, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to remove file from frozen area with DELETE request to WebDAV API")
+        url = "%s/test_project_a/testdata/2017-08/Experiment_2/test04.dat" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='DELETE', url=url, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 403)
+
+        #---
+
+        print("(suspending service)")
+        cmd = "sudo -u %s touch %s" % (self.config["HTTPD_USER"], self.suspendedSentinelFile)
+        result = os.system(cmd)
+        self.assertEquals(result, 0)
+
+        print("(waiting for IDA service API to be ready)")
+        print(".", end='', flush=True)
+        max_time = time.time() + self.timeout
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.get(url=url, auth=test_user_d, verify=False)
+        while response.status_code == 503 and time.time() <= max_time:
+            print(".", end='', flush=True)
+            time.sleep(1)
+            response = requests.get(url=url, auth=test_user_d, verify=False)
+        print("")
+        if time.time() > max_time:
+            self.fail("Timed out waiting for IDA service API")
+
+        #---
+
+        print("Retrieve file contents with GET request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.get(url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("Retrieve file details with PROPFIND request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPFIND', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        print("Retrieve folder details with PROPFIND request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/2017-10" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPFIND', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        print("Attempt to upload new file contents with PUT request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/newfile1.txt" % self.config["URL_BASE_FILE"]
+        data = { 'foo': 'bar' }
+        response = requests.put(url=url, data=data, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to remove file with DELETE request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='DELETE', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to create new folder with MKCOL request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/newfolder" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='MKCOL', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to duplicate file with COPY request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/2017-10/Experiment_3/test01.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_d+/testdata/2017-10/Experiment_3/test01.dat2" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='COPY', url=url, headers=headers, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to rename file with MOVE request to WebDAV API when service is suspended")
+        url = "%s/test_project_d+/testdata/2017-10/Experiment_3/test02.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_d+/testdata/2017-10/Experiment_3/test02.dat2" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='MOVE', url=url, headers=headers, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        print("Attempt to change creation date of file with PROPPATCH request to WebDAV API when service is suspended")
+        data = """<?xml version=\"1.0\"?>
+                      <d:propertyupdate xmlns:d=\"DAV:\">
+                         <d:set>
+                             <d:prop>
+                                 <creationdate>1966-03-31</creationdate>
+                             </d:prop>
+                         </d:set>
+                      </d:propertyupdate>
+        """
+        headers = { 'ContentType': 'application/xml' }
+        url = "%s/test_project_d+/testdata/2017-10/Experiment_3/test03.dat" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPPATCH', url=url, data=data, headers=headers, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 409)
+
+        #---
+
+        print("(unsuspending service)")
+        if (os.path.exists(self.suspendedSentinelFile)):
+            os.remove(self.suspendedSentinelFile)
+        self.assertFalse(os.path.exists(self.suspendedSentinelFile))
+
+        print("(waiting for IDA service API to be ready)")
+        print(".", end='', flush=True)
+        max_time = time.time() + self.timeout
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.get(url=url, auth=test_user_d, verify=False)
+        while response.status_code == 503 and time.time() <= max_time:
+            print(".", end='', flush=True)
+            time.sleep(1)
+            response = requests.get(url=url, auth=test_user_d, verify=False)
+        print("")
+        if time.time() > max_time:
+            self.fail("Timed out waiting for IDA service API")
+
+        #---
+
+        print("Retrieve file contents with GET request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.get(url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("Retrieve file details with PROPFIND request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPFIND', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        print("Retrieve folder details with PROPFIND request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/2017-10" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPFIND', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        print("Upload new file contents with PUT request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/newfile1.txt" % self.config["URL_BASE_FILE"]
+        data = { 'foo': 'bar' }
+        response = requests.put(url=url, data=data, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 201)
+
+        print("Remove file with DELETE request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='DELETE', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 204)
+
+        print("Create new folder with MKCOL request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/newfolder" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='MKCOL', url=url, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 201)
+
+        print("Duplicate file with COPY request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/2017-10/Experiment_3/test01.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_d+/testdata/2017-10/Experiment_3/test01.dat2" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='COPY', url=url, headers=headers, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 201)
+
+        print("Rename file with MOVE request to WebDAV API when project is not suspended")
+        url = "%s/test_project_d+/testdata/2017-10/Experiment_3/test02.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_d+/testdata/2017-10/Experiment_3/test02.dat2" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='MOVE', url=url, headers=headers, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 201)
+
+        print("Change creation date of file with PROPPATCH request to WebDAV API when project is not suspended")
+        data = """<?xml version=\"1.0\"?>
+                      <d:propertyupdate xmlns:d=\"DAV:\">
+                         <d:set>
+                             <d:prop>
+                                 <creationdate>1966-03-31</creationdate>
+                             </d:prop>
+                         </d:set>
+                      </d:propertyupdate>
+        """
+        headers = { 'ContentType': 'application/xml' }
+        url = "%s/test_project_d+/testdata/2017-10/Experiment_3/test03.dat" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPPATCH', url=url, data=data, headers=headers, auth=test_user_d, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        #---
+
+        print("(waiting for IDA service API to be ready)")
+        print(".", end='', flush=True)
+        max_time = time.time() + self.timeout
+        url = "%s/test_project_s+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.get(url=url, auth=test_user_s, verify=False)
+        while response.status_code == 503 and time.time() <= max_time:
+            print(".", end='', flush=True)
+            time.sleep(1)
+            response = requests.get(url=url, auth=test_user_s, verify=False)
+        print("")
+        if time.time() > max_time:
+            self.fail("Timed out waiting for IDA service API")
+
+        #---
+
+        print("Retrieve file contents with GET request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.get(url=url, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("Retrieve file details with PROPFIND request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPFIND', url=url, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        print("Retrieve folder details with PROPFIND request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/2017-10" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPFIND', url=url, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 207)
+
+        print("Attempt to upload new file contents with PUT request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/newfile1.txt" % self.config["URL_BASE_FILE"]
+        data = { 'foo': 'bar' }
+        response = requests.put(url=url, data=data, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Project suspended. Action not permitted.', response.text)
+
+        print("Attempt to remove file with DELETE request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/License.txt" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='DELETE', url=url, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Project suspended. Action not permitted.', response.text)
+
+        print("Attempt to create new folder with MKCOL request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/newfolder" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='MKCOL', url=url, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Project suspended. Action not permitted.', response.text)
+
+        print("Attempt to duplicate file with COPY request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/2017-08/Experiment_1/test01.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_s+/testdata/2017-08/Experiment_1/test01.dat2" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='COPY', url=url, headers=headers, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Project suspended. Action not permitted.', response.text)
+
+        print("Attempt to duplicate file with COPY request to WebDAV API when project is suspended")
+        url = "%s/test_project_s+/testdata/2017-08/Experiment_1/test02.dat" % self.config["URL_BASE_FILE"]
+        headers = { "Destination": "%s/test_project_s+/testdata/2017-08/Experiment_1/test02.dat2" % self.config["URL_BASE_FILE"] }
+        response = requests.request(method='MOVE', url=url, headers=headers, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Project suspended. Action not permitted.', response.text)
+
+        print("Attempt to change creation date of file with PROPPATCH request to WebDAV API when project is suspended")
+        data = """<?xml version=\"1.0\"?>
+                      <d:propertyupdate xmlns:d=\"DAV:\">
+                         <d:set>
+                             <d:prop>
+                                 <creationdate>1966-03-31</creationdate>
+                             </d:prop>
+                         </d:set>
+                      </d:propertyupdate>
+        """
+        headers = { 'ContentType': 'application/xml' }
+        url = "%s/test_project_s+/testdata/2017-08/Experiment_1/test03.dat" % self.config["URL_BASE_FILE"]
+        response = requests.request(method='PROPPATCH', url=url, data=data, headers=headers, auth=test_user_s, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Project suspended. Action not permitted.', response.text)
 
         # --------------------------------------------------------------------------------
 
@@ -723,7 +1003,7 @@ class TestIdaApp(unittest.TestCase):
         # steps being redone (even though unnecesary)
 
         print("Freeze a single file")
-        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2/test01.dat"}
+        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
