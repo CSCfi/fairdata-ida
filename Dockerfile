@@ -73,7 +73,8 @@ RUN mkdir -p /mnt/storage_vol01/log \
 RUN touch /mnt/storage_vol01/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol02/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol03/DO_NOT_DELETE_sentinel_file \
- && touch /mnt/storage_vol04/DO_NOT_DELETE_sentinel_file
+ && touch /mnt/storage_vol04/DO_NOT_DELETE_sentinel_file \
+ && touch /mnt/storage_vol01/ida_replication/DO_NOT_DELETE_sentinel_file
 RUN chown -R www-data:www-data /mnt/storage_vol01 \
  && chown -R www-data:www-data /mnt/storage_vol02 \
  && chown -R www-data:www-data /mnt/storage_vol03 \
