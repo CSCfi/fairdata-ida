@@ -158,6 +158,12 @@ def load_variables_from_uida_conf_files():
         'PROJECT_USER_PREFIX':  service_constants.PROJECT_USER_PREFIX,
     }
 
+    if hasattr(server_conf, 'DMF_SERVER'):
+        uida_conf_vars['DMF_SERVER'] = server_conf.DMF_SERVER
+
+    if hasattr(server_conf, 'DMF_STATUS'):
+        uida_conf_vars['DMF_STATUS'] = server_conf.DMF_STATUS
+
     if executing_test_case():
         test_server_conf = _load_module_from_file(
             "server_configuration.variables", test_settings['server_configuration_path']

@@ -82,6 +82,9 @@ LDAP_BIND_USER="uid=irodsbind,ou=Special Users,dc=csc,dc=fi"
 LDAP_PASSWORD="****"
 LDAP_SEARCH_BASE="ou=idm,dc=csc,dc=fi"
 
+DMF_SERVER="dmf.csc.fi"
+DMF_STATUS="/var/ida/agents/replication/dmfstatus"
+
 # multiple local storage volumes
 STORAGE_CANDIDATES=("/mnt/storage_vol01/ida" "/mnt/storage_vol02/ida")
 STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"

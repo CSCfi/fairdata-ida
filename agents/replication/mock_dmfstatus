@@ -1,0 +1,37 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2022 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script emulates a successful query to the DMF tape archive service NFS
+# server via RPC, simulating that it is operational and accepting requests
+# (i.e. healthy).
+#
+# It is used in non-production environments which only emulate tape replication
+# and therefore do not integrate to the actual DMF service, but the replication
+# agent still needs to test that the DMF tape archive service is healthy.
+#
+#--------------------------------------------------------------------------------
+echo "program 100003 version 3 ready and waiting"
+exit 0
+#echo "rpcinfo: RPC: Port mapper failure - Timed out"
+#exit 11

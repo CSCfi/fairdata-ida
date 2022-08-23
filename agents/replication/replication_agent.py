@@ -25,6 +25,7 @@ import errno
 import os
 import shutil
 
+from subprocess import PIPE, run
 from agents.common import GenericAgent
 from agents.exceptions import ReplicationRootNotMounted
 from agents.utils.utils import construct_file_path, current_time
@@ -55,17 +56,39 @@ class ReplicationAgent(GenericAgent):
 
     def dependencies_not_ok(self):
         """
-        If the tape archive cache is not mounted, return True, else return False.
+        If the tape archive cache is not mounted, or an RPC call to the DMF NFS server does not return
+        successfully, return True, else return False.
         Always return True if the dependency checks fail with an exception.
         """
         try:
-            _sentinel_file = "%s/DO_NOT_DELETE_sentinel_file" % self._uida_conf_vars['DATA_REPLICATION_ROOT']
+            _replication_root = self._uida_conf_vars.get('DATA_REPLICATION_ROOT', False)
+
+            if _replication_root == False:
+                raise Exception('The configuration variable DATA_REPLICATION_ROOT is not defined!')
+
+            _sentinel_file = "%s/DO_NOT_DELETE_sentinel_file" % _replication_root
+
             if not os.path.isfile(_sentinel_file):
-                self._logger.debug('Dependencies not OK')
+                self._logger.warning('Dependencies not OK: Sentinel file not found')
                 return True
-            else:
-                self._logger.debug('Dependencies OK')
-                return False
+
+            _dmfstatus = self._uida_conf_vars.get('DMF_STATUS', '/var/ida/agents/replication/mock_dmfstatus')
+
+            if not os.path.isfile(_dmfstatus):
+                raise FileNotFoundError("The script %s could not be found!" % _dmfstatus)
+
+            if not os.access(_dmfstatus, os.X_OK):
+                raise PermissionError("The script %s is not executable!" % _dmfstatus)
+
+            _result = run(_dmfstatus, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+
+            if _result.returncode != 0:
+                self._logger.warning("Dependencies not OK: DMF service not available: %s %s" % (_result.stdout, _result.stderr))
+                return True
+            
+            self._logger.debug('Dependencies OK')
+            return False
+
         except SystemExit:
             raise
         except BaseException as e:

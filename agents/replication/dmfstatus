@@ -1,0 +1,78 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2022 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script queries the DMF tape archive service NFS server via RPC to ensure
+# that it is operational and accepting requests (i.e. healthy).
+#
+#--------------------------------------------------------------------------------
+# Ensure the rpcinfo utility exists
+
+PROG_LOCATION=`/usr/bin/which rpcinfo 2>/dev/null`
+if [ ! -e "$PROG_LOCATION" ]; then
+    echo "Can't find rpcinfo in your \$PATH"
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Load service configuration settings
+
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+if [ "$SCRIPT" == "" ]; then
+    SCRIPT=`basename $SCRIPT_PATHNAME`
+else
+    SCRIPT=`basename $SCRIPT`
+fi
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+if [ "$DMF_SERVER" = "" ]; then
+    echo "The variable DMF_SERVER is not defined in the file $CONFIG_FILE. Aborting." >&2
+    exit 1
+fi
+
+OUT=`rpcinfo -T tcp $DMF_SERVER 100003 3`
+
+echo "$OUT"
+
+if [ "$OUT" != "program 100003 version 3 ready and waiting" ]; then
+    exit 11 # resource temporarily unavailable
+fi
+
+exit 0
