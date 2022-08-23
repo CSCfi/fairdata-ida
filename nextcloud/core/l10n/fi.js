@@ -1,6 +1,7 @@
 OC.L10N.register(
     "core",
     {
+    "Enter search terms here..." : "Kirjoita hakutermit tähän...",
     "Note to recipient" : "Viesti vastaanottajalle",
     "Security" : "Turvallisuus",
     "Please select a file." : "Valitse tiedosto.",

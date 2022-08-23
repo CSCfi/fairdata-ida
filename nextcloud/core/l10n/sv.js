@@ -1,6 +1,7 @@
 OC.L10N.register(
     "core",
     {
+    "Enter search terms here..." : "Ange söktermer här...",
     "The public link will expire no later than {days} days after it is created, unless a shorter period is specified." : "Den öppna länken föråldras senast {days} dagar efter att den skapats, om inte tiden definieras kortare.",
     "Login": "Logga in",
     "Log in": "Logga in",
