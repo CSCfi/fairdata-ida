@@ -130,7 +130,7 @@ if [ "$2" = "--delete" ]; then
     SUBJECT="Project ${PROJECT} will be removed from the IDA service."
     MESSAGE="You are a member of the CSC project ${PROJECT}, which has had rights to use the IDA service.
 
-The project will be REMOVED from the IDA service in approximately 7 DAYS unless agreed otherwise.
+The project will be REMOVED from the IDA service in accordance with the official CSC Data Deletion Policy (https://docs.csc.fi/accounts/how-to-manage-your-project/#project-closure).
 
 The project is now SUSPENDED in the IDA service.
 
