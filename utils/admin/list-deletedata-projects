@@ -41,6 +41,12 @@ if [ "$CSC_DATA_DELETION_MICROSERVICE" == "" ]; then
     errorExit "The variable CSC_DATA_DELETION_MICROSERVICE is not defined in the configuration. Aborting." >&2
 fi
 
+PROG_LOCATION=`/usr/bin/which jq 2>/dev/null`
+if [ ! -e "$PROG_LOCATION" ]; then
+    errorExit "Can't find jq in your \$PATH"
+    exit 1
+fi
+
 #--------------------------------------------------------------------------------
 
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?services=IDA&states=deletedata" 2>$ERR`
@@ -52,8 +58,6 @@ if [ -s $ERR ]; then
     errorExit "Failed to retrieve projects needing data deleted."
 fi
 
-MSG=`echo $OUT | tr "\n" " " `
-addToLog "$MSG"
-echo "$OUT"
+echo "$OUT" | jq | grep '"number"' | sed -e 's/^.*"number": *"//' | sed -e 's/".*$//' | sort -u
 
 addToLog "DONE"
