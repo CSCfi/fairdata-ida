@@ -70,8 +70,13 @@ else
 fi
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT
-chmod -R $PERMS $ROOT
+
 chmod +x $ROOT/nextcloud/occ
+chmod +x $ROOT/agents/replication/dmfstatus
+chmod +x $ROOT/agents/replication/mock_dmfstatus
+chmod +x $ROOT/agents/replication/mock_dmfstatus_timeout
+
+chmod -R $PERMS $ROOT
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT/config/config.sh
 chmod -R $PERMS $ROOT/config/config.sh
