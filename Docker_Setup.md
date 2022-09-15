@@ -33,6 +33,7 @@ Option 1: Internal users
 ```
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida
 git clone https://gitlab.ci.csc.fi/fairdata/ida-command-line-tools
+git clone https://gitlab.ci.csc.fi/fairdata/ida-service-internals
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-healthcheck
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets
 ```
@@ -41,6 +42,7 @@ Option 2: External users
 ```
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida
 git clone https://ci.fd-staging.csc.fi/fairdata/ida-command-line-tools
+git clone https://ci.fd-staging.csc.fi/fairdata/ida-service-internals
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-healthcheck
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
 ```
@@ -60,7 +62,7 @@ Decrypt and unpack the configuration files in the fairdata-secrets repository:
 ```
 cd ~/dev/fairdata-secrets
 git fetch
-git checkout staging
+git checkout master
 git pull
 ./reveal_configs.sh
 ```
@@ -172,8 +174,20 @@ docker exec -w /var/ida-tools -it $(docker ps -q -f name=ida-nextcloud) /var/ida
 The automated tests for the IDA healthcheck service can be run with the following command:
 
 ```
-docker exec -w /var/ida-healthcheck -it $(docker ps -q -f name=ida-nextcloud) /var/ida-healthcheck/tests/run-tests
+docker exec -w /opt/fairdata/ida-healthcheck -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/tests/run-tests
 ```
+
+### 8.4 IDA statdb and project activity reporting automated tests
+
+The automated tests for the IDA statdb and project activity reporting can be run with the following command:
+
+```
+docker exec -w /opt/fairdata/ida-report -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/tests/run-tests
+```
+
+### 8.5 IDA admin portal manual tests
+
+The IDA admin portal can be manually tested using your local browser at https://ida.fd-dev.csc.fi:8888
 
 ## 9. Initialize Fairdata test accounts
 

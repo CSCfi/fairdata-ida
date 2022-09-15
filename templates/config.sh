@@ -91,7 +91,7 @@ STORAGE_OC_DATA_ROOT="/mnt/storage_vol01/ida"
 
 DATA_REPLICATION_ROOT="/mnt/storage_vol02/ida_replication"
 
-PYTHON="/opt/fairdata/python3/bin/python3.8" 
+PYTHON="/opt/fairdata/python3/bin/python" 
 
 TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
 QUARANTINE_PERIOD="2592000"

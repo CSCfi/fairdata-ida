@@ -31,7 +31,18 @@ else
     exit 1
 fi
 
+#--------------------------------------------------------------------------------
+# Ensure script is run as apache
+
+ID=`id -u -n`
+if [ "$ID" != "$HTTPD_USER" ]; then
+    echo "You must execute this script as $HTTPD_USER"
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
 for APP in accessibility activity comments contactsinteraction dashboard encryption federation files_external files_pdfviewer files_rightclick files_trashbin files_versions files_videoplayer firstrunwizard logreader nextcloud_announcements notifications password_policy photos privacy recommendations serverinfo sharebymail support survey_client systemtags text theming updatenotification user_ldap user_status weather_status
 do
-    sudo -u $HTTPD_USER php /var/ida/nextcloud/occ app:disable $APP
+    php /var/ida/nextcloud/occ app:disable $APP
 done

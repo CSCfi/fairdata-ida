@@ -60,14 +60,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-# If in development environment, open permissions so IDE's can modify files,
-# else, disallow modification by other users
-if [ "$IDA_ENVIRONMENT" = "DEV" ]
-then
-    PERMS="go+rwX"
-else
-    PERMS="g+rwX,o+rX-w"
-fi
+PERMS="g+rwX,o+rX-w"
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT
 
@@ -83,3 +76,4 @@ chmod -R $PERMS $ROOT/config/config.sh
 
 chown -R $HTTPD_USER:$HTTPD_USER $ROOT/nextcloud/config/config.php
 chmod -R $PERMS $ROOT/nextcloud/config/config.php
+

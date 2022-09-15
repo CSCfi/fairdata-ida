@@ -4,16 +4,17 @@ FROM php:7.3-apache
 RUN apt-get update -y \
  && apt-get install -y sudo man bc jq wget \
                        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev libpq-dev \
-                       libicu-dev postgresql librabbitmq-dev libgmp-dev
+                       libicu-dev postgresql librabbitmq-dev libgmp-dev \
+ && apt-get install -y --no-install-recommends locales locales-all 
 
 # Build and configure python3
 RUN apt-get install -y build-essential \
                        libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev \
                        libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev libffi-dev uuid-dev
 RUN cd /tmp \
- && wget https://www.python.org/ftp/python/3.8.5/Python-3.8.5.tgz \
- && tar xzf Python-3.8.5.tgz \
- && cd Python-3.8.5 \
+ && wget "https://www.python.org/ftp/python/3.8.14/Python-3.8.14.tgz" \
+ && tar xzf Python-3.8.14.tgz \
+ && cd Python-3.8.14 \
  && ./configure --prefix=/opt/fairdata/python3 --enable-optimizations; make altinstall \
  && cd /opt/fairdata/python3/bin \
  && ln -s python3.8 python3 \
@@ -83,3 +84,12 @@ RUN chown -R www-data:www-data /mnt/storage_vol01 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol02 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol03 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol04
+
+# Initialize default locale
+RUN echo "LANGUAGE=en_US.UTF-8" > /etc/default/locale \
+ && echo "LC_ALL=en_US.UTF-8" >> /etc/default/locale \
+ && echo "LANG=en_US.UTF-8" >> /etc/default/locale \
+ && echo "LC_CTYPE=en_US.UTF-8" >> /etc/default/locale
+
+# Initialize statdb user account 
+RUN adduser --disabled-password --gecos "" repputes

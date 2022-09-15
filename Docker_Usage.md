@@ -6,11 +6,15 @@ This documentation describes how to run utility scripts, inspect logs, and do ot
 
 # 1 Nextcloud
 
+The instance of the IDA service running in the docker container can be accessed in your local browser at https://ida.fd-dev.csc.fi
+
+The instance of the IDA admin portal can be accessed at https://ida.fd-dev.csc.fi:8888
+
 ## 1.1 How to enter the NextCloud Docker container
 
 ```
 # Enter container
-docker exec -it $(docker ps -q -f name=ida-nextcloud) sudo su -l www-data -s /bin/bash
+docker exec -it $(docker ps -q -f name=ida-nextcloud) sudo su -l root -s /bin/bash
 ```
 
 ### 1.1.1 Inspect logs
