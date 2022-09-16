@@ -16,7 +16,7 @@ test:
   tags:
     - shell
   script:
-    - ansible-playbook -i $ANSIBLE_INVENTORY $TEST_PLAYBOOK -e "build_id=$CI_COMMIT_SHORT_SHA"
+    - ansible-playbook -i $ANSIBLE_INVENTORY $TEST_PLAYBOOK -e "build_id=$CI_COMMIT_SHORT_SHA" --vault-id $ANSIBLE_VAULT_FILE 
   only:
       refs:
           - merge_requests
