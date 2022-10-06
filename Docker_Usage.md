@@ -17,14 +17,22 @@ The instance of the IDA admin portal can be accessed at https://ida.fd-dev.csc.f
 docker exec -it $(docker ps -q -f name=ida-nextcloud) sudo su -l root -s /bin/bash
 ```
 
-### 1.1.1 Inspect logs
+### 1.1.1 Restarting apache 
+
+If changes are made to the apache configuration from within a running container, apache can be restarted with
+
+```
+/etc/init.d/apache2 reload
+```
+
+### 1.1.2 Inspect logs
 
 Logs are available at:
 ```
 /mnt/storage_vol01/log/
 ```
 
-### 1.1.2 Available utility scripts
+### 1.1.3 Available utility scripts
 
 Below are listed scripts that can be run with a basic Docker setup of IDA. These scripts should be run inside the NextCloud Docker container.
 

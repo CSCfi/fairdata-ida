@@ -26,6 +26,10 @@
 # of the fairdata-ida repository, as specified in the instructions in Docker_Setup.md.
 #--------------------------------------------------------------------------------
 
+SCRIPT_ROOT=`dirname "$(realpath $0)"`
+
+cd $SCRIPT_ROOT
+
 if [ ! -e ../fairdata-secrets/ida/config/config.dev.sh ]; then
     echo "Error: Could not find the IDA configuration file. Aborting." >&2
     exit 1
@@ -47,30 +51,29 @@ fi
 
 #--------------------------------------------------------------------------------
 
-echo "Cleaning up any previous installation configurations..."
-if [ -d ./config ]
+# Open up permissions of the repository locally so the mounted volume is not overly restricted
+chmod -R g+rwX,o+rX .
+
+if [ -d ./config ];
 then
-    rm -fr ./config
+    rm -fr ./config/*
+else
+    mkdir ./config 
 fi
 
-if [ -d ./nextcloud/config ]
+if [ -d ./nextcloud/config ];
 then
-    rm -fr ./nextcloud/config
+    rm -fr ./nextcloud/config/*
+else
+    mkdir ./nextcloud/config 
 fi
 
-if [ -d ./venv ]
-then
-    rm -fr ./venv
-fi
-
-echo "Installing config.sh..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/config
+echo "Installing IDA config.sh..."
 docker cp ../fairdata-secrets/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/config
 
 echo "Installing Nextcloud..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /var/ida/nextcloud/config
-docker exec -it $(docker ps -q -f name=ida-nextcloud) chown $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) cp /var/ida/nextcloud/.htaccess /tmp/.htaccess
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ maintenance:install --database $DBTYPE --database-name $DBNAME --database-host $DBHOST --database-user $DBUSER --database-pass $DBPASSWORD --admin-user $NC_ADMIN_USER --admin-pass $NC_ADMIN_PASS --data-dir $STORAGE_OC_DATA_ROOT
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) mv /tmp/.htaccess /var/ida/nextcloud/.htaccess
@@ -81,6 +84,7 @@ docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTP
 
 echo "Initializing python3 virtual environments..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida-toos/tests/utils/initialize-venv > /dev/null
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/utils/initialize-venv > /dev/null
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-admin-portal/utils/initialize-venv > /dev/null
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/utils/initialize-venv > /dev/null
