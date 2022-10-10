@@ -189,6 +189,7 @@ OC.L10N.register(
     "Use this address to access your Files via WebDAV" : "Käytä kyseistä osoitetta yhdistääksesi tiedostosi WebDAV kautta",
     "Toggle grid view" : "Ruudukkonäkymä päälle/pois",
     "No files in here" : "Täällä ei ole tiedostoja",
+    "Upload files or folders by using drag and drop or by using the upload ( + ) menu" : "Lisää tiedostoja drag & drop -toiminnolla tai tiedostojen lisäämisvalikon ( + ) kautta",
     "Upload some content or sync with your devices!" : "Lähetä tiedostoja tai synkronoi sisältö laitteidesi kanssa!",
     "No entries found in this folder" : "Ei kohteita tässä kansiossa",
     "Select all" : "Valitse kaikki",
