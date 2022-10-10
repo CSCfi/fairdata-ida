@@ -17,21 +17,13 @@ include:
   - project: fairdata/fairdata-ci
     ref: master
     file:
-      - /templates/deploy.yml
+      - /templates/deploy/deploy.yml
+      - /templates/test/test-playbook.yml
     rules:
       - if: $CI_COMMIT_BRANCH =~ /^(master)$/
       - if: $CI_PIPELINE_SOURCE =~ /^(web)$/
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-test:
-  stage: test
-  environment: $GITLAB_ENV
-  script:
-    - ansible-playbook -i $ANSIBLE_INVENTORY $TEST_PLAYBOOK --vault-id $ANSIBLE_VAULT_FILE
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^(master)$/
-    - if: $CI_PIPELINE_SOURCE =~ /^(web)$/
 
 sonarqube:
   stage: test
