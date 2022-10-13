@@ -30,11 +30,16 @@ data from the service.
 
 Project deletion:
 
-The safe deletion process consists of three steps, which aim to minimize the impact
+The safe deletion process consists of several steps, which aim to minimize the impact
 by human errors of removing a project by mistake.
 
 
-STEP 1: Suspend the project in the service
+STEP 1: Suspend the project in the service when it is closed
+
+When a project is closed and enters the grace substate of the CSC data deletion process,
+an RT ticket will be automatically created by the IdM service notifying the IDA team.
+At such time, the project should be suspended in the IDA service using the "suspend-project"
+script, rendering access to the project data read-only.
 
 The "suspend-project" script takes a single project identifier argument and will:
 
@@ -47,22 +52,32 @@ This step will leave the user accounts and project data unchanged, and allows fo
 any changes in project membership coming from the CSC IdM, but puts the project in
 a read-only state, such that project data may only be viewed and downloaded.
  
-If a project is suspended in error, the "unsuspend-project" script can be used to
-remove the lock and clear the special "suspend" action, which will fully reinstate
-the project without any loss of data or change in project membership.
-
-In short, this first step makes such an error essentially "painless" and easily
-recoverable.
-
-If the suspend-project script is given a second parameter "--delete" then a more
-detailed message will be emailed to project users, informing them of the upcoming
+Normally, the suspend-project script is given a second parameter "--delete" whereby a
+more detailed message will be emailed to project users, informing them of the upcoming
 deletion of the project.
+
+If a project is suspended in error, or the project is re-opened, the "unsuspend-project"
+script can be used to remove the lock and clear the special "suspend" action, which will
+fully reinstate the project without any loss of data or change in project membership.
+
+In short, this first step makes any errors, or cases of projects being re-opened during
+the grace period, essentially "painless" and easily recoverable.
 
 The script "list-suspended-projects" will provide a summary of all projects which
 are currently suspended, and when they were suspended.
+
+Even in cases where a closed project is not given a grace period and is expected to be 
+deleted immediately, it must first be suspended.
  
 
-STEP 2: Delete the project from the service
+STEP 2a: Delete the project and project data from the service when its grace period expires
+
+When the grace period of a project has expired and the project enters the deletedata
+substate of the CSC data deletion process, it should be deleted from the IDA service.
+
+A list of projects to be deleted can be conveniently queried from the CSC data deletion
+process microserver using the "list-deletedata-projects" utility script located in this
+directory and subsequently deleted using the "delete-project" script.
 
 The "delete-project" script takes a single project identifier argument
 and will:
@@ -100,11 +115,21 @@ Note: The tape replication cache defined at the pathname $DATA_REPLICATION_ROOT 
 grant group write permissions to the defined $HTTPD_USER.
 
 
+STEP 2b: Report to the IdM that the project data has been deleted
+
+Once the project has been deleted with the "delete-project" script, the deletion of the
+project data should be reported to the IdM via the CSC data deletion process microservice.
+This is easily done using the "report-datadeleted" script, which takes the project
+identifier as a single argument and creates a report workflow in the IdM service which will
+register the deletion action.
+
+
 STEP 3: Permanently delete all project data
 
-From time to time, we can manually delete trash subfolders, to free up disk space,
-though it is best to wait at least the defined quarantine period before deleting
-project trash subfolders, in case anything needs to be restored.
+After a reasonable period of time, at most monthly, we should manually delete all project
+trash subfolders which are older than one week, to free up disk space. It is best to wait
+at least a week before deleting any project trash subfolder, in case of admin error such
+that the project data needs to be restored.
 
 Once this third step is executed for a project, it is gone, gone, gone (except what
 remains on tape in the DMF service).
