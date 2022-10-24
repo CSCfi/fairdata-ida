@@ -298,7 +298,7 @@ class TestDownload(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
 
         print("Attempt to download individual dataset file using authorization token a second time") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&file=%s&token=%s" % (dataset_pid, filename, token), verify=False)
+        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 401, response.content.decode(sys.stdout.encoding))
 
         print("Request generation of complete dataset package")
@@ -381,7 +381,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Attempt to download individual dataset file while IDA service is offline") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&file=%s&token=%s" % (dataset_pid, filename, token), verify=False)
+        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 503, response.content.decode(sys.stdout.encoding))
 
         print("Authorize existing dataset package download") 
