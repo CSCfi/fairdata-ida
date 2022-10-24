@@ -110,6 +110,9 @@ def load_configuration():
         'METAX_API_USER':         server_configuration.METAX_API_USER,
         'METAX_API_PASS':         server_configuration.METAX_API_PASS
     }
+    if hasattr(server_configuration, 'DOWNLOAD_SERVICE_ROOT'):
+        config['DOWNLOAD_SERVICE_ROOT'] = server_configuration.DOWNLOAD_SERVICE_ROOT
+
     try:
         config['NO_FLUSH_AFTER_TESTS'] = server_configuration.NO_FLUSH_AFTER_TESTS
     except:

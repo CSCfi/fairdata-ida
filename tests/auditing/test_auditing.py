@@ -64,7 +64,7 @@ class TestAuditing(unittest.TestCase):
         # ensure we start with a fresh setup of projects, user accounts, and data
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
 
     def tearDown(self):
@@ -75,12 +75,12 @@ class TestAuditing(unittest.TestCase):
             print("(cleaning)")
             cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             result = os.system(cmd)
-            self.assertEquals(result, 0)
+            self.assertEqual(result, 0)
 
             # delete all test project related audit reports, so they don't build up
             cmd = "rm -f %s/audits/*_test_project_[a-e].*" % self.config["LOG_ROOT"]
             result = os.system(cmd)
-            self.assertEquals(result, 0)
+            self.assertEqual(result, 0)
 
             if self.config["METAX_AVAILABLE"] != 1:
                 print('')
@@ -144,8 +144,8 @@ class TestAuditing(unittest.TestCase):
             report_data = json.load(open(report_pathname))
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
-        self.assertEquals(report_data.get("project", None), project)
-        self.assertEquals(report_data.get("start", None), start)
+        self.assertEqual(report_data.get("project", None), project)
+        self.assertEqual(report_data.get("start", None), start)
 
         return report_data
 
@@ -310,7 +310,7 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to create empty file %s: %s" % (pathname, str(error)))
         self.assertTrue(path.exists())
         self.assertTrue(path.is_file())
-        self.assertEquals(0, path.stat().st_size)
+        self.assertEqual(0, path.stat().st_size)
 
         # --------------------------------------------------------------------------------
 
@@ -575,24 +575,24 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_a", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 97)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 6)
+        self.assertEqual(report_data.get("idaNodeCount", None), 6)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 6)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 16)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 16)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
+        self.assertEqual(len(nodes), report_data['invalidNodeCount'])
 
         # Verify select invalid node error messages for each type of error...
 
@@ -634,24 +634,24 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_b", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 6)
+        self.assertEqual(report_data.get("idaNodeCount", None), 6)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 6)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 2)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 2)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
+        self.assertEqual(len(nodes), report_data['invalidNodeCount'])
 
         # Verify both invalid node error messages...
 
@@ -663,8 +663,8 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue("Node size different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
-        self.assertEquals(nextcloud.get("type", None), "file")
-        self.assertEquals(nextcloud.get("size", None), 123)
+        self.assertEqual(nextcloud.get("type", None), "file")
+        self.assertEqual(nextcloud.get("size", None), 123)
 
         print("Verify correct error report of Nextcloud modification timestamp conflict with filesystem")
         node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat", None)
@@ -674,8 +674,8 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue("Node modification timestamp different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
-        self.assertEquals(nextcloud.get("type", None), "file")
-        self.assertEquals(nextcloud.get("modified", None), "2017-07-14T02:40:00Z")
+        self.assertEqual(nextcloud.get("type", None), "file")
+        self.assertEqual(nextcloud.get("modified", None), "2017-07-14T02:40:00Z")
 
         # --------------------------------------------------------------------------------
 
@@ -684,24 +684,24 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_c", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 6)
+        self.assertEqual(report_data.get("idaNodeCount", None), 6)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 6)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 3)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 3)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
+        self.assertEqual(len(nodes), report_data['invalidNodeCount'])
 
         # Verify all three invalid node error messages...
 
@@ -713,10 +713,10 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
-        self.assertEquals(nextcloud.get("type", None), "file")
+        self.assertEqual(nextcloud.get("type", None), "file")
         filesystem = node.get("filesystem", None)
         self.assertIsNotNone(filesystem)
-        self.assertEquals(filesystem.get("type", None), "folder")
+        self.assertEqual(filesystem.get("type", None), "folder")
 
         node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat", None)
         self.assertIsNotNone(node)
@@ -725,10 +725,10 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
-        self.assertEquals(nextcloud.get("type", None), "file")
+        self.assertEqual(nextcloud.get("type", None), "file")
         filesystem = node.get("filesystem", None)
         self.assertIsNotNone(filesystem)
-        self.assertEquals(filesystem.get("type", None), "folder")
+        self.assertEqual(filesystem.get("type", None), "folder")
 
         print("Verify correct error report of Nextcloud folder type conflict with filesystem file")
         node = nodes.get("staging/testdata/empty_folder", None)
@@ -738,10 +738,10 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
         nextcloud = node.get("nextcloud", None)
         self.assertIsNotNone(nextcloud)
-        self.assertEquals(nextcloud.get("type", None), "folder")
+        self.assertEqual(nextcloud.get("type", None), "folder")
         filesystem = node.get("filesystem", None)
         self.assertIsNotNone(filesystem)
-        self.assertEquals(filesystem.get("type", None), "file")
+        self.assertEqual(filesystem.get("type", None), "file")
 
         # --------------------------------------------------------------------------------
 
@@ -750,24 +750,24 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_d", "err")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 110)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 5)
+        self.assertEqual(report_data.get("idaNodeCount", None), 5)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 5)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 6)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 6)
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
-        self.assertEquals(len(nodes), report_data['invalidNodeCount'])
+        self.assertEqual(len(nodes), report_data['invalidNodeCount'])
 
         # Verify all invalid node error messages...
 
@@ -839,19 +839,19 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_e", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 107)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 107)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 107)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 107)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 0)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
 
         # --------------------------------------------------------------------------------
 
@@ -905,76 +905,76 @@ class TestAuditing(unittest.TestCase):
         report_data = self.auditProject("test_project_a", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 0)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
 
         print("--- Re-auditing project B and checking results")
         
         report_data = self.auditProject("test_project_b", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 0)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
 
         print("--- Re-auditing project C and checking results")
         
         report_data = self.auditProject("test_project_c", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 0)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
 
         print("--- Re-auditing project D and checking results")
         
         report_data = self.auditProject("test_project_d", "ok")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEquals(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEquals(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEquals(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 0)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEquals(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEquals(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
         """
 
         # --------------------------------------------------------------------------------

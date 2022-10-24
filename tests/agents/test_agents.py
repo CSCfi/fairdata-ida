@@ -59,11 +59,11 @@ class TestAgents(unittest.TestCase):
 
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         # print("Verify agents are running")
         # TODO Check for running agents
@@ -310,7 +310,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_2_data = response.json()
         # Undefined file size should result in default value of 0
-        self.assertEquals(file_2_data.get("size", None), 0)
+        self.assertEqual(file_2_data.get("size", None), 0)
         self.assertIsNone(file_2_data.get("checksum", None))
 
         print("Retrieve file details from already frozen file 3")
@@ -374,7 +374,7 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(os.path.getsize(pathname), 3728)
         cmd = "sudo -u %s /bin/echo x >> %s" % (self.config["HTTPD_USER"], pathname)
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
         self.assertEqual(os.path.getsize(pathname), 3730)
 
         print("Physically move folder from staging to frozen area")

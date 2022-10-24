@@ -69,15 +69,15 @@ class TestIdaApp(unittest.TestCase):
 
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
 
@@ -527,7 +527,7 @@ class TestIdaApp(unittest.TestCase):
         print("(suspending service)")
         cmd = "sudo -u %s touch %s" % (self.config["HTTPD_USER"], self.suspendedSentinelFile)
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         print("(waiting for IDA service API to be ready)")
         print(".", end='', flush=True)

@@ -100,7 +100,7 @@ class TestDatasets(unittest.TestCase):
         # timeout when waiting for actions to complete
         self.timeout = 10800 # 3 hours
 
-        self.assertEquals(self.config["METAX_AVAILABLE"], 1)
+        self.assertEqual(self.config["METAX_AVAILABLE"], 1)
 
         print("(initializing)")
 
@@ -109,11 +109,11 @@ class TestDatasets(unittest.TestCase):
         # ensure we start with a fresh setup of projects, user accounts, and data
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
         cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
-        self.assertEquals(result, 0)
+        self.assertEqual(result, 0)
 
 
     def tearDown(self):
@@ -128,13 +128,13 @@ class TestDatasets(unittest.TestCase):
 
             cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             result = os.system(cmd)
-            self.assertEquals(result, 0)
+            self.assertEqual(result, 0)
 
         self.assertTrue(self.success)
 
 
     def flushDatasets(self):
-        print ("(flushing test datasets from METAX)")
+        print ("Flushing test datasets from METAX...")
         dataset_pids = self.getDatasetPids()
         metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
         for pid in dataset_pids:
@@ -232,8 +232,8 @@ class TestDatasets(unittest.TestCase):
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_1")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        action_1_files = response.json()
-        self.assertEqual(len(action_1_files), 13)
+        experiment_1_files = response.json()
+        self.assertEqual(len(experiment_1_files), 13)
 
         print("Freezing folder /testdata/2017-08/Experiment_2")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2"}
@@ -250,8 +250,8 @@ class TestDatasets(unittest.TestCase):
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_2")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        action_2_files = response.json()
-        self.assertEqual(len(action_2_files), 13)
+        experiment_2_files = response.json()
+        self.assertEqual(len(experiment_2_files), 13)
 
         print("Freezing folder /testdata/2017-10/Experiment_3")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-10/Experiment_3"}
@@ -269,8 +269,8 @@ class TestDatasets(unittest.TestCase):
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-10/Experiment_3")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        action_3_files = response.json()
-        self.assertEqual(len(action_3_files), 13)
+        experiment_3_files = response.json()
+        self.assertEqual(len(experiment_3_files), 13)
 
         print("Freezing folder /testdata/2017-10/Experiment_4")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-10/Experiment_4"}
@@ -288,8 +288,8 @@ class TestDatasets(unittest.TestCase):
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-10/Experiment_4")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        action_4_files = response.json()
-        self.assertEqual(len(action_4_files), 12)
+        experiment_4_files = response.json()
+        self.assertEqual(len(experiment_4_files), 12)
 
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
@@ -318,18 +318,17 @@ class TestDatasets(unittest.TestCase):
         print("Creating Dataset 1 containing all files in scope /testdata/2017-08/Experiment_1")
         dataset_data = DATASET_TEMPLATE
         dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(action_1_files)
+        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
         response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_1 = response.json()
-        # Different versions of Metax return either the PID or URN so we'll check for either
         dataset_1_pid = dataset_1['identifier']
         dataset_1_urn = dataset_1['research_dataset']['preferred_identifier']
 
         print("Creating Dataset 2 containing all files in scope /testdata/2017-08/Experiment_2")
         dataset_data = DATASET_TEMPLATE
         dataset_data['research_dataset']['title'] = DATASET_TITLES[1]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(action_2_files)
+        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_2_files)
         response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_2 = response.json()
@@ -339,7 +338,7 @@ class TestDatasets(unittest.TestCase):
         print("Creating Dataset 3 containing all files in scope /testdata/2017-10/Experiment_3")
         dataset_data = DATASET_TEMPLATE
         dataset_data['research_dataset']['title'] = DATASET_TITLES[2]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(action_3_files)
+        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_3_files)
         response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_3 = response.json()
@@ -347,7 +346,7 @@ class TestDatasets(unittest.TestCase):
         dataset_3_urn = dataset_3['research_dataset']['preferred_identifier']
 
         print("Query Metax with selected files from Dataset 1")
-        files = [ action_1_files[1]['pid'], action_1_files[7]['pid'], action_1_files[11]['pid'] ] 
+        files = [ experiment_1_files[1]['pid'], experiment_1_files[7]['pid'], experiment_1_files[11]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -355,7 +354,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_1_pid in datasets or dataset_1_urn in datasets)
 
         print("Query Metax with selected files from Dataset 2")
-        files = [ action_2_files[2]['pid'], action_2_files[8]['pid'], action_2_files[12]['pid'] ] 
+        files = [ experiment_2_files[2]['pid'], experiment_2_files[8]['pid'], experiment_2_files[12]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -363,7 +362,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_2_pid in datasets or dataset_2_urn in datasets)
 
         print("Query Metax with selected files from Dataset 3")
-        files = [ action_3_files[0]['pid'], action_3_files[6]['pid'], action_3_files[10]['pid'] ] 
+        files = [ experiment_3_files[0]['pid'], experiment_3_files[6]['pid'], experiment_3_files[10]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -371,7 +370,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_3_pid in datasets or dataset_3_urn in datasets)
 
         print("Query Metax with selected files from Datasets 1 and 2")
-        files = [ action_1_files[1]['pid'], action_2_files[8]['pid'] ] 
+        files = [ experiment_1_files[1]['pid'], experiment_2_files[8]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -380,7 +379,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_2_pid in datasets or dataset_2_urn in datasets)
 
         print("Query Metax with selected files from Datasets 2 and 3")
-        files = [ action_2_files[2]['pid'], action_3_files[0]['pid'] ] 
+        files = [ experiment_2_files[2]['pid'], experiment_3_files[0]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -389,7 +388,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_3_pid in datasets or dataset_3_urn in datasets)
 
         print("Query Metax with selected files from Datasets 1 and 3")
-        files = [ action_1_files[1]['pid'], action_3_files[0]['pid'] ] 
+        files = [ experiment_1_files[1]['pid'], experiment_3_files[0]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -398,7 +397,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_3_pid in datasets or dataset_3_urn in datasets)
 
         print("Query Metax with selected files from Datasets 1, 2 and 3")
-        files = [ action_1_files[1]['pid'], action_2_files[8]['pid'], action_3_files[10]['pid'] ] 
+        files = [ experiment_1_files[1]['pid'], experiment_2_files[8]['pid'], experiment_3_files[10]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -408,7 +407,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTrue(dataset_3_pid in datasets or dataset_3_urn in datasets)
 
         print("Query Metax with no files from Datasets 1, 2, or 3")
-        files = [ action_4_files[3]['pid'], action_4_files[4]['pid'], action_4_files[5]['pid'] ] 
+        files = [ experiment_4_files[3]['pid'], experiment_4_files[4]['pid'], experiment_4_files[5]['pid'] ] 
         response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         datasets = response.json()
@@ -417,7 +416,7 @@ class TestDatasets(unittest.TestCase):
         print("Creating submitted PAS Dataset 4 containing all files in scope /testdata/2017-10/Experiment_4")
         dataset_data = DATASET_TEMPLATE
         dataset_data['research_dataset']['title'] = DATASET_TITLES[3]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(action_4_files)
+        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_4_files)
         dataset_data['preservation_state'] = 10
         response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
@@ -428,7 +427,7 @@ class TestDatasets(unittest.TestCase):
         print("Creating pending PAS Dataset 5 containing all files in scope /testdata/2017-10/Experiment_4")
         dataset_data = DATASET_TEMPLATE
         dataset_data['research_dataset']['title'] = DATASET_TITLES[4]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(action_4_files)
+        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_4_files)
         dataset_data['preservation_state'] = 10
         dataset_data['preservation_dataset_origin_version'] = {
             "deprecated": False,
@@ -445,7 +444,7 @@ class TestDatasets(unittest.TestCase):
         print("Creating completed PAS Dataset 6 containing all files in scope /testdata/2017-10/Experiment_4")
         dataset_data = DATASET_TEMPLATE
         dataset_data['research_dataset']['title'] = DATASET_TITLES[5]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(action_4_files)
+        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_4_files)
         dataset_data['preservation_state'] = 120
         dataset_data['preservation_dataset_origin_version'] = {
             "deprecated": False,
