@@ -83,11 +83,18 @@ docker cp ../fairdata-secrets/ida/config/config.dev.php $(docker ps -q -f name=i
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
 
 echo "Initializing python3 virtual environments..."
+echo "    IDA postprocessing agents ..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
+echo "    IDA command line tools ..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida-toos/tests/utils/initialize-venv > /dev/null
+echo "    IDA statdb reports ..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/utils/initialize-venv > /dev/null
+echo "    IDA admin portal ..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-admin-portal/utils/initialize-venv > /dev/null
+echo "    IDA healthcheck service ..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/utils/initialize-venv > /dev/null
+echo "    Fairdata download service ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-venv > /dev/null
 
 echo "Ensuring correct ownership and permissions in installation directory branch..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permissions > /dev/null
@@ -114,15 +121,29 @@ APP_ROOT=/var/ida
 APP_VENV=$APP_ROOT/venv
 docker exec -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.utils.rabbitmq > /dev/null
 
+echo "Initializing download service..."
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl delete_user download
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl delete_vhost download
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl add_user download download
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl add_vhost download
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl set_permissions -p download download '.*' '.*' '.*'
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl set_user_tags download management
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-docker > /dev/null
+
 echo "Starting IDA postprocessing agents..."
-docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.metadata.metadata_agent
-docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.replication.replication_agent
+docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.metadata.metadata_agent
+docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.replication.replication_agent
 
 echo "Starting IDA healthcheck service..."
 APP_ROOT=/opt/fairdata/ida-healthcheck
 APP_VENV=$APP_ROOT/venv
-docker exec --detach -e APP_ROOT=$APP_ROOT -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m wsgi
+docker exec --detach -e APP_ROOT=$APP_ROOT -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m wsgi
 
 echo "Starting IDA admin portal..."
 APP_ROOT=/opt/fairdata/ida-admin-portal
-docker exec --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/ida-admin-portal.sh
+docker exec --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/ida-admin-portal.sh
+
+echo "Starting download service..."
+APP_ROOT=/opt/fairdata/fairdata-download-service
+docker exec -u download --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/dev_config/fairdata-download-server.sh
+docker exec -u download --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/dev_config/fairdata-download-generator.docker.sh

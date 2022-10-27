@@ -87,6 +87,8 @@ class TestDownload(unittest.TestCase):
         # load service configuration variables
         self.config = load_configuration()
 
+        self.config['DOWNLOAD_SERVICE_ROOT'] = self.config.get('DOWNLOAD_SERVICE_ROOT', "/opt/fairdata/fairdata-download-service")
+
         # keep track of success, for reference in tearDown
         self.success = False
 
@@ -140,13 +142,13 @@ class TestDownload(unittest.TestCase):
 
     def flushDownloads(self):
         print ("Flushing test download packages and records from Download Service...")
-        dl_root = self.config.get('DOWNLOAD_SERVICE_ROOT')
+        dl_root = self.config['DOWNLOAD_SERVICE_ROOT']
         if dl_root:
             cmd = "%s/dev_config/utils/flush-all" % dl_root
             result = os.system(cmd)
             self.assertEqual(result, 0)
         else:
-            print("No definition of DOWNLOAD_SERVICE_ROOT found in configuration! Skipping...")
+            self.fail("Could not locate the download service root directory")
 
 
     def getDatasetPids(self):
@@ -294,11 +296,11 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Download individual dataset file using authorization token") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
 
         print("Attempt to download individual dataset file using authorization token a second time") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 401, response.content.decode(sys.stdout.encoding))
 
         print("Request generation of complete dataset package")
@@ -327,7 +329,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Download complete dataset package using authorization token") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Request generation of a partial dataset package")
@@ -363,7 +365,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Download partial dataset package using authorization token") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Putting IDA service into offline mode")
@@ -381,7 +383,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Attempt to download individual dataset file while IDA service is offline") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 503, response.content.decode(sys.stdout.encoding))
 
         print("Authorize existing dataset package download") 
@@ -392,7 +394,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Download existing dataset package while IDA service is offline") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 200)
 
         self.flushDownloads()
@@ -413,7 +415,7 @@ class TestDownload(unittest.TestCase):
 
         print("Subscribe to notification of generation of dataset package")
         data = { "dataset": dataset_pid, "subscriptionData": "abcdef", "notifyURL": "https://%s:4431/mock_notify" % socket.gethostname() }
-        notification_file = "%s/data/download-cache/mock_notifications/abcdef" % self.config.get('DOWNLOAD_SERVICE_ROOT')
+        notification_file = "%s/data/download-cache/mock_notifications/abcdef" % self.config['DOWNLOAD_SERVICE_ROOT']
         response = requests.post("https://localhost:4431/subscribe", json=data, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         response_json = response.json()
@@ -453,7 +455,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Download complete dataset package using authorization token") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Authorize individual dataset file download") 
@@ -464,7 +466,7 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(token)
 
         print("Download individual dataset file using authorization token") 
-        response = requests.get("https://localhost:4430/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
+        response = requests.get("https://localhost:4431/download?dataset=%s&token=%s" % (dataset_pid, token), verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
 
         # --------------------------------------------------------------------------------

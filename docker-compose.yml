@@ -11,6 +11,7 @@ services:
       - ../ida-service-internals/report:/opt/fairdata/ida-report
       - ../ida-service-internals/ida-admin-portal:/opt/fairdata/ida-admin-portal
       - ../fairdata-ida-healthcheck:/opt/fairdata/ida-healthcheck
+      - ../fairdata-download-service:/opt/fairdata/fairdata-download-service
     configs:
       - source: ida-httpd-config
         target: '/etc/apache2/sites-enabled/ida.conf'
@@ -26,12 +27,16 @@ services:
         target: '/var/fairdata-test-accounts/config/credentials.json'
       - source: fairdata-test-accounts-initialize
         target: '/var/fairdata-test-accounts/initialize-ida-accounts'
+      - source: download-settings
+        target: '/opt/fairdata/fairdata-download-service/dev_config/settings.cfg'
     networks:
       default:
         aliases:
           - ida.fd-dev.csc.fi
     ports:
       - 443:443
+      - 4431:4431
+      - 5000:5000
       - 8888:8888
 
   ida-db:
@@ -75,4 +80,6 @@ configs:
   fairdata-test-accounts-credentials:
     external: True
   fairdata-test-accounts-initialize:
+    external: True
+  download-settings:
     external: True

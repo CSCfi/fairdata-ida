@@ -1,7 +1,15 @@
 
 # IDA Development Environment setup instructions
 
-These instructions specify how to setup a containerized development environment for [Fairdata IDA](https://gitlab.ci.csc.fi/fairdata/fairdata-ida/).
+These instructions specify how to setup a containerized development environment for [Fairdata IDA](https://gitlab.ci.csc.fi/fairdata/fairdata-ida/). This environment will include running instances of the following services and utilities and can be used for their
+development and testing:
+
+ * IDA / Nextcloud
+ * IDA command line tools
+ * IDA healthcheck service
+ * IDA admin portal
+ * Fairdata Download Service
+
 
 ## 1 Preparations
 
@@ -17,7 +25,7 @@ Ensure that ida.fd-dev.csc.fi resolves correctly to IP address 0.0.0.0. This can
 entry to your `/etc/hosts` file (Linux/Mac):
 
 ```
-0.0.0.0 ida.fd-dev.csc.fi
+0.0.0.0 ida.fd-dev.csc.fi download.fd-dev.csc.fi
 ```
 
 ### 1.3 Clone the necessary IDA and Fairdata git repositories locally
@@ -31,20 +39,22 @@ cd ~/dev
 
 Option 1: Internal users
 ```
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida
-git clone https://gitlab.ci.csc.fi/fairdata/ida-command-line-tools
-git clone https://gitlab.ci.csc.fi/fairdata/ida-service-internals
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-healthcheck
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida.git
+git clone https://gitlab.ci.csc.fi/fairdata/ida-command-line-tools.git
+git clone https://gitlab.ci.csc.fi/fairdata/ida-service-internals.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-healthcheck.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-download-service.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets.git
 ```
 
 Option 2: External users
 ```
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida
-git clone https://ci.fd-staging.csc.fi/fairdata/ida-command-line-tools
-git clone https://ci.fd-staging.csc.fi/fairdata/ida-service-internals
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-healthcheck
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida.git
+git clone https://ci.fd-staging.csc.fi/fairdata/ida-command-line-tools.git
+git clone https://ci.fd-staging.csc.fi/fairdata/ida-service-internals.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-healthcheck.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-download-service.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets.git
 ```
 
 If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
@@ -112,6 +122,7 @@ chmod -R g+rwX,o+rX .
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
+docker stack deploy -c download/docker-compose.idadev.yml fairdata-conf
 ```
 
 ## 5. Deploy the IDA dev stack
@@ -185,7 +196,15 @@ The automated tests for the IDA statdb and project activity reporting can be run
 docker exec -w /opt/fairdata/ida-report -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/tests/run-tests
 ```
 
-### 8.5 IDA admin portal manual tests
+### 8.5 Fairdata download service automated tests
+
+The automated tests for the Fairdata download service can be run with the following command:
+
+```
+docker exec -w /opt/fairdata/fairdata-download-service -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/run-tests
+```
+
+### 8.6 IDA admin portal manual tests
 
 The IDA admin portal can be manually tested using your local browser at https://ida.fd-dev.csc.fi:8888
 
@@ -219,6 +238,7 @@ chmod -R g+rwX,o+rX .
 docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
+docker stack deploy -c download/docker-compose.idadev.yml fairdata-conf
 cd ~/dev/fairdata-ida
 chmod -R g+rwX,o+rX .
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
