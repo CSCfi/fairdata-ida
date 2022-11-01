@@ -140,6 +140,15 @@ if [ "$ROOT" = "" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+# Determine the apache user
+
+if [ -d /etc/httpd ]; then
+    HTTPD_USER="apache"
+else
+    HTTPD_USER="www-data"
+fi
+
+#--------------------------------------------------------------------------------
 # Verify that we are in a non-production environment
 
 if [ "$IDA_ENVIRONMENT" = "" ]; then

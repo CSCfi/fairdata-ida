@@ -23,8 +23,6 @@
 
 import importlib.util
 import os
-import time
-import requests
 import subprocess
 
 
@@ -73,7 +71,6 @@ def load_configuration():
         'IDA_API_ROOT_URL':       server_configuration.IDA_API_ROOT_URL,
         'URL_BASE_SHARE':         server_configuration.URL_BASE_SHARE,
         'URL_BASE_FILE':          server_configuration.URL_BASE_FILE,
-        'HTTPD_USER':             server_configuration.HTTPD_USER,
         'NC_ADMIN_USER':          server_configuration.NC_ADMIN_USER,
         'NC_ADMIN_PASS':          server_configuration.NC_ADMIN_PASS,
         'PROJECT_USER_PASS':      server_configuration.PROJECT_USER_PASS,
@@ -117,6 +114,11 @@ def load_configuration():
         config['NO_FLUSH_AFTER_TESTS'] = server_configuration.NO_FLUSH_AFTER_TESTS
     except:
         config['NO_FLUSH_AFTER_TESTS'] = 'false'
+
+    if os.path.exists("/etc/httpd/"):
+        config['HTTPD_USER'] = "apache"
+    else:
+        config['HTTPD_USER'] = "www-data"
 
     return config
 

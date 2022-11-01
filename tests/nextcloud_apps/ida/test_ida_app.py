@@ -155,6 +155,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertTrue(os.path.exists(titleFilePath))
         self.assertEqual("Test title A\n", open(titleFilePath).read())
 
+        time.sleep(1)  # In very fast environments, this brief pause is needed for Nextcloud to sync with filesystem
+
         print("Retrieve defined project title")
         data = {"project": "test_project_a"}
         response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)

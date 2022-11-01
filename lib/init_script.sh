@@ -73,6 +73,15 @@ else
 fi
 
 #--------------------------------------------------------------------------------
+# Determine the apache user
+
+if [ -d /etc/httpd ]; then
+    HTTPD_USER="apache"
+else
+    HTTPD_USER="www-data"
+fi
+
+#--------------------------------------------------------------------------------
 # Ensure script is run as apache
 
 ID=`id -u -n`

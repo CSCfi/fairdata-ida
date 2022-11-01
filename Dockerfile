@@ -1,65 +1,57 @@
-FROM php:8.0-apache
+FROM almalinux:9
 
-# Install required and useful packages
-RUN apt update -y
-RUN apt install -y sudo man bc jq wget git vim zsh zip
-RUN apt install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev libicu-dev librabbitmq-dev libgmp-dev
-RUN apt install -y postgresql libpq-dev 
-RUN apt install -y libzip-dev libpng-dev libjpeg-dev libwebp-dev libavif-dev libldap2-dev
-RUN apt install -y libssl-dev libreadline-dev libbz2-dev libcurl4-openssl-dev libffi-dev libgmp-dev
-RUN apt install -y libc-client-dev libkrb5-dev libpspell-dev zip zlib1g-dev libonig-dev
-RUN apt install -y --no-install-recommends locales locales-all 
+# Update OS and install required and useful packages
+RUN dnf update -y
+RUN dnf install -y sudo procps man bc jq wget git vim zsh zip
 
-# Build and configure python3
-RUN apt-get install -y build-essential \
-                       libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev \
-                       libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev libffi-dev uuid-dev
+# Install required development tools and libraries
+RUN dnf groupinstall -y "Development Tools"
+RUN dnf install -y gcc curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker asciidoc xmlto libffi-devel
+RUN wget https://raw.githubusercontent.com/sobolevn/git-secret/master/utils/rpm/git-secret.repo -O /etc/yum.repos.d/git-secret-rpm.repo
+RUN dnf install -y git-secret
+
+# Install PostgreSQL (used by IDA)
+RUN dnf install -y postgresql libpq-devel
+
+# Install SQLite (used by download service)
+RUN dnf install -y sqlite sqlite-devel
+
+# Install PHP8.0
+RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y
+RUN dnf install https://rpms.remirepo.net/enterprise/remi-release-9.rpm -y
+RUN dnf module reset php -y
+RUN dnf module install php:remi-8.0 -y
+
+# Install PHP extensions
+RUN dnf install -y php-amqp php-apcu php-bcmath php-cli php-common php-curl php-devel php-dom php-fpm php-gd \
+                   php-imagick php-imap php-intl php-json php-ldap php-mbstring php-mcrypt php-memcache php-memcached \
+                   php-mysqlnd php-opcache php-pdo php-pdo_pgsql php-pear php-pecl-apcu php-pecl-igbinary php-pecl-mcrypt \
+                   php-pecl-msgpack php-pecl-redis php-pecl-zip php-pgsql php-posix php-process php-readline php-redis \
+                   php-soap php-sockets php-xml php-xmlrpc php-zip
+
+# Copy PHP configuration files
+COPY templates/php.ini /etc/php.ini
+COPY templates/10-opcache.ini /etc/php.d/10-opcache.ini
+RUN chmod go+rX /etc/php.ini /etc/php.d/10-opcache.ini
+
+# Install Apache
+RUN dnf install -y httpd
+RUN dnf install -y mod_ssl mod_php
+#RUN dnf install -y mod_security mod_security_crs
+
+# Build and install Python3
 RUN cd /tmp \
  && wget "https://www.python.org/ftp/python/3.8.14/Python-3.8.14.tgz" \
  && tar xzf Python-3.8.14.tgz
 RUN cd /tmp/Python-3.8.14 \
- && ./configure --prefix=/opt/fairdata/python3 --enable-optimizations; make altinstall \
+ && ./configure --prefix=/opt/fairdata/python3 --enable-optimizations \
+ && make altinstall \
  && cd /opt/fairdata/python3/bin \
  && ln -s python3.8 python3 \
  && ln -s python3.8 python \
  && ln -s pip3.8 pip3 \
  && ./pip3 install --upgrade pip \
  && ./pip3 install virtualenv 
-
-# Install php extensions
-RUN docker-php-ext-configure gd --with-freetype=DIR
-RUN docker-php-ext-configure bcmath
-RUN docker-php-ext-configure zip
-RUN docker-php-ext-configure pgsql
-RUN docker-php-ext-configure pdo_pgsql
-RUN docker-php-ext-configure intl
-RUN docker-php-ext-configure mbstring
-RUN docker-php-ext-install -j$(nproc) gd
-RUN docker-php-ext-install -j$(nproc) bcmath
-RUN docker-php-ext-install -j$(nproc) zip
-RUN docker-php-ext-install -j$(nproc) pgsql
-RUN docker-php-ext-install -j$(nproc) pdo_pgsql
-RUN docker-php-ext-install -j$(nproc) pcntl
-RUN docker-php-ext-install -j$(nproc) intl
-RUN docker-php-ext-install -j$(nproc) mbstring
-RUN docker-php-ext-install -j$(nproc) gmp
-RUN docker-php-ext-install -j$(nproc) sockets
-RUN pecl install redis-5.3.7
-RUN pecl install amqp
-RUN docker-php-ext-enable amqp redis
-
-# Enable required apache modules
-RUN ln -s /etc/apache2/mods-available/ssl.conf /etc/apache2/mods-enabled/ssl.conf
-RUN ln -s /etc/apache2/mods-available/ssl.load /etc/apache2/mods-enabled/ssl.load
-RUN ln -s /etc/apache2/mods-available/socache_shmcb.load /etc/apache2/mods-enabled/socache_shmcb.load
-RUN ln -s /etc/apache2/mods-available/proxy.load /etc/apache2/mods-enabled/proxy.load
-RUN ln -s /etc/apache2/mods-available/rewrite.load /etc/apache2/mods-enabled/rewrite.load
-RUN ln -s /etc/apache2/mods-available/headers.load /etc/apache2/mods-enabled/headers.load
-
-# Copy PHP configuration files
-COPY templates/php.ini $PHP_INI_DIR/php.ini
-COPY templates/10-opcache.ini $PHP_INI_DIR/conf.d/10-opcache.ini
-RUN chmod go+rwX $PHP_INI_DIR/php.ini $PHP_INI_DIR/conf.d/10-opcache.ini
 
 # Initialize directories and simulated mount sentinel files
 RUN mkdir -p /mnt/storage_vol01/log \
@@ -75,20 +67,16 @@ RUN touch /mnt/storage_vol01/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol03/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol04/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol01/ida_replication/DO_NOT_DELETE_sentinel_file
-RUN chown -R www-data:www-data /mnt/storage_vol01 \
- && chown -R www-data:www-data /mnt/storage_vol02 \
- && chown -R www-data:www-data /mnt/storage_vol03 \
- && chown -R www-data:www-data /mnt/storage_vol04 \
+RUN chown -R apache:apache /mnt/storage_vol01 \
+ && chown -R apache:apache /mnt/storage_vol02 \
+ && chown -R apache:apache /mnt/storage_vol03 \
+ && chown -R apache:apache /mnt/storage_vol04 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol01 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol02 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol03 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol04
 
-# Initialize default locale
-RUN echo "LANGUAGE=en_US.UTF-8" > /etc/default/locale \
- && echo "LC_ALL=en_US.UTF-8" >> /etc/default/locale \
- && echo "LANG=en_US.UTF-8" >> /etc/default/locale \
- && echo "LC_CTYPE=en_US.UTF-8" >> /etc/default/locale
-
 # Initialize statdb user account 
-RUN adduser --disabled-password --gecos "" repputes
+RUN adduser repputes
+
+CMD /bin/bash -c 'sleep infinity' # required to keep the container running in docker swarm

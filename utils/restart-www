@@ -21,13 +21,14 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-HTTPD_USER="httpd"
+# Determine the apache executable app
 
-if [ -d /etc/apache2 ]; then
-    HTTPD_USER="apache2"
+if [ -d /etc/httpd ]; then
+    HTTPD_APP="httpd"
+else
+    HTTPD_APP="apache2"
 fi
 
-systemctl stop $HTTPD_USER
-systemctl start $HTTPD_USER
-systemctl status $HTTPD_USER
-
+systemctl stop $HTTPD_APP
+systemctl start $HTTPD_APP
+systemctl status $HTTPD_APP

@@ -42,6 +42,8 @@ if [ "$ROOT" = "" ]; then
     exit 1
 fi
 
+HTTPD_USER="apache"
+
 #--------------------------------------------------------------------------------
 # Verify that we are in a test environment
 
@@ -68,6 +70,13 @@ else
     mkdir ./nextcloud/config 
 fi
 
+echo "Starting FPM..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /run/php-fpm
+docker exec -it $(docker ps -q -f name=ida-nextcloud) php-fpm
+
+echo "Starting Apache..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /sbin/httpd -k start
+
 echo "Installing IDA config.sh..."
 docker cp ../fairdata-secrets/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/config
@@ -82,22 +91,9 @@ echo "Installing Nextcloud config.php..."
 docker cp ../fairdata-secrets/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
 
-echo "Initializing python3 virtual environments..."
-echo "    IDA postprocessing agents ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
-echo "    IDA command line tools ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida-toos/tests/utils/initialize-venv > /dev/null
-echo "    IDA statdb reports ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/utils/initialize-venv > /dev/null
-echo "    IDA admin portal ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-admin-portal/utils/initialize-venv > /dev/null
-echo "    IDA healthcheck service ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/utils/initialize-venv > /dev/null
-echo "    Fairdata download service ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-venv > /dev/null
-
-echo "Ensuring correct ownership and permissions in installation directory branch..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permissions > /dev/null
+echo "Re-starting Apache..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /sbin/httpd -k stop
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /sbin/httpd -k start
 
 echo "Disabling unused Nextcloud apps..."
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/disable_nextcloud_apps > /dev/null
@@ -113,21 +109,35 @@ docker cp ./utils/create_db_indices.pgsql $(docker ps -q -f name=ida-db):/tmp/cr
 docker exec -it $(docker ps -q -f name=ida-db) psql -U $DBUSER -f /tmp/create_db_indices.pgsql $DBNAME > /dev/null
 
 echo "Creating basic local project test_project and user account test_user..."
-docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 > /dev/null
-docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project > /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 #> /dev/null
+docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project #> /dev/null
+
+echo "Initializing python3 virtual environments..."
+echo "- IDA postprocessing agents ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
+echo "- IDA command line tools ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida-tools/tests/utils/initialize-venv > /dev/null
+echo "- IDA statdb reports ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/utils/initialize-venv > /dev/null
+echo "- IDA admin portal ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-admin-portal/utils/initialize-venv > /dev/null
+echo "- IDA healthcheck service ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/utils/initialize-venv > /dev/null
+echo "- Fairdata download service ..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-venv > /dev/null
 
 echo "Initializing rabbitmq..."
 APP_ROOT=/var/ida
 APP_VENV=$APP_ROOT/venv
 docker exec -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT -it $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.utils.rabbitmq > /dev/null
-
-echo "Initializing download service..."
-docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl delete_user download
-docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl delete_vhost download
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl delete_user download &>/dev/null
+docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl delete_vhost download &>/dev/null
 docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl add_user download download
 docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl add_vhost download
 docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl set_permissions -p download download '.*' '.*' '.*'
 docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl set_user_tags download management
+
+echo "Initializing download service..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-docker > /dev/null
 
 echo "Starting IDA postprocessing agents..."

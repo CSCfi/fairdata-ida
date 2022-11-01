@@ -276,3 +276,9 @@ Note: there is a utility script `docker_purge_all` in the root of the fairdata-i
 ## Rebuilding the development environment cleanly
 
 Remove the docker environment components as detailed immediately above, then follow steps 3 through 7 above to re-deploy and configure the development environment.
+
+# Notes
+
+`httpd -k stop          ` stops Apache
+`httpd -t               ` tests the validity of the configuration
+`httpd -k start -e debug` starts Apache again with the log level set to debug

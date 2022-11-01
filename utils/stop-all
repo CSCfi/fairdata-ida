@@ -21,10 +21,12 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-HTTPD_USER="httpd"
+# Determine the apache user
 
-if [ -d /etc/apache2 ]; then
-    HTTPD_USER="apache2"
+if [ -d /etc/httpd ]; then
+    HTTPD_USER="apache"
+else
+    HTTPD_USER="www-data"
 fi
 
 systemctl daemon-reload
@@ -38,4 +40,3 @@ systemctl status rabbitmq-replication-agent
 systemctl status rabbitmq-metadata-agent
 systemctl status $HTTPD_USER
 systemctl status rabbitmq-server
-

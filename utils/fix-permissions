@@ -59,6 +59,15 @@ else
 fi
 
 #--------------------------------------------------------------------------------
+# Determine the apache user
+
+if [ -d /etc/httpd ]; then
+    HTTPD_USER="apache"
+else
+    HTTPD_USER="www-data"
+fi
+
+#--------------------------------------------------------------------------------
 
 PERMS="g+rwX,o+rX-w"
 

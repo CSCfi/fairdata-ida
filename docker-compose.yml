@@ -14,7 +14,11 @@ services:
       - ../fairdata-download-service:/opt/fairdata/fairdata-download-service
     configs:
       - source: ida-httpd-config
-        target: '/etc/apache2/sites-enabled/ida.conf'
+        target: '/etc/httpd/conf/httpd.conf'
+      - source: ida-httpd-ssl-config
+        target: '/etc/httpd/conf.d/ssl.conf'
+      - source: ida-httpd-modsecurity-config
+        target: '/etc/httpd/modsecurity.d/local_rules/modsecurity_localrules.conf'
       - source: fairdata-ssl-certificate
         target: '/etc/pki/tls/certs/ssl.crt.pem'
       - source: fairdata-ssl-certificate-key
@@ -34,6 +38,7 @@ services:
         aliases:
           - ida.fd-dev.csc.fi
     ports:
+      - 80:80
       - 443:443
       - 4431:4431
       - 5000:5000
@@ -66,6 +71,10 @@ configs:
   ida-sh-config:
     external: True
   ida-httpd-config:
+    external: True
+  ida-httpd-ssl-config:
+    external: True
+  ida-httpd-modsecurity-config:
     external: True
   ida-rabbitmq-config:
     external: True
