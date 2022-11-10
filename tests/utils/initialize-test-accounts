@@ -123,6 +123,15 @@ function success {
 
 #--------------------------------------------------------------------------------
 
+echo "Ensuring IDA control directory exists..."
+
+if [ ! -d "$STORAGE_OC_DATA_ROOT/control" ]; then
+    mkdir "$STORAGE_OC_DATA_ROOT/control"
+    chown $HTTPD_USER:$HTTPD_USER "$STORAGE_OC_DATA_ROOT/control"
+fi
+
+#--------------------------------------------------------------------------------
+
 echo "Flushing all action and file records from IDA service database..."
 
 for PROJECT in $PROJECTS; do
