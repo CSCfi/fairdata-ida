@@ -123,10 +123,11 @@ if [ "$1" == "ADD" ]; then
         fi
 
         # For non production environments, randomly select a storage volume for the new project
-        if [ "$ENVIRONMENT" != "PRODUCTION" ]; then
+        if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
             SC_SIZE=${#STORAGE_CANDIDATES[@]}
             SC_INDEX=$(($RANDOM % $SC_SIZE))
             STORAGE_VOLUME="${STORAGE_CANDIDATES[$SC_INDEX]}"
+            echoAndLog "Creating new project in randomly selected volume $STORAGE_VOLUME"
         # Else in production, select the storage volume with the most available space
         else
             AVAILABLE_SPACE=0
@@ -141,6 +142,7 @@ if [ "$1" == "ADD" ]; then
                     STORAGE_VOLUME=$CANDIDATE_STORAGE_VOLUME
                 fi
             done
+            echoAndLog "Creating new project in least full volume $STORAGE_VOLUME"
         fi
 
         echoAndLog "Creating new project share owner folder: $STORAGE_VOLUME/$PROJECT_USER"
