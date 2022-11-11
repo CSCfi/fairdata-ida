@@ -159,11 +159,18 @@ done
 
 #--------------------------------------------------------------------------------
 
-echo "Marking all project files as deleted in METAX..."
 
 if [ "$METAX_AVAILABLE" != "0" ]; then
-
-    $CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 2>$ERR >/dev/null
+    
+    if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+        echo "Marking all project files as deleted in METAX..."
+        METAX_ENDPOINT="delete_project"
+    else
+        echo "Flushing all project records from METAX..."
+        METAX_ENDPOINT="flush_project"
+    fi
+    
+    $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR >/dev/null
 
     if [ -s $ERR ]; then
         MSG=`cat $ERR`
