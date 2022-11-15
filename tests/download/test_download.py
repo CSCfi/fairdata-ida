@@ -352,7 +352,7 @@ class TestDownload(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         print("Request generation of a partial dataset package")
-        data = { "dataset": dataset_pid, "scope": [ "/testdata/2017-08/Experiment_1/baseline" ] }
+        data = { "dataset": dataset_pid, "scope": [ "/testdata/2017-08/Experiment_1/baseline", "/testdata/2017-08/Experiment_1/test01.dat" ] }
         response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         response_json = response.json()
@@ -371,8 +371,9 @@ class TestDownload(unittest.TestCase):
         self.assertEqual(partial[0].get('status'), 'SUCCESS')
         scope = partial[0].get('scope')
         self.assertIsNotNone(scope)
-        self.assertEqual(len(scope), 1)
-        self.assertEqual(scope[0], "/testdata/2017-08/Experiment_1/baseline")
+        self.assertEqual(len(scope), 2)
+        self.assertTrue("/testdata/2017-08/Experiment_1/baseline" in scope)
+        self.assertTrue("/testdata/2017-08/Experiment_1/test01.dat" in scope)
         package = partial[0].get('package')
         self.assertIsNotNone(package)
 
