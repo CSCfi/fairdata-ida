@@ -297,9 +297,7 @@ class TestDownload(unittest.TestCase):
         # --------------------------------------------------------------------------------
   
         print("Verify that no active package generation requests exist for dataset")
-        # TODO: add authorization header when header is required
-        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, verify=False)
-        #response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
 
         print("Authorize individual dataset file download") 
@@ -322,9 +320,7 @@ class TestDownload(unittest.TestCase):
 
         print("Request generation of complete dataset package")
         data = { "dataset": dataset_pid }
-        # TODO: add authorization header when header is required
-        response = requests.post("https://localhost:4431/requests", json=data, auth=test_user_a, verify=False)
-        #response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
+        response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         response_json = response.json()
         self.assertIsNotNone(response_json)
