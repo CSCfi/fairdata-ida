@@ -2,7 +2,7 @@
 #--------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2022 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@ Usage: $SCRIPT project action
        $SCRIPT -h
 
        project  = the project name
-       action   = the PID of the failed action to be retried
+       action   = the PID of the failed action to be cleared
 "
 
 #--------------------------------------------------------------------------------
@@ -59,9 +59,9 @@ ACTION="$2"
 
 ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
 
-REQUEST_URL="$IDA_API_ROOT_URL/retry/${ACTION}?token=${BATCH_ACTION_TOKEN}"
+REQUEST_URL="$IDA_API_ROOT_URL/clear/${ACTION}?token=${BATCH_ACTION_TOKEN}"
 
-echo "Retrying action ${ACTION} in project ${PROJECT}..."
+echo "Clearing action ${ACTION} in project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
     echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
@@ -72,18 +72,18 @@ OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
-    errorExit "Retry of action $ACTION failed in project $PROJECT"
+    errorExit "Clearing of action $ACTION failed in project $PROJECT"
 fi
 
 PID=`echo $OUT | grep '"pid":'`
 
 if [ "$PID" = "" ]; then
     echoAndLog "$OUT"
-    errorExit "Retry of action $ACTION failed in project $PROJECT"
+    errorExit "Clearing of action $ACTION failed in project $PROJECT"
 fi
 
 rm $ERR 2>/dev/null
 
-echoAndLog "Initiated retry of action $ACTION successfully in project $PROJECT. Postprocessing ongoing..."
+echoAndLog "Cleared action $ACTION successfully in project $PROJECT."
 
 addToLog "DONE"
