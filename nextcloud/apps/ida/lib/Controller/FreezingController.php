@@ -512,7 +512,7 @@ class FreezingController extends Controller
             // Lock the project so no other user can initiate an action
 
             if (!Access::lockProject($project)) {
-                return API::conflictErrorResponse('The requested change conflicts with an ongoing action in the specified project.');
+                return API::conflictErrorResponse('Failed to lock project when initiating requested action.');
             }
 
             // If $token is defined, it means that this is a batch action, and $batch should be true
@@ -2125,6 +2125,7 @@ class FreezingController extends Controller
             'checkIntersectionWithIncompleteActions:'
                 . ' project=' . $project
                 . ' pathname=' . $scope
+                . ' action=' . $action
                 . ' nextcloudNodes=' . count($nextcloudNodes),
             \OCP\Util::DEBUG
         );
@@ -2158,9 +2159,11 @@ class FreezingController extends Controller
         foreach ($actionEntities as $actionEntity) {
             $pid = $actionEntity->getPid();
             if ($pid != $action) {
-                $actionPids[$pid] = true;
+                array_push($actionPids, $pid);
             }
         }
+
+        Util::writeLog('ida', 'checkIntersectionWithIncompleteActions: actionPids: ' . implode(" ", $actionPids), \OCP\Util::DEBUG);
 
         // For each file node associated with new action, check if there exists a frozen file record with
         // the same pathname which is associated with one of the incomplete actions
@@ -2168,9 +2171,11 @@ class FreezingController extends Controller
         foreach ($nextcloudNodes as $fileInfo) {
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
                 $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
-                $fileEntity = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId(), null, true);
+                Util::writeLog('ida', 'checkIntersectionWithIncompleteActions: pathname: ' . $pathname, \OCP\Util::DEBUG);
+                $fileEntity = $this->fileMapper->findByProjectPathname($project, $pathname);
                 if ($fileEntity) {
                     $actionPid = $fileEntity->getAction();
+                    Util::writeLog('ida', 'checkIntersectionWithIncompleteActions: actionPid: ' . $actionPid, \OCP\Util::DEBUG);
                     if (in_array($actionPid, $actionPids, true)) {
                         Util::writeLog(
                             'ida',
@@ -2180,7 +2185,6 @@ class FreezingController extends Controller
                                 . ' pathname=' . $pathname,
                             \OCP\Util::DEBUG
                         );
-
                         return true;
                     }
                 }
