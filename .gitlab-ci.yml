@@ -1,49 +1,68 @@
 variables:
   GITLAB_ENV: test
+  SERVICE: ${SERVICE}
 
 default:
   tags:
     - shell
 
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 stages:
   - deploy
   - test
+  - e2e-test
 
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ------------------------
 
 include:
   - project: fairdata/fairdata-ci
     ref: master
     file:
-      - /templates/deploy/deploy.yml
-      - /templates/test/test-playbook.yml
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^(master)$/
-      - if: $CI_PIPELINE_SOURCE =~ /^(web)$/
+      - /templates/deploy/deploy-jobs.yaml
+      - /templates/test/test-jobs.yaml
 
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ------------------------
+
+deploy:
+  extends: .deploy-job
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^(master)$/
+    - if: $CI_PIPELINE_SOURCE =~ /^(web)$/
+
+deploy-feature:
+  extends: .deploy-feature-job
+  stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ------------------------
 
 sonarqube:
+  extends: .sonarqube-job
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+all-ida-tests:
   stage: test
-  tags:
-    - docker
-  image:
-    name: sonarsource/sonar-scanner-cli:latest
-    entrypoint: [""]
-  variables:
-    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
-    GIT_DEPTH: "0"
-  cache:
-    key: "${CI_JOB_NAME}"
-    paths:
-      - .sonar/cache
-  script:
-    - sonar-scanner
+  extends: .ansible-test-playbook
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^(master)$/
+    - if: $CI_PIPELINE_SOURCE =~ /^(web)$/
+
+# ------------------------
+
+fairdata-e2e:
+  stage: e2e-test
+  trigger: fairdata/fairdata-ci
   allow_failure: true
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /^(master)$/ && $CI_PIPELINE_SOURCE !~ /^(web)$/
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^(master)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(master)$/
+    - if: $CI_PIPELINE_SOURCE =~ /^(web)$/
 
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fairdata-e2e-feature:
+  stage: e2e-test
+  trigger: fairdata/fairdata-ci
+  variables:
+    GITLAB_ENV: staging
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
