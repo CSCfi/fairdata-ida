@@ -29,7 +29,6 @@ import requests
 import json
 import logging
 import psycopg2
-import pymysql
 import time
 import re
 import dateutil.parser
@@ -42,6 +41,13 @@ from subprocess import Popen, PIPE
 from stat import *
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+# Node contexts:
+#
+# filesystem    glusterfs filesystem stats
+# Nextcloud     Nextcloud database records
+# IDA           IDA frozen file records
+# Metax         Metax file records
 
 def main():
 
@@ -164,9 +170,6 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     dblib = psycopg2
 
-    if config.DBTYPE == 'mysql':
-        dblib = pymysql
-
     conn = dblib.connect(database=config.DBNAME,
                          user=config.DBROUSER,
                          password=config.DBROPASSWORD,
@@ -201,12 +204,6 @@ def add_nextcloud_nodes(nodes, counts, config):
              WHERE storage = %d \
              AND path ~ 'files/%s\+?/' \
              AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, config.PROJECT, config.START_TS)
-
-    if config.DBTYPE == 'mysql':
-        query = "SELECT path, mimetype, size, mtime FROM %sfilecache \
-                 WHERE storage = %d \
-                 AND path REGEXP 'files/%s\\\\+?/' \
-                 AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, config.PROJECT, config.START_TS)
 
     if config.DEBUG == 'true':
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
@@ -344,9 +341,6 @@ def add_frozen_files(nodes, counts, config):
     # Open database connection 
 
     dblib = psycopg2
-
-    if config.DBTYPE == 'mysql':
-        dblib = pymysql
 
     conn = dblib.connect(database=config.DBNAME,
                          user=config.DBROUSER,

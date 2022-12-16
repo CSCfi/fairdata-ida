@@ -42,17 +42,17 @@ if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; th
     errorExit "The project '${PROJECT}' does not exist"
 fi
 
-DATA=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${PROJECT_USER_PREFIX}${PROJECT}" -H "OCS-APIRequest: true"`
-
-QUOTA=`echo $DATA | grep "<quota>" | sed -e 's/^.*<quota>//' | sed -e 's/<.*$//'`
-QUOTA=`bytesToHR "0${QUOTA}"`
-USED=`echo $DATA | grep "<used>" | sed -e 's/^.*<used>//' | sed -e 's/<.*$//'`
-USED=`bytesToHR "0${USED}"`
-
 DATA=`$ROOT/utils/admin/fetch-project-stats $PROJECT`
+
+QUOTA=`echo "$DATA" | grep "quotaBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+QUOTA=`bytesToHR "0${QUOTA}"`
+
+USED=`echo "$DATA" | grep "totalBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+USED=`bytesToHR "0${USED}"`
 
 STAGED_VOLUME=`echo "$DATA" | grep "stagedBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
 STAGED_VOLUME=`bytesToHR "0${STAGED_VOLUME}"`
+
 FROZEN_VOLUME=`echo "$DATA" | grep "frozenBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
 FROZEN_VOLUME=`bytesToHR "0${FROZEN_VOLUME}"`
 

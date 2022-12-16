@@ -198,12 +198,15 @@ fi
 
 function bytesToHR()
 {
-    local SIZE=$1
+    local SIZE=`printf "%.f" "$1"`
     local UNITS="B KB MB GB TB PB"
+
+    # Note: values in Nextcloud environment are defined in peta/tera/giga/magabytes
+
     for F in $UNITS; do
         local UNIT=$F
-        test ${SIZE%.*} -lt 1024 && break;
-        SIZE=$(echo "$SIZE / 1024" | bc -l)
+        test ${SIZE%.*} -lt 1000 && break;
+        SIZE=$(echo "$SIZE / 1000" | bc -l)
     done
   
     if [ "$UNIT" == "B" ]; then

@@ -25,9 +25,7 @@ import importlib.util
 import sys
 import os
 import logging
-import json
 import psycopg2
-import pymysql
 import time
 import dateutil.parser
 from sortedcontainers import SortedDict
@@ -149,9 +147,6 @@ def add_from_ida_action_table(projects, config):
 
     dblib = psycopg2
 
-    if config.DBTYPE == 'mysql':
-        dblib = pymysql
-
     conn = dblib.connect(database=config.DBNAME,
                          user=config.DBROUSER,
                          password=config.DBROPASSWORD,
@@ -198,9 +193,6 @@ def add_from_filecache_table(projects, config):
     # Open database connection 
 
     dblib = psycopg2
-
-    if config.DBTYPE == 'mysql':
-        dblib = pymysql
 
     conn = dblib.connect(database=config.DBNAME,
                          user=config.DBROUSER,

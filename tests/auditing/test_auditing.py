@@ -122,19 +122,19 @@ class TestAuditing(unittest.TestCase):
         """
 
         print ("(auditing project %s)" % project)
-        cmd = "sudo -u %s %s/utils/admin/audit-project %s | \
-               grep '\"start\":' | head -1 | \
-               sed -e 's/^[^\"]*\"start\": *\"//' | \
-               sed -e 's/\".*$//'" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
+        cmd = "sudo -u %s %s/utils/admin/audit-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
-        self.assertNotEqual(start, None, start)
-        self.assertNotEqual(start, "", start)
+        self.assertNotEqual(output, None, output)
+        self.assertNotEqual(output, "", output)
+        self.assertTrue(output.startswith("Audit results saved to file "), output)
+        self.assertTrue(output.endswith(suffix))
+
+        report_pathname = output[28:]
 
         print("Verify audit report exists and has the correct suffix")
-        report_pathname = "%s/audits/%s_%s.%s" % (self.config["LOG_ROOT"], start, project, suffix)
         path = Path(report_pathname)
         self.assertTrue(path.exists(), report_pathname)
         self.assertTrue(path.is_file(), report_pathname)
@@ -145,7 +145,6 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
         self.assertEqual(report_data.get("project", None), project)
-        self.assertEqual(report_data.get("start", None), start)
 
         return report_data
 

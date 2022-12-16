@@ -42,11 +42,7 @@ import sys
 import os
 import re
 import logging
-import json
 import psycopg2
-import pymysql
-import time
-import dateutil.parser
 from pathlib import Path
 from datetime import datetime, timezone
 from time import strftime
@@ -87,9 +83,6 @@ def main():
 
         dblib = psycopg2
 
-        if config.DBTYPE == 'mysql':
-            dblib = pymysql
-    
         conn = dblib.connect(database=config.DBNAME,
                              user=config.DBROUSER,
                              password=config.DBROPASSWORD,
@@ -119,6 +112,7 @@ def main():
             raise Exception("Quota defined in unsupported unit format: \"%s\"" % quota)
 
         # Note: Quotas are defined in gigabytes not gibibytes
+
         quotaBytes = int(re.sub("[^0-9]", "", quota)) * 1000000000
 
         if config.DEBUG == 'true':
@@ -144,39 +138,12 @@ def main():
         if config.DEBUG == 'true':
             sys.stderr.write("STORAGE_ID:    %d\n" % (storage_id))
 
-        # Select all records for project files
+        # Calculate total number of records for all files in frozen area
 
         query = "SELECT COUNT(*) FROM %sfilecache \
                  WHERE storage = %d \
                  AND mimetype != 2 \
-                 AND path ~ 'files/%s\+?/' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
-
-        if config.DBTYPE == 'mysql':
-            query = "SELECT COUNT(*) FROM %sfilecache \
-                     WHERE storage = %d \
-                     AND mimetype != 2 \
-                     AND path REGEXP 'files/%s\\\\+?/' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
-
-        if config.DEBUG == 'true':
-            sys.stderr.write("QUERY: %s\n" % query)
-
-        cur.execute(query)
-        rows = cur.fetchall()
-
-        totalFiles = rows[0][0]
-
-        # Select all records for frozen project files
-
-        query = "SELECT COUNT(*) FROM %sfilecache \
-                 WHERE storage = %d \
-                 AND mimetype != 2 \
-                 AND path ~ 'files/%s/' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
-
-        if config.DBTYPE == 'mysql':
-            query = "SELECT COUNT(*) FROM %sfilecache \
-                     WHERE storage = %d \
-                     AND mimetype != 2 \
-                     AND path REGEXP 'files/%s/.+' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
+                 AND path LIKE 'files/%s/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
         if config.DEBUG == 'true':
             sys.stderr.write("QUERY: %s\n" % query)
@@ -186,12 +153,15 @@ def main():
 
         frozenFiles = rows[0][0]
 
-        # Select size of frozen folder
+        if frozenFiles == None:
+            frozenFiles = 0
 
-        query = "SELECT size FROM %sfilecache \
+        # Calculate total bytes of all files in frozen area
+
+        query = "SELECT SUM(size) FROM %sfilecache \
                  WHERE storage = %d \
-                 AND mimetype = 2 \
-                 AND path = 'files/%s' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
+                 AND mimetype != 2 \
+                 AND path LIKE 'files/%s/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
         if config.DEBUG == 'true':
             sys.stderr.write("QUERY: %s\n" % query)
@@ -201,12 +171,33 @@ def main():
 
         frozenBytes = rows[0][0]
 
-        # Select size of staging folder
+        if frozenBytes == None:
+            frozenBytes = 0
 
-        query = "SELECT size FROM %sfilecache \
+        # Calculate total number of records for all files in staging area
+
+        query = "SELECT COUNT(*) FROM %sfilecache \
                  WHERE storage = %d \
-                 AND mimetype = 2 \
-                 AND path = 'files/%s+' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
+                 AND mimetype != 2 \
+                 AND path LIKE 'files/%s+/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
+
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY: %s\n" % query)
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        stagedFiles = rows[0][0]
+
+        if stagedFiles == None:
+            stagedFiles = 0
+
+        # Calculate total bytes of all files in staging area
+
+        query = "SELECT SUM(size) FROM %sfilecache \
+                 WHERE storage = %d \
+                 AND mimetype != 2 \
+                 AND path LIKE 'files/%s+/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
         if config.DEBUG == 'true':
             sys.stderr.write("QUERY: %s\n" % query)
@@ -215,6 +206,9 @@ def main():
         rows = cur.fetchall()
 
         stagedBytes = rows[0][0]
+
+        if stagedBytes == None:
+            stagedBytes = 0
 
         # Select last modified timestamp of any node
 
@@ -252,9 +246,9 @@ def main():
             sys.stdout.write("STORAGE_VOLUME\n")
             sys.stdout.write("%s\t" % config.PROJECT)
             sys.stdout.write("%d\t" % quotaBytes)
-            sys.stdout.write("%d\t" % totalFiles)
+            sys.stdout.write("%d\t" % (stagedFiles + frozenFiles))
             sys.stdout.write("%d\t" % (stagedBytes + frozenBytes))
-            sys.stdout.write("%d\t" % (totalFiles - frozenFiles))
+            sys.stdout.write("%d\t" % stagedFiles)
             sys.stdout.write("%d\t" % stagedBytes)
             sys.stdout.write("%d\t" % frozenFiles)
             sys.stdout.write("%d\t" % frozenBytes)
@@ -264,9 +258,9 @@ def main():
             sys.stdout.write("{\n")
             sys.stdout.write("  \"project\": \"%s\",\n" % config.PROJECT)
             sys.stdout.write("  \"quotaBytes\": %d,\n" % quotaBytes)
-            sys.stdout.write("  \"totalFiles\": %d,\n" % totalFiles)
+            sys.stdout.write("  \"totalFiles\": %d,\n" % (stagedFiles + frozenFiles))
             sys.stdout.write("  \"totalBytes\": %d,\n" % (stagedBytes + frozenBytes))
-            sys.stdout.write("  \"stagedFiles\": %d,\n" % (totalFiles - frozenFiles))
+            sys.stdout.write("  \"stagedFiles\": %d,\n" % stagedFiles)
             sys.stdout.write("  \"stagedBytes\": %d,\n" % stagedBytes)
             sys.stdout.write("  \"frozenFiles\": %d,\n" % frozenFiles)
             sys.stdout.write("  \"frozenBytes\": %d,\n" % frozenBytes)
