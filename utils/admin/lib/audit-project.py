@@ -236,7 +236,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                 fileCount = fileCount + 1
             node = {'nextcloud': {'type': node_type, 'size': row[2], 'modified': modified}}
         else:
-            node = {'nextcloud': {'type': node_type}}
+            node = {'nextcloud': {'type': node_type, 'modified': modified}}
 
         nodes[pathname] = node
 
@@ -310,7 +310,7 @@ def add_filesystem_nodes(nodes, counts, config):
                     fileCount = fileCount + 1
                 node_details = {'type': node_type, 'size': size, 'modified': modified}
             else:
-                node_details = {'type': node_type}
+                node_details = {'type': node_type, 'modified': modified}
 
             try:
                 node = nodes[pathname]
@@ -748,10 +748,10 @@ def audit_project(config):
                         sys.stdout.write(",\n\"size\": %d" % node_details['size'])
                     except:
                         pass
-                    try:
-                        sys.stdout.write(",\n\"modified\": \"%s\"" % node_details['modified'])
-                    except:
-                        pass
+                try:
+                    sys.stdout.write(",\n\"modified\": \"%s\"" % node_details['modified'])
+                except:
+                    pass
                 sys.stdout.write("}")
             except:
                 pass
@@ -765,10 +765,10 @@ def audit_project(config):
                         sys.stdout.write(",\n\"size\": %d" % node_details['size'])
                     except:
                         pass
-                    try:
-                        sys.stdout.write(",\n\"modified\": \"%s\"" % node_details['modified'])
-                    except:
-                        pass
+                try:
+                    sys.stdout.write(",\n\"modified\": \"%s\"" % node_details['modified'])
+                except:
+                    pass
                 sys.stdout.write("\n}")
             except:
                 pass
