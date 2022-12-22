@@ -379,8 +379,8 @@ class GenericAgent():
                 'IDA api returned an error. Code: %d. Error: %s' % (response.status_code, response.content)
             )
         nodes = response.json()
-        if not nodes:
-            raise Exception('Action %s has no nodes associated with it' % action['pid'])
+        # NOTE: it is possible for a repair action to have no associated files, if after re-scanning
+        # the project frozen area there no longer exist any files in the frozen area.
         return nodes if isinstance(nodes, list) else [nodes]
 
     def _save_nodes_to_db(self, nodes, fields=[], updated_only=False):

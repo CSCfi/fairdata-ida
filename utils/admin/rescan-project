@@ -1,0 +1,65 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2018 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#
+#--------------------------------------------------------------------------------
+#
+# This script will execute the Nextcloud occ files:scan process for the
+# specified project, ensuring that the details stored in the Nextcloud 
+# database match exactly the data that is stored on disk.
+#
+#--------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+echo "Rescanning project files in staging area of Nextcloud..."
+
+$OCC files:scan --path="${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}" "${PROJECT_USER}" 2>$ERR
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR`
+    echoAndLog "$MSG"
+    errorExit "Failed to rescan project files in staging area of Nextcloud"
+fi
+
+#--------------------------------------------------------------------------------
+echo "Rescanning project files in frozen area of Nextcloud..."
+
+$OCC files:scan --path="${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}" "${PROJECT_USER}" 2>$ERR
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR`
+    echoAndLog "$MSG"
+    errorExit "Failed to rescan project files in frozen area of Nextcloud"
+fi
+
+addToLog "DONE"

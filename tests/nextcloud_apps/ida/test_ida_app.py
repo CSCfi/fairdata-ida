@@ -361,11 +361,15 @@ class TestIdaApp(unittest.TestCase):
 
         print("Attempt to retrieve details of all unfrozen files associated with previous action as user without rights to project")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        file_set_data = response.json()
+        self.assertEqual(len(file_set_data), 0)
 
         print("Attempt to retrieve details of all unfrozen files associated with a non-existent action")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], "NO_SUCH_PID"), auth=test_user_a, verify=False)
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        file_set_data = response.json()
+        self.assertEqual(len(file_set_data), 0)
 
         print("Attempt to unfreeze an empty folder")
         data["pathname"] = "/testdata/empty_folder"

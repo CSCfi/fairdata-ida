@@ -153,11 +153,8 @@ class FileController extends Controller
 
             $fileEntities = $this->fileMapper->findFiles($pid, $queryProjects);
 
-            // If an expicit action PID was specified and no files found, then assume the action does not exist
-
-            if ($pid !== null && count($fileEntities) == 0) {
-                return API::notFoundErrorResponse('The specified action was not found.');
-            }
+            // NOTE: it is possible for a repair action to have no associated files, if after re-scanning
+            // the project frozen area there no longer exist any files in the frozen area.
 
             return new DataResponse($fileEntities);
         }

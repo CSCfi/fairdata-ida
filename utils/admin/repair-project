@@ -39,7 +39,8 @@
 # being repaird. For very large projects, executing this script can take days,
 # or when millions of files are concerned, for the largest projects, weeks!
 #
-# DO NOTE EXECUTE THIS SCRIPT WITHOUT FIRST COORDINATING WITH THE IDA PO!!!!
+# DO NOT EXECUTE THIS SCRIPT WITHOUT FIRST COORDINATING WITH THE IDA PO AND
+# THE PROJECT USERS!!!!
 #
 #--------------------------------------------------------------------------------
 # Initialize script with common definitions
@@ -61,20 +62,14 @@ $ROOT/utils/admin/suspend-project "$PROJECT" --silent 2>$ERR
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
-    addToLog "$MSG"
+    echoAndLog "$MSG"
     errorExit "Failed to suspend project"
 fi
 
 #--------------------------------------------------------------------------------
 echo "Rescanning project files in Nextcloud..."
 
-$OCC files:scan "$PROJECT_USER" 2>$ERR
-
-if [ -s $ERR ]; then
-    MSG=`cat $ERR`
-    addToLog "$MSG"
-    errorExit "Failed to rescan project files in Nextcloud"
-fi
+$ROOT/utils/admin/rescan-project "$PROJECT"
 
 #--------------------------------------------------------------------------------
 echo "Repairing project data in IDA..."
@@ -84,7 +79,7 @@ ACTION_PID=`$CURL_POST $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: applic
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
-    addToLog "$MSG"
+    echoAndLog "$MSG"
     errorExit "Failed to repair project data in IDA"
 fi
 
@@ -113,7 +108,7 @@ $ROOT/utils/admin/unsuspend-project "$PROJECT" --silent 2>$ERR
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
-    addToLog "$MSG"
+    echoAndLog "$MSG"
     errorExit "Failed to unsuspend project"
 fi
 

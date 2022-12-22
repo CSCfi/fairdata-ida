@@ -115,7 +115,7 @@ class TestAuditing(unittest.TestCase):
         assert(len(actions) == 0)
 
 
-    def auditProject(self, project, suffix):
+    def auditProject(self, project, suffix, ignore_timestamps = False):
         """
         Audit the specified project, verify that the audit report log was created with
         the specified suffix, and load and return the audit report as a JSON object.
@@ -123,6 +123,8 @@ class TestAuditing(unittest.TestCase):
 
         print ("(auditing project %s)" % project)
         cmd = "sudo -u %s %s/utils/admin/audit-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
+        if ignore_timestamps:
+            cmd = "%s --ignore-timestamps" % cmd 
         try:
             output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -130,7 +132,6 @@ class TestAuditing(unittest.TestCase):
         self.assertNotEqual(output, None, output)
         self.assertNotEqual(output, "", output)
         self.assertTrue(output.startswith("Audit results saved to file "), output)
-        self.assertTrue(output.endswith(suffix))
 
         report_pathname = output[28:]
 
@@ -138,8 +139,9 @@ class TestAuditing(unittest.TestCase):
         path = Path(report_pathname)
         self.assertTrue(path.exists(), report_pathname)
         self.assertTrue(path.is_file(), report_pathname)
+        self.assertTrue(report_pathname.endswith(suffix), report_pathname)
 
-        print("(loading audit report)")
+        print("(loading audit report %s)" % report_pathname)
         try:
             report_data = json.load(open(report_pathname))
         except subprocess.CalledProcessError as error:
@@ -342,9 +344,9 @@ class TestAuditing(unittest.TestCase):
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node size")
 
-        print("(changing modified timestamp of Nextcloud file node /testdata/2010-10/Experiment_3/baseline/test03.dat in staging area)")
+        print("(changing modified timestamp of Nextcloud file node /testdata/2017-08/Experiment_1/baseline/test04.dat in frozen area)")
         # 1500000000 = "2017-07-14T02:40:00Z"
-        pathname = "files/test_project_b%s/testdata/2017-10/Experiment_3/baseline/test03.dat" % self.config["STAGING_FOLDER_SUFFIX"]
+        pathname = "files/test_project_b/testdata/2017-08/Experiment_1/baseline/test04.dat"
         cur.execute("UPDATE %sfilecache SET mtime = %d WHERE storage = %d AND path = '%s'"
                     % (self.config["DBTABLEPREFIX"], 1500000000, storage_id_b, pathname))
         conn.commit()
@@ -366,6 +368,10 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_c", test_user_c)
         self.checkForFailedActions("test_project_c", test_user_c)
 
+        # After repair the frozen file record in IDA and Metax will be purged as it no longer
+        # corresponds to a frozen file on disk, and the node type in Nextcloud will be changed
+        # to folder, since that is what is on disk. The IDA and Metax node counts in the audit
+        # report will be reduced to 5
         print("(replacing file /testdata/2017-08/Experiment_1/baseline/test01.dat from frozen area of filesystem with same-named folder)")
         # Delete file /testdata/2017-08/Experiment_1/baseline/test01.dat from frozen area
         pathname = "%s/testdata/2017-08/Experiment_1/baseline/test01.dat" % frozen_area_root_c
@@ -383,6 +389,7 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
+        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk 
         print("(replacing file /testdata/2017-10/Experiment_3/baseline/test03.dat from staging area of filesystem with same-named folder)")
         # Delete file /testdata/2017-10/Experiment_3/baseline/test03.dat from staging area
         pathname = "%s/testdata/2017-10/Experiment_3/baseline/test03.dat" % staging_area_root_c
@@ -400,6 +407,7 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
+        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk 
         print("(replacing folder /testdata/empty_folder from staging area of filesystem with same-named file)")
         # Delete folder /testdata/empty_folder from staging area
         pathname = "%s/testdata/empty_folder" % staging_area_root_c
@@ -435,6 +443,8 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_d", test_user_d)
         self.checkForFailedActions("test_project_d", test_user_d)
 
+        # After repair there will be one additional node (folder) due to the existence of the 'baseline' directory
+        # in both frozen area and staging compared to before freezing the 'baseline' folder and unfreezing test01.dat
         print("(unfreezing file /testdata/2017-08/Experiment_1/baseline/test01.dat only in IDA, simulating postprocessing agents)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
         headers_d = { 'X-SIMULATE-AGENTS': 'true' }
@@ -457,40 +467,47 @@ class TestAuditing(unittest.TestCase):
         response = requests.delete("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        print("(changing size of file /testdata/2017-08/Experiment_1/baseline/test03.dat in IDA db)")
         pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"
+
+        print("(retrieving pid of file %s in IDA db)")
+        cur.execute("SELECT pid FROM %sida_frozen_file WHERE project = 'test_project_d' AND pathname = '%s'" % (self.config["DBTABLEPREFIX"], pathname))
+        rows = cur.fetchall()
+        if len(rows) != 1:
+            self.fail("Failed to retrieve pid for frozen file")
+        # The following are used below to restore the original frozen file pid after temporarily changing it before auditing tests
+        original_frozen_file_pid = rows[0][0]
+        original_frozen_file_pathname = pathname
+
+        print("(changing size of file %s in IDA db)" % pathname)
         cur.execute("UPDATE %sida_frozen_file SET size = %d WHERE project = 'test_project_d' AND pathname = '%s'"
                     % (self.config["DBTABLEPREFIX"], 123, pathname))
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file size")
 
-        print("(changing checksum of file /testdata/2017-08/Experiment_1/baseline/test03.dat in IDA db)")
-        pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"
+        print("(changing checksum of file %s in IDA db)" % pathname)
         cur.execute("UPDATE %sida_frozen_file SET checksum = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
                     % (self.config["DBTABLEPREFIX"], "a0b0c0", pathname))
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file checksum")
 
-        print("(changing pid of file /testdata/2017-08/Experiment_1/baseline/test03.dat in IDA db)")
-        pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"
-        cur.execute("UPDATE %sida_frozen_file SET pid = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
-                    % (self.config["DBTABLEPREFIX"], "abc123", pathname))
-        conn.commit()
-        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
-
-        print("(changing frozen timestamp of file /testdata/2017-08/Experiment_1/baseline/test03.dat in IDA db)")
-        pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"
+        print("(changing frozen timestamp of file %s in IDA db)" % pathname)
         cur.execute("UPDATE %sida_frozen_file SET frozen = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
                     % (self.config["DBTABLEPREFIX"], '2017-01-01T00:00:00Z', pathname))
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file frozen timestamp")
 
-        print("(changing modification timestamp of file /testdata/2017-08/Experiment_1/baseline/test03.dat in IDA db)")
-        pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"
+        print("(changing modification timestamp of file %s in IDA db)" % pathname)
         cur.execute("UPDATE %sida_frozen_file SET modified = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
                     % (self.config["DBTABLEPREFIX"], '2017-01-01T00:00:00Z', pathname))
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file modification timestamp")
+
+        print("(changing pid of file %s in IDA db)" % pathname)
+        original_frozen_file_pathname = pathname # used below to restore original pid
+        cur.execute("UPDATE %sida_frozen_file SET pid = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], "abc123", pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
 
         print("(deleting file /testdata/2017-08/Experiment_1/baseline/test04.dat from replication)")
         pathname = "%s/projects/test_project_d/testdata/2017-08/Experiment_1/baseline/test04.dat" % self.config['DATA_REPLICATION_ROOT']
@@ -666,7 +683,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(nextcloud.get("size", None), 123)
 
         print("Verify correct error report of Nextcloud modification timestamp conflict with filesystem")
-        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test04.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
@@ -777,19 +794,12 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in IDA" in errors)
 
-        # Delete file from Metax
         print("Verify correct error report of frozen file known to IDA but missing from Metax")
         node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test02.dat", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in Metax" in errors)
-
-        # Change size of frozen file in IDA db
-        # Change checksum of frozen file in IDA db
-        # Change pid of frozen file in IDA db
-        # Change frozen timestamp of frozen file in IDA db
-        # Change modification timestamp of frozen file in IDA db
 
         print("Verify correct error report of IDA file size conflict with Metax")
         node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test03.dat", None)
@@ -854,9 +864,6 @@ class TestAuditing(unittest.TestCase):
 
         # --------------------------------------------------------------------------------
 
-        # TODO: Uncomment once project repair bugs are resolved per CSCIDA-691
-
-        """
         print("--- Repairing projects A, B, C, and D for re-auditing")
         
         print("(repairing project A)")
@@ -890,6 +897,37 @@ class TestAuditing(unittest.TestCase):
         self.checkForFailedActions("test_project_c", test_user_c)
 
         print("(repairing project D)")
+
+        # The repair process doesn't resolve a mismatch of node types (file vs folder) in replication,
+        # even though the audit process will report the issue if it ever occurs in reality (which it
+        # likely never will), so to ensure the repair process and post-repair auditing succeed for these
+        # tests, we will first restore the file which was replaced with a same named folder, via which
+        # the tests introduced the conflicting node type error to be detected by the auditing process...
+
+        pathname = "%s/projects/test_project_d/testdata/2017-08/Experiment_1/baseline/zero_size_file" % self.config['DATA_REPLICATION_ROOT']
+        path = Path(pathname)
+        try:
+            shutil.rmtree(pathname)
+        except Exception as error:
+            self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
+        self.assertFalse(path.exists())
+        cmd = "sudo -u %s touch %s" % (self.config["HTTPD_USER"], pathname)
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except Exception as error:
+            self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
+        self.assertTrue(path.exists())
+
+        # The repair process doesn't properly resolve a frozen file pid mismatch between IDA and Metax, even
+        # though the audit process will report the issue if it ever occurs in reality (which it likely never
+        # will), so to ensure the repair process and post repair auditing succeed for these tests, we will
+        # repair the pid mismatch that was created for the auditing tests prior to proceeding...
+
+        cur.execute("UPDATE %sida_frozen_file SET pid = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], original_frozen_file_pid, original_frozen_file_pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
+
         cmd = "sudo -u %s %s/utils/admin/repair-project test_project_d" % (self.config["HTTPD_USER"], self.config["ROOT"])
         try:
             start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
@@ -901,13 +939,20 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project A and checking results")
         
-        report_data = self.auditProject("test_project_a", "ok")
+        # The repair process does not (yet) resolve all types of timestamp discrepancies so in
+        # this final post-repair auditing we will ignore timestamps and only ensure all other 
+        # issues have been correctly repaired.
+        #
+        # TODO: Once the repair process resolves all types of timestamp discrepancies, include
+        # timestamp comparisons in final post-repair audits.
+
+        report_data = self.auditProject("test_project_a", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 97)
 
         print("Verify correct number of reported IDA nodes")
         self.assertEqual(report_data.get("idaNodeCount", None), 0)
@@ -920,61 +965,60 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project B and checking results")
         
-        report_data = self.auditProject("test_project_b", "ok")
+        report_data = self.auditProject("test_project_b", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEqual(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 6)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 6)
 
         print("Verify correct number of reported invalid nodes")
         self.assertEqual(report_data.get("invalidNodeCount", None), 0)
 
         print("--- Re-auditing project C and checking results")
         
-        report_data = self.auditProject("test_project_c", "ok")
+        report_data = self.auditProject("test_project_c", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEqual(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 5)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 5)
 
         print("Verify correct number of reported invalid nodes")
         self.assertEqual(report_data.get("invalidNodeCount", None), 0)
 
         print("--- Re-auditing project D and checking results")
         
-        report_data = self.auditProject("test_project_d", "ok")
+        report_data = self.auditProject("test_project_d", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 110)
 
         print("Verify correct number of reported IDA nodes")
-        self.assertEqual(report_data.get("idaNodeCount", None), 0)
+        self.assertEqual(report_data.get("idaNodeCount", None), 5)
 
         print("Verify correct number of reported Metax nodes")
-        self.assertEqual(report_data.get("metaxNodeCount", None), 0)
+        self.assertEqual(report_data.get("metaxNodeCount", None), 5)
 
         print("Verify correct number of reported invalid nodes")
         self.assertEqual(report_data.get("invalidNodeCount", None), 0)
-        """
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done
