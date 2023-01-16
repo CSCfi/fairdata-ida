@@ -202,12 +202,12 @@ fi
 
 echo "Reporting data deleted for project..."
 
-$ROOT/utils/admin/report-datadeleted $PROJECT 2>$ERR >/dev/null
+$ROOT/utils/admin/report-datadeleted $PROJECT 2>$ERR
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
-    echoAndLog "Failed to report data deleted!"
+    echoAndLog "Error: Failed to report data deleted! (ignored)"
 fi
 
 #--------------------------------------------------------------------------------

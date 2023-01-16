@@ -21,35 +21,46 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-
+#
 # This script audits all projects in the IDA service which have had any activity
-# since the specified date(time), if given, or during the past 24 hours if no
-# date(time) is specified. If only a date is specified, the time T00:00:00Z is
-# used. Auditing is also limited to nodes which have been created or modified
-# since that same datetime.
-
+# during the specified period or since the specified date(time), if given, or
+# during the past 24 hours if nothing is specified. If only a date is specified,
+# the time T00:00:00Z is used. Auditing is also limited to nodes which have been
+# created or modified since the beginning of the script execution time.
+#
 # --------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ts] [ ( --report | --report-errors ) [email] ]
+Usage: $SCRIPT [ ( timestamp | week | month | year ) ] [ ( --report | --report-errors ) [ email ] ] [ --ignore-timestamps ]
        $SCRIPT -h
 
-       ts     an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
-       email  the email address where audit reports should be sent (defaults to dev team)
+       timestamp    an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
+       week         calculate a timestamp one week in the past
+       month        calculate a timestamp one month in the past
+       year         calculate a timestamp one year in the past
+       email        the email address where audit reports should be sent (defaults to dev team)
+
+If --report is specified, the auditing results will be emailed, even if successful.
+
+If --report-errors is specified, the auditing results will be emailed, but only if errors are detected.
+
+Emails will be sent to the default distribution list unless an alternative email address is specified.
+
+If --ignore-timestamps is specified, no comparison will be made between disk timestamps and database values.
 "
 
 PROJECT="null"
 
 case "$1" in
-    "--report" | "--report-errors")
+    "--report" | "--report-errors" | "--ignore-timestamps")
         SINCE=""
-        REPORT_REQ="$1 $2"
+        AUDIT_ARGS="$1 $2 $3"
         ;;
     *)
         SINCE="$1"
-        REPORT_REQ="$2 $3"
+        AUDIT_ARGS="$2 $3 $4"
         ;;
 esac
 
@@ -66,9 +77,11 @@ else
     exit 1
 fi
 
+#DEBUG="true" # TEMP HACK
+
 if [ "$DEBUG" = "true" ]; then
-    echo "SINCE:         $SINCE" >&2
-    echo "REPORT_REQ:    $REPORT_REQ" >&2
+    echo "SINCE:      $SINCE" >&2
+    echo "AUDIT_ARGS: $AUDIT_ARGS" >&2
 fi
 
 #--------------------------------------------------------------------------------
@@ -76,7 +89,7 @@ fi
 PROJECTS=`$ROOT/utils/admin/list-active-projects $SINCE`
 
 for PROJECT in $PROJECTS; do
-    $ROOT/utils/admin/audit-project $PROJECT $REPORT_REQ
+    $ROOT/utils/admin/audit-project $PROJECT $AUDIT_ARGS
 done
 
 addToLog "DONE"

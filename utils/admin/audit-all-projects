@@ -30,14 +30,22 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( --report | --report-errors ) [email] ]
+Usage: $SCRIPT [ ( --report | --report-errors ) [ email ] ] [ --ignore-timestamps ]
        $SCRIPT -h
 
        email  the email address where audit reports should be sent (defaults to dev team)
+
+If --report is specified, the auditing results will be emailed, even if successful.
+
+If --report-errors is specified, the auditing results will be emailed, but only if errors are detected.
+
+Emails will be sent to the default distribution list unless an alternative email address is specified.
+
+If --ignore-timestamps is specified, no comparison will be made between disk timestamps and database values.
 "
 
 PROJECT="null"
-REPORT_REQ="$1 $2"
+AUDIT_ARGS="$1 $2 $3"
 
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
@@ -52,8 +60,10 @@ else
     exit 1
 fi
 
+#DEBUG="true" # TEMP HACK
+
 if [ "$DEBUG" = "true" ]; then
-    echo "REPORT_REQ:    $REPORT_REQ" >&2
+    echo "AUDIT_ARGS: $AUDIT_ARGS" >&2
 fi
 
 #--------------------------------------------------------------------------------
@@ -61,7 +71,7 @@ fi
 PROJECTS=`$ROOT/utils/admin/list-projects`
 
 for PROJECT in $PROJECTS; do
-    $ROOT/utils/admin/audit-project $PROJECT
+    $ROOT/utils/admin/audit-project $PROJECT $AUDIT_ARGS
 done
 
 addToLog "DONE"

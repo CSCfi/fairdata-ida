@@ -108,6 +108,9 @@ def main():
 
         quota = rows[0][0]
 
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUOTA: %s\n" % quota)
+
         if quota.endswith("GB") == False:
             raise Exception("Quota defined in unsupported unit format: \"%s\"" % quota)
 
