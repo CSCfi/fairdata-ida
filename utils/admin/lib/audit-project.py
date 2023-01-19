@@ -715,6 +715,7 @@ def audit_project(config):
 
     sys.stdout.write("{\n")
     sys.stdout.write("\"project\": %s,\n" % str(json.dumps(config.PROJECT)))
+    sys.stdout.write("\"ignoreTimestamps\": %s,\n" % str(json.dumps(config.IGNORE_TIMESTAMPS)))
     sys.stdout.write("\"start\": %s,\n" % str(json.dumps(config.START)))
     sys.stdout.write("\"end\": %s,\n" % str(json.dumps(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))))
     sys.stdout.write("\"filesystemNodeCount\": %d,\n" % counts['filesystemNodeCount'])

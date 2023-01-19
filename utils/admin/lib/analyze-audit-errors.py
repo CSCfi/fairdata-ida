@@ -52,6 +52,7 @@ def main():
            data = json.load(f)
 
         analysis["project"] = data["project"]
+        analysis["ignoreTimestamps"] = data["ignoreTimestamps"]
 
         nodes = data.get("invalidNodes", {})
 
@@ -262,6 +263,7 @@ def output_analysis(analysis):
 
     sys.stdout.write('{\n')
     sys.stdout.write('    "project": "%s",\n' % analysis["project"])
+    sys.stdout.write('    "ignoreTimestamps": "%s",\n' % analysis["ignoreTimestamps"])
     sys.stdout.write('    "node_count": %d,\n' % analysis["node_count"])
     oldest = analysis.get("oldest")
     newest = analysis.get("newest")

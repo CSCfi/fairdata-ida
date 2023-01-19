@@ -70,6 +70,7 @@ if [ ! -f "$ERROR_FILE" ]; then
 fi
 
 REPORT="${ERROR_FILE}.analysis"
+SUMMARY="${REPORT}.summary"
 
 #--------------------------------------------------------------------------------
 
@@ -78,5 +79,9 @@ source $ROOT/venv/bin/activate
 python -u $ROOT/utils/admin/lib/analyze-audit-errors.py $ERROR_FILE > $REPORT
 
 echo "Analysis results saved to file $REPORT"
+
+cat $REPORT | egrep -v '^  *{' | grep -v ' "nodes": ' | grep -v ']' > $SUMMARY
+
+echo "Analysis summary saved to file $SUMMARY"
 
 addToLog "DONE"
