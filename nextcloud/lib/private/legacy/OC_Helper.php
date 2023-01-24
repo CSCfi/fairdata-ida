@@ -71,23 +71,23 @@ class OC_Helper {
 		}
 		$bytes = round($bytes / 1024, 0);
 		if ($bytes < 1024) {
-			return "$bytes KB";
+			return "$bytes KiB";
 		}
 		$bytes = round($bytes / 1024, 1);
 		if ($bytes < 1024) {
-			return "$bytes MB";
+			return "$bytes MiB";
 		}
 		$bytes = round($bytes / 1024, 1);
 		if ($bytes < 1024) {
-			return "$bytes GB";
+			return "$bytes GiB";
 		}
 		$bytes = round($bytes / 1024, 1);
 		if ($bytes < 1024) {
-			return "$bytes TB";
+			return "$bytes TiB";
 		}
 
 		$bytes = round($bytes / 1024, 1);
-		return "$bytes PB";
+		return "$bytes PiB";
 	}
 
 	/**
@@ -106,17 +106,22 @@ class OC_Helper {
 		}
 
 		$bytes_array = [
-			'b' => 1,
-			'k' => 1024,
-			'kb' => 1024,
-			'mb' => 1024 * 1024,
-			'm' => 1024 * 1024,
-			'gb' => 1024 * 1024 * 1024,
-			'g' => 1024 * 1024 * 1024,
-			'tb' => 1024 * 1024 * 1024 * 1024,
-			't' => 1024 * 1024 * 1024 * 1024,
-			'pb' => 1024 * 1024 * 1024 * 1024 * 1024,
-			'p' => 1024 * 1024 * 1024 * 1024 * 1024,
+			'b'   => 1,
+			'k'   => 1024,
+			'kb'  => 1024,
+			'kib' => 1024,
+			'm'   => 1024 * 1024,
+			'mb'  => 1024 * 1024,
+			'mib' => 1024 * 1024,
+			'g'   => 1024 * 1024 * 1024,
+			'gb'  => 1024 * 1024 * 1024,
+			'gib' => 1024 * 1024 * 1024,
+			't'   => 1024 * 1024 * 1024 * 1024,
+			'tb'  => 1024 * 1024 * 1024 * 1024,
+			'tib' => 1024 * 1024 * 1024 * 1024,
+			'p'   => 1024 * 1024 * 1024 * 1024 * 1024,
+			'pb'  => 1024 * 1024 * 1024 * 1024 * 1024,
+			'pib' => 1024 * 1024 * 1024 * 1024 * 1024,
 		];
 
 		$bytes = (float)$str;

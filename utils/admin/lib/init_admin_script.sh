@@ -199,19 +199,85 @@ fi
 function bytesToHR()
 {
     local SIZE=`printf "%.f" "$1"`
-    local UNITS="B KB MB GB TB PB"
+    local UNITS="B KiB MiB GiB TiB PiB"
+    local UNIT="B"
 
-    # Note: values in Nextcloud environment are defined in peta/tera/giga/magabytes
+    if [ ${SIZE%.*} -le 0 ]; then
 
-    for F in $UNITS; do
-        local UNIT=$F
-        test ${SIZE%.*} -lt 1000 && break;
-        SIZE=$(echo "$SIZE / 1000" | bc -l)
-    done
-  
-    if [ "$UNIT" == "B" ]; then
-        printf "%4.0f %s\n" $SIZE $UNIT
+        SIZE=0
+        UNIT="B"
+
     else
-        printf "%7.02f %s\n" $SIZE $UNIT
+    
+        for U in $UNITS; do
+            UNIT=$U
+            test ${SIZE%.*} -lt 1024 && break;
+            SIZE=$(echo "$SIZE / 1024" | bc -l)
+        done
+    
+        SIZE=$(echo "$SIZE + 0.5" | bc -l | sed -e 's/\.[0-9][0-9]*$//')
+
     fi
+
+    printf "%u %s" $SIZE $UNIT
+}
+
+function hrToBytes()
+{
+    local SIZE="$1"
+    local UNIT="$2"
+
+    if [ "$UNIT" = "" ]; then
+        SIZE=`echo "$1" | sed -e 's/[^0-9\.]//g'`
+        UNIT=`echo "$1" | sed -e 's/[^a-zA-Z]//g'`
+    fi
+
+    SIZE=`printf "%f" "$SIZE"`
+    UNIT=`echo "$UNIT" | tr '[a-z]' '[A-Z]'`
+
+    if [ "$SIZE" = "" ]; then
+        SIZE=0
+    fi
+
+    if [ ${SIZE%.*} -lt 0 ]; then
+        SIZE=0
+    fi
+
+    # We only actually convert from B/KiB/MiB/GiB/TiB/PiB but accept both KB/MB/GB/TB/PB
+    # and K/M/G/T/P as unit aliases per Nextcloud and common user (erroneous) practice
+
+    case $UNIT in
+
+      "B")
+        ;;
+
+      "KIB" | "KB" | "K")
+        SIZE=$(echo "$SIZE * 1024" | bc -l)
+        ;;
+
+      "MIB" | "MB" | "M")
+        SIZE=$(echo "$SIZE * 1024 * 1024" | bc -l)
+        ;;
+
+      "GIB" | "GB" | "G")
+        SIZE=$(echo "$SIZE * 1024 * 1024 * 1024" | bc -l)
+        ;;
+
+      "TIB" | "TB" | "T")
+        SIZE=$(echo "$SIZE * 1024 * 1024 * 1024 * 1024" | bc -l)
+        ;;
+
+      "PIB" | "PB" | "P")
+        SIZE=$(echo "$SIZE * 1024 * 1024 * 1024 * 1024 * 1024" | bc -l)
+        ;;
+
+      *)
+        echo "Error: Unsupported unit $UNIT" >&2
+        exit 1
+        ;;
+    esac
+
+    SIZE=$(echo "$SIZE + 0.5" | bc -l | sed -e 's/\.[0-9][0-9]*$//')
+
+    printf "%u" $SIZE
 }

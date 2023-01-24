@@ -64,16 +64,16 @@ LAST_ACTIVE=`echo "$DATA" | grep "lastActive" | sed -e 's/^[^:]*: \"//' | sed -e
 STORAGE_VOLUME=`echo "$DATA" | grep "storageVolume" | sed -e 's/^[^:]*: \"//' | sed -e 's/[\",]*$//'`
 
 echo "Quota:"
-echo "  ${QUOTA}"
+echo "    ${QUOTA}"
 
 echo "Used:"
-echo "  ${USED}"
+echo "    ${USED}"
 
 echo "Staged:"
-echo "  ${STAGED_VOLUME}"
+echo "    ${STAGED_VOLUME}"
 
 echo "Frozen:"
-echo "  ${FROZEN_VOLUME}"
+echo "    ${FROZEN_VOLUME}"
 
 echo "Total files:"
 echo "    ${TOTAL_FILES}"

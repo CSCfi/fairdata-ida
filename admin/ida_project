@@ -165,7 +165,7 @@ if [ "$1" == "ADD" ]; then
         fi
     fi
 
-    echoAndLog "Creating project share owner user account ${PROJECT_USER} with quota ${PROJECT_QUOTA}GB"
+    echoAndLog "Creating project share owner user account ${PROJECT_USER} with quota ${PROJECT_QUOTA} GiB"
 
     OUT=`php "$OCC" user:add "$PROJECT_USER" -g "$PROJECT_GROUP" --display-name "$PROJECT_USER_FULL_NAME" --password-from-env 2>&1`
     addToLog $OUT
@@ -180,7 +180,7 @@ if [ "$1" == "ADD" ]; then
         errorExit "Quota \"$PROJECT_QUOTA\" is not a number"
     fi
 
-    # set quota, value is in GB
+    # set quota, value is in GiB though Nextcloud expects GB designator
     OUT=`php "$OCC" user:setting "$PROJECT_USER" files quota "$PROJECT_QUOTA GB" 2>&1`
     if [ -n "$OUT" ]; then
         errorExit "$OUT"
@@ -333,7 +333,7 @@ if [ "$1" == "MODIFY" ]; then
         errorExit "Quota \"$PROJECT_QUOTA\" is not a number"
     fi
 
-    # set quota, value is in GB
+    # set quota, value is in GiB though Nextcloud expects GB designator
     OUT=`php "$OCC" user:setting "$PROJECT_USER" files quota "$PROJECT_QUOTA GB" 2>&1`
     if [ -n "$OUT" ]; then
         errorExit "$OUT"

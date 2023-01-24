@@ -47,6 +47,44 @@ from pathlib import Path
 from datetime import datetime, timezone
 from time import strftime
 
+
+def hr_to_bytes(value_string):
+
+    value = float(re.sub('[^0-9\.]', '', value_string))
+    unit = re.sub('[^a-zA-Z]', '', value_string).upper()
+
+    # We only actually convert from B/KiB/MiB/GiB/TiB/PiB but accept both KB/MB/GB/TB/PB
+    # and K/M/G/T/P as unit aliases per Nextcloud and common user (erroneous) practice
+
+    total_bytes = 0
+
+    if value < 0:
+        value = 0
+
+    if unit == "B":
+        total_bytes = value
+
+    elif unit in [ "KIB", "KB", "K" ]:
+        total_bytes = value * 1024
+
+    elif unit in [ "MIB", "MB", "M" ]:
+        total_bytes = value * 1024 * 1024
+
+    elif unit in [ "GIB", "GB", "G" ]:
+        total_bytes = value * 1024 * 1024 * 1024
+
+    elif unit in [ "TIB", "TB", "T" ]:
+        total_bytes = value * 1024 * 1024 * 1024 * 1024
+
+    elif unit in [ "PIB", "PB", "P" ]:
+        total_bytes = value * 1024 * 1024 * 1024 * 1024 * 1024
+
+    else:
+        raise ValueError("Error: Unsupported unit: %s" % unit)
+
+    return round(total_bytes)
+
+
 def main():
 
     try:
@@ -111,15 +149,12 @@ def main():
         if config.DEBUG == 'true':
             sys.stderr.write("QUOTA: %s\n" % quota)
 
-        if quota.endswith("GB") == False:
-            raise Exception("Quota defined in unsupported unit format: \"%s\"" % quota)
+        # Note: Quotas are defined in gibibytes though Nextcloud uses the incorrect unit designator 'GB'
 
-        # Note: Quotas are defined in gigabytes not gibibytes
-
-        quotaBytes = int(re.sub("[^0-9]", "", quota)) * 1000000000
+        quota_bytes = int(hr_to_bytes(quota))
 
         if config.DEBUG == 'true':
-            sys.stderr.write("QUOTA:         %d\n" % (quotaBytes))
+            sys.stderr.write("QUOTA: %d\n" % quota_bytes)
 
         # Retrieve PSO storage id for project
 
@@ -154,10 +189,10 @@ def main():
         cur.execute(query)
         rows = cur.fetchall()
 
-        frozenFiles = rows[0][0]
+        frozen_files = rows[0][0]
 
-        if frozenFiles == None:
-            frozenFiles = 0
+        if frozen_files == None:
+            frozen_files = 0
 
         # Calculate total bytes of all files in frozen area
 
@@ -172,10 +207,10 @@ def main():
         cur.execute(query)
         rows = cur.fetchall()
 
-        frozenBytes = rows[0][0]
+        frozen_bytes = rows[0][0]
 
-        if frozenBytes == None:
-            frozenBytes = 0
+        if frozen_bytes == None:
+            frozen_bytes = 0
 
         # Calculate total number of records for all files in staging area
 
@@ -190,10 +225,10 @@ def main():
         cur.execute(query)
         rows = cur.fetchall()
 
-        stagedFiles = rows[0][0]
+        staged_files = rows[0][0]
 
-        if stagedFiles == None:
-            stagedFiles = 0
+        if staged_files == None:
+            staged_files = 0
 
         # Calculate total bytes of all files in staging area
 
@@ -208,10 +243,10 @@ def main():
         cur.execute(query)
         rows = cur.fetchall()
 
-        stagedBytes = rows[0][0]
+        staged_bytes = rows[0][0]
 
-        if stagedBytes == None:
-            stagedBytes = 0
+        if staged_bytes == None:
+            staged_bytes = 0
 
         # Select last modified timestamp of any node
 
@@ -224,11 +259,11 @@ def main():
         cur.execute(query)
         rows = cur.fetchall()
 
-        lastActive = datetime.utcfromtimestamp(rows[0][0]).strftime("%Y-%m-%dT%H:%M:%SZ")
+        last_active = datetime.utcfromtimestamp(rows[0][0]).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Retrieve glusterfs volume where project data resides
 
-        storageVolume = Path("%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)).resolve().parent.parent
+        storage_volume = Path("%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)).resolve().parent.parent
 
         # Close database connection
 
@@ -248,27 +283,27 @@ def main():
             sys.stdout.write("LAST_MODIFIED\t")
             sys.stdout.write("STORAGE_VOLUME\n")
             sys.stdout.write("%s\t" % config.PROJECT)
-            sys.stdout.write("%d\t" % quotaBytes)
-            sys.stdout.write("%d\t" % (stagedFiles + frozenFiles))
-            sys.stdout.write("%d\t" % (stagedBytes + frozenBytes))
-            sys.stdout.write("%d\t" % stagedFiles)
-            sys.stdout.write("%d\t" % stagedBytes)
-            sys.stdout.write("%d\t" % frozenFiles)
-            sys.stdout.write("%d\t" % frozenBytes)
-            sys.stdout.write("%s\t" % lastActive)
-            sys.stdout.write("%s\n" % storageVolume)
+            sys.stdout.write("%d\t" % quota_bytes)
+            sys.stdout.write("%d\t" % (staged_files + frozen_files))
+            sys.stdout.write("%d\t" % (staged_bytes + frozen_bytes))
+            sys.stdout.write("%d\t" % staged_files)
+            sys.stdout.write("%d\t" % staged_bytes)
+            sys.stdout.write("%d\t" % frozen_files)
+            sys.stdout.write("%d\t" % frozen_bytes)
+            sys.stdout.write("%s\t" % last_active)
+            sys.stdout.write("%s\n" % storage_volume)
         else:
             sys.stdout.write("{\n")
             sys.stdout.write("  \"project\": \"%s\",\n" % config.PROJECT)
-            sys.stdout.write("  \"quotaBytes\": %d,\n" % quotaBytes)
-            sys.stdout.write("  \"totalFiles\": %d,\n" % (stagedFiles + frozenFiles))
-            sys.stdout.write("  \"totalBytes\": %d,\n" % (stagedBytes + frozenBytes))
-            sys.stdout.write("  \"stagedFiles\": %d,\n" % stagedFiles)
-            sys.stdout.write("  \"stagedBytes\": %d,\n" % stagedBytes)
-            sys.stdout.write("  \"frozenFiles\": %d,\n" % frozenFiles)
-            sys.stdout.write("  \"frozenBytes\": %d,\n" % frozenBytes)
-            sys.stdout.write("  \"lastActive\": \"%s\",\n" % lastActive)
-            sys.stdout.write("  \"storageVolume\": \"%s\"\n" % storageVolume)
+            sys.stdout.write("  \"quotaBytes\": %d,\n" % quota_bytes)
+            sys.stdout.write("  \"totalFiles\": %d,\n" % (staged_files + frozen_files))
+            sys.stdout.write("  \"totalBytes\": %d,\n" % (staged_bytes + frozen_bytes))
+            sys.stdout.write("  \"stagedFiles\": %d,\n" % staged_files)
+            sys.stdout.write("  \"stagedBytes\": %d,\n" % staged_bytes)
+            sys.stdout.write("  \"frozenFiles\": %d,\n" % frozen_files)
+            sys.stdout.write("  \"frozenBytes\": %d,\n" % frozen_bytes)
+            sys.stdout.write("  \"lastActive\": \"%s\",\n" % last_active)
+            sys.stdout.write("  \"storageVolume\": \"%s\"\n" % storage_volume)
             sys.stdout.write("}\n")
 
     except Exception as error:
