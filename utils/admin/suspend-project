@@ -54,7 +54,7 @@ if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
 fi
 
 #--------------------------------------------------------------------------------
-echo "Verifying project ${PROJECT} is not already suspended..."
+echo "Checking if project ${PROJECT} is already suspended..."
 
 PIDS=`$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
       tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend\"" | grep "\"project\": *\"$PROJECT\"" | \
@@ -67,7 +67,9 @@ if [ -s $ERR ]; then
 fi
 
 if [ "$PIDS" != "" ]; then
-    errorExit "The specified project ${PROJECT} is already suspended"
+    echoAndLog "The specified project ${PROJECT} is already suspended"
+    addToLog "DONE"
+    exit 0
 fi
 
 #--------------------------------------------------------------------------------
