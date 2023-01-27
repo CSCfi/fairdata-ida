@@ -257,7 +257,7 @@ class GenericAgent():
             action = self._get_action_record(body.decode('utf-8'))
 
             if action:
-                self._logger.info('Started processing %s-action with pid %s' % (action['action'], action['pid']))
+                self._logger.info('Started processing action %s' % action)
                 self.process_queue(self._channel, method, properties, action, queue)
             else:
                 self._logger.warning(

@@ -187,7 +187,7 @@ class MetadataAgent(GenericAgent):
         self._ack_message(method)
 
     def _process_checksums(self, action):
-        self._logger.info('Processing checksums for action %s' % action)
+        self._logger.info('Processing checksums for action %s' % action['pid'])
 
         nodes = self._get_nodes_associated_with_action(action)
 
@@ -264,7 +264,7 @@ class MetadataAgent(GenericAgent):
         return nodes
 
     def _process_metadata_publication(self, action, nodes):
-        self._logger.info('Processing metadata publication for action %s' % action)
+        self._logger.info('Processing metadata publication for action %s' % action['pid'])
 
         if not nodes:
             nodes = self._get_nodes_associated_with_action(action)
@@ -283,7 +283,7 @@ class MetadataAgent(GenericAgent):
         self._logger.debug('Metadata publication OK')
 
     def _process_metadata_repair(self, action, nodes):
-        self._logger.info('Processing metadata repair for action %s' % action)
+        self._logger.info('Processing metadata repair for action %s' % action['pid'])
 
         if not nodes:
             nodes = self._get_nodes_associated_with_action(action)
@@ -302,7 +302,7 @@ class MetadataAgent(GenericAgent):
         self._logger.debug('Metadata repair OK')
 
     def _aggregate_technical_metadata(self, action, nodes):
-        self._logger.info('Aggregating technical metadata for action %s' % action)
+        self._logger.info('Aggregating technical metadata for action %s' % action['pid'])
 
         technical_metadata = []
 
@@ -551,7 +551,7 @@ class MetadataAgent(GenericAgent):
             )
 
     def _process_metadata_deletion(self, action):
-        self._logger.info('Processing metadata deletion for action %s' % action)
+        self._logger.info('Processing metadata deletion for action %s' % action['pid'])
 
         nodes = self._get_nodes_associated_with_action(action)
         file_identifiers = [ n['pid'] for n in nodes ]

@@ -114,7 +114,7 @@ class ReplicationAgent(GenericAgent):
 
         Replication basically means just a regular file copy from place a to b.
         """
-        self._logger.debug('Processing replication...')
+        self._logger.info('Processing replication for action %s' % action['pid'])
 
         self._check_replication_root_is_mounted()
         nodes = self._get_nodes_associated_with_action(action)
