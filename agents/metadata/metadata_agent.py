@@ -187,7 +187,7 @@ class MetadataAgent(GenericAgent):
         self._ack_message(method)
 
     def _process_checksums(self, action):
-        self._logger.debug('Processing checksums...')
+        self._logger.info('Processing checksums for action %s' % action)
 
         nodes = self._get_nodes_associated_with_action(action)
 
@@ -264,7 +264,7 @@ class MetadataAgent(GenericAgent):
         return nodes
 
     def _process_metadata_publication(self, action, nodes):
-        self._logger.debug('Processing metadata publication...')
+        self._logger.info('Processing metadata publication for action %s' % action)
 
         if not nodes:
             nodes = self._get_nodes_associated_with_action(action)
@@ -283,7 +283,7 @@ class MetadataAgent(GenericAgent):
         self._logger.debug('Metadata publication OK')
 
     def _process_metadata_repair(self, action, nodes):
-        self._logger.debug('Processing metadata repair...')
+        self._logger.info('Processing metadata repair for action %s' % action)
 
         if not nodes:
             nodes = self._get_nodes_associated_with_action(action)
@@ -302,7 +302,7 @@ class MetadataAgent(GenericAgent):
         self._logger.debug('Metadata repair OK')
 
     def _aggregate_technical_metadata(self, action, nodes):
-        self._logger.debug('Aggregating technical metadata...')
+        self._logger.info('Aggregating technical metadata for action %s' % action)
 
         technical_metadata = []
 
@@ -360,7 +360,7 @@ class MetadataAgent(GenericAgent):
         """
         Repair file metadata in Metax.
         """
-        self._logger.debug('Repairing file metadata in metax...')
+        self._logger.info('Repairing file metadata in metax for repair action %s' % action)
 
         existing_file_pids = []
         active_file_pids = []
@@ -401,14 +401,16 @@ class MetadataAgent(GenericAgent):
         new_file_count      = len(new_files)
         removed_file_count  = len(removed_file_pids)
 
-        self._logger.debug('ACTIVE FILE COUNT:   %d' % (active_file_count))
-        self._logger.debug('EXISTING FILE COUNT: %d' % (existing_file_count))
-        self._logger.debug('NEW FILE COUNT:      %d' % (new_file_count))
-        self._logger.debug('REMOVED FILE COUNT:  %d' % (removed_file_count))
+        self._logger.debug('ACTIVE FILE COUNT:   %d' % active_file_count)
+        self._logger.debug('EXISTING FILE COUNT: %d' % existing_file_count)
+        self._logger.debug('NEW FILE COUNT:      %d' % new_file_count)
+        self._logger.debug('REMOVED FILE COUNT:  %d' % removed_file_count)
 
         # PATCH metadata descriptions of all existing files
 
         if existing_file_count > 0:
+
+            self._logger.info('Patching file metadata in metax for repair action %s for %d files' % (action, existing_file_count))
 
             response = self._metax_api_request('patch', '/files', data=existing_files)
 
@@ -443,6 +445,8 @@ class MetadataAgent(GenericAgent):
 
         if new_file_count > 0:
 
+            self._logger.info('Publishing missing file metadata in metax for repair action %s for %d files' % (action, new_file_count))
+
             response = self._metax_api_request('post', '/files', data=new_files)
 
             if response.status_code not in (200, 201, 204):
@@ -475,6 +479,8 @@ class MetadataAgent(GenericAgent):
         # DELETE metadata descriptions of all removed files
 
         if removed_file_count > 0:
+
+            self._logger.info('Deleting unfrozen file metadata in metax for repair action %s for %d files' % (action, removed_file_count))
 
             response = self._metax_api_request('delete', '/files', data=removed_file_pids)
 
@@ -545,7 +551,7 @@ class MetadataAgent(GenericAgent):
             )
 
     def _process_metadata_deletion(self, action):
-        self._logger.debug('Processing metadata deletion...')
+        self._logger.info('Processing metadata deletion for action %s' % action)
 
         nodes = self._get_nodes_associated_with_action(action)
         file_identifiers = [ n['pid'] for n in nodes ]
