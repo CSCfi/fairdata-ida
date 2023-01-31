@@ -649,7 +649,9 @@ class FileController extends Controller
                 $title = trim(file_get_contents($titleFilePathname));
             }
 
-            return API::successResponse($title);
+            // We only log success responses for title requests if debug logging is enabled, otherwise, no logging is done. This is to
+            // prevent log files from being filled needlessly with success response messages, since title requests are done frequently.
+            return API::successResponse($title, true);
         }
         catch (Exception $e) {
             return API::serverErrorResponse($e->getMessage());

@@ -149,6 +149,7 @@ class GenericAgent():
         if isinstance(message, dict):
             message = json_dumps(message)
 
+        self._logger.info('Publishing message: exchange: %s routing_key: %s message: %s properties: %s' % (exchange, routing_key, message, properties))
         self._channel.basic_publish(body=message, routing_key=routing_key, exchange=exchange, properties=properties)
 
     def start(self):
@@ -241,7 +242,7 @@ class GenericAgent():
         """
         queue = queue or self.main_queue_name
 
-        self._logger.debug('Consuming one message from queue %s.' % queue)
+        self._logger.info('Consuming one message from queue %s' % queue)
 
         try:
             method, properties, body = self._channel.basic_get(queue)
@@ -344,7 +345,7 @@ class GenericAgent():
             )
             return None
 
-        self._set_sentinel_monitoring_file(message['pid'])
+        self._set_sentinel_monitoring_file(message)
 
         # the message in the queue is kept separate from the actual action record.
         # when a record fails, more info is stored in the queue message, but not on the
@@ -372,21 +373,24 @@ class GenericAgent():
         return action_record
 
     def _get_nodes_associated_with_action(self, action):
-        self._logger.debug('Retrieving nodes associated with action...')
+        self._logger.info('Retrieving files associated with action %s' % action['pid'])
         response = self._ida_api_request('get', '/files/action/%s' % action['pid'], action)
         if response.status_code != 200:
             raise Exception(
                 'IDA api returned an error. Code: %d. Error: %s' % (response.status_code, response.content)
             )
         nodes = response.json()
+        if not isinstance(nodes, list):
+            nodes = [nodes]
         # NOTE: it is possible for a repair action to have no associated files, if after re-scanning
         # the project frozen area there no longer exist any files in the frozen area.
-        return nodes if isinstance(nodes, list) else [nodes]
+        self._logger.info('Retrieved %d files associated with action %s' % (len(nodes), action['pid']))
+        return nodes
 
     def _save_nodes_to_db(self, nodes, fields=[], updated_only=False):
         assert len(fields), 'need to specify fields to update for node.'
 
-        self._logger.debug('Saving node fields %s to ida db...' % str(fields))
+        self._logger.debug('Saving node fields %s to IDA db...' % str(fields))
 
         for node in nodes:
 
@@ -422,7 +426,7 @@ class GenericAgent():
         Update the action being processed with a sub-action's completion timestamp,
         and save to db.
         """
-        self._logger.debug('Saving completion timestamp to ida db for: %s...' % sub_action_name)
+        self._logger.info('Updating %s timestamp in IDA db for action %s' % (sub_action_name, action['pid']))
 
         # update existing action record in memory with the timestamp as well for convenience,
         # although not strictly necessary.
@@ -441,7 +445,7 @@ class GenericAgent():
 
         The action will no longer be automatically retried.
         """
-        self._logger.debug('Saving failed-timestamp to ida db...')
+        self._logger.info('Updating failed timestamp in IDA db for action %s' % action['pid'])
         error_data = { 'failed': current_time(), 'error': str(exception) }
         self._update_action_to_db(action, error_data)
         self._logger.warning('Marked action with pid %s as failed.' % action['pid'])
@@ -665,7 +669,7 @@ class GenericAgent():
         else:
             return False
 
-    def _set_sentinel_monitoring_file(self, action_pid):
+    def _set_sentinel_monitoring_file(self, message):
         """
         Create a sentinel monitoring file at the beginning of message processing, to know
         how long an agent is processing a message.
@@ -679,9 +683,11 @@ class GenericAgent():
                     'HOST="%s"\n'
                     'AGENT="%s"\n'
                     'PROCESS_ID=%d\n'
+                    'PROJECT="%s"\n'
+                    'ACTION="%s"\n'
                     'ACTION_PID="%s"\n'
                     'PROCESSING_STARTED="%s"\n'
-                    % (self._hostname, self.__class__.__name__, self._process_pid, action_pid, current_time())
+                    % (self._hostname, self.__class__.__name__, self._process_pid, message['project'], message['action'], message['pid'], current_time())
                 )
         except PermissionError:
             st = os.stat(self._sentinel_monitoring_file)

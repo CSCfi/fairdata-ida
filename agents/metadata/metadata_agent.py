@@ -45,6 +45,7 @@ class MetadataAgent(GenericAgent):
         """
         The main method which executes a single action.
         """
+        self._logger.info('Processing %s action %s' % (action['action'], action['pid']))
         if action['action'] == 'freeze':
             self._handle_freeze_action(action, method, queue)
         elif action['action'] in ('unfreeze', 'delete'):
@@ -114,7 +115,6 @@ class MetadataAgent(GenericAgent):
             else:
                 used_exchange = 'replication'
             self.publish_message(action, exchange=used_exchange)
-            self._logger.info('Publishing action %s to replication queue...' % action['pid'])
 
         self._ack_message(method)
 
@@ -146,7 +146,7 @@ class MetadataAgent(GenericAgent):
         # all nodes associated with the action, and is no different than for a repair action
 
         if self._sub_action_processed(action, 'checksums'):
-            self._logger.debug('Checksums already processed')
+            self._logger.info('Checksums already processed for action %s' % action['pid'])
         else:
             try:
                 nodes = self._process_checksums(action)
@@ -161,7 +161,7 @@ class MetadataAgent(GenericAgent):
             self._logger.debug('Note: Completing action without Metax')
             self._save_action_completion_timestamp(action, 'metadata')
         elif self._sub_action_processed(action, 'metadata'):
-            self._logger.debug('Metadata repair already processed')
+            self._logger.info('Metadata already processed for action %s' % action['pid'])
         else:
             try:
                 self._process_metadata_repair(action, nodes)
@@ -173,7 +173,9 @@ class MetadataAgent(GenericAgent):
         # Publish action message to replication queue
 
         if self._sub_action_processed(action, 'replication'):
-            self._logger.error('Replication already processed...? Okay... Something weird has happened here')
+            # Okay... Something weird has happened here, but we'll rap up the repair action anyway'
+            self._logger.info('Replication already processed for action %s' % action['pid'])
+            self._save_action_completion_timestamp(action, 'completed')
         else:
             if queue == 'metadata' or queue == 'metadata-failed':
                 used_exchange = 'replication'
@@ -182,7 +184,6 @@ class MetadataAgent(GenericAgent):
             else:
                 used_exchange = 'replication'
             self.publish_message(action, exchange=used_exchange)
-            self._logger.info('Publishing action %s to replication queue...' % action['pid'])
 
         self._ack_message(method)
 
@@ -257,6 +258,7 @@ class MetadataAgent(GenericAgent):
                 node['_updated'] = node_updated
 
         # Update db records for all updated nodes
+        self._logger.info('Updating checksum and size values in IDA db for all files associated with action %s' % action['pid'])
         self._save_nodes_to_db(nodes, fields=['checksum', 'size'], updated_only=True)
 
         self._save_action_completion_timestamp(action, 'checksums')
@@ -276,9 +278,12 @@ class MetadataAgent(GenericAgent):
 
         technical_metadata = self._aggregate_technical_metadata(action, nodes)
 
+        self._logger.info('Publishing metadata to Metax for action %s' % action['pid'])
         self._publish_metadata(technical_metadata)
 
+        self._logger.info('Updating metadata timestamp values in IDA db for all files associated with action %s' % action['pid'])
         self._save_nodes_to_db(nodes, fields=['metadata'])
+
         self._save_action_completion_timestamp(action, 'metadata')
         self._logger.debug('Metadata publication OK')
 
@@ -297,7 +302,9 @@ class MetadataAgent(GenericAgent):
 
         self._repair_metadata(technical_metadata, action)
 
+        self._logger.info('Updating metadata timestamp values in IDA db for all files associated with action %s' % action['pid'])
         self._save_nodes_to_db(nodes, fields=['metadata'])
+
         self._save_action_completion_timestamp(action, 'metadata')
         self._logger.debug('Metadata repair OK')
 
@@ -360,7 +367,7 @@ class MetadataAgent(GenericAgent):
         """
         Repair file metadata in Metax.
         """
-        self._logger.info('Repairing file metadata in metax for repair action %s' % action)
+        self._logger.info('Repairing file metadata in Metax for repair action %s' % action['pid'])
 
         existing_file_pids = []
         active_file_pids = []
@@ -410,7 +417,7 @@ class MetadataAgent(GenericAgent):
 
         if existing_file_count > 0:
 
-            self._logger.info('Patching file metadata in metax for repair action %s for %d files' % (action, existing_file_count))
+            self._logger.info('Patching file metadata in Metax for repair action %s for %d files' % (action['pid'], existing_file_count))
 
             response = self._metax_api_request('patch', '/files', data=existing_files)
 
@@ -445,7 +452,7 @@ class MetadataAgent(GenericAgent):
 
         if new_file_count > 0:
 
-            self._logger.info('Publishing missing file metadata in metax for repair action %s for %d files' % (action, new_file_count))
+            self._logger.info('Publishing missing file metadata in Metax for repair action %s for %d files' % (action['pid'], new_file_count))
 
             response = self._metax_api_request('post', '/files', data=new_files)
 
@@ -480,7 +487,7 @@ class MetadataAgent(GenericAgent):
 
         if removed_file_count > 0:
 
-            self._logger.info('Deleting unfrozen file metadata in metax for repair action %s for %d files' % (action, removed_file_count))
+            self._logger.info('Deprecating residual no-longer-frozen file metadata in Metax for repair action %s for %d files' % (action['pid'], removed_file_count))
 
             response = self._metax_api_request('delete', '/files', data=removed_file_pids)
 
@@ -516,7 +523,7 @@ class MetadataAgent(GenericAgent):
         """
         Publish file metadata to Metax.
         """
-        self._logger.debug('Publishing file metadata to metax...')
+        self._logger.debug('Publishing file metadata to Metax...')
 
         # TODO Determine if use of ignore_already_exists_errors is correct, or whether an error should be raised
         # if there exists a record for an active file in metax, since that should not be possible if IDA is working

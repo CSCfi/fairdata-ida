@@ -49,6 +49,7 @@ class ReplicationAgent(GenericAgent):
         """
         The main method which executes a single action.
         """
+        self._logger.info('Processing %s action %s' % (action['action'], action['pid']))
         if action['action'] == 'freeze' or action['action'] == 'repair':
             self._handle_freeze_action(action, method, queue)
         else:
@@ -114,7 +115,6 @@ class ReplicationAgent(GenericAgent):
 
         Replication basically means just a regular file copy from place a to b.
         """
-        self._logger.info('Processing replication for action %s' % action['pid'])
 
         self._check_replication_root_is_mounted()
         nodes = self._get_nodes_associated_with_action(action)
@@ -153,6 +153,7 @@ class ReplicationAgent(GenericAgent):
         self.last_number_of_files_replicated = files_copied
         self._save_action_completion_timestamp(action, 'replication')
         self._save_action_completion_timestamp(action, 'completed')
+
         self._logger.debug('Replication processing OK')
 
     def _check_replication_root_is_mounted(self):

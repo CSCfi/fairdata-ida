@@ -120,7 +120,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             </field>
             <field>
                 <!--
-                    Timestamp indicating when all PIDs were successfully generated and stored to DB for all nodes in scope.
+                    Timestamp indicating when all PIDs were successfully generated and stored to DB for all files in scope.
                     Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
                     Only defined for freeze actions.
                 -->
