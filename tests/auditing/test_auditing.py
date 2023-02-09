@@ -73,7 +73,7 @@ class TestAuditing(unittest.TestCase):
 
         if self.success:
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEqual(result, 0)
 

@@ -126,7 +126,7 @@ class TestDatasets(unittest.TestCase):
 
             self.flushDatasets()
 
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEqual(result, 0)
 
