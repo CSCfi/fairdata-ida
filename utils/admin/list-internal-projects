@@ -44,8 +44,16 @@ fi
 
 #--------------------------------------------------------------------------------
 
-ldapsearch -x -H "$LDAP_HOST_URL" -D "$LDAP_BIND_USER" -w "$LDAP_PASSWORD" -b "$LDAP_SEARCH_BASE" \
+# Get all internal projects known to the IdM
+PROJECTS=`ldapsearch -x -H "$LDAP_HOST_URL" -D "$LDAP_BIND_USER" -w "$LDAP_PASSWORD" -b "$LDAP_SEARCH_BASE" \
     '(&(objectClass=CSCServiceIDAClass)(CSCServiceIDAQuotaGranter=cn=00006,ou=Organizations,o=CSC))' CSCPrjNUM \
-    | grep 'CSCPrjNUM: ' | sed -e 's/^.*CSCPrjNUM: *//' -e 's/  *$//' | sort | uniq
+    | grep 'CSCPrjNUM: ' | sed -e 's/^.*CSCPrjNUM: *//' -e 's/  *$//' | sort | uniq`
+
+# Limit projects to those which exist in IDA
+for PROJECT in $PROJECTS; do
+    if [ -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}" ]; then
+        echo "$PROJECT"
+    fi
+done
 
 addToLog "DONE"
