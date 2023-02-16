@@ -150,6 +150,8 @@ fi
 
 mv $REPORT_BASE $REPORT
 
+HOSTNAME=`hostname`
+
 if [ "$DEBUG" = "true" ]; then
     echo "--- $SCRIPT ---" >&2
     echo "REPORT:        $REPORT" >&2
@@ -157,8 +159,17 @@ if [ "$DEBUG" = "true" ]; then
 fi
 
 if [ "$SEND_REPORT" = "true" ]; then
+
+    SUBJECT="Auditing errors reported for project $PROJECT"
+    MESSAGE="$REPORT"
+
+    if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
+        SUBJECT="$IDA_ENVIRONMENT: $SUBJECT"
+        MESSAGE="${HOSTNAME}:${MESSAGE}"
+    fi
+
     if [ "$RECIPIENTS" != "" ]; then
-        mail -s "$REPORT" -r $EMAIL_SENDER $RECIPIENTS < $REPORT
+        echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
     fi
 fi
 
