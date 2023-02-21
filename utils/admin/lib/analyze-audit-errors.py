@@ -33,10 +33,10 @@ def main():
 
     try:
 
-        if len(sys.argv) < 1:
+        if len(sys.argv) < 2:
             raise Exception('Invalid number of arguments')
     
-        LOGFILE = sys.argv[1]
+        report_file = sys.argv[1]
 
         #DEBUG = 'true' # TEMP HACK
 
@@ -46,9 +46,9 @@ def main():
         analysis["newest"] = "0000-00-00"
         analysis["errors"] = SortedDict({})
 
-        # load log file data
+        # load report file data
 
-        with open(LOGFILE) as f:
+        with open(report_file) as f:
            data = json.load(f)
 
         analysis["project"] = data["project"]
@@ -72,21 +72,21 @@ def main():
         #         if the newest timestamp for node is newer than analysis["newest"]:
         #             set analysis["newest"] to newest timestamp for node
 
-        for pathname_key in nodes:
-            node = nodes[pathname_key]
+        for pathname in nodes:
+            node = nodes[pathname]
             node_type = get_node_type(node)
-            if pathname_key.startswith("staging/"):
+            if pathname.startswith("staging/"):
                 node_location = "staging"
             else:
                 node_location = "frozen"
             node_oldest_timestamp = get_oldest_timestamp(node)
             node_newest_timestamp = get_newest_timestamp(node)
-            for error_key in node.get("errors", {}):
+            for error in node.get("errors", []):
                 if node_oldest_timestamp and node_newest_timestamp:
-                    entry = { "start": node_oldest_timestamp, "end": node_newest_timestamp, "pathname": pathname_key }
+                    entry = { "start": node_oldest_timestamp, "end": node_newest_timestamp, "pathname": pathname }
                 else:
-                    entry = { "pathname": pathname_key }
-                add_node_error_entry(analysis, error_key, node_type, node_location, entry)
+                    entry = { "pathname": pathname }
+                add_node_error_entry(analysis, error, node_type, node_location, entry)
             if node_oldest_timestamp and node_oldest_timestamp < analysis["oldest"]:
                 analysis["oldest"] = node_oldest_timestamp
             if node_newest_timestamp and node_newest_timestamp > analysis["newest"]:
@@ -263,7 +263,7 @@ def output_analysis(analysis):
 
     sys.stdout.write('{\n')
     sys.stdout.write('    "project": "%s",\n' % analysis["project"])
-    sys.stdout.write('    "ignoreTimestamps": "%s",\n' % analysis["ignoreTimestamps"])
+    sys.stdout.write('    "ignoreTimestamps": %s,\n' % json.dumps(analysis["ignoreTimestamps"]))
     sys.stdout.write('    "node_count": %d,\n' % analysis["node_count"])
     oldest = analysis.get("oldest")
     newest = analysis.get("newest")

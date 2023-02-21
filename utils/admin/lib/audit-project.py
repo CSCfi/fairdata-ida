@@ -77,9 +77,11 @@ def main():
 
         #config.DEBUG = 'true' # TEMP HACK
 
-        config.IGNORE_TIMESTAMPS = 'false'
+        config.IGNORE_TIMESTAMPS = False
         if len(sys.argv) == 5 and sys.argv[4] == '--ignore-timestamps':
-            config.IGNORE_TIMESTAMPS = 'true'
+            config.IGNORE_TIMESTAMPS = True
+
+        config.TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
         if [ config.DEBUG == 'true' ]:
             config.LOG_LEVEL = logging.DEBUG
@@ -120,7 +122,7 @@ def main():
             filename=config.LOG,
             level=config.LOG_LEVEL,
             format="%s %s (%s) %s" % ('%(asctime)s', config.SCRIPT, config.PID, '%(message)s'),
-            datefmt="%Y-%m-%dT%H:%M:%SZ")
+            datefmt=config.TIMESTAMP_FORMAT)
 
         logging.Formatter.converter = time.gmtime
 
@@ -226,7 +228,7 @@ def add_nextcloud_nodes(nodes, counts, config):
             pathname = "frozen/%s" % pathname[(project_name_len + 2):]
 
         node_type = 'file'
-        modified = datetime.utcfromtimestamp(row[3]).strftime('%Y-%m-%dT%H:%M:%SZ')
+        modified = datetime.utcfromtimestamp(row[3]).strftime(config.TIMESTAMP_FORMAT)
 
         if row[1] == 2:
             node_type = 'folder'
@@ -300,7 +302,7 @@ def add_filesystem_nodes(nodes, counts, config):
 
             node_type = 'file'
 
-            modified = datetime.utcfromtimestamp(modified).strftime('%Y-%m-%dT%H:%M:%SZ')
+            modified = datetime.utcfromtimestamp(modified).strftime(config.TIMESTAMP_FORMAT)
 
             if type == 'd':
                 node_type = 'folder'
@@ -448,8 +450,8 @@ def add_metax_files(nodes, counts, config):
 
             # Normalize modified and frozen timestamps to ISO UTC format
 
-            modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
-            frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime('%Y-%m-%dT%H:%M:%SZ') 
+            modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+            frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
             try:
                 checksum = str(file["checksum_value"])
             except Exception as error: # temp workaround for Metax bug
@@ -564,7 +566,7 @@ def audit_project(config):
             if filesystem and nextcloud and filesystem['size'] != nextcloud['size']:
                 errors['Node size different for filesystem and Nextcloud'] = True
 
-            if config.IGNORE_TIMESTAMPS != 'true':
+            if config.IGNORE_TIMESTAMPS == False:
                 if filesystem and nextcloud and filesystem['modified'] != nextcloud['modified']:
                     errors['Node modification timestamp different for filesystem and Nextcloud'] = True
 
@@ -610,7 +612,7 @@ def audit_project(config):
                 if ida['size'] != filesystem['size']:
                     errors['Node size different for filesystem and IDA'] = True
 
-                if config.IGNORE_TIMESTAMPS != 'true':
+                if config.IGNORE_TIMESTAMPS == False:
                     if ida['modified'] != filesystem['modified']:
                         errors['Node modification timestamp different for filesystem and IDA'] = True
 
@@ -620,7 +622,7 @@ def audit_project(config):
                 if ida['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and IDA'] = True
 
-                if config.IGNORE_TIMESTAMPS != 'true':
+                if config.IGNORE_TIMESTAMPS == False:
                     if ida['modified'] != nextcloud['modified']:
                         errors['Node modification timestamp different for Nextcloud and IDA'] = True
 
@@ -630,7 +632,7 @@ def audit_project(config):
                 if metax['size'] != filesystem['size']:
                     errors['Node size different for filesystem and Metax'] = True
 
-                if config.IGNORE_TIMESTAMPS != 'true':
+                if config.IGNORE_TIMESTAMPS == False:
                     if metax['modified'] != filesystem['modified']:
                         errors['Node modification timestamp different for filesystem and Metax'] = True
 
@@ -640,7 +642,7 @@ def audit_project(config):
                 if metax['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and Metax'] = True
 
-                if config.IGNORE_TIMESTAMPS != 'true':
+                if config.IGNORE_TIMESTAMPS == False:
                     if metax['modified'] != nextcloud['modified']:
                         errors['Node modification timestamp different for Nextcloud and Metax'] = True
 
@@ -650,7 +652,7 @@ def audit_project(config):
                 if ida['size'] != metax['size']:
                     errors['Node size different for IDA and Metax'] = True
 
-                if config.IGNORE_TIMESTAMPS != 'true':
+                if config.IGNORE_TIMESTAMPS == False:
                     if ida['modified'] != metax['modified']:
                         errors['Node modification timestamp different for IDA and Metax'] = True
                     if ida['frozen'] != metax['frozen']:
@@ -685,16 +687,17 @@ def audit_project(config):
 
                             fsstat = os.stat(full_pathname)
                             size = fsstat.st_size
+                            modified = datetime.utcfromtimestamp(fsstat.st_mtime).strftime(config.TIMESTAMP_FORMAT)
 
-                            node['replication'] = {'type': 'file', 'size': size}
+                            node['replication'] = {'type': 'file', 'size': size, 'modified': modified}
 
                             if ida['size'] != size:
-                                errors['Node size different for IDA and replication'] = True
+                                errors['Node size different for replication and IDA'] = True
 
                         else:
 
                             node['replication'] = {'type': 'folder'}
-                            errors['Node type different for IDA and replication'] = True
+                            errors['Node type different for replication and IDA'] = True
 
                     else:
                         errors['Node does not exist in replication'] = True
@@ -715,9 +718,9 @@ def audit_project(config):
 
     sys.stdout.write("{\n")
     sys.stdout.write("\"project\": %s,\n" % str(json.dumps(config.PROJECT)))
-    sys.stdout.write("\"ignoreTimestamps\": %s,\n" % str(json.dumps(config.IGNORE_TIMESTAMPS)))
+    sys.stdout.write("\"ignoreTimestamps\": %s,\n" % json.dumps(config.IGNORE_TIMESTAMPS))
     sys.stdout.write("\"start\": %s,\n" % str(json.dumps(config.START)))
-    sys.stdout.write("\"end\": %s,\n" % str(json.dumps(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))))
+    sys.stdout.write("\"end\": %s,\n" % str(json.dumps(datetime.utcnow().strftime(config.TIMESTAMP_FORMAT))))
     sys.stdout.write("\"filesystemNodeCount\": %d,\n" % counts['filesystemNodeCount'])
     sys.stdout.write("\"nextcloudNodeCount\": %d,\n" % counts['nextcloudNodeCount'])
     sys.stdout.write("\"idaNodeCount\": %d,\n" % counts['idaNodeCount'])

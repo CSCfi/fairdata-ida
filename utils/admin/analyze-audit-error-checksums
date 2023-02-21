@@ -1,0 +1,93 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+#
+# This script analyzes a project audit error file (encoded in JSON) and for each
+# error pertaining to frozen file size, will compare the file on disk with the
+# checksum recorded in IDA and report whether the file is valid according to the
+# recorded checksum. If the --include-replication parameter is specified, the
+# replicated copy of the file on tape storage will also be checked against the
+# recorded checksum.
+#
+# The analysis is stored to a new file having the same pathname as the error file,
+# but with the additional suffix '.checksums' appended (no file will be created
+# if there are no frozen file size issues in the audit error report).
+# --------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+PROJECT="null"
+
+USAGE="
+Usage: $SCRIPT error_file [ --include-replication ] 
+       $SCRIPT -h
+
+       error_file  the pathname of the audit error file to be analyzed
+
+       if --include-replication is specified, the replicated frozen file copy will also be checked
+"
+
+#--------------------------------------------------------------------------------
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+ERROR_FILE="$1"
+
+if [ -z "$ERROR_FILE" ]; then
+    echo "Error: no input file pathname specified"
+    echo "$USAGE"
+    exit 1
+fi
+
+if [ ! -f "$ERROR_FILE" ]; then
+    echo "Error: the specified input file does not exist"
+    echo "$USAGE"
+    exit 1
+fi
+
+REPORT="${ERROR_FILE}.checksums"
+
+#--------------------------------------------------------------------------------
+
+export PROJECT_USER_PREFIX
+export STORAGE_OC_DATA_ROOT
+export DATA_REPLICATION_ROOT
+
+#--------------------------------------------------------------------------------
+
+source $ROOT/venv/bin/activate
+
+python -u $ROOT/utils/admin/lib/analyze-audit-error-checksums.py $* > $REPORT
+
+echo "Analysis results saved to file $REPORT"
+
+addToLog "DONE"

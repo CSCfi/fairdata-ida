@@ -832,14 +832,14 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertTrue("Node size different for IDA and replication" in errors)
+        self.assertTrue("Node size different for replication and IDA" in errors)
 
         print("Verify correct error report of IDA file type conflict with replication")
         node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/zero_size_file", None)
         self.assertIsNotNone(node)
         errors = node.get("errors", None)
         self.assertIsNotNone(errors)
-        self.assertTrue("Node type different for IDA and replication" in errors)
+        self.assertTrue("Node type different for replication and IDA" in errors)
 
         # --------------------------------------------------------------------------------
 
