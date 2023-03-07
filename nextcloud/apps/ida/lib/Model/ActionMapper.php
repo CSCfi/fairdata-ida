@@ -114,6 +114,7 @@ class ActionMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -172,6 +173,7 @@ class ActionMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -256,6 +258,7 @@ class ActionMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -355,6 +358,7 @@ class ActionMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -392,7 +396,7 @@ class ActionMapper extends Mapper
      */
     function findAction($pid, $projects = null) {
         
-        $sql = 'SELECT * FROM *PREFIX*ida_action WHERE pid = \'' . $pid . '\'';
+        $sql = 'SELECT * FROM *PREFIX*ida_action WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
         // Add project restrictions if defined
         
@@ -404,6 +408,7 @@ class ActionMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -476,7 +481,7 @@ class ActionMapper extends Mapper
      */
     function deleteAction($pid) {
         
-        $sql = 'DELETE FROM *PREFIX*ida_action WHERE pid = \'' . $pid . '\'';
+        $sql = 'DELETE FROM *PREFIX*ida_action WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
         Util::writeLog('ida', 'deleteAction: sql=' . $sql, \OCP\Util::DEBUG);
         
@@ -492,7 +497,7 @@ class ActionMapper extends Mapper
         $sql = 'DELETE FROM *PREFIX*ida_action';
         
         if ($project != 'all') {
-            $sql = $sql . ' WHERE project =\'' . $project . '\'';
+            $sql = $sql . ' WHERE project =\'' . Access::escapeQueryStringComponent($project) . '\'';
         }
         
         Util::writeLog('ida', 'deleteAllActions: sql=' . $sql, \OCP\Util::DEBUG);

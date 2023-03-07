@@ -159,7 +159,7 @@ class FileController extends Controller
             return new DataResponse($fileEntities);
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getFiles: ' . $e->getMessage());
         }
     }
 
@@ -213,7 +213,7 @@ class FileController extends Controller
             return new DataResponse($fileEntity);
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getFile: ' . $e->getMessage());
         }
     }
 
@@ -267,7 +267,7 @@ class FileController extends Controller
             return new DataResponse($fileEntity);
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getFileByNextcloudNodeId: ' . $e->getMessage());
         }
     }
 
@@ -318,7 +318,7 @@ class FileController extends Controller
             return new DataResponse($fileEntity);
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getFileByProjectPathname: ' . $e->getMessage());
         }
     }
 
@@ -420,7 +420,7 @@ class FileController extends Controller
             return new DataResponse($this->fileMapper->insert($fileEntity));
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('createFile: ' . $e->getMessage());
         }
     }
 
@@ -551,7 +551,7 @@ class FileController extends Controller
             return new DataResponse($this->fileMapper->update($fileEntity));
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('updateFile: ' . $e->getMessage());
         }
     }
 
@@ -596,7 +596,7 @@ class FileController extends Controller
             return API::successResponse('File ' . $pid . ' deleted.');
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('deleteFile: ' . $e->getMessage());
         }
     }
 
@@ -654,7 +654,7 @@ class FileController extends Controller
             return API::successResponse($title, true);
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getProjectTitle: ' . $e->getMessage());
         }
     }
 

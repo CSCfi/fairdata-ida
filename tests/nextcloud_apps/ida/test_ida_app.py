@@ -312,6 +312,22 @@ class TestIdaApp(unittest.TestCase):
         response_data = response.json()
         self.assertEqual(response_data["message"], "The specified folder contains no files which can be frozen.")
 
+        print("Freeze a single file where filename contains special characters")
+        data = {"project": "test_project_a", "pathname": "/testdata/Special Characters/$file with spaces and special characters #@äÖ+'^.dat&"}
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        print("Retrieve frozen file details by pathname where filename contains special characters")
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        file_data = response.json()
+        self.assertEqual(file_data["pathname"], data["pathname"])
+        self.assertEqual(file_data["size"], 446)
+
         # --------------------------------------------------------------------------------
 
         print("--- Unfreeze Actions")
@@ -787,7 +803,7 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/actions" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_set_data = response.json()
-        self.assertEqual(len(action_set_data), 12)
+        self.assertEqual(len(action_set_data), 13)
         action_data = action_set_data[0]
         action_pid = action_data["pid"]
         self.assertIsNotNone(action_data.get("completed", None))

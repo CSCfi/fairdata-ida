@@ -70,7 +70,7 @@ class FileMapper extends Mapper
         // Add action pid restriction if defined
         
         if ($pid != null) {
-            $sql = $sql . ' WHERE action = \'' . $pid . '\'';
+            $sql = $sql . ' WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         }
         
         // Add project restrictions if defined
@@ -83,6 +83,7 @@ class FileMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -135,7 +136,7 @@ class FileMapper extends Mapper
         // Add action pid restriction if defined
         
         if ($pid != null) {
-            $sql = $sql . ' WHERE action = \'' . $pid . '\'';
+            $sql = $sql . ' WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         }
         
         if ($includeInactive == false) {
@@ -160,6 +161,7 @@ class FileMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -199,7 +201,7 @@ class FileMapper extends Mapper
      */
     function findFile($pid, $projects = null, $includeInactive = false) {
         
-        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE pid = \'' . $pid . '\'';
+        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
         if ($includeInactive == false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
@@ -215,6 +217,7 @@ class FileMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -253,7 +256,7 @@ class FileMapper extends Mapper
      */
     function findByNextcloudNodeId($node, $projects = null, $includeInactive = false) {
         
-        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE node = ' . $node;
+        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE node = ' . (int)$node;
         
         if ($includeInactive == false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
@@ -269,6 +272,7 @@ class FileMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -308,7 +312,10 @@ class FileMapper extends Mapper
      */
     public function findByProjectPathname($project, $pathname, $projects = null, $includeInactive = false) {
         
-        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . $project . '\' AND pathname = \'' . $pathname . '\'';
+        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \''
+            . Access::escapeQueryStringComponent($project)
+            . '\' AND pathname = \''
+            . Access::escapeQueryStringComponent($pathname) . '\'';
         
         if ($includeInactive == false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
@@ -324,6 +331,7 @@ class FileMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -360,7 +368,7 @@ class FileMapper extends Mapper
      */
     public function findFrozenFiles($project, $includeInactive = false) {
         
-        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . $project . '\'';
+        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . Access::escapeQueryStringComponent($project) . '\'';
         
         if ($includeInactive == false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
@@ -383,7 +391,7 @@ class FileMapper extends Mapper
      */
     public function deleteFiles($pid, $projects = null) {
         
-        $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE action = \'' . $pid . '\'';
+        $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
         // Add project restrictions if defined
         
@@ -395,6 +403,7 @@ class FileMapper extends Mapper
             $first = true;
             
             foreach (explode(',', $projects) as $project) {
+                $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
                     $projectList = '\'' . $project . '\'';
                     $first = false;
@@ -420,7 +429,7 @@ class FileMapper extends Mapper
      */
     function deleteFile($pid) {
         
-        $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE pid = \'' . $pid . '\'';
+        $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
         Util::writeLog('ida', 'deleteFile: sql=' . $sql, \OCP\Util::DEBUG);
         
@@ -436,7 +445,7 @@ class FileMapper extends Mapper
         $sql = 'DELETE FROM *PREFIX*ida_frozen_file';
         
         if ($project != 'all') {
-            $sql = $sql . ' WHERE project =\'' . $project . '\'';
+            $sql = $sql . ' WHERE project =\'' . Access::escapeQueryStringComponent($project) . '\'';
         }
         
         Util::writeLog('ida', 'deleteAllFiles: sql=' . $sql, \OCP\Util::DEBUG);

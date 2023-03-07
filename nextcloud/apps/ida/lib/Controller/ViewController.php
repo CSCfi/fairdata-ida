@@ -169,7 +169,7 @@ class ViewController extends Controller
             return new DataResponse([], Http::STATUS_SEE_OTHER, array('Location' => '/apps/ida/action/' . $pid));
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('retryAction: ' . $e->getMessage());
         }
     }
     
@@ -196,7 +196,7 @@ class ViewController extends Controller
             return new DataResponse([], Http::STATUS_SEE_OTHER, array('Location' => '/apps/ida/action/' . $pid));
         }
         catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('clearAction: ' . $e->getMessage());
         }
     }
     

@@ -236,7 +236,7 @@ class FreezingController extends Controller
                 'frozen' => $frozenFiles
             ));
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getFileInventory: ' . $e->getMessage());
         }
     }
 
@@ -295,7 +295,7 @@ class FreezingController extends Controller
 
             return API::notFoundErrorResponse('No lock exists for the specified project.');
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('projectIsLocked: ' . $e->getMessage());
         }
     }
 
@@ -363,7 +363,7 @@ class FreezingController extends Controller
 
             return API::conflictErrorResponse('Unable to lock the specified project.');
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('lockProject: ' . $e->getMessage());
         }
     }
 
@@ -431,7 +431,7 @@ class FreezingController extends Controller
 
             return API::conflictErrorResponse('Unable to unlock the specified project.');
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('unlockProject: ' . $e->getMessage());
         }
     }
 
@@ -644,7 +644,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('freezeFiles: ' . $e->getMessage());
         }
     }
 
@@ -852,7 +852,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('unfreezeFiles: ' . $e->getMessage());
         }
     }
 
@@ -1058,7 +1058,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('deleteFiles: ' . $e->getMessage());
         }
     }
 
@@ -1304,7 +1304,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('retryAction: ' . $e->getMessage());
         }
     }
 
@@ -1384,7 +1384,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('clearAction: ' . $e->getMessage());
         }
     }
 
@@ -1555,7 +1555,7 @@ class FreezingController extends Controller
             return new DataResponse($datasets);
 
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getDatasets: ' . $e->getMessage());
         }
     }
 
@@ -3128,7 +3128,7 @@ class FreezingController extends Controller
 
             return $this->dbLoadSummary();
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('dbLoad: ' . $e->getMessage());
         }
     }
 
@@ -3172,7 +3172,7 @@ class FreezingController extends Controller
 
             return new DataResponse($summary);
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('dbLoadSummary: ' . $e->getMessage());
         }
     }
 
@@ -3366,7 +3366,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('bootstrapProject: ' . $e->getMessage());
         }
     }
 
@@ -3498,7 +3498,7 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('repairProject: ' . $e->getMessage());
         }
     }
 
@@ -3711,7 +3711,7 @@ class FreezingController extends Controller
             return API::successResponse('The specified scope does not conflict with any ongoing action in the specified project.', true);
 
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('checkScope: ' . $e->getMessage());
         }
     }
 

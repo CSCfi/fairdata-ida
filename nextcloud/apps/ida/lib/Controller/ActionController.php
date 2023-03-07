@@ -131,7 +131,7 @@ class ActionController extends Controller
 
             return new DataResponse($this->actionMapper->findActions($status, $queryProjects));
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getActions: ' . $e->getMessage());
         }
     }
 
@@ -208,7 +208,7 @@ class ActionController extends Controller
 
             return new DataResponse($status);
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getStatus: ' . $e->getMessage());
         }
     }
 
@@ -263,7 +263,7 @@ class ActionController extends Controller
 
             return new DataResponse($actionEntity);
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('getAction: ' . $e->getMessage());
         }
     }
 
@@ -402,7 +402,7 @@ class ActionController extends Controller
             }
             return new DataResponse($this->actionMapper->insert($actionEntity));
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('createAction: ' . $e->getMessage());
         }
     }
 
@@ -630,7 +630,7 @@ class ActionController extends Controller
 
             return new DataResponse($this->actionMapper->update($actionEntity));
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('updateAction: ' . $e->getMessage());
         }
     }
 
@@ -674,7 +674,7 @@ class ActionController extends Controller
 
             return API::successResponse('Action ' . $pid . ' deleted.');
         } catch (Exception $e) {
-            return API::serverErrorResponse($e->getMessage());
+            return API::serverErrorResponse('deleteAction: ' . $e->getMessage());
         }
     }
 }

@@ -218,4 +218,25 @@ class Access
         return ($lockFilePathname);
     }
     
+    /**
+     * Escapes all single quotes which might exist in an SQL query string component, preventing SQL injection
+     * (and thereby preventing disallowed access to data)
+     *
+     * @param string $component the query string compoent
+     *
+     * @return string
+     */
+    public static function escapeQueryStringComponent($component) {
+        Util::writeLog('ida', 'escapeQueryStringComponent: component=' . $component, \OCP\Util::DEBUG);
+        if ($component == null || $component == '') {
+            $escapedComponent = $component;
+        }
+        else {
+            $escapedComponent = str_replace('\'', '\'\'', $component);
+        }
+        Util::writeLog('ida', 'escapeQueryStringComponent: escapedComponent=' . $escapedComponent, \OCP\Util::DEBUG);
+        
+        return ($escapedComponent);
+    }
+
 }
