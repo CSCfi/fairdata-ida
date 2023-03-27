@@ -68,9 +68,9 @@ fi
 
 if [ "$DEBUG" = "true" ]
 then
-    echo "PROJECT: $PROJECT" >&2
-    echo "FILE:    $FILE" >&2
-    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\"" >&2
+    echo "PROJECT: $PROJECT"
+    echo "FILE:    $FILE"
+    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\""
 fi
 
 if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then

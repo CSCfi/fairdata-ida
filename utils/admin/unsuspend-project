@@ -79,7 +79,7 @@ echo "Clearing suspend action for project ${PROJECT}..."
 for PID in $PIDS; do
 
     if [ "$DEBUG" = "true" ]; then
-         echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions/$PID?cleared=$TIMESTAMP\"" >&2
+         echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions/$PID?cleared=$TIMESTAMP\""
     fi
 
     OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "$IDA_API_ROOT_URL/actions/$PID?cleared=$TIMESTAMP"`
@@ -96,7 +96,7 @@ done
 echo "Unlocking project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_DELETE \"$PROJECT_USER_CREDENTIALS\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\"" >&2
+    echo "$CURL_DELETE \"$PROJECT_USER_CREDENTIALS\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\""
 fi
 
 OUT=`$CURL_DELETE "$PROJECT_USER_CREDENTIALS" "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`

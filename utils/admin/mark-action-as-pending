@@ -69,7 +69,7 @@ REQUEST_URL="https://localhost/apps/ida/api/actions/${ACTION}?project=${PROJECT}
 echo "Marking action ${ACTION} in project ${PROJECT} as pending..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+    echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\""
 fi
 
 OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`

@@ -118,7 +118,9 @@ class TestAuditing(unittest.TestCase):
     def auditProject(self, project, suffix, ignore_timestamps = False):
         """
         Audit the specified project, verify that the audit report log was created with
-        the specified suffix, and load and return the audit report as a JSON object.
+        the specified suffix, and load and return the audit report as a JSON object, with
+        the audit report pathname defined in the returned object for later timestamp
+        repair if/as needed.
         """
 
         print ("(auditing project %s)" % project)
@@ -131,9 +133,10 @@ class TestAuditing(unittest.TestCase):
             self.fail(error.output.decode(sys.stdout.encoding))
         self.assertNotEqual(output, None, output)
         self.assertNotEqual(output, "", output)
-        self.assertTrue(output.startswith("Audit results saved to file "), output)
+        self.assertTrue(("Audit results saved to file " in output), output)
 
-        report_pathname = output[28:]
+        start = output.index("Audit results saved to file ")
+        report_pathname = output[start + 28:]
 
         print("Verify audit report exists and has the correct suffix")
         path = Path(report_pathname)
@@ -148,6 +151,7 @@ class TestAuditing(unittest.TestCase):
             self.fail(error.output.decode(sys.stdout.encoding))
         self.assertEqual(report_data.get("project", None), project)
 
+        report_data["reportPathname"] = report_pathname
         return report_data
 
 
@@ -590,6 +594,8 @@ class TestAuditing(unittest.TestCase):
 
         report_data = self.auditProject("test_project_a", "err")
 
+        report_pathname_a = report_data["reportPathname"]
+
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
 
@@ -649,6 +655,8 @@ class TestAuditing(unittest.TestCase):
 
         report_data = self.auditProject("test_project_b", "err")
 
+        report_pathname_b = report_data["reportPathname"]
+
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
 
@@ -698,6 +706,8 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project C and checking results")
 
         report_data = self.auditProject("test_project_c", "err")
+
+        report_pathname_c = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
@@ -764,6 +774,8 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project D and checking results")
         
         report_data = self.auditProject("test_project_d", "err")
+
+        report_pathname_d = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
@@ -876,6 +888,12 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
 
+        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
         print("(repairing project B)")
         cmd = "sudo -u %s %s/utils/admin/repair-project test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
         try:
@@ -886,6 +904,12 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_b", test_user_b)
         self.checkForFailedActions("test_project_b", test_user_b)
 
+        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
         print("(repairing project C)")
         cmd = "sudo -u %s %s/utils/admin/repair-project test_project_c" % (self.config["HTTPD_USER"], self.config["ROOT"])
         try:
@@ -895,6 +919,12 @@ class TestAuditing(unittest.TestCase):
 
         self.waitForPendingActions("test_project_c", test_user_c)
         self.checkForFailedActions("test_project_c", test_user_c)
+
+        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
 
         print("(repairing project D)")
 
@@ -937,16 +967,15 @@ class TestAuditing(unittest.TestCase):
         self.waitForPendingActions("test_project_d", test_user_d)
         self.checkForFailedActions("test_project_d", test_user_d)
 
+        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
         print("--- Re-auditing project A and checking results")
         
-        # The repair process does not (yet) resolve all types of timestamp discrepancies so in
-        # this final post-repair auditing we will ignore timestamps and only ensure all other 
-        # issues have been correctly repaired.
-        #
-        # TODO: Once the repair process resolves all types of timestamp discrepancies, include
-        # timestamp comparisons in final post-repair audits.
-
-        report_data = self.auditProject("test_project_a", "ok", True)
+        report_data = self.auditProject("test_project_a", "ok")
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
@@ -965,7 +994,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project B and checking results")
         
-        report_data = self.auditProject("test_project_b", "ok", True)
+        report_data = self.auditProject("test_project_b", "ok")
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
@@ -984,7 +1013,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project C and checking results")
         
-        report_data = self.auditProject("test_project_c", "ok", True)
+        report_data = self.auditProject("test_project_c", "ok")
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
@@ -1003,7 +1032,39 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project D and checking results")
         
-        report_data = self.auditProject("test_project_d", "ok", True)
+        # Because we change the pid and timestamps of one file prior to the previous
+        # repair, we still will get that file reported with timestamp discrepancies
+        # because the timestamp repair would be unable to fix the timstamps in IDA
+        # and Metax due to the wrong pid. So we need to actually expect one invalid
+        # node in the next audit, then repair timestamps based on the new audit error
+        # report and thereafter should get no errors reported for project D.
+
+        report_data = self.auditProject("test_project_d", "err")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount", None), 110)
+
+        print("Verify correct number of reported IDA nodes")
+        self.assertEqual(report_data.get("idaNodeCount", None), 5)
+
+        print("Verify correct number of reported Metax nodes")
+        self.assertEqual(report_data.get("metaxNodeCount", None), 5)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount", None), 1)
+
+        report_pathname_d = report_data["reportPathname"]
+
+        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
+        try:
+            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        report_data = self.auditProject("test_project_d", "ok")
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 110)

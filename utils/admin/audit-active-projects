@@ -80,8 +80,8 @@ fi
 #DEBUG="true" # TEMP HACK
 
 if [ "$DEBUG" = "true" ]; then
-    echo "SINCE:      $SINCE" >&2
-    echo "AUDIT_ARGS: $AUDIT_ARGS" >&2
+    echo "SINCE:      $SINCE"
+    echo "AUDIT_ARGS: $AUDIT_ARGS"
 fi
 
 #--------------------------------------------------------------------------------

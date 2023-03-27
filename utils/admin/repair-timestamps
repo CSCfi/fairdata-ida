@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,21 +21,25 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
+# This script loads a project audit error file (encoded in JSON) and for each
+# timestamp error will update the timestamps in Nextcloud, IDA, and Metax to
+# match the last modified timestamp in the filesystem and the frozen timestamp
+# in IDA, as appropriate.
+# --------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
+PROJECT="null"
 
 USAGE="
-Usage: $SCRIPT project pid
+Usage: $SCRIPT error_file
        $SCRIPT -h
 
-       project = the project name
-       pid     = the pid of the action
+       error_file  the pathname of the audit error file to be loaded
 "
 
 #--------------------------------------------------------------------------------
-# Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -46,39 +50,46 @@ else
 fi
 
 #--------------------------------------------------------------------------------
-# Process command line arguments
 
-if [ "$#" -ne 2 ]; then
-    echo "$USAGE" >&2
-    errorExit "Invalid number of arguments"
+ERROR_FILE="$1"
+
+if [ -z "$ERROR_FILE" ]; then
+    echo "Error: no input file pathname specified"
+    echo "$USAGE"
+    exit 1
 fi
 
-PROJECT="$1"
-ACTION="$2"
+if [ ! -f "$ERROR_FILE" ]; then
+    echo "Error: the specified input file does not exist"
+    echo "$USAGE"
+    exit 1
+fi
 
 #--------------------------------------------------------------------------------
 
-URL="$IDA_API_ROOT_URL/files/action/${ACTION}"
+export PROJECT_USER_PREFIX
+export PROJECT_USER_PASS
 
-if [ "$DEBUG" = "true" ]
-then
-    echo "PROJECT: $PROJECT"
-    echo "ACTION:  $ACTION"
-    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\""
-fi
+export IDA_API_ROOT_URL
 
-if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "The specified project ${PROJECT} does not exist"
-fi
+export METAX_API_ROOT_URL
+export METAX_API_USER
+export METAX_API_PASS
 
-OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
+#export STORAGE_OC_DATA_ROOT
+#export STAGING_FOLDER_SUFFIX
 
-if [ -s $ERR ]; then
-    MSG=`cat $ERR`
-    addToLog "$MSG"
-    errorExit "Failed to retrieve action file details"
-fi
+#export DBNAME
+#export DBHOST
+#export DBPORT
+#export DBTABLEPREFIX
+#export DBUSER
+#export DBPASSWORD
 
-echo "$OUT" | python -m json.tool
+#--------------------------------------------------------------------------------
+
+source $ROOT/venv/bin/activate
+
+python -u $ROOT/utils/admin/lib/repair-timestamps.py $*
 
 addToLog "DONE"

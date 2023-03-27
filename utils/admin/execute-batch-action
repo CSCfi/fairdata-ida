@@ -87,9 +87,9 @@ echo "Executing ${ACTION} action for pathname ${PATHNAME} in project ${PROJECT}.
 
 if [ "$DEBUG" = "true" ]; then
     if [ "$SIMULATE_AGENTS" = "true" ]; then
-        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\""
     else
-        echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\""
     fi
 fi
 

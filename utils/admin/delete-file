@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@ Usage: $SCRIPT project pid
        $SCRIPT -h
 
        project = the project name
-       pid     = the pid of the action
+       pid     = the pid of the frozen file
 "
 
 #--------------------------------------------------------------------------------
@@ -48,37 +48,27 @@ fi
 #--------------------------------------------------------------------------------
 # Process command line arguments
 
-if [ "$#" -ne 2 ]; then
+if [ "$#" != 2 ]; then
     echo "$USAGE" >&2
     errorExit "Invalid number of arguments"
 fi
 
 PROJECT="$1"
-ACTION="$2"
+FILE="$2"
 
 #--------------------------------------------------------------------------------
 
-URL="$IDA_API_ROOT_URL/files/action/${ACTION}"
+URL="${IDA_API_ROOT_URL}/files/${FILE}"
 
-if [ "$DEBUG" = "true" ]
-then
-    echo "PROJECT: $PROJECT"
-    echo "ACTION:  $ACTION"
-    echo "REQUEST: $CURL_GET $PROJECT_USER_CREDENTIALS \"${URL}\""
-fi
-
-if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
-    errorExit "The specified project ${PROJECT} does not exist"
-fi
-
-OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
+OUT=`$CURL_DELETE $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR`
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
-    errorExit "Failed to retrieve action file details"
+    errorExit "Failed to delete file details in IDA"
 fi
 
 echo "$OUT" | python -m json.tool
 
 addToLog "DONE"
+

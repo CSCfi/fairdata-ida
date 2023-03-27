@@ -63,7 +63,7 @@ fi
 #DEBUG="true" # TEMP HACK
 
 if [ "$DEBUG" = "true" ]; then
-    echo "AUDIT_ARGS: $AUDIT_ARGS" >&2
+    echo "AUDIT_ARGS: $AUDIT_ARGS"
 fi
 
 #--------------------------------------------------------------------------------

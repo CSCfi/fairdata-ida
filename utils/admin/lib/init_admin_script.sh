@@ -163,37 +163,37 @@ else
 fi
 
 if [ "$DEBUG" = "true" ]; then
-    echo "" >&2
-    echo "NC_ADMIN_USER                $NC_ADMIN_USER" >&2
-    echo "NC_ADMIN_PASS                $NC_ADMIN_PASS" >&2
-    echo "METAX_API_USER               $METAX_API_USER" >&2
-    echo "METAX_API_PASS               $METAX_API_PASS" >&2
-    echo "HTTPD_USER                   $HTTPD_USER" >&2
-    echo "PROJECT_USER_PASS            $PROJECT_USER_PASS" >&2
-    echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX" >&2
-    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN" >&2
-    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL" >&2
-    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL" >&2
-    echo "ROOT                         $ROOT" >&2
-    echo "STORAGE_OC_DATA_ROOT         $STORAGE_OC_DATA_ROOT" >&2
-    echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT" >&2
-    echo "OCC                          $OCC" >&2
-    echo "EMAIL_SENDER                 $EMAIL_SENDER" >&2
-    echo "EMAIL_RECIPIENTS             $EMAIL_RECIPIENTS" >&2
-    echo "TRASH_DATA_ROOT              $TRASH_DATA_ROOT" >&2
-    echo "QUARANTINE_PERIOD            $QUARANTINE_PERIOD" >&2
-    echo "PROJECT_USER                 $PROJECT_USER" >&2
-    echo "PROJECT_STORAGE_OC_DATA_ROOT $PROJECT_STORAGE_OC_DATA_ROOT" >&2
-    echo "PROJECT_LOCK                 $PROJECT_LOCK" >&2
-    echo "PROJECT_SUSPENDED            $PROJECT_SUSPENDED" >&2
-    echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT" >&2
-    echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT" >&2
-    echo "PROJECT_USER_CREDENTIALS     $PROJECT_USER_CREDENTIALS" >&2
-    echo "ADMIN_CREDENTIALS            $ADMIN_CREDENTIALS" >&2
-    echo "LOG                          $LOG" >&2
-    echo "ERR                          $ERR" >&2
-    echo "REQUEST_URL_ROOT             $REQUEST_URL_ROOT" >&2
-    echo "" >&2
+    echo ""
+    echo "NC_ADMIN_USER                $NC_ADMIN_USER"
+    echo "NC_ADMIN_PASS                $NC_ADMIN_PASS"
+    echo "METAX_API_USER               $METAX_API_USER"
+    echo "METAX_API_PASS               $METAX_API_PASS"
+    echo "HTTPD_USER                   $HTTPD_USER"
+    echo "PROJECT_USER_PASS            $PROJECT_USER_PASS"
+    echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX"
+    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
+    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
+    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
+    echo "ROOT                         $ROOT"
+    echo "STORAGE_OC_DATA_ROOT         $STORAGE_OC_DATA_ROOT"
+    echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT"
+    echo "OCC                          $OCC"
+    echo "EMAIL_SENDER                 $EMAIL_SENDER"
+    echo "EMAIL_RECIPIENTS             $EMAIL_RECIPIENTS"
+    echo "TRASH_DATA_ROOT              $TRASH_DATA_ROOT"
+    echo "QUARANTINE_PERIOD            $QUARANTINE_PERIOD"
+    echo "PROJECT_USER                 $PROJECT_USER"
+    echo "PROJECT_STORAGE_OC_DATA_ROOT $PROJECT_STORAGE_OC_DATA_ROOT"
+    echo "PROJECT_LOCK                 $PROJECT_LOCK"
+    echo "PROJECT_SUSPENDED            $PROJECT_SUSPENDED"
+    echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT"
+    echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT"
+    echo "PROJECT_USER_CREDENTIALS     $PROJECT_USER_CREDENTIALS"
+    echo "ADMIN_CREDENTIALS            $ADMIN_CREDENTIALS"
+    echo "LOG                          $LOG"
+    echo "ERR                          $ERR"
+    echo "REQUEST_URL_ROOT             $REQUEST_URL_ROOT"
+    echo ""
 fi
 
 function bytesToHR()

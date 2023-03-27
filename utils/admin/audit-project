@@ -57,7 +57,7 @@ if [ -e $INIT_FILE ]
 then
     . $INIT_FILE
 else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    echo "The initialization file $INIT_FILE cannot be found. Aborting."
     exit 1
 fi
 
@@ -96,9 +96,9 @@ fi
 #DEBUG="true" # TEMP HACK
 
 if [ "$DEBUG" = "true" ]; then
-    echo "PROJECT:    $PROJECT" >&2
-    echo "REPORT_REQ: $REPORT_REQ $RECIPIENTS" >&2
-    echo "IGNORE_TS:  $IGNORE_TIMESTAMPS" >&2
+    echo "PROJECT:    $PROJECT"
+    echo "REPORT_REQ: $REPORT_REQ $RECIPIENTS"
+    echo "IGNORE_TS:  $IGNORE_TIMESTAMPS"
 fi
 
 #--------------------------------------------------------------------------------
@@ -153,9 +153,9 @@ mv $REPORT_BASE $REPORT
 HOSTNAME=`hostname`
 
 if [ "$DEBUG" = "true" ]; then
-    echo "--- $SCRIPT ---" >&2
-    echo "REPORT:        $REPORT" >&2
-    echo "SEND_REPORT:   $SEND_REPORT" >&2
+    echo "--- $SCRIPT ---"
+    echo "REPORT:        $REPORT"
+    echo "SEND_REPORT:   $SEND_REPORT"
 fi
 
 if [ "$SEND_REPORT" = "true" ]; then

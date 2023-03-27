@@ -73,6 +73,6 @@ fi
 START="$TIMESTAMP"
 
 if [ "$DEBUG" = "true" ]; then
-    echo "--- $SCRIPT ---" >&2
-    echo "START:         $START" >&2
+    echo "--- $SCRIPT ---"
+    echo "START:         $START"
 fi

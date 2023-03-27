@@ -46,6 +46,7 @@ def _load_module_from_file(made_up_module_name, file_path):
         module = SourceFileLoader(made_up_module_name, file_path).load_module()
     return module
 
+
 def construct_file_path(_uida_conf_vars, node_data, replication=False):
     try:
         PROJECT_NAME = node_data['project']
@@ -67,14 +68,17 @@ def construct_file_path(_uida_conf_vars, node_data, replication=False):
                          '/files/%(PROJECT_NAME)s%(PATHNAME)s' % locals()
     return full_file_path
 
+
 def current_time():
     """
     Get iso-formatted current time
     """
     return datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
 
+
 def executing_test_case():
     return "unittest" in sys.modules
+
 
 def get_logger(logger_name='logger', uida_conf_vars=None):
     """
@@ -92,6 +96,7 @@ def get_logger(logger_name='logger', uida_conf_vars=None):
     logger.setLevel(logging.getLevelName(settings['log_level']))
 
     return logger
+
 
 def get_settings(uida_conf_vars=None):
     """
@@ -111,6 +116,7 @@ def get_settings(uida_conf_vars=None):
         return dev_settings
 
     return deepcopy(production_settings)
+
 
 def load_variables_from_uida_conf_files():
     """
@@ -156,6 +162,7 @@ def load_variables_from_uida_conf_files():
         'RABBIT_MONITORING_DIR': server_conf.RABBIT_MONITORING_DIR,
         'PROJECT_USER_PASS': server_conf.PROJECT_USER_PASS,
         'PROJECT_USER_PREFIX':  service_constants.PROJECT_USER_PREFIX,
+        'MAX_FILE_COUNT':  service_constants.MAX_FILE_COUNT
     }
 
     if hasattr(server_conf, 'DMF_SERVER'):
@@ -174,6 +181,7 @@ def load_variables_from_uida_conf_files():
                 uida_conf_vars[conf_field] = getattr(test_server_conf, conf_field)
 
     return uida_conf_vars
+
 
 def make_ba_http_header(username, password):
     return 'Basic %s' % b64encode(bytes('%s:%s' % (username, password), 'utf-8')).decode('utf-8')

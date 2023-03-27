@@ -76,7 +76,7 @@ fi
 echo "Locking project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\"" >&2
+    echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\""
 fi
 
 OUT=`$CURL_POST "$PROJECT_USER_CREDENTIALS" "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`
@@ -89,7 +89,7 @@ fi
 echo "Creating suspend action for project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions?project=$PROJECT&action=suspend&pathname=/\"" >&2
+     echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions?project=$PROJECT&action=suspend&pathname=/\""
 fi
 
 OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "$IDA_API_ROOT_URL/actions?project=$PROJECT&action=suspend&pathname=/"`

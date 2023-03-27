@@ -46,7 +46,10 @@ uida_conf_vars = load_variables_from_uida_conf_files()
 
 settings = get_settings()
 
-RABBITMQ_API_URL = 'http://%s:%d/api' % (uida_conf_vars['RABBIT_HOST'], uida_conf_vars['RABBIT_WEB_API_PORT'])
+RABBITMQ_API_URL = '%s://%s:%d/api' % (
+    uida_conf_vars.get('RABBIT_PROTOCOL', 'http'),
+    uida_conf_vars['RABBIT_HOST'],
+    uida_conf_vars['RABBIT_WEB_API_PORT'])
 
 RABBITMQ_AUTH = (uida_conf_vars['RABBIT_ADMIN_USER'], uida_conf_vars['RABBIT_ADMIN_PASS'])
 

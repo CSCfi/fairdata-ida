@@ -257,6 +257,17 @@ return [
             // This API call uses the 'batch-actions' RabbitMQ exchange
         ],
         
+        [
+            // Repair the Nextcloud node modification timestamp for a specific folder or file pathname
+            'name' => 'Freezing#repairNodeTimestamp',
+            'url'  => '/api/repairNodeTimestamp',
+            'verb' => 'POST'
+            // Restricted to PSO user. Project name is derived from PSO username
+            // Required parameters:
+            //     pathname = pathname of the node, beginning with either 'frozen/' or 'staging/'
+            //     timestamp = the ISO formatted timestamp string to be recorded
+        ],
+        
         // Scope Intersection Tests
         
         [
@@ -407,7 +418,10 @@ return [
             // Required parameters:
             //     pid = the PID of the file
             // Allowed parameters:
+            //     size = integer
             //     checksum = checksum string
+            //     modified = timestamp
+            //     frozen = timestamp
             //     metadata = timestamp
             //     replicated = timestamp
             //     removed = timestamp

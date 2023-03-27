@@ -1,0 +1,77 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script will update the filesystem last modified timestamp of all folders
+# and files in both the staging and frozen areas of the specified project as well
+# as the frozen timestamp in Metax of all frozen files. It is used in conjunction
+# with the automated tests for project auditing and repair.
+#
+# This script should only be executed in a non-production environment.
+#
+#--------------------------------------------------------------------------------
+. `dirname $0`/../../lib/init_script.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+if [ "IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+    errorExit "Error: This script should not be executed in production!"
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT="$1"
+
+if [ "$1" = "" ]; then
+    errorExit "Error: The project name must be specified as the first argument to the script"
+fi
+
+if [ "$PROJECT_USER_PREFIX" = "" ]; then
+    errorExit "Error: The PROJECT_USER_PREFIX configuration variable must be defined"
+fi
+
+if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
+    errorExit "Error: The STORAGE_OC_DATA_ROOT configuration variable must be defined"
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+PROJECT_ROOT_FOLDER="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}/files/"
+PROJECT_USER_CREDENTIALS="${PROJECT_USER}:${PROJECT_USER_PASS}"
+
+echo "Updating modification timestamps in filesystem for all frozen nodes in project $PROJECT"
+
+find $PROJECT_ROOT_FOLDER -exec touch {} \;
+
+echo "Updating frozen timestamps in IDA for all frozen files in project $PROJECT"
+
+PIDS=`$CURL_GET $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/inventory/${PROJECT}" \
+    | tr '\n' ' ' | tr ',' '\n' | grep '"pid":' | sed -e 's/^.*\"pid\": *\"//' | sed -e 's/\".*$//' | tr '\n' ' '`
+
+for PID in $PIDS; do
+    $CURL_POST $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/files/${PID}" -H "Content-Type: application/json" -d "{ \"frozen\": \"${TIMESTAMP}\" }" > /dev/null
+done

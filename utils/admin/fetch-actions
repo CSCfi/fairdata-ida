@@ -103,9 +103,9 @@ URL="$IDA_API_ROOT_URL/actions${STATUS_PARAMETER}${PROJECT_PARAMETER}"
 
 if [ "$DEBUG" = "true" ]
 then
-    echo "PROJECT: $PROJECT" >&2
-    echo "STATUS:  $STATUS" >&2
-    echo "URL:     $URL" >&2
+    echo "PROJECT: $PROJECT"
+    echo "STATUS:  $STATUS"
+    echo "URL:     $URL"
 fi
 
 OUT=`$CURL_GET $ADMIN_CREDENTIALS "${URL}" 2>$ERR `

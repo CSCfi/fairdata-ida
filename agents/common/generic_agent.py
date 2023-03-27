@@ -42,6 +42,7 @@ from agents.utils.utils import get_settings, load_variables_from_uida_conf_files
 
 class GenericAgent():
 
+
     def __init__(self):
         self._channel = None
         self._uida_conf_vars = load_variables_from_uida_conf_files()
@@ -84,6 +85,7 @@ class GenericAgent():
         signal.signal(signal.SIGTERM, lambda signal, frame: self._signal_shutdown_started())
         signal.signal(signal.SIGINT, lambda signal, frame: self._signal_shutdown_started())
 
+
     def _signal_shutdown_started(self):
         if self._graceful_shutdown_started:
             self._logger.debug('Caught another shutdown signal. Killing process')
@@ -92,8 +94,10 @@ class GenericAgent():
         self._logger.info('Caught shutdown signal, begin graceful shutdown...')
         self._graceful_shutdown_started = True
 
+
     def _get_name(self):
         return '[ %s-%s-%d ]' % (self._machine_name, self.__class__.__name__, self._process_pid)
+
 
     def connect(self):
         host = self._uida_conf_vars['RABBIT_HOST']
@@ -119,11 +123,14 @@ class GenericAgent():
         self._channel = connection.channel()
         self._logger.debug('Connected')
 
+
     def process_queue(self, *args, **kwargs):
         raise NotImplementedError('Inheriting classes must implement this method')
 
+
     def dependencies_not_ok(self, *args, **kwargs):
         raise NotImplementedError('Inheriting classes must implement this method')
+
 
     def publish_message(self, message, routing_key='', exchange=None, persistent=True, delay=None):
         """
@@ -152,6 +159,7 @@ class GenericAgent():
         self._logger.info('Publishing message: exchange: %s routing_key: %s message: %s properties: %s' % (exchange, routing_key, message, properties))
         self._channel.basic_publish(body=message, routing_key=routing_key, exchange=exchange, properties=properties)
 
+
     def start(self):
         self._logger.info('%s started' % self.__class__.__name__)
         try:
@@ -159,6 +167,7 @@ class GenericAgent():
         except SystemExit:
             self._logger.info('Stopping due to shutdown signal')
         self._logger.info('%s stopped' % self.__class__.__name__)
+
 
     def start_consuming(self):
         """
@@ -229,6 +238,7 @@ class GenericAgent():
                 # only this agent is being executed in this process
                 sleep(self._settings['main_loop_delay'])
 
+
     def consume_one(self, queue=None):
         """
         By default consumes one message from self.main_queue_name, but queue name
@@ -296,6 +306,7 @@ class GenericAgent():
             self.rabbitmq_message = None
             self._remove_sentinel_monitoring_file()
 
+
     def messages_in_queue(self, queue=None):
         """
         By default checks queue from self.main_queue_name, but queue name can be passed as well.
@@ -328,6 +339,7 @@ class GenericAgent():
             #self._logger.debug('Queue %s is empty.' % queue)
 
         return queue_state.method.message_count
+
 
     def _get_action_record(self, message):
         """
@@ -372,6 +384,7 @@ class GenericAgent():
 
         return action_record
 
+
     def _get_nodes_associated_with_action(self, action):
         self._logger.info('Retrieving files associated with action %s' % action['pid'])
         response = self._ida_api_request('get', '/files/action/%s' % action['pid'], action)
@@ -386,6 +399,7 @@ class GenericAgent():
         # the project frozen area there no longer exist any files in the frozen area.
         self._logger.info('Retrieved %d files associated with action %s' % (len(nodes), action['pid']))
         return nodes
+
 
     def _save_nodes_to_db(self, nodes, fields=[], updated_only=False):
         assert len(fields), 'need to specify fields to update for node.'
@@ -412,6 +426,7 @@ class GenericAgent():
                     error_msg = 'IDA API returned an error when trying to update node pid %s. Error message from API: %s'
                     raise Exception(error_msg % (node['pid'], str(response.content)))
 
+
     def _sub_action_processed(self, action, sub_action_name):
         """
         If a sub-action timestamp is set, the sub action has already been successfully completed.
@@ -420,6 +435,7 @@ class GenericAgent():
             # ^ bool() to make sure possible empty strings and other falsyness dont cause trouble
             return True
         return False
+
 
     def _save_action_completion_timestamp(self, action, sub_action_name):
         """
@@ -438,6 +454,7 @@ class GenericAgent():
             sub_action_name: action[sub_action_name],
         }
 
+
     def _save_action_failed_timestamp(self, action, exception):
         """
         The action has completely failed despite retries: Update the action
@@ -452,6 +469,7 @@ class GenericAgent():
         self.last_failed_action = { 'action_pid': action['pid'], 'data': error_data }
         return True
 
+
     def _action_should_be_retried(self, sub_action_name):
         """
         Compare current retry-count of a sub-action to the sub-action's retry policy in the settings.
@@ -460,6 +478,7 @@ class GenericAgent():
         if sub_action_retry_info in self.rabbitmq_message:
             return self.rabbitmq_message[sub_action_retry_info]['retry'] < self._settings['retry_policy'][sub_action_name]['max_retries']
         return True
+
 
     def _republish_or_fail_action(self, method, action, sub_action_name, queue, exception):
         """
@@ -479,6 +498,7 @@ class GenericAgent():
             # failure to republish or fail an action will result in the message not
             # getting ack'd, and action will return to queue
             pass
+
 
     def _republish_action(self, sub_action_name, exception, queue):
         """
@@ -536,6 +556,7 @@ class GenericAgent():
         self._logger.info('Successfully republished action with pid %s with a delay of %d seconds.' % (action['pid'], retry_interval))
         return True
 
+
     def _reject_message(self, method, requeue=False):
         """
         A message was being processed, but ended in an error. Reject the message,
@@ -550,6 +571,7 @@ class GenericAgent():
             # continue based on the placed sub-action timestamps
             self._logger.warning('self._channel.basic_reject() failed')
 
+
     def _ack_message(self, method):
         """
         A message has been fully and successfully processed by this agent on its part.
@@ -562,9 +584,11 @@ class GenericAgent():
             # have been placed, so the next worker knows where to continue
             self._logger.warning('self._channel.basic_ack() failed')
 
+
     def _update_action_to_db(self, action, data):
         self._ida_api_request('post', '/actions/%s' % action['pid'], data=data)
         self.last_updated_action = { 'action_pid': action['pid'], 'data': data }
+
 
     def _ida_api_request(self, method, detail_url, data=None):
         username = '%s%s' % (self._uida_conf_vars['PROJECT_USER_PREFIX'], self.rabbitmq_message['project'])
@@ -580,6 +604,7 @@ class GenericAgent():
             raise Exception('Authentication failed during ida2 api request. Error: %s' % str(res.content))
 
         return res
+
 
     def _http_request(self, method, url, data=None, headers=None):
         """
@@ -633,6 +658,7 @@ class GenericAgent():
         raise HttpApiNotResponding('HTTP request %s did not respond after %d attempts.'
             % (url, self._current_http_request_retry))
 
+
     def _get_file_checksum(self, file_path, block_size=65536):
         """
         Generate an SHA-256 checksum for the specified file
@@ -643,6 +669,7 @@ class GenericAgent():
                 sha.update(block)
         return sha.hexdigest()
 
+
     def _get_checksum_value(self, checksum):
         """
         Return a plain checksum value, given either a checksum URI or a plain checksum value
@@ -651,6 +678,7 @@ class GenericAgent():
             return checksum[7:]
         return checksum
 
+
     def _get_checksum_uri(self, checksum):
         """
         Return an sha256: checksum URI, given either a plain checksum value or a checksum URI
@@ -658,6 +686,7 @@ class GenericAgent():
         if checksum.startswith('sha256:'):
             return checksum
         return 'sha256:%s' % checksum
+
 
     def _is_offline(self):
         """
@@ -668,6 +697,7 @@ class GenericAgent():
             return True
         else:
             return False
+
 
     def _set_sentinel_monitoring_file(self, message):
         """
@@ -699,6 +729,7 @@ class GenericAgent():
                 % (self._sentinel_monitoring_file, owner)
             )
 
+
     def _remove_sentinel_monitoring_file(self):
         """
         Remove monitoring file when message processing has ended.
@@ -720,6 +751,7 @@ class GenericAgent():
             )
         else:
             self._logger.debug('Done')
+
 
     def _cleanup_old_sentinel_monitoring_files(self):
         """

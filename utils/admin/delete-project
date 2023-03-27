@@ -65,13 +65,13 @@ if [ "$2" != "--force" ]; then
     ELAPSED=`expr $NOW - $SECONDS`
 
     if [ "$DEBUG" = "true" ]; then
-        echo "" >&2
-        echo "Project suspended: $SUSPENDED" >&2
-        echo "Project suspended: $SECONDS seconds" >&2
-        echo "Current time:      $NOW seconds" >&2
-        echo "Elapsed time:      $ELAPSED seconds" >&2
-        echo "Quarantine period: $QUARANTINE_PERIOD seconds" >&2
-        echo "" >&2
+        echo ""
+        echo "Project suspended: $SUSPENDED"
+        echo "Project suspended: $SECONDS seconds"
+        echo "Current time:      $NOW seconds"
+        echo "Elapsed time:      $ELAPSED seconds"
+        echo "Quarantine period: $QUARANTINE_PERIOD seconds"
+        echo ""
     fi
 
     if [ $ELAPSED -lt $QUARANTINE_PERIOD ]; then
@@ -156,7 +156,7 @@ for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}; do
             addToLog "$MSG"
             MSG="WARNING: Failed to fully delete project share owner directory ${TARGET}!"
             addToLog "$MSG"
-            echo "${MSG}" >&2
+            echo "${MSG}"
         fi
     fi
 done

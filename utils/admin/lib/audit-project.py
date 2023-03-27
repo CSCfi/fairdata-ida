@@ -422,66 +422,79 @@ def add_metax_files(nodes, counts, config):
     if config.DEBUG == 'true':
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
-    url = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&project_identifier=%s&no_pagination=true" % (config.METAX_API_ROOT_URL, config.PROJECT)
+    url_base = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
 
-    if config.DEBUG == 'true':
-        sys.stderr.write("QUERY URL: %s\n" % url)
+    offset = 0
+    done = False # we are done when Metax returns less than the specified limit of files
 
-    try:
+    while not done: 
 
-        response = requests.get(url, auth=(config.METAX_API_USER, config.METAX_API_PASS), verify=False)
+        url = "%s&offset=%d" % (url_base, offset)
 
-        if response.status_code != 200:
-            raise Exception("Failed to retrieve frozen file metadata from Metax for project %s: %d" % (config.PROJECT, response.status_code))
+        if config.DEBUG == 'true':
+            sys.stderr.write("QUERY URL: %s\n" % url)
 
-        files = response.json()
+        try:
 
-    except Exception as error:
-        raise Exception("Failed to retrieve frozen file metadata from Metax for project %s: %s" % (config.PROJECT, str(error)))
+            response = requests.get(url, auth=(config.METAX_API_USER, config.METAX_API_PASS), verify=False)
 
-    for file in files:
+            if response.status_code != 200:
+                raise Exception("Failed to retrieve frozen file metadata from Metax for project %s: %d" % (config.PROJECT, response.status_code))
 
-        if file["removed"] == False:
+            response_data = response.json()
+            files = response_data['results']
 
-            #if config.DEBUG == 'true':
-            #    sys.stderr.write("metadata:\n%s\n" % json.dumps(file, indent=2, sort_keys=True))
+        except Exception as error:
+            raise Exception("Failed to retrieve frozen file metadata from Metax for project %s: %s" % (config.PROJECT, str(error)))
 
-            pathname = "frozen%s" % file["file_path"]
+        for file in files:
 
-            # Normalize modified and frozen timestamps to ISO UTC format
+            if file["removed"] == False:
 
-            modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
-            frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
-            try:
-                checksum = str(file["checksum_value"])
-            except Exception as error: # temp workaround for Metax bug
-                csobject = file["checksum"]
-                checksum = str(csobject["value"])
-            if checksum.startswith('sha256:'):
-                checksum = checksum[7:]
+                #if config.DEBUG == 'true':
+                #    sys.stderr.write("metadata:\n%s\n" % json.dumps(file, indent=2, sort_keys=True))
 
-            node_details = {
-                'type': 'file',
-                'size': file["byte_size"],
-                'pid': file["identifier"],
-                'checksum': checksum,
-                'modified': modified,
-                'frozen': frozen
-            }
+                pathname = "frozen%s" % file["file_path"]
+
+                # Normalize modified and frozen timestamps to ISO UTC format
+
+                modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+                frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+                try:
+                    checksum = str(file["checksum_value"])
+                except Exception as error: # temp workaround for Metax bug
+                    csobject = file["checksum"]
+                    checksum = str(csobject["value"])
+                if checksum.startswith('sha256:'):
+                    checksum = checksum[7:]
+
+                node_details = {
+                    'type': 'file',
+                    'size': file["byte_size"],
+                    'pid': file["identifier"],
+                    'checksum': checksum,
+                    'modified': modified,
+                    'frozen': frozen
+                }
     
-            try:
-                node = nodes[pathname]
-                node['metax'] = node_details
-            except KeyError:
-                node = {}
-                node['metax'] = node_details
-                nodes[pathname] = node
+                try:
+                    node = nodes[pathname]
+                    node['metax'] = node_details
+                except KeyError:
+                    node = {}
+                    node['metax'] = node_details
+                    nodes[pathname] = node
     
-            counts['metaxNodeCount'] = counts['metaxNodeCount'] + 1
+                counts['metaxNodeCount'] = counts['metaxNodeCount'] + 1
 
-            if config.DEBUG == 'true':
-                #sys.stderr.write("%s: metax: %d %s\n%s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname, json.dumps(nodes[pathname]['metax'], indent=2, sort_keys=True)))
-                sys.stderr.write("%s: metax: %d %s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname))
+                if config.DEBUG == 'true':
+                    #sys.stderr.write("%s: metax: %d %s\n%s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname, json.dumps(nodes[pathname]['metax'], indent=2, sort_keys=True)))
+                    sys.stderr.write("%s: metax: %d %s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname))
+
+        if len(files) < config.MAX_FILE_COUNT:
+            done = True
+        else:
+            offset = offset + config.MAX_FILE_COUNT
 
 
 def audit_project(config):

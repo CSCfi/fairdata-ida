@@ -143,7 +143,7 @@ class FreezingController extends Controller
     {
         try {
 
-            Util::writeLog('ida', 'getFileInventory:' . ' project=' . $project, \OCP\Util::DEBUG);
+            Util::writeLog('ida', 'getFileInventory:' . ' project=' . $project, \OCP\Util::INFO);
 
             $totalStagedFiles = 0;
             $totalFrozenFiles = 0;
@@ -223,8 +223,16 @@ class FreezingController extends Controller
                     . ' totalFiles=' . $totalFiles
                     . ' totalStagedFiles=' . $totalStagedFiles
                     . ' totalFrozenFiles=' . $totalFrozenFiles,
-                \OCP\Util::DEBUG
+                \OCP\Util::INFO
             );
+
+            if (empty($stagedFiles)) {
+                $stagedFiles = (object) null;
+            }
+
+            if (empty($frozenFiles)) {
+                $frozenFiles = (object) null;
+            }
 
             return new DataResponse(array(
                 'project' => $project,
@@ -3488,6 +3496,7 @@ class FreezingController extends Controller
             // Return new repair action details
 
             return new DataResponse($repairActionEntity);
+
         } catch (Exception $e) {
 
             // Cleanup and report error
@@ -3499,6 +3508,86 @@ class FreezingController extends Controller
             Access::unlockProject($project);
 
             return API::serverErrorResponse('repairProject: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * Repair the Nextcloud node modification timestamp for a specific folder or file pathname as
+     * reported in an auditing report, beginning with either the prefix 'staging/' or 'frozen/'.
+     *
+     * Restricted to PSO user. Project name is derived from PSO username.
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function repairNodeTimestamp($pathname, $modified)
+    {
+
+        Util::writeLog('ida', 'repairNodeTimestamp:'
+            . ' user=' . $this->userId
+            . ' pathname=' . $pathname
+            . ' modified=' . $modified,
+            \OCP\Util::DEBUG);
+
+        try {
+
+            // Ensure user is PSO user...
+
+            if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
+                return API::unauthorizedErrorResponse();
+            }
+
+            // Extract project name from PSO user name...
+
+            $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
+
+            // If pathname starts with 'frozen/' then use action 'unfreeze' to get full pathname,
+            // else pathname starts with 'staging/' so use action 'freeze' to get full pathname;
+            // and remove the prefix from the pathname.
+
+            if (str_starts_with($pathname, 'frozen/')) {
+                $action = 'unfreeze';
+                $pathname = substr($pathname, strlen('frozen'));
+            }
+            else {
+                $action = 'freeze';
+                $pathname = substr($pathname, strlen('staging'));
+            }
+
+            $fullPathname = $this->buildFullPathname($action, $project, $pathname);
+
+            Util::writeLog('ida', 'repairNodeTimestamp: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+
+            $fileInfo = $this->fsView->getFileInfo($fullPathname);
+
+            if ($fileInfo) {
+
+                $nodeId = $fileInfo->getId();
+
+                $ts = strtotime($modified);
+
+                Util::writeLog('ida', 'repairNodeTimestamp: nodeId=' . $nodeId, \OCP\Util::DEBUG);
+
+                $data = [ 'mtime' => $ts, 'storage_mtime' => $ts ];
+
+                $fileInfo->getStorage()->getCache()->update($nodeId, $data);
+
+                return new DataResponse(array(
+                    'project' => $project,
+                    'pathname' => $pathname,
+                    'modified' => $modified,
+                    'nodeId' => $nodeId
+                ));
+            }
+
+            // No node found with the specified pathname so return 404
+            return API::notFoundErrorResponse();
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('repairNodeTimestamp: ' . $e->getMessage());
         }
     }
 
