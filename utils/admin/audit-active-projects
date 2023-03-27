@@ -77,19 +77,29 @@ else
     exit 1
 fi
 
+# --------------------------------------------------------------------------------
+
 #DEBUG="true" # TEMP HACK
+
+PROJECTS=`$ROOT/utils/admin/list-active-projects $SINCE`
+
+INTERNAL_PROJECTS=""
+
+if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+    INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects | tr '\n' ' '`
+fi
 
 if [ "$DEBUG" = "true" ]; then
     echo "SINCE:      $SINCE"
     echo "AUDIT_ARGS: $AUDIT_ARGS"
+    echo "INTERNAL:   $INTERNAL_PROJECTS"
 fi
 
-#--------------------------------------------------------------------------------
-
-PROJECTS=`$ROOT/utils/admin/list-active-projects $SINCE`
-
 for PROJECT in $PROJECTS; do
-    $ROOT/utils/admin/audit-project $PROJECT $AUDIT_ARGS
+    INTERNAL=`echo " $INTERNAL_PROJECTS " | grep " $PROJECT "`
+    if [ "$INTERNAL" = "" ]; then
+        $ROOT/utils/admin/audit-project $PROJECT $AUDIT_ARGS
+    fi
 done
 
 addToLog "DONE"
