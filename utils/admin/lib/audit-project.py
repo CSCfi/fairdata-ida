@@ -422,7 +422,7 @@ def add_metax_files(nodes, counts, config):
     if config.DEBUG == 'true':
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
-    url_base = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
+    url_base = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
 
     offset = 0
     done = False # we are done when Metax returns less than the specified limit of files
