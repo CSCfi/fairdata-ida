@@ -111,6 +111,11 @@ def load_configuration():
         config['DOWNLOAD_SERVICE_ROOT'] = server_configuration.DOWNLOAD_SERVICE_ROOT
 
     try:
+        config['RABBIT_PROTOCOL'] = server_configuration.RABBIT_PROTOCOL
+    except:
+        config['RABBIT_PROTOCOL'] = 'http'
+
+    try:
         config['NO_FLUSH_AFTER_TESTS'] = server_configuration.NO_FLUSH_AFTER_TESTS
     except:
         config['NO_FLUSH_AFTER_TESTS'] = 'false'

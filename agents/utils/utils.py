@@ -165,6 +165,11 @@ def load_variables_from_uida_conf_files():
         'MAX_FILE_COUNT':  service_constants.MAX_FILE_COUNT
     }
 
+    try:
+        uida_conf_vars['RABBIT_PROTOCOL'] = server_conf.RABBIT_PROTOCOL
+    except:
+        uida_conf_vars['RABBIT_PROTOCOL'] = 'http'
+
     if hasattr(server_conf, 'DMF_SERVER'):
         uida_conf_vars['DMF_SERVER'] = server_conf.DMF_SERVER
 
