@@ -109,7 +109,7 @@ else {
                 $result = $ldap->search    (
                                 base   => "$member",
                                 scope  => 'base',
-                                filter => '(&(objectClass=InetOrgPerson)(!(nsaccountlock=true)))',
+                                filter => '(objectClass=InetOrgPerson)',
                                 attrs  => ['mail']
                             );
 
