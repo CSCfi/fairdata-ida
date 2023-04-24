@@ -422,7 +422,8 @@ def add_metax_files(nodes, counts, config):
     if config.DEBUG == 'true':
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
-    url_base = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
+    # We explicitly order frozen file records by unique internal id, to be absolutely sure pagination does not randomly produce duplicates and returns all records
+    url_base = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
 
     offset = 0
     done = False # we are done when Metax returns less than the specified limit of files
@@ -449,10 +450,8 @@ def add_metax_files(nodes, counts, config):
 
         for file in files:
 
+            # Even though Metax should not return records for removed files, we check just to be absolutely sure...
             if file["removed"] == False:
-
-                #if config.DEBUG == 'true':
-                #    sys.stderr.write("metadata:\n%s\n" % json.dumps(file, indent=2, sort_keys=True))
 
                 pathname = "frozen%s" % file["file_path"]
 
@@ -460,6 +459,7 @@ def add_metax_files(nodes, counts, config):
 
                 modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
                 frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+
                 try:
                     checksum = str(file["checksum_value"])
                 except Exception as error: # temp workaround for Metax bug
@@ -476,7 +476,7 @@ def add_metax_files(nodes, counts, config):
                     'modified': modified,
                     'frozen': frozen
                 }
-    
+
                 try:
                     node = nodes[pathname]
                     node['metax'] = node_details
@@ -484,12 +484,8 @@ def add_metax_files(nodes, counts, config):
                     node = {}
                     node['metax'] = node_details
                     nodes[pathname] = node
-    
-                counts['metaxNodeCount'] = counts['metaxNodeCount'] + 1
 
-                if config.DEBUG == 'true':
-                    #sys.stderr.write("%s: metax: %d %s\n%s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname, json.dumps(nodes[pathname]['metax'], indent=2, sort_keys=True)))
-                    sys.stderr.write("%s: metax: %d %s\n" % (config.PROJECT, counts['metaxNodeCount'], pathname))
+                counts['metaxNodeCount'] = counts['metaxNodeCount'] + 1
 
         if len(files) < config.MAX_FILE_COUNT:
             done = True

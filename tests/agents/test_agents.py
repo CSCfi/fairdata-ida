@@ -279,8 +279,10 @@ class TestAgents(unittest.TestCase):
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
 
+        url = "%s/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=test_project_a&ordering=id&limit=100" % self.config["METAX_API_ROOT_URL"]
+
         if self.config["METAX_AVAILABLE"] == 1:
-            response = requests.get("%s/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=test_project_a" % (self.config["METAX_API_ROOT_URL"]), auth=metax_user, verify=False)
+            response = requests.get(url, auth=metax_user, verify=False)
             self.assertEqual(response.status_code, 200)
             file_data = response.json()
             self.assertEqual(file_data["count"], 11)
@@ -464,7 +466,7 @@ class TestAgents(unittest.TestCase):
         if self.config["METAX_AVAILABLE"] == 1:
 
             print("Verify correct number of frozen files active in METAX")
-            response = requests.get("%s/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=test_project_a" % (self.config["METAX_API_ROOT_URL"]), auth=metax_user, verify=False)
+            response = requests.get(url, auth=metax_user, verify=False)
             self.assertEqual(response.status_code, 200)
             file_data = response.json()
             self.assertEqual(file_data["count"], 23)

@@ -389,7 +389,7 @@ class MetadataAgent(GenericAgent):
 
         # retrieve PIDs of all active files known by metax which are associated with project
 
-        url_base = "/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=%s&limit=%d" % (action['project'], chunk_size)
+        url_base = "/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&project_identifier=%s&ordering=id&limit=%d" % (action['project'], chunk_size)
 
         offset = 0
         done = False # we are done when Metax returns less than the specified limit of files
@@ -408,9 +408,6 @@ class MetadataAgent(GenericAgent):
 
             file_data = response.json()
             received_count= len(file_data['results'])
-
-            if file_data['count'] != received_count:
-                raise Exception('Failed to retrieve all records: total = %d returned = %d' % (file_data['count'], received_count))
 
             for record in file_data['results']:
                 existing_file_pids.append(record['identifier'])
