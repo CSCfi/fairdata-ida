@@ -109,7 +109,7 @@ SCRIPT=`basename $SCRIPT_PATHNAME`
 USAGE="Usage: $SCRIPT [ <cnt> | <min> <max> ] [ --clean | --flush ]
        $SCRIPT -h"
 
-. `dirname $0`/../lib/init_script.sh
+. `dirname $0`/../../lib/init_script.sh
 
 #DEBUG="true" # TEMP HACK
 
@@ -149,17 +149,21 @@ PROJECT_MIN=1
 PROJECT_MAX=100
 CLEAN="false"
 FLUSH="false"
-HEADER="Demo Account Credentials"
+PAS="false"
 
 if [ "$SCRIPT" = "initialize-pas-demo-accounts" ]; then
+    PAS="true"
     PROJECT_BASE="fddps_demo_project"
     USER_BASE="fddps_demo_user"
-    HEADER="PAS ${HEADER}"
 fi
 
-PWFILE="/tmp/${USER_BASE}_credentials.${TIMESTAMP}"
-SERVER=`hostname`
-HEADER="${HEADER} ${SERVER}:${PWFILE}"
+NEW_CREDENTIALS_FILE="/tmp/new_${USER_BASE}_credentials.${TIMESTAMP}"
+MASTER_CREDENTIALS_FILE="/${STORAGE_OC_DATA_ROOT}/demo_account_management/${USER_BASE}_credentials"
+
+if [ ! -e $MASTER_CREDENTIALS_FILE ]; then
+    echo "Error: Master credentials file not found: $MASTER_CREDENTIALS_FILE" >&2
+    exit 1
+fi
 
 #--------------------------------------------------------------------------------
 # Process command line arguments...
@@ -199,8 +203,8 @@ if [ "$DEBUG" = "true" ]; then
     echo "MAX:    $PROJECT_MAX"
     echo "CLEAN:  $CLEAN"
     echo "FLUSH:  $FLUSH"
-    echo "PWFILE: $PWFILE"
-    echo "HEADER: $HEADER"
+    echo "MCFILE: $MASTER_CREDENTIALS_FILE"
+    echo "NCFILE: $NEW_CREDENTIALS_FILE"
 fi
 
 if [ "$CLEAN" = "true" -a "$FLUSH" = "true" ]; then
@@ -241,7 +245,20 @@ if [ $PROJECT_MIN -gt $PROJECT_MAX ]; then
 fi
 
 #--------------------------------------------------------------------------------
+# Initialize master credentials hash table from persistent credentials file
 
+declare -A MASTER_CREDENTIALS
+
+while read -r USER PASSWORD; do
+    MASTER_CREDENTIALS["$USER"]="$PASSWORD"
+done < $MASTER_CREDENTIALS_FILE
+
+if [ "${#MASTER_CREDENTIALS[@]}" != "100" ]; then
+    echo "Error: Invalid master credentials file: $MASTER_CREDENTIALS_FILE" >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
 # Clean all data from IDA file storage, and all action and frozen node records
 # from IDA database, and all frozen node and dataset records from Metax
 
@@ -354,8 +371,10 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
 done
 
 #--------------------------------------------------------------------------------
+# If only cleaning accounts, we are now done, so exit.
 
 if [ "$CLEAN" = "true" ]; then
+    echo "Done"
     exit
 fi
 
@@ -436,7 +455,7 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
         if [ "$TARGET" != "/" ]; then
             if [ "$TARGET" != "${CANDIDATE_STORAGE_VOLUME}/" ]; then
                 if [ -e "$TARGET" ]; then
-                    STEP="   Deleting $TARGET "
+                    STEP="        Deleting $TARGET "
                     printf "%${PADDING}s" "$STEP"
                     OUT=`rm -fr "$TARGET"`
                     if [ "$?" -ne 0 ]; then
@@ -451,61 +470,152 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
 done
 
 #--------------------------------------------------------------------------------
+# Generate new passwords for users and push new credentials to IdM
+#
+# We only record those new passwords in the master credentials if we are
+# re-initializing the accounts, otherwise they are discarded after pushing them
+# to the test IdM and the master credentials are updated with the invalid password
+# '(disabled)' which cannot be used for authentication -- thus if only flushing,
+# those new passwords are discarded and not recorded, and thus those accounts are
+# effectively disabled in the test IdM.
 
-if [ "$FLUSH" = "true" ]; then
-    exit
-fi
+declare -A NEW_CREDENTIALS
 
-#--------------------------------------------------------------------------------
-
-echo "Creating new demo accounts..."
-echo "Creating projects..."
-
-COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="${PROJECT_BASE}_${COUNT}"
-    COUNT=$(( $COUNT + 1 ))
-    STEP="    Creating $PROJECT"
-    printf "%${PADDING}s" "$STEP"
-    OUT=`$ROOT/admin/ida_project ADD $PROJECT 1 2>&1`
-    if [ "$?" -ne 0 ]; then
-        failure "$OUT"
-    else
-        success
-    fi
-done
-
-#--------------------------------------------------------------------------------
-
-cp /dev/null $PWFILE
-
-echo "Creating users..."
+cp /dev/null $NEW_CREDENTIALS_FILE
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
     PROJECT="${PROJECT_BASE}_${COUNT}"
     USER="${USER_BASE}_${COUNT}"
     TOKEN=`tr -cd '[:alnum:]' < /dev/urandom | head -c64 | sed -e 's/[^a-zA-Z0-9]//' | sed -e 's/[015oOiIlLsS]//g' | head -c4 | tr 'A-Z' 'a-z'`
-    export OC_PASS="Demo_Password_${COUNT}_${TOKEN}"
+    PASSWORD="Demo_Password_${COUNT}_${TOKEN}"
+    NEW_CREDENTIALS["$USER"]="$PASSWORD"
+    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+    echo "$OUTPUT" >> $NEW_CREDENTIALS_FILE
     COUNT=$(( $COUNT + 1 ))
-    CREDENTIALS=$(printf "   %-20s%s" "$USER" "$OC_PASS")
-    echo "$CREDENTIALS" >> $PWFILE
-    STEP="    Creating $USER"
-    printf "%${PADDING}s" "$STEP"
-    OUT=`$ROOT/admin/ida_user ADD $USER $PROJECT 2>&1`
-    if [ "$?" -ne 0 ]; then
-        failure "$OUT"
+done
+
+#--------------------------------------------------------------------------------
+# If not merely flushing accounts, initialize new accounts...
+
+if [ "$FLUSH" != "true" ]; then
+
+    echo "Creating new demo accounts..."
+    echo "Creating projects..."
+    
+    COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+        PROJECT="${PROJECT_BASE}_${COUNT}"
+        COUNT=$(( $COUNT + 1 ))
+        STEP="    Creating $PROJECT"
+        printf "%${PADDING}s" "$STEP"
+        OUT=`$ROOT/admin/ida_project ADD $PROJECT 1 2>&1`
+        if [ "$?" -ne 0 ]; then
+            failure "$OUT"
+        else
+            success
+        fi
+    done
+    
+    #--------------------------------------------------------------------------------
+    
+    echo "Creating users..."
+    
+    COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+        PROJECT="${PROJECT_BASE}_${COUNT}"
+        USER="${USER_BASE}_${COUNT}"
+        export OC_PASS="${NEW_CREDENTIALS[$USER]}"
+        STEP="    Creating $USER"
+        printf "%${PADDING}s" "$STEP"
+        OUT=`$ROOT/admin/ida_user ADD $USER $PROJECT 2>&1`
+        if [ "$?" -ne 0 ]; then
+            failure "$OUT"
+        else
+            echo ""
+        fi
+        COUNT=$(( $COUNT + 1 ))
+    done
+    
+fi
+
+#--------------------------------------------------------------------------------
+# Push new credentials to test IdM
+
+if [ "$FLUSH" = "true" ]; then
+    if [ "$PAS" = "true" ]; then
+        echo "Disabling flushed PAS demo accounts in test IdM..."
     else
-        echo ""
+        echo "Disabling flushed demo accounts in test IdM..."
+    fi
+else
+    if [ "$PAS" = "true" ]; then
+        echo "Pushing updated PAS demo account credentials to test IdM..."
+    else
+        echo "Pushing updated demo account credentials to test IdM..."
+    fi
+fi
+
+OUT=`$ROOT/utils/admin/push-credentials-to-test-idm $NEW_CREDENTIALS_FILE 2>&1`
+PID=`echo "$OUT" | sed -e 's/^\w*workflow:\w*//'`
+
+if [ -z "$PID" ]; then
+    echo "Error: failed to update accounts in test IdM" >&2
+    echo "$OUT" >&2
+    exit 1
+fi
+
+LOOP=1
+
+while true; do
+    OUT=`$ROOT/utils/admin/check-test-idm-workflow $PID 2>&1`
+    echo "    $OUT"
+    RUNNING=`echo "$OUT" | grep 'status: running'`
+    if [ -z "$RUNNING" ]; then
+        break
+    fi
+    LOOP=$(( LOOP + 1 ))
+    if [ $LOOP -gt 100 ]; then
+        echo "Error: timeout exceeded while waiting for IdM workflow to complete" >&2
+        exit 1
     fi
 done
 
 #--------------------------------------------------------------------------------
+# Update master credentials persistent file
 
-if [ "${EMAIL_SENDER}${EMAIL_RECIPIENTS}" != "" ]; then
-    cat $PWFILE | mail -r $EMAIL_SENDER -s "$HEADER" $EMAIL_RECIPIENTS
-fi
+echo "Updating persistent credentials..."
 
-echo "New demo account credentials saved to file $PWFILE"
+COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+    USER="${USER_BASE}_${COUNT}"
+    if [ "$FLUSH" = "true" ]; then
+        PASSWORD="(disabled)"
+    else
+        PASSWORD="${NEW_CREDENTIALS[$USER]}"
+    fi
+    MASTER_CREDENTIALS["$USER"]="$PASSWORD"
+    COUNT=$(( $COUNT + 1 ))
+done
+
+cp /dev/null $MASTER_CREDENTIALS_FILE
+
+COUNT=1; while [ $COUNT -le 100 ]; do
+    USER="${USER_BASE}_${COUNT}"
+    PASSWORD="${MASTER_CREDENTIALS[$USER]}"
+    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+    echo "$OUTPUT" >> $MASTER_CREDENTIALS_FILE
+    COUNT=$(( $COUNT + 1 ))
+done
 
 #--------------------------------------------------------------------------------
 
+echo "Updated credentials:"
+COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+    USER="${USER_BASE}_${COUNT}"
+    PASSWORD="${MASTER_CREDENTIALS[$USER]}"
+    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+    echo "$OUTPUT"
+    COUNT=$(( $COUNT + 1 ))
+done
+
+#--------------------------------------------------------------------------------
+
+echo "Done"
 addToLog "DONE"
