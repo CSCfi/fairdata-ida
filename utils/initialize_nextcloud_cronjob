@@ -1,0 +1,70 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script will configure Nextcloud to use a cronjob for housekeeping and will
+# configure that cronjob to be executed regularly.
+
+
+SCRIPT="$(realpath $0)"
+UTILS=`dirname "$SCRIPT"`
+ROOT=`dirname "$UTILS"`
+
+CONSTANTS_FILE="$ROOT/lib/constants.sh"
+
+if [ -e $CONSTANTS_FILE ]
+then
+    . $CONSTANTS_FILE
+else
+    echo "The service constants file $CONSTANTS_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+CONFIG_FILE="$ROOT/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Determine the apache user
+
+if [ -d /etc/httpd ]; then
+    HTTPD_USER="apache"
+else
+    HTTPD_USER="www-data"
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "Enabling cron background jobs in Nextcloud ..."
+sudo -u $HTTPD_USER $ROOT/nextcloud/occ config:app:set core backgroundjobs_mode --value="cron"
+
+echo "Configuring Nextcloud cron job in /etc/cron.d ..."
+echo "*/5  *  *  *  * apache php -f /var/ida/nextcloud/cron.php" > /etc/cron.d/nextcloud
+systemctl restart crond
+

@@ -104,6 +104,12 @@ docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/id
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable ida > /dev/null
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/ida/nextcloud/occ app:enable idafirstrunwizard > /dev/null
 
+echo "Configuring essential Nextcloud settings..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_nextcloud_settings > /dev/null
+
+echo "Configuring Nextcloud cronjob..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_nextcloud_cronjob > /dev/null
+
 echo "Adding optimization indices to database..."
 docker cp ./utils/create_db_indices.pgsql $(docker ps -q -f name=ida-db):/tmp/create_db_indices.pgsql
 docker exec -it $(docker ps -q -f name=ida-db) psql -U $DBUSER -f /tmp/create_db_indices.pgsql $DBNAME > /dev/null

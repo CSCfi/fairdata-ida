@@ -1,0 +1,54 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script configures Nextcloud with essential settings. It is safe to execute
+# in any environment, including production. 
+
+SCRIPT="$(realpath $0)"
+UTILS=`dirname "$SCRIPT"`
+ROOT=`dirname "$UTILS"`
+
+#--------------------------------------------------------------------------------
+# Determine the apache user
+
+if [ -d /etc/httpd ]; then
+    HTTPD_USER="apache"
+else
+    HTTPD_USER="www-data"
+fi
+
+#--------------------------------------------------------------------------------
+
+SETCONFIG="sudo -u $HTTPD_USER $ROOT/nextcloud/occ config:app:set "
+
+$SETCONFIG core shareapi_default_expire_date --value="yes"
+$SETCONFIG core shareapi_expire_after_n_days --value="90"
+$SETCONFIG core shareapi_allow_public_upload --value="no"
+$SETCONFIG core shareapi_enforce_expire_date --value="yes"
+$SETCONFIG core shareapi_allow_links         --value="yes"
+
+$SETCONFIG files_sharing outgoing_server2server_share_enabled --value="no"
+$SETCONFIG files_sharing incoming_server2server_share_enabled --value="no"
+$SETCONFIG files_sharing lookupServerUploadEnabled            --value="no"
+

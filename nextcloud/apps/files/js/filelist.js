@@ -1725,8 +1725,9 @@
 			tr.find('.filesize').text(simpleSize);
 			tr.append(td);
 
+			// Inject project title if not admin user
 			try {
-				if (path != null && path == '/') {
+				if (path != null && path == '/' && OC.getCurrentUser().uid != 'admin') {
 				    spans = tr.find("span.nametext");
 				    if (spans.length > 0) {
 					    path = '/' + name;

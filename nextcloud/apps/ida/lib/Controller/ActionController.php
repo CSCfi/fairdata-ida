@@ -140,9 +140,10 @@ class ActionController extends Controller
      * failed actions. This status summary is primary used to determine whether particular notification icons
      * should be shown to the user.
      * 
-     * If requested with admin credentials, one or more explicit project names must be specified; else, the
-     * project list is derived automatically based on the authenticated user's project membership, limited
+     * The project list is derived automatically based on the authenticated user's project membership, limited
      * to any project(s) explicitly specified.
+     * 
+     * If requested with admin credentials, zero or more explicit project names may be specified. 
      *
      * @param string $projects  a comma separated list of project names, with no whitespace
      *
@@ -160,18 +161,9 @@ class ActionController extends Controller
 
             $queryProjects = Access::cleanProjectList($projects);
 
-            // If user is admin, ensure that one or more projects are explicitly specified
+            // If user is not admin, get user projects and verify user belongs to at least one project
 
-            if ($this->userId === 'admin') {
-
-                if ($projects == null) {
-                    return API::badRequestErrorResponse('The projects parameter is required when using admin credentials.');
-                }
-            }
-
-            // Else, get user projects and verify user belongs to at least one project
-
-            else {
+            if ($this->userId != 'admin') {
 
                 $userProjects = Access::getUserProjects();
 
@@ -200,9 +192,9 @@ class ActionController extends Controller
             $status["time"]      = Generate::newTimestamp();
             $status["user"]      = $this->userId;
             $status["projects"]  = $queryProjects;
-            $status["failed"]    = $this->actionMapper->hasActions('failed', $queryProjects);
-            $status["pending"]   = $this->actionMapper->hasActions('pending', $queryProjects);
-            $status["suspended"] = $this->actionMapper->isSuspended($queryProjects);
+            $status["failed"]    = ($queryProjects != null) && ($this->actionMapper->hasActions('failed', $queryProjects));
+            $status["pending"]   = ($queryProjects != null) && ($this->actionMapper->hasActions('pending', $queryProjects));
+            $status["suspended"] = ($queryProjects != null) && ($this->actionMapper->isSuspended($queryProjects));
 
             Util::writeLog('ida', 'getStatus:' . ' status=' . json_encode($status), \OCP\Util::DEBUG);
 

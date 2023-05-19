@@ -631,14 +631,14 @@ class FileController extends Controller
                 $userProjects = Access::getUserProjects();
 
                 if ($userProjects == null || !in_array($project, explode(",", $userProjects))) {
-                    return API::notFoundErrorResponse('The specified project was not found.');
+                    return API::notFoundErrorResponse('The specified project was not found: ' . $project);
                 }
             }
 
             $filesFolderPathname = self::buildFilesFolderPathname($project);
 
             if (!file_exists($filesFolderPathname)) {
-                return API::notFoundErrorResponse('The specified project was not found.');
+                return API::notFoundErrorResponse('The specified project was not found: ' . $project);
             }
 
             $title = $project;

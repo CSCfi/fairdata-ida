@@ -87,11 +87,15 @@
         },
 
         /**
-         * Returns project title, if defined, else returns project name as title.
+         * Returns project title, if defined, else returns project name as title. If no project specified, returns null.
          *
          * @param project The project name
          */
         getProjectTitle: function (project) {
+
+            if (project == null || project == "") {
+                return null;
+            }
 
             var jqxhr = $.ajax({
                 url: OC.generateUrl('/apps/ida/api/getProjectTitle?project=' + project),
