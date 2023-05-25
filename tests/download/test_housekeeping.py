@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2020 Ministry of Education and Culture, Finland
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -84,10 +84,10 @@ class BearerAuth(requests.auth.AuthBase):
         r.headers["authorization"] = "Bearer " + self.token
         return r
 
-class TestDownload(unittest.TestCase):
+class TestHousekeeping(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print("=== tests/datasets/test_download")
+        print("=== tests/datasets/test_housekeeping")
 
     def setUp(self):
 
@@ -300,24 +300,6 @@ class TestDownload(unittest.TestCase):
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
 
-        print("Authorize individual dataset file download") 
-        file = experiment_1_files[0]
-        filename = file.get('pathname')
-        self.assertIsNotNone(filename)
-        data = { "dataset": dataset_pid, "file": filename }
-        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        token = response.json().get('token')
-        self.assertIsNotNone(token)
-
-        print("Download individual dataset file using authorization token") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200)
-
-        print("Attempt to download individual dataset file using authorization token a second time") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 401, response.content.decode(sys.stdout.encoding))
-
         print("Request generation of complete dataset package")
         data = { "dataset": dataset_pid }
         response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
@@ -352,80 +334,40 @@ class TestDownload(unittest.TestCase):
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        print("Request generation of a partial dataset package")
-        data = { "dataset": dataset_pid, "scope": [ "/testdata/2017-08/Experiment_1/baseline", "/testdata/2017-08/Experiment_1/test01.dat" ] }
-        response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
+        print("Authorize complete dataset package download") 
+        data = { "dataset": dataset_pid, "package": package }
+        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        response_json = response.json()
-        self.assertIsNotNone(response_json)
-        self.assertEqual(response_json.get('dataset'), dataset_pid, response.content.decode(sys.stdout.encoding))
+        token = response.json().get('token')
+        self.assertIsNotNone(token)
 
-        self.waitForPendingRequests(dataset_pid)
+        print("Update generation timestamp of dataset package to be far in the past") 
+        data = { "package": package, "timestamp": "2000-01-01 00:00:00" }
+        response = requests.post("https://localhost:4431/update_package_timestamps", json=data, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+        print(response.content.decode(sys.stdout.encoding))
 
-        print("Verify partial dataset package is reported in package listing")
+        print("Attempt to download outdated complete dataset package using authorization token")
+        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 409, response.content.decode(sys.stdout.encoding))
+
+        print("Attempt to authorize outdated complete dataset package download") 
+        data = { "dataset": dataset_pid, "package": package }
+        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 409, response.content.decode(sys.stdout.encoding))
+
+        print("Verify outdated complete dataset package is no longer listed with available packages for dataset")
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        response_json = response.json()
-        partial = response_json.get('partial')
-        self.assertIsNotNone(partial)
-        self.assertEqual(len(partial), 1)
-        self.assertEqual(partial[0].get('status'), 'SUCCESS')
-        scope = partial[0].get('scope')
-        self.assertIsNotNone(scope)
-        self.assertEqual(len(scope), 2)
-        self.assertTrue("/testdata/2017-08/Experiment_1/baseline" in scope)
-        self.assertTrue("/testdata/2017-08/Experiment_1/test01.dat" in scope)
-        package = partial[0].get('package')
-        self.assertIsNotNone(package)
+        self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
 
-        print("Verify partial dataset package exists in cache")
+        print("Verify outdated complete dataset package still exists in cache")
         cmd = "%s/dev_config/utils/package-stats %s 2>&1 >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Authorize partial dataset package download") 
-        data = { "dataset": dataset_pid, "package": package }
-        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        token = response.json().get('token')
-        self.assertIsNotNone(token)
+        old_package = package
 
-        print("Download partial dataset package using authorization token") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200)
-
-        print("Putting IDA service into offline mode")
-        offline_sentinel_file = "%s/control/OFFLINE" % self.config["STORAGE_OC_DATA_ROOT"]
-        cmd = "sudo -u %s touch %s" % (self.config["HTTPD_USER"], offline_sentinel_file)
-        result = os.system(cmd)
-        self.assertEqual(result, 0)
-        self.assertTrue(os.path.exists(offline_sentinel_file))
-
-        print("Authorize individual dataset file download") 
-        data = { "dataset": dataset_pid, "file": filename }
-        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        token = response.json().get('token')
-        self.assertIsNotNone(token)
-
-        print("Attempt to download individual dataset file while IDA service is offline") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 503, response.content.decode(sys.stdout.encoding))
-
-        print("Authorize existing dataset package download") 
-        data = { "dataset": dataset_pid, "package": package }
-        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        token = response.json().get('token')
-        self.assertIsNotNone(token)
-
-        print("Download existing dataset package while IDA service is offline") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200)
-
-        self.flushDownloads()
-
-        print("Request generation of complete dataset package")
+        print("Request generation of new complete dataset package (triggers housekeeping, removing old package)")
         data = { "dataset": dataset_pid }
         response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -433,37 +375,9 @@ class TestDownload(unittest.TestCase):
         self.assertIsNotNone(response_json)
         self.assertEqual(response_json.get('dataset'), dataset_pid, response.content.decode(sys.stdout.encoding))
 
-        print("Verify that package generation request is pending")
-        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        response_json = response.json()
-        self.assertTrue(response_json.get('status') in ['RETRY', 'PENDING'], response.content.decode(sys.stdout.encoding))
-
-        print("Subscribe to notification of generation of dataset package")
-        data = { "dataset": dataset_pid, "subscriptionData": "abcdef", "notifyURL": "https://%s:4431/mock_notify" % socket.gethostname() }
-        notification_file = "%s/data/download-cache/mock_notifications/abcdef" % self.config['DOWNLOAD_SERVICE_ROOT']
-        response = requests.post("https://localhost:4431/subscribe", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
-        response_json = response.json()
-        self.assertIsNotNone(response_json)
-        self.assertEqual(response_json.get('dataset'), dataset_pid, response.content.decode(sys.stdout.encoding))
-
-        print("(sleeping...)")
-        time.sleep(5)
-
-        print("Verify that package generation request is still pending")
-        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        response_json = response.json()
-        self.assertTrue(response_json.get('status') in ['RETRY', 'PENDING'], response.content.decode(sys.stdout.encoding))
-
-        print("Returning IDA service to online mode")
-        os.remove(offline_sentinel_file)
-        self.assertFalse(os.path.exists(offline_sentinel_file))
-
         self.waitForPendingRequests(dataset_pid)
 
-        print("Verify complete dataset package is reported in package listing")
+        print("Verify new complete dataset package is reported in package listing")
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         response_json = response.json()
@@ -471,36 +385,15 @@ class TestDownload(unittest.TestCase):
         package = response_json.get('package')
         self.assertIsNotNone(package)
 
-        print("Verify complete dataset package exists in cache")
-        cmd = "%s/dev_config/utils/package-stats %s 2>/dev/null >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
+        print("Verify new complete dataset package exists in cache")
+        cmd = "%s/dev_config/utils/package-stats %s 2>&1 >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Verifying subscribed notification of completed dataset package generation was received")
-        self.assertTrue(os.path.exists(notification_file))
-
-        print("Authorize complete dataset package download") 
-        package = response_json.get('package')
-        data = { "dataset": dataset_pid, "package": package }
-        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        token = response.json().get('token')
-        self.assertIsNotNone(token)
-
-        print("Download complete dataset package using authorization token") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200)
-
-        print("Authorize individual dataset file download") 
-        data = { "dataset": dataset_pid, "file": filename }
-        response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        token = response.json().get('token')
-        self.assertIsNotNone(token)
-
-        print("Download individual dataset file using authorization token") 
-        response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
-        self.assertEqual(response.status_code, 200)
+        print("Verify outdated complete dataset package no longer exists in cache (removed by housekeeping)")
+        cmd = "%s/dev_config/utils/package-stats %s 2>/dev/null >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], old_package)
+        result = os.system(cmd)
+        self.assertNotEqual(result, 0)
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done
