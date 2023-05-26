@@ -33,7 +33,6 @@ import unittest
 import time
 import os
 import sys
-import socket
 from tests.common.utils import load_configuration
 
 DATASET_TEMPLATE = {
@@ -394,6 +393,91 @@ class TestHousekeeping(unittest.TestCase):
         cmd = "%s/dev_config/utils/package-stats %s 2>/dev/null >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], old_package)
         result = os.system(cmd)
         self.assertNotEqual(result, 0)
+
+        self.flushDownloads()
+
+        print("Verify that no active package generation requests exist for dataset")
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
+
+        print("Request generation of complete dataset package")
+        data = { "dataset": dataset_pid }
+        response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+        response_json = response.json()
+        self.assertIsNotNone(response_json)
+        self.assertEqual(response_json.get('dataset'), dataset_pid, response.content.decode(sys.stdout.encoding))
+
+        self.waitForPendingRequests(dataset_pid)
+
+        print("Verify complete dataset package is reported in package listing")
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+        response_json = response.json()
+        self.assertEqual(response_json.get('status'), 'SUCCESS')
+        package = response_json.get('package')
+        self.assertIsNotNone(package)
+
+        print("Verify complete dataset package exists in cache")
+        cmd = "%s/dev_config/utils/package-stats %s 2>&1 >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
+        result = os.system(cmd)
+        self.assertEqual(result, 0)
+
+        print("Update package file size in database to be zero") 
+        data = { "package": package, "size_bytes": 0 }
+        response = requests.post("https://localhost:4431/update_package_file_size", json=data, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+        print(response.content.decode(sys.stdout.encoding))
+
+        print("Run housekeeping to purge now-invalid package")
+        response = requests.post("https://localhost:4431/housekeep", auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+
+        print("Verify complete dataset package is no longer listed with available packages for dataset")
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
+
+        self.flushDownloads()
+
+        print("Verify that no active package generation requests exist for dataset")
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
+
+        print("Request generation of complete dataset package")
+        data = { "dataset": dataset_pid }
+        response = requests.post("https://localhost:4431/requests", json=data, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+        response_json = response.json()
+        self.assertIsNotNone(response_json)
+        self.assertEqual(response_json.get('dataset'), dataset_pid, response.content.decode(sys.stdout.encoding))
+
+        self.waitForPendingRequests(dataset_pid)
+
+        print("Verify complete dataset package is reported in package listing")
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+        response_json = response.json()
+        self.assertEqual(response_json.get('status'), 'SUCCESS')
+        package = response_json.get('package')
+        self.assertIsNotNone(package)
+
+        print("Verify complete dataset package exists in cache")
+        cmd = "%s/dev_config/utils/package-stats %s 2>&1 >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
+        result = os.system(cmd)
+        self.assertEqual(result, 0)
+
+        print("Update package file size in cache to be zero") 
+        cmd = "%s/dev_config/utils/empty-package-file %s 2>&1 >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
+        result = os.system(cmd)
+        self.assertEqual(result, 0)
+
+        print("Run housekeeping to purge now-invalid package")
+        response = requests.post("https://localhost:4431/housekeep", auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
+
+        print("Verify complete dataset package is no longer listed with available packages for dataset")
+        response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
+        self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done
