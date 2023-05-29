@@ -449,9 +449,11 @@ a:focus {
 	outline: none;
 }
 
+/*
 .oc-dialog-close {
 	display: none;
 }
+*/
 
 span.nametext {
 	min-width: 175px;
