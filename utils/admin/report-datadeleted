@@ -56,18 +56,20 @@ done
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
 
 PROJECT_NUMBER=`echo "$OUT" | jq '.[0].number'`
-PROJECT_STATE=`echo "$OUT" | jq '.[0].state'`
-PROJECT_IDA=`echo "$OUT" | jq '.[0].services[] | select(. == "IDA")'`  
 
 if [ "$PROJECT_NUMBER" != "\"$PROJECT\"" ]
 then
     errorExit "Failed to retrieve details of project $PROJECT from microservice. Aborting."
 fi
 
+PROJECT_STATE=`echo "$OUT" | jq '.[0].state'`
+
 if [ "$PROJECT_STATE" != "\"deletedata\"" ]
 then
     errorExit "Project $PROJECT does not have a data deletion process state of 'deletedata'. Aborting."
 fi
+
+PROJECT_IDA=`echo "$OUT" | jq '.[0].services[] | select(. == "IDA")'`
 
 if [ "$PROJECT_IDA" != "\"IDA\"" ]
 then
@@ -79,14 +81,47 @@ fi
 OUT=`curl --fail -k -s -S -X POST "$CSC_DATA_DELETION_MICROSERVICE/report?service=IDA&action=datadeleted&project=$PROJECT&token=$CSC_DATA_DELETION_SECURITY_TOKEN" 2>$ERR`
 
 if [ -s $ERR ]; then
-    MSG=`cat $ERR`
+    MSG=`echo "$ERR" | tr "\n" " " `
     addToLog "$MSG"
-    echo "$MSG"
-    errorExit "Failed to report data deleted for project."
+    echo "$MSG" >&2
+    errorExit "Failed to report data deleted for project"
 fi
 
-MSG=`echo $OUT | tr "\n" " " `
+MSG=`echo "$OUT" | tr "\n" " " `
 addToLog "$MSG"
-echo "$OUT"
+
+PID=`echo "$OUT" | jq '.["workflow"]' --raw-output`
+
+if [ -z "$PID" ]; then
+    errorExit "Failed to extract workflow PID! (ignored)"
+fi
+
+LOOP=1
+
+while true; do
+
+    OUT=`$ROOT/utils/admin/check-test-idm-workflow $PID 2>$ERR`
+
+    if [ -s $ERR ]; then
+        MSG=`echo "$ERR" | tr "\n" " " `
+        addToLog "$MSG"
+        echo "$MSG" >&2
+        errorExit "Failed to check status of workflow from IdM"
+    fi
+
+    echo "$OUT"
+
+    RUNNING=`echo "$OUT" | grep 'status: running'`
+
+    if [ -z "$RUNNING" ]; then
+        break
+    fi
+
+    LOOP=$(( LOOP + 1 ))
+
+    if [ $LOOP -gt 15 ]; then
+        errorExit "Timeout exceeded while waiting for IdM workflow to complete"
+    fi
+done
 
 addToLog "DONE"
