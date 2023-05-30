@@ -55,23 +55,22 @@ done
 
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
 
-PROJECT_NUMBER=`echo "$OUT" | jq '.[0].number'`
-
-if [ "$PROJECT_NUMBER" != "\"$PROJECT\"" ]
-then
+if [ -s $ERR ]; then
+    MSG=`echo "$ERR" | tr "\n" " " `
+    addToLog "$MSG"
     errorExit "Failed to retrieve details of project $PROJECT from microservice. Aborting."
 fi
 
-PROJECT_STATE=`echo "$OUT" | jq '.[0].state'`
+PROJECT_STATE=`echo "$OUT" | jq '.[0].state' --raw-output 2>/dev/null`
 
-if [ "$PROJECT_STATE" != "\"deletedata\"" ]
+if [ "$PROJECT_STATE" != "deletedata" ]
 then
     errorExit "Project $PROJECT does not have a data deletion process state of 'deletedata'. Aborting."
 fi
 
-PROJECT_IDA=`echo "$OUT" | jq '.[0].services[] | select(. == "IDA")'`
+PROJECT_IDA=`echo "$OUT" | jq '.[0].services[] | select(. == "IDA")' --raw-output 2>/dev/null`
 
-if [ "$PROJECT_IDA" != "\"IDA\"" ]
+if [ "$PROJECT_IDA" != "IDA" ]
 then
     errorExit "Project $PROJECT is not active in the IDA service. Aborting."
 fi

@@ -70,7 +70,7 @@ Even in cases where a closed project is not given a grace period and is expected
 deleted immediately, it must first be suspended.
  
 
-STEP 2a: Delete the project and project data from the service when its grace period expires
+STEP 2: Delete the project and project data from the service when its grace period expires
 
 When the grace period of a project has expired and the project enters the deletedata
 substate of the CSC data deletion process, it should be deleted from the IDA service.
@@ -82,17 +82,17 @@ directory and subsequently deleted using the "delete-project" script.
 The "delete-project" script takes a single project identifier argument
 and will:
 
-a. Check whether the project exists, is locked, has the special "suspend" action as
-   its most recent action, and that "suspend" action is older than a configured
-   "quarantine" period of time. If any of these tests fail, the script will exit
-   with an error.
+a. Check whether the project exists, is associated with IDA and has the CSC Data
+   Deletion Process state 'deletedata', is suspended, and that it has been suspended
+   longer than a configured "quarantine" (grace) period of time. If any of these tests
+   fail, the script will exit with an error.
 
 b. Create a dated project subdirectory in a special "trash" directory, and move the
    frozen and staging project directories to the project trash subdirectory.
 
-c. Take a backup dump of all action records associated with the project, in JSON
+c. Take a backup dump of all IDA action records associated with the project, in JSON
    format, saving them to a file "actions.json" in the project trash subdirectory,
-   and take a backup dump of all file records associated with the project, in JSON
+   and take a backup dump of all IDA file records associated with the project, in JSON
    format, saving them to a file "files.json" in the project trash subdirectory.
 
 d. Delete the PSO user and the project group, and if relevant, deleting any symbolic
@@ -100,10 +100,14 @@ d. Delete the PSO user and the project group, and if relevant, deleting any symb
 
 e. Flush all project records from the IDA database.
 
-f. Mark all project frozen files as deleted in METAX.
+f. Mark all project frozen files and datasets as deleted in METAX.
 
-g. Delete all project frozen files from the DMF cache.
+g. Delete all project frozen files from the DMF cache (this will not delete any files written to tape).
  
+h. Report the project data as datadeleted for IDA to the IdM
+
+i. Notify all project users and IDA devs by email that the project has been deleted
+
 If an error is caught after this second step, or the project owners wish the project
 to be reinstated, or wish some of the data to be recovered, it is still doable. All
 database records and project files will still exist in the "trash".
@@ -115,21 +119,11 @@ Note: The tape replication cache defined at the pathname $DATA_REPLICATION_ROOT 
 grant group write permissions to the defined $HTTPD_USER.
 
 
-STEP 2b: Report to the IdM that the project data has been deleted
+STEP 3: Permanently delete all project data from trash
 
-Once the project has been deleted with the "delete-project" script, the deletion of the
-project data should be reported to the IdM via the CSC data deletion process microservice.
-This is easily done using the "report-datadeleted" script, which takes the project
-identifier as a single argument and creates a report workflow in the IdM service which will
-register the deletion action.
-
-
-STEP 3: Permanently delete all project data
-
-After a reasonable period of time, at most monthly, we should manually delete all project
-trash subfolders which are older than one week, to free up disk space. It is best to wait
-at least a week before deleting any project trash subfolder, in case of admin error such
-that the project data needs to be restored.
+On a monthly basis, we should manually delete all project trash subfolders which are older
+than one month, to free up disk space and to ensure project data is not unintentionally
+preserved.
 
 Once this third step is executed for a project, it is gone, gone, gone (except what
 remains on tape in the DMF service).
@@ -142,24 +136,26 @@ Configuration for these scripts is controlled by the following variables which m
 be defined in, and are taken from, the $ROOT/config/config.sh file and the
 $ROOT/lib/constants.sh file of the service:
 
+ROOT
+OCC
+LOG
+HTTPD_USER
 NC_ADMIN_USER
 NC_ADMIN_PASS
-METAX_API_USER
-METAX_API_PASS
-METAX_API_ROOT_URL
-HTTPD_USER
 PROJECT_USER_PASS
 PROJECT_USER_PREFIX
 STAGING_FOLDER_SUFFIX
-ROOT
 STORAGE_OC_DATA_ROOT
 DATA_REPLICATION_ROOT
-OCC
-LOG
-EMAIL_SENDER             (optional, but used if defined)
-EMAIL_RECIPIENTS         (optional, but used if defined)
-TRASH_DATA_ROOT          (will be created if does not exist)
-QUARANTINE_PERIOD        (defined in seconds, e.g. 30 days = 2592000 seconds)
+METAX_API_USER
+METAX_API_PASS
+METAX_API_ROOT_URL
+CSC_DATA_DELETION_MICROSERVICE
+CSC_DATA_DELETION_SECURITY_TOKEN
+EMAIL_SENDER       (optional, but used if defined)
+EMAIL_RECIPIENTS   (optional, but used if defined)
+TRASH_DATA_ROOT    (will be created if does not exist)
+QUARANTINE_PERIOD  (defined in seconds, e.g. 30 days = 2592000 seconds)
 
 These common variables, along with validation of configuration variables and
 default processing of parameters is handled by the initialization script
