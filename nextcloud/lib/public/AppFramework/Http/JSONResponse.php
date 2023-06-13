@@ -70,7 +70,7 @@ class JSONResponse extends Response {
 	 * @throws \Exception If data could not get encoded
 	 */
 	public function render() {
-		$response = json_encode($this->data, JSON_HEX_TAG | JSON_PRETTY_PRINT);
+		$response = json_encode($this->data, JSON_HEX_TAG | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		if ($response === false) {
 			throw new \Exception(sprintf('Could not json_encode due to invalid ' .
 				'non UTF-8 characters in the array: %s', var_export($this->data, true)));

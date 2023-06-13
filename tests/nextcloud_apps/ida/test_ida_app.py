@@ -313,7 +313,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response_data["message"], "The specified folder contains no files which can be frozen.")
 
         print("Freeze a single file where filename contains special characters")
-        data = {"project": "test_project_a", "pathname": "/testdata/Special Characters/$file with spaces and special characters #@äÖ+'^.dat&"}
+        data = {"project": "test_project_a", "pathname": "/testdata/Special Characters/$file with special characters #~;@-+'&!%^.dat"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
