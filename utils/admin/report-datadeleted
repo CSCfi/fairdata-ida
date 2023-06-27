@@ -87,7 +87,7 @@ if [ -s $ERR ]; then
 fi
 
 MSG=`echo "$OUT" | tr "\n" " " `
-addToLog "$MSG"
+echoAndLog "$MSG"
 
 PID=`echo "$OUT" | jq '.["workflow"]' --raw-output`
 
@@ -99,7 +99,7 @@ LOOP=1
 
 while true; do
 
-    OUT=`$ROOT/utils/admin/check-test-idm-workflow $PID 2>$ERR`
+    OUT=`$ROOT/utils/admin/fetch-workflow-details $PID 2>$ERR`
 
     if [ -s $ERR ]; then
         MSG=`echo "$ERR" | tr "\n" " " `
