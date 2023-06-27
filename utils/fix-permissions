@@ -69,9 +69,11 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PERMS="g+rwX,o+rX-w"
+PERMS="g+rwX,o-rwx"
 
-chown -R $HTTPD_USER:$HTTPD_USER $ROOT
+chown -R -P $HTTPD_USER:$HTTPD_USER $ROOT
+chown $HTTPD_USER:$HTTPD_USER $ROOT/config/config.sh
+chown $HTTPD_USER:$HTTPD_USER $ROOT/nextcloud/config/config.php
 
 chmod +x $ROOT/nextcloud/occ
 chmod +x $ROOT/agents/replication/dmfstatus
@@ -79,10 +81,5 @@ chmod +x $ROOT/agents/replication/mock_dmfstatus
 chmod +x $ROOT/agents/replication/mock_dmfstatus_timeout
 
 chmod -R $PERMS $ROOT
-
-chown -R $HTTPD_USER:$HTTPD_USER $ROOT/config/config.sh
-chmod -R $PERMS $ROOT/config/config.sh
-
-chown -R $HTTPD_USER:$HTTPD_USER $ROOT/nextcloud/config/config.php
-chmod -R $PERMS $ROOT/nextcloud/config/config.php
-
+chmod $PERMS $ROOT/config/config.sh
+chmod $PERMS $ROOT/nextcloud/config/config.php
