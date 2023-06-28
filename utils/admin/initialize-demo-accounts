@@ -48,7 +48,7 @@
 #
 # All projects will be initialized without any data.
 #
-# Usage: initialize-demo-accounts [ <cnt> | <min> <max> ] [ --clean | --flush ]
+# Usage: initialize-demo-accounts [ <cnt> | <min> <max> ] [ --clean | --flush | --rebuild ] [ --dry-run ]
 #        initialize-demo-accounts -h
 #
 # If a single numeric argument between 0 and 100 is given, then only that specific demo
@@ -63,6 +63,13 @@
 #
 # If the argument "--flush" is given, then only the existing accounts and data
 # are fully purged and no new accounts will be created.
+#
+# If the argument "--rebuild" is given, then the accounts are re-initialized in IDA
+# locally using the existing credentials and no new passwords are re-generated. Data
+# stored in Metax will not be affected.
+#
+# If the argument "--dry-run" is given, no changes are made nor new credentials stored, but
+# all steps are executed showing the changes that would have been made.
 #
 # EXAMPLES:
 #
@@ -106,7 +113,7 @@
 SCRIPT_PATHNAME="$(realpath -s $0)"
 SCRIPT=`basename $SCRIPT_PATHNAME`
 
-USAGE="Usage: $SCRIPT [ <cnt> | <min> <max> ] [ --clean | --flush ]
+USAGE="Usage: $SCRIPT [ <cnt> | <min> <max> ] [ --clean | --flush | --rebuild ] [ --dry-run ]
        $SCRIPT -h"
 
 . `dirname $0`/../../lib/init_script.sh
@@ -140,16 +147,26 @@ function skipped {
     echo "(skipped)"
 }
 
+function dryrun {
+    echo "(dry run)"
+}
+
 #--------------------------------------------------------------------------------
 # Variable and flag initialization...
 
 PROJECT_BASE="Demo_Project"
 USER_BASE="demo_user"
-PROJECT_MIN=1
-PROJECT_MAX=100
 CLEAN="false"
 FLUSH="false"
+REBUILD="false"
+DRY_RUN="false"
 PAS="false"
+
+PROJECT_MIN=-1
+PROJECT_MAX=-1
+
+declare -A MASTER_CREDENTIALS
+declare -A NEW_CREDENTIALS
 
 if [ "$SCRIPT" = "initialize-pas-demo-accounts" ]; then
     PAS="true"
@@ -177,9 +194,22 @@ do
             ;;
         "--clean")
             CLEAN="true"
+            addToLog "CLEAN"
             ;;
         "--flush")
             FLUSH="true"
+            addToLog "FLUSH"
+            ;;
+        "--rebuild")
+            REBUILD="true"
+            METAX_AVAILABLE=0 # Don't touch data in Metax on rebuild, so disable Metax integration
+            METAX_API_USER="disabled"
+            METAX_API_PASS="disabled"
+            addToLog "REBUILD"
+            ;;
+        "--dry-run")
+            DRY_RUN="true"
+            addToLog "DRY RUN"
             ;;
         *)
             if [ -z "${var##*[!0-9]*}" ]; then
@@ -187,7 +217,7 @@ do
                 echo "$USAGE" >&2
                 exit 1
             fi
-            if [ "$PROJECT_MIN" = "1" ]; then
+            if [ $PROJECT_MIN -eq -1 ]; then
                 PROJECT_MIN=$var
                 PROJECT_MAX=$var
             else
@@ -197,36 +227,38 @@ do
     esac
 done
 
+if [ $PROJECT_MIN -eq -1 ]; then
+    PROJECT_MIN=1
+fi
+
+if [ $PROJECT_MAX -eq -1 ]; then
+    PROJECT_MAX=100
+fi
+
 if [ "$DEBUG" = "true" ]; then
-    echo "PREFIX: $PREFIX"
-    echo "MIN:    $PROJECT_MIN"
-    echo "MAX:    $PROJECT_MAX"
-    echo "CLEAN:  $CLEAN"
-    echo "FLUSH:  $FLUSH"
-    echo "MCFILE: $MASTER_CREDENTIALS_FILE"
-    echo "NCFILE: $NEW_CREDENTIALS_FILE"
+    echo "MIN:     $PROJECT_MIN"
+    echo "MAX:     $PROJECT_MAX"
+    echo "CLEAN:   $CLEAN"
+    echo "FLUSH:   $FLUSH"
+    echo "REBUILD: $FLUSH"
+    echo "DRY_RUN: $DRY_RUN"
+    echo "MCFILE:  $MASTER_CREDENTIALS_FILE"
+    echo "NCFILE:  $NEW_CREDENTIALS_FILE"
 fi
 
 if [ "$CLEAN" = "true" -a "$FLUSH" = "true" ]; then
-    echo "Error: Only one option 'clean' or 'flush' may be specified at the same time" >&2
-    echo "$USAGE" >&2
+    echo "Error: Only one option '--clean' or '--flush' may be specified at the same time" >&2
     exit 1
 fi
 
-if [ "$CLEAN" = "false" -a "$FLUSH" = "false" ]; then
-    if [ $# -gt 2 ]; then
-        echo "Error: Too many arguments specified" >&2
-        echo "$USAGE" >&2
-        exit 1
-    fi
+if [ "$CLEAN" = "true" -a "$REBUILD" = "true" ]; then
+    echo "Error: Only one option '--clean' or '--rebuild' may be specified at the same time" >&2
+    exit 1
 fi
 
-if [ "$CLEAN" = "true" -o "$FLUSH" = "true" ]; then
-    if [ $# -gt 3 ]; then
-        echo "Error: Too many arguments specified" >&2
-        echo "$USAGE" >&2
-        exit 1
-    fi
+if [ "$FLUSH" = "true" -a "$REBUILD" = "true" ]; then
+    echo "Error: Only one option '--flush' or '--rebuild' may be specified at the same time" >&2
+    exit 1
 fi
 
 if [ $PROJECT_MIN -lt 1 ]; then
@@ -240,14 +272,12 @@ if [ $PROJECT_MAX -gt 100 ]; then
 fi
 
 if [ $PROJECT_MIN -gt $PROJECT_MAX ]; then
-    echo "Error: The range minimum must be less than the range maximum" >&2
+    echo "Error: The range minimum must be less than or equal to the range maximum" >&2
     exit 1
 fi
 
 #--------------------------------------------------------------------------------
 # Initialize master credentials hash table from persistent credentials file
-
-declare -A MASTER_CREDENTIALS
 
 while read -r USER PASSWORD; do
     MASTER_CREDENTIALS["$USER"]="$PASSWORD"
@@ -265,24 +295,35 @@ fi
 echo "Cleaning all project data from IDA file storage..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
     PROJECT="${PROJECT_BASE}_${COUNT}"
     COUNT=$(( $COUNT + 1 ))
+
     # Use the PSO account when flushing the project data, NOT the admin account
     # This ensures we never accidentally flush any data other than belonging to
     # a demo project!
     PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+
     STEP="    Cleaning $PROJECT"
     printf "%${PADDING}s" "$STEP"
-    # If there is no project user folder, skip 
+
+    # If there is no project user folder, skip
     if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}/" ]; then
         skipped
         continue
     fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+        continue
+    fi
+
     PROJECT_ROOT="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}"
     PROJECT_FROZEN_FOLDER="${PROJECT_ROOT}/files/${PROJECT}"
     PROJECT_STAGING_FOLDER="${PROJECT_ROOT}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
     rm -fr $PROJECT_FROZEN_FOLDER/*
     rm -fr $PROJECT_STAGING_FOLDER/*
+
     OUT=`$ROOT/nextcloud/occ files:scan $PROJECT_USER 2>&1`
     if [ "$?" -ne 0 ]; then
         OUT="$OUT (ignored)"
@@ -295,19 +336,29 @@ done
 echo "Cleaning all frozen file records from IDA database..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
     PROJECT="${PROJECT_BASE}_${COUNT}"
     COUNT=$(( $COUNT + 1 ))
+
     # Use the PSO account when flushing the project data, NOT the admin account
     # This ensures we never accidentally flush any data other than belonging to
     # a demo project!
     PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+
     STEP="    Cleaning $PROJECT"
     printf "%${PADDING}s" "$STEP"
-    # If there is no project user folder, skip 
+
+    # If there is no project user folder, skip
     if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}/" ]; then
         skipped
         continue
     fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+        continue
+    fi
+
     $CURL_POST $PROJECT_USER:$PROJECT_USER_PASS "$URL_BASE_IDA/api/flush?project=$PROJECT" 2>&1 >/dev/null
     if [ "$?" -ne 0 ]; then
         failure "Failed to clean records for $PROJECT. (ignored)."
@@ -316,15 +367,23 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
     fi
 done
 
-if [ "$METAX_AVAILABLE" = "1" ]; then
+if [ "$METAX_AVAILABLE" = "1" -o "$REBUILD" != "true" ]; then
 
     echo "Cleaning all frozen file records from Metax database..."
 
     COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
         PROJECT="${PROJECT_BASE}_${COUNT}"
         COUNT=$(( $COUNT + 1 ))
+
         STEP="    Cleaning $PROJECT"
         printf "%${PADDING}s" "$STEP"
+
+        if [ "$DRY_RUN" = "true" ]; then
+            dryrun
+            continue
+        fi
+
         OUT=`$CURL_POST $METAX_API_USER:$METAX_API_PASS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 2>&1`
         if [ "$?" -ne 0 ]; then
             failure "$OUT (ignored)"
@@ -336,10 +395,18 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
     echo "Cleaning all dataset records from Metax database..."
 
     COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
         USER="${USER_BASE}_${COUNT}"
         COUNT=$(( $COUNT + 1 ))
+
         STEP="    Cleaning $USER"
         printf "%${PADDING}s" "$STEP"
+
+        if [ "$DRY_RUN" = "true" ]; then
+            dryrun
+            continue
+        fi
+
         OUT=`$CURL_POST $METAX_API_USER:$METAX_API_PASS "$METAX_API_RPC_URL/datasets/flush_user_data?metadata_provider_user=$USER" 2>&1`
         if [ "$?" -ne 0 ]; then
             failure "$OUT (ignored)"
@@ -347,21 +414,29 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
             success
         fi
     done
-
 fi
 
 echo "Cleaning all replicated data files..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
     PROJECT="${PROJECT_BASE}_${COUNT}"
     COUNT=$(( $COUNT + 1 ))
+
     STEP="    Cleaning $PROJECT"
     printf "%${PADDING}s" "$STEP"
-    # If there is no replication project folder, skip 
+
+    # If there is no replication project folder, skip
     if [ ! -d "${DATA_REPLICATION_ROOT}/projects/${PROJECT}" ]; then
         skipped
         continue
     fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+        continue
+    fi
+
     OUT=`/bin/rm -fr $DATA_REPLICATION_ROOT/projects/$PROJECT 2>&1`
     if [ "$?" -ne 0 ]; then
         failure "$OUT (ignored)"
@@ -383,10 +458,18 @@ fi
 echo "Flushing any existing demo users..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
     USER="${USER_BASE}_${COUNT}"
     COUNT=$(( $COUNT + 1 ))
+
     STEP="    Flushing $USER account from IDA"
     printf "%${PADDING}s" "$STEP"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+        continue
+    fi
+
     OUT=`$ROOT/admin/ida_user DELETE $USER 2>&1`
     if [ "$?" -ne 0 ]; then
         OUT="$OUT (ignored)"
@@ -394,9 +477,11 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
     else
         success
     fi
+
     STEP="    Deleting any residual user folder"
     printf "%${PADDING}s" "$STEP"
-    # We use an explicit pathname here rather than using the config variable to be 
+
+    # We use an explicit pathname here rather than using the config variable to be
     # absolutely sure we do not delete anything we didn't mean to, due to a configuration
     # or variable name error
     USER_FOLDER="/mnt/storage_vol01/ida/$USER"
@@ -420,10 +505,18 @@ done
 echo "Flushing any existing demo projects..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
     PROJECT="${PROJECT_BASE}_${COUNT}"
     COUNT=$(( $COUNT + 1 ))
+
     STEP="    Flushing $PROJECT"
     printf "%${PADDING}s" "$STEP"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+        continue
+    fi
+
     OUT=`$ROOT/admin/ida_project DISABLE $PROJECT 2>&1`
     if [ "$?" -ne 0 ]; then
         OUT="$OUT (ignored)"
@@ -436,11 +529,19 @@ done
 echo "Flushing any existing project share owners..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
     PROJECT="${PROJECT_BASE}_${COUNT}"
-    COUNT=$(( $COUNT + 1 ))
     USER="$PROJECT_USER_PREFIX""$PROJECT"
+    COUNT=$(( $COUNT + 1 ))
+
     STEP="    Flushing $USER"
     printf "%${PADDING}s" "$STEP"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+        continue
+    fi
+
     OUT=`$OCC user:delete $USER 2>&1`
     if [ "$?" -ne 0 ]; then
         OUT="$OUT (ignored)"
@@ -448,6 +549,7 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
     else
         success
     fi
+
     STEP="    Deleting any residual project folder"
     printf "%${PADDING}s\n" "$STEP"
     for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}; do
@@ -469,30 +571,31 @@ COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
     done
 done
 
-#--------------------------------------------------------------------------------
-# Generate new passwords for users and push new credentials to IdM
-#
-# We only record those new passwords in the master credentials if we are
-# re-initializing the accounts, otherwise they are discarded after pushing them
-# to the test IdM and the master credentials are updated with the invalid password
-# '(disabled)' which cannot be used for authentication -- thus if only flushing,
-# those new passwords are discarded and not recorded, and thus those accounts are
-# effectively disabled in the test IdM.
+if [ "$REBUILD" != "true" ]; then
 
-declare -A NEW_CREDENTIALS
+    #--------------------------------------------------------------------------------
+    # Generate new passwords for users and push new credentials to IdM
+    #
+    # We only record those new passwords in the master credentials if we are
+    # re-initializing the accounts, otherwise they are discarded after pushing them
+    # to the test IdM and the master credentials are updated with the invalid password
+    # '(disabled)' which cannot be used for authentication -- thus if only flushing,
+    # those new passwords are discarded and not recorded, and thus those accounts are
+    # effectively disabled in the test IdM.
 
-cp /dev/null $NEW_CREDENTIALS_FILE
+    cp /dev/null $NEW_CREDENTIALS_FILE
 
-COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
-    PROJECT="${PROJECT_BASE}_${COUNT}"
-    USER="${USER_BASE}_${COUNT}"
-    TOKEN=`tr -cd '[:alnum:]' < /dev/urandom | head -c64 | sed -e 's/[^a-zA-Z0-9]//' | sed -e 's/[015oOiIlLsS]//g' | head -c4 | tr 'A-Z' 'a-z'`
-    PASSWORD="Demo_Password_${COUNT}_${TOKEN}"
-    NEW_CREDENTIALS["$USER"]="$PASSWORD"
-    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
-    echo "$OUTPUT" >> $NEW_CREDENTIALS_FILE
-    COUNT=$(( $COUNT + 1 ))
-done
+    COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+        PROJECT="${PROJECT_BASE}_${COUNT}"
+        USER="${USER_BASE}_${COUNT}"
+        TOKEN=`tr -cd '[:alnum:]' < /dev/urandom | head -c64 | sed -e 's/[^a-zA-Z0-9]//' | sed -e 's/[015oOiIlLsS]//g' | head -c4 | tr 'A-Z' 'a-z'`
+        PASSWORD="Demo_Password_${COUNT}_${TOKEN}"
+        NEW_CREDENTIALS["$USER"]="$PASSWORD"
+        OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+        echo "$OUTPUT" >> $NEW_CREDENTIALS_FILE
+        COUNT=$(( $COUNT + 1 ))
+    done
+fi
 
 #--------------------------------------------------------------------------------
 # If not merely flushing accounts, initialize new accounts...
@@ -501,12 +604,20 @@ if [ "$FLUSH" != "true" ]; then
 
     echo "Creating new demo accounts..."
     echo "Creating projects..."
-    
+
     COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
         PROJECT="${PROJECT_BASE}_${COUNT}"
         COUNT=$(( $COUNT + 1 ))
+
         STEP="    Creating $PROJECT"
         printf "%${PADDING}s" "$STEP"
+
+        if [ "$DRY_RUN" = "true" ]; then
+            dryrun
+            continue
+        fi
+
         OUT=`$ROOT/admin/ida_project ADD $PROJECT 1 2>&1`
         if [ "$?" -ne 0 ]; then
             failure "$OUT"
@@ -514,105 +625,142 @@ if [ "$FLUSH" != "true" ]; then
             success
         fi
     done
-    
+
     #--------------------------------------------------------------------------------
-    
+
     echo "Creating users..."
-    
+
     COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+
         PROJECT="${PROJECT_BASE}_${COUNT}"
         USER="${USER_BASE}_${COUNT}"
-        export OC_PASS="${NEW_CREDENTIALS[$USER]}"
+        COUNT=$(( $COUNT + 1 ))
+
+        if [ "$REBUILD" = "true" ]; then
+            OC_PASS="${MASTER_CREDENTIALS[$USER]}"
+        else
+            OC_PASS="${NEW_CREDENTIALS[$USER]}"
+        fi
+
+        export OC_PASS
+
         STEP="    Creating $USER"
         printf "%${PADDING}s" "$STEP"
+
+        if [ "$DRY_RUN" = "true" ]; then
+            dryrun
+            continue
+        fi
+
         OUT=`$ROOT/admin/ida_user ADD $USER $PROJECT 2>&1`
         if [ "$?" -ne 0 ]; then
             failure "$OUT"
         else
             echo ""
         fi
+    done
+
+fi
+
+if [ "$REBUILD" != "true" ]; then
+
+    #--------------------------------------------------------------------------------
+    # Push new credentials to test IdM
+
+    if [ "$FLUSH" = "true" ]; then
+        if [ "$PAS" = "true" ]; then
+            echo "Disabling flushed PAS demo accounts in test IdM..."
+        else
+            echo "Disabling flushed demo accounts in test IdM..."
+        fi
+    else
+        if [ "$PAS" = "true" ]; then
+            echo "Pushing updated PAS demo account credentials to test IdM..."
+        else
+            echo "Pushing updated demo account credentials to test IdM..."
+        fi
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+    else
+        OUT=`$ROOT/utils/admin/push-credentials-to-test-idm $NEW_CREDENTIALS_FILE 2>&1`
+        PID=`echo "$OUT" | sed -e 's/^\w*workflow:\w*//'`
+
+        if [ -z "$PID" ]; then
+            echo "Error: failed to update accounts in test IdM" >&2
+            echo "$OUT" >&2
+            exit 1
+        fi
+
+        LOOP=1
+
+        while true; do
+            OUT=`$ROOT/utils/admin/check-test-idm-workflow $PID 2>&1`
+            echo "    $OUT"
+            RUNNING=`echo "$OUT" | grep 'status: running'`
+            if [ -z "$RUNNING" ]; then
+                break
+            fi
+            LOOP=$(( LOOP + 1 ))
+            if [ $LOOP -gt 100 ]; then
+                echo "Error: timeout exceeded while waiting for IdM workflow to complete" >&2
+                exit 1
+            fi
+        done
+    fi
+
+    #--------------------------------------------------------------------------------
+    # Update master credentials persistent file
+
+    echo "Updating persistent credentials..."
+
+    COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
+        USER="${USER_BASE}_${COUNT}"
+        if [ "$FLUSH" = "true" ]; then
+            PASSWORD="(disabled)"
+        else
+            PASSWORD="${NEW_CREDENTIALS[$USER]}"
+        fi
+        MASTER_CREDENTIALS["$USER"]="$PASSWORD"
         COUNT=$(( $COUNT + 1 ))
     done
-    
+
+    if [ "$DRY_RUN" = "true" ]; then
+        dryrun
+    else
+        cp /dev/null $MASTER_CREDENTIALS_FILE
+
+        COUNT=1; while [ $COUNT -le 100 ]; do
+            USER="${USER_BASE}_${COUNT}"
+            PASSWORD="${MASTER_CREDENTIALS[$USER]}"
+            OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+            echo "$OUTPUT" >> $MASTER_CREDENTIALS_FILE
+            COUNT=$(( $COUNT + 1 ))
+        done
+    fi
 fi
 
 #--------------------------------------------------------------------------------
-# Push new credentials to test IdM
 
-if [ "$FLUSH" = "true" ]; then
-    if [ "$PAS" = "true" ]; then
-        echo "Disabling flushed PAS demo accounts in test IdM..."
-    else
-        echo "Disabling flushed demo accounts in test IdM..."
-    fi
+if [ "$REBUILD" = "true" ]; then
+    echo "Preserved credentials:"
 else
-    if [ "$PAS" = "true" ]; then
-        echo "Pushing updated PAS demo account credentials to test IdM..."
-    else
-        echo "Pushing updated demo account credentials to test IdM..."
-    fi
+    echo "Updated credentials:"
 fi
-
-OUT=`$ROOT/utils/admin/push-credentials-to-test-idm $NEW_CREDENTIALS_FILE 2>&1`
-PID=`echo "$OUT" | sed -e 's/^\w*workflow:\w*//'`
-
-if [ -z "$PID" ]; then
-    echo "Error: failed to update accounts in test IdM" >&2
-    echo "$OUT" >&2
-    exit 1
-fi
-
-LOOP=1
-
-while true; do
-    OUT=`$ROOT/utils/admin/check-test-idm-workflow $PID 2>&1`
-    echo "    $OUT"
-    RUNNING=`echo "$OUT" | grep 'status: running'`
-    if [ -z "$RUNNING" ]; then
-        break
-    fi
-    LOOP=$(( LOOP + 1 ))
-    if [ $LOOP -gt 100 ]; then
-        echo "Error: timeout exceeded while waiting for IdM workflow to complete" >&2
-        exit 1
-    fi
-done
-
-#--------------------------------------------------------------------------------
-# Update master credentials persistent file
-
-echo "Updating persistent credentials..."
 
 COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
     USER="${USER_BASE}_${COUNT}"
-    if [ "$FLUSH" = "true" ]; then
-        PASSWORD="(disabled)"
-    else
-        PASSWORD="${NEW_CREDENTIALS[$USER]}"
+    PASSWORD="${MASTER_CREDENTIALS[$USER]}"
+    COUNT=$(( $COUNT + 1 ))
+    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+    if [ "$REBUILD" = "true" ]; then
+        OUTPUT="$OUTPUT (unchanged)"
     fi
-    MASTER_CREDENTIALS["$USER"]="$PASSWORD"
-    COUNT=$(( $COUNT + 1 ))
-done
-
-cp /dev/null $MASTER_CREDENTIALS_FILE
-
-COUNT=1; while [ $COUNT -le 100 ]; do
-    USER="${USER_BASE}_${COUNT}"
-    PASSWORD="${MASTER_CREDENTIALS[$USER]}"
-    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
-    echo "$OUTPUT" >> $MASTER_CREDENTIALS_FILE
-    COUNT=$(( $COUNT + 1 ))
-done
-
-#--------------------------------------------------------------------------------
-
-echo "Updated credentials:"
-COUNT=$PROJECT_MIN; while [ $COUNT -le $PROJECT_MAX ]; do
-    USER="${USER_BASE}_${COUNT}"
-    PASSWORD="${MASTER_CREDENTIALS[$USER]}"
-    OUTPUT=$(printf "   %-20s%s" "$USER" "$PASSWORD")
+    if [ "$DRY_RUN" = "true" -a "$REBUILD" != "true" ]; then
+        OUTPUT="$OUTPUT (not saved)"
+    fi
     echo "$OUTPUT"
-    COUNT=$(( $COUNT + 1 ))
 done
 
 #--------------------------------------------------------------------------------
