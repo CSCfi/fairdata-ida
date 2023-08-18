@@ -283,7 +283,7 @@ class FreezingController extends Controller
                 try {
                     Access::verifyIsAllowedProject($project);
                 } catch (Exception $e) {
-                    return API::unauthorizedErrorResponse($e->getMessage());
+                    return API::forbiddenErrorResponse($e->getMessage());
                 }
             }
 
@@ -333,13 +333,13 @@ class FreezingController extends Controller
             // Verify that current user is either admin or PSO user
 
             if ($this->userId !== 'admin' && $this->userId !== (Constants::PROJECT_USER_PREFIX . $project)) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Admin is limited only to setting service lock
 
             if ($this->userId === 'admin' && $project !== 'all') {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Verify that current user has rights to the specified project, rejecting request if not...
@@ -348,7 +348,7 @@ class FreezingController extends Controller
                 try {
                     Access::verifyIsAllowedProject($project);
                 } catch (Exception $e) {
-                    return API::unauthorizedErrorResponse($e->getMessage());
+                    return API::forbiddenErrorResponse($e->getMessage());
                 }
             }
 
@@ -401,13 +401,13 @@ class FreezingController extends Controller
             // Verify that current user is either admin or PSO user
 
             if ($this->userId !== 'admin' && $this->userId !== (Constants::PROJECT_USER_PREFIX . $project)) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Admin is limited only to clearing service lock
 
             if ($this->userId === 'admin' && $project !== 'all') {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Verify that current user has rights to the specified project, rejecting request if not...
@@ -416,7 +416,7 @@ class FreezingController extends Controller
                 try {
                     Access::verifyIsAllowedProject($project);
                 } catch (Exception $e) {
-                    return API::unauthorizedErrorResponse($e->getMessage());
+                    return API::forbiddenErrorResponse($e->getMessage());
                 }
             }
 
@@ -493,7 +493,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Verify Nextcloud node ID per specified pathname
@@ -706,7 +706,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Verify Nextcloud node ID per specified pathname
@@ -915,7 +915,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Verify Nextcloud node ID per specified pathname
@@ -1113,7 +1113,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Verify that the action actually is failed action
@@ -1355,7 +1355,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Verify that action is either failed or pending
@@ -1501,7 +1501,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Verify Nextcloud node ID per specified pathname
@@ -2180,8 +2180,10 @@ class FreezingController extends Controller
             if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
                 $pathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
                 Util::writeLog('ida', 'checkIntersectionWithIncompleteActions: pathname: ' . $pathname, \OCP\Util::DEBUG);
-                $fileEntity = $this->fileMapper->findByProjectPathname($project, $pathname);
+                # Attempt to retrieve the latest frozen file record by pathname, even if inactive
+                $fileEntity = $this->fileMapper->findByProjectPathname($project, $pathname, null, true);
                 if ($fileEntity) {
+                    # If frozen file record found, check if associated action is incomplete, if so report intersection
                     $actionPid = $fileEntity->getAction();
                     Util::writeLog('ida', 'checkIntersectionWithIncompleteActions: actionPid: ' . $actionPid, \OCP\Util::DEBUG);
                     if (in_array($actionPid, $actionPids, true)) {
@@ -3028,7 +3030,7 @@ class FreezingController extends Controller
 
             return new DataResponse($entities);
         } else {
-            return API::unauthorizedErrorResponse();
+            return API::forbiddenErrorResponse();
         }
     }
 
@@ -3068,7 +3070,7 @@ class FreezingController extends Controller
             // Allowed for admin
 
             if ($this->userId !== 'admin') {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Allowed only in test environment
@@ -3158,7 +3160,7 @@ class FreezingController extends Controller
             // Allowed for admin
 
             if ($this->userId !== 'admin') {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Allowed only in test environment
@@ -3210,7 +3212,7 @@ class FreezingController extends Controller
         // Allowed for admin or PSO user only
 
         if ($this->userId !== 'admin' && strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
-            return API::unauthorizedErrorResponse();
+            return API::forbiddenErrorResponse();
         }
 
         // All projects allowed for admin only
@@ -3225,7 +3227,8 @@ class FreezingController extends Controller
                 return new DataResponse('Database flushed for all projects.');
             }
 
-            return API::unauthorizedErrorResponse();
+            return API::forbiddenErrorResponse();
+
         } else {
 
             // PSO user must belong to project
@@ -3233,7 +3236,7 @@ class FreezingController extends Controller
             if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                 ($project !== substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX)))
             ) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             $this->actionMapper->deleteAllActions($project);
@@ -3284,7 +3287,7 @@ class FreezingController extends Controller
             // Ensure user is PSO user...
 
             if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Extract project name from PSO user name...
@@ -3414,7 +3417,7 @@ class FreezingController extends Controller
             // Ensure user is PSO user...
 
             if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Extract project name from PSO user name...
@@ -3537,7 +3540,7 @@ class FreezingController extends Controller
             // Ensure user is PSO user...
 
             if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
-                return API::unauthorizedErrorResponse();
+                return API::forbiddenErrorResponse();
             }
 
             // Extract project name from PSO user name...
@@ -3786,7 +3789,7 @@ class FreezingController extends Controller
             try {
                 Access::verifyIsAllowedProject($project);
             } catch (Exception $e) {
-                return API::unauthorizedErrorResponse($e->getMessage());
+                return API::forbiddenErrorResponse($e->getMessage());
             }
 
             // Check if scope intersects incomplete action of project

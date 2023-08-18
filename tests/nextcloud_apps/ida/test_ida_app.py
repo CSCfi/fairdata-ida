@@ -145,6 +145,8 @@ class TestIdaApp(unittest.TestCase):
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
 
+        # --------------------------------------------------------------------------------
+
         print("--- Project Titles")
 
         print("Define project title")
@@ -181,6 +183,8 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 404)
 
+        # --------------------------------------------------------------------------------
+
         print("--- Temporary Share Links")
 
         print("Create temporary share link")
@@ -208,6 +212,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertIsNotNone(token)
         self.assertTrue(token.startswith("NOT_FOR_PUBLICATION_"))
 
+        # --------------------------------------------------------------------------------
+
         print("--- Suspended Project Limitations")
 
         data = {"project": "test_project_s", "pathname": "/testdata/License.txt"}
@@ -229,6 +235,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
 
         os.remove(suspendedSentinelFile)
+
+        # --------------------------------------------------------------------------------
 
         print("--- Freeze Actions")
 
@@ -1146,31 +1154,27 @@ class TestIdaApp(unittest.TestCase):
         print("Attempt to freeze file as admin user")
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_2/test01.dat"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Attempt to retrieve file details from project to which user does not belong")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test05.dat"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Attempt to freeze file in project to which user does not belong")
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test05.dat"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
-        # TODO: add tests attempting to update file and action records as normal user, when must be PSO user
+        print("Attempt to update action as pending, clearing completed timestamp, as normal user")
+        data = {"completed": "null"}
+        response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 403)
 
-        # TODO: add tests for housekeeping operations as normal user, when must be admin or PSO user
-
-        # TODO: add tests for housekeeping operations as PSO user, when must be admin
-
-        # TODO: add tests attempting to copy files or folders to or within the frozen area (not fully covered by CLI tests)
-
-        # TODO: add tests for copying files or folders from the frozen area to the staging area (not fully covered by CLI tests)
-
-        # TODO: add tests for checking required parameters
-
-        # TODO: add tests for pathnames containing special characters
+        print("Attempt to update file size as normal user")
+        data = {"size": 1234}
+        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 403)
 
         # --------------------------------------------------------------------------------
 
@@ -1182,9 +1186,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
         print("Attempt to lock project as regular user")
-        # POST /app/ida/api/lock/test_project_c as test_user_c should fail with 401 Unauthorized
+        # POST /app/ida/api/lock/test_project_c as test_user_c should fail with 403 Unauthorized
         response = requests.post("%s/lock/test_project_c" % self.config["IDA_API_ROOT_URL"], auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Lock project")
         # POST /app/ida/api/lock/test_project_c as pso_user_c should succeed with 200 OK
@@ -1212,9 +1216,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertTrue("Failed to lock project when initiating requested action." in response.text)
 
         print("Attempt to unlock project as regular user")
-        # DELETE /app/ida/api/lock/test_project_c as test_user_c should fail with 401 Unauthorized
+        # DELETE /app/ida/api/lock/test_project_c as test_user_c should fail with 403 Unauthorized
         response = requests.delete("%s/lock/test_project_c" % self.config["IDA_API_ROOT_URL"], auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Unlock project")
         # DELETE /app/ida/api/lock/test_project_c as pso_user_c should succeed with 200 OK
@@ -1237,7 +1241,9 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        print("--- Service Locking")
+        # --------------------------------------------------------------------------------
+
+        print("--- Service Locking")
 
         print("Verify that service is unlocked")
         # GET /app/ida/api/lock/all as test_user_c should fail with 404 Not found
@@ -1245,14 +1251,14 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
         print("Attempt to lock service as regular user")
-        # POST /app/ida/api/lock/all as test_user_c should fail with 401 Unauthorized
+        # POST /app/ida/api/lock/all as test_user_c should fail with 403 Unauthorized
         response = requests.post("%s/lock/all" % self.config["IDA_API_ROOT_URL"], auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Attempt to lock service as project share owner")
-        # POST /app/ida/api/lock/all as pso_user_c should fail with 401 Unauthorized
+        # POST /app/ida/api/lock/all as pso_user_c should fail with 403 Unauthorized
         response = requests.post("%s/lock/all" % self.config["IDA_API_ROOT_URL"], auth=pso_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Lock service")
         # POST /app/ida/api/lock/all as admin_user should succeed with 200 OK
@@ -1326,14 +1332,14 @@ class TestIdaApp(unittest.TestCase):
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
 
         print("Attempt to unlock service as regular user")
-        # DELETE /app/ida/api/lock/all as test_user_c should fail with 401 Unauthorized
+        # DELETE /app/ida/api/lock/all as test_user_c should fail with 403 Unauthorized
         response = requests.delete("%s/lock/all" % self.config["IDA_API_ROOT_URL"], auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Attempt to unlock service as project share owner")
-        # DELETE /app/ida/api/lock/all as PSO_test_project_c should fail with 401 Unauthorized
+        # DELETE /app/ida/api/lock/all as PSO_test_project_c should fail with 403 Unauthorized
         response = requests.delete("%s/lock/all" % self.config["IDA_API_ROOT_URL"], auth=pso_user_c, verify=False)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
         print("Unlock service")
         # DELETE /app/ida/api/lock/all as admin_user should succeed with 200 OK
@@ -1381,6 +1387,8 @@ class TestIdaApp(unittest.TestCase):
         # DELETE /app/ida/api/lock/all as admin_user should succeed with 200 OK
         response = requests.delete("%s/lock/all" % self.config["IDA_API_ROOT_URL"], auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 200)
+
+        # --------------------------------------------------------------------------------
 
         print("--- Action Collisions")
 
@@ -1453,20 +1461,12 @@ class TestIdaApp(unittest.TestCase):
         self.waitForPendingActions("test_project_c", test_user_c)
         self.checkForFailedActions("test_project_c", test_user_c)
 
-        print("Simulate pending action")
+        print("Simulate pending freeze action")
         # Simulate pending freeze action by removing completed timestamp from preceeding action
         # (frozen pending action pathname = "/testdata/2017-08/Experiment_1")
         data = {"completed": "null"}
         response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), json=data, auth=pso_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
-
-        print("Attempt to unfreeze frozen file which intersects with file associated with pending action")
-        # POST /app/ida/api/unfreeze?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test03.dat as test_user_c
-        # should fail with 409 Conflict due to collision with the previous pending action
-        data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test03.dat"}
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
-        self.assertEqual(response.status_code, 409)
-        self.assertTrue("The requested action conflicts with an ongoing action in the specified project." in response.text)
 
         print("Attempt to delete frozen file which intersects with file associated with pending action")
         # POST /app/ida/api/delete?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test04.dat as test_user_c
@@ -1476,10 +1476,24 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertTrue("The requested action conflicts with an ongoing action in the specified project." in response.text)
 
-        print("Complete simulated pending action")
+        print("Attempt to unfreeze frozen file which intersects with file associated with pending freeze action")
+        # POST /app/ida/api/unfreeze?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test03.dat as test_user_c
+        # should fail with 409 Conflict due to collision with the previous pending action
+        data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test03.dat"}
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue("The requested action conflicts with an ongoing action in the specified project." in response.text)
+
+        print("Complete simulated pending freeze action")
         # Update simulated action to be fully completed with all timestamps defined
         data = {"completed": "2099-01-01T00:00:00Z"}
         response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), json=data, auth=pso_user_c, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("Delete frozen file which no longer intersects with file associated with pending action")
+        # POST /app/ida/api/delete?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test04.dat as test_user_c
+        data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test04.dat"}
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Unfreeze frozen file which no longer intersects with file associated with pending action")
@@ -1487,11 +1501,36 @@ class TestIdaApp(unittest.TestCase):
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test03.dat"}
         response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
+        action_data = response.json() # For use in subsequent action collision tests below
 
-        print("Delete frozen file which no longer intersects with file associated with pending action")
-        # POST /app/ida/api/delete?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test04.dat as test_user_c
-        data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test04.dat"}
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        self.waitForPendingActions("test_project_c", test_user_c)
+        self.checkForFailedActions("test_project_c", test_user_c)
+
+        print("Simulate pending unfreeze action")
+        # Simulate pending unfreeze action by removing completed timestamp from preceeding action
+        # (unfrozen pending action pathname = "/testdata/2017-08/Experiment_1/test03.dat")
+        data = {"completed": "null"}
+        response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), json=data, auth=pso_user_c, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("Attempt to freeze file which intersects with file associated with pending unfreeze action")
+        # POST /app/ida/api/freeze?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test03.dat as test_user_c
+        # should fail with 409 Conflict due to collision with the previous pending action
+        data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test03.dat"}
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue("The requested action conflicts with an ongoing action in the specified project." in response.text)
+
+        print("Complete simulated pending unfreeze action")
+        # Update simulated action to be fully completed with all timestamps defined
+        data = {"completed": "2099-01-01T00:00:00Z"}
+        response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), json=data, auth=pso_user_c, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("Freeze frozen file which no longer intersects with file associated with pending action")
+        # POST /app/ida/api/freeze?project=test_project_c&pathname=/testdata/2017-08/Experiment_1/test03.dat as test_user_c
+        data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/test03.dat"}
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
         self.waitForPendingActions("test_project_c", test_user_c)
@@ -1970,4 +2009,17 @@ class TestIdaApp(unittest.TestCase):
         self.success = True
 
         # --------------------------------------------------------------------------------
+
+        # TODO: add tests for housekeeping operations as normal user, when must be admin or PSO user
+
+        # TODO: add tests for housekeeping operations as PSO user, when must be admin
+
+        # TODO: add tests attempting to copy files or folders to or within the frozen area (not fully covered by CLI tests)
+
+        # TODO: add tests for copying files or folders from the frozen area to the staging area (not fully covered by CLI tests)
+
+        # TODO: add tests for checking required parameters
+
+        # TODO: add tests for pathnames containing special characters
+
         # TODO: consider which tests may be missing...
