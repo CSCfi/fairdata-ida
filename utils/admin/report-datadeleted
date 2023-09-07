@@ -56,7 +56,7 @@ done
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     errorExit "Failed to retrieve details of project $PROJECT from microservice. Aborting."
 fi
@@ -80,7 +80,7 @@ fi
 OUT=`curl --fail -k -s -S -X POST "$CSC_DATA_DELETION_MICROSERVICE/report?service=IDA&action=datadeleted&project=$PROJECT&token=$CSC_DATA_DELETION_SECURITY_TOKEN" 2>$ERR`
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     echo "$MSG" >&2
     errorExit "Failed to report data deleted for project"
@@ -102,7 +102,7 @@ while true; do
     OUT=`$ROOT/utils/admin/fetch-workflow-details $PID 2>$ERR`
 
     if [ -s $ERR ]; then
-        MSG=`echo "$ERR" | tr "\n" " " `
+        MSG=`cat $ERR | tr "\n" " " `
         addToLog "$MSG"
         echo "$MSG" >&2
         errorExit "Failed to check status of workflow from IdM"

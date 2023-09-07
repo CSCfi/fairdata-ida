@@ -57,7 +57,7 @@ if [ "$2" != "--force" ]; then
     OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
 
     if [ -s $ERR ]; then
-        MSG=`echo "$ERR" | tr "\n" " " `
+        MSG=`cat $ERR | tr "\n" " " `
         addToLog "$MSG"
         errorExit "Failed to retrieve details of project $PROJECT from microservice. Aborting."
     fi
@@ -83,7 +83,7 @@ if [ "$2" != "--force" ]; then
                sed -e 's/^.*"initiated": *"//' | sed -e 's/".*$//' | sort -u | tail -1`
 
     if [ -s $ERR ]; then
-        MSG=`echo "$ERR" | tr "\n" " " `
+        MSG=`cat $ERR | tr "\n" " " `
         addToLog "$MSG"
         errorExit "Failed to retrieve pending actions for project!"
     fi
@@ -130,7 +130,7 @@ echo "Moving project files to project trash subfolder..."
 mv -t ${PROJECT_TRASH_DATA_ROOT} ${PROJECT_ROOT}/* 2>$ERR
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     errorExit "Failed to move project files to trash!"
 fi
@@ -143,7 +143,7 @@ $CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?projects=${PROJECT}" 2>$
     python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     errorExit "Failed to export action records!"
 fi
@@ -152,7 +152,7 @@ $CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/files/action/all?projects=${PROJ
     python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/files.json"
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     errorExit "Failed to export file records!"
 fi
@@ -162,7 +162,7 @@ echo "Flushing project action and frozen file records from the database..."
 $CURL_POST $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/flush?project=${PROJECT}" 2>$ERR >/dev/null
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     errorExit "Failed to flush project action and file records from database!"
 fi
@@ -172,7 +172,7 @@ echo "Deleting project share owner account from Nextcloud..."
 $OCC user:delete $PROJECT_USER 2>$ERR
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     errorExit "Failed to delete project share owner account!"
 fi
@@ -186,7 +186,7 @@ for CANDIDATE_STORAGE_VOLUME in ${STORAGE_CANDIDATES[*]}; do
         addToLog "$MSG"
         rm -fr $TARGET 2>$ERR
         if [ -s $ERR ]; then
-            MSG=`echo "$ERR" | tr "\n" " " `
+            MSG=`cat $ERR | tr "\n" " " `
             addToLog "$MSG"
             MSG="WARNING: Failed to fully delete project share owner directory ${TARGET}!"
             addToLog "$MSG"
@@ -210,7 +210,7 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
     $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR >/dev/null
 
     if [ -s $ERR ]; then
-        MSG=`echo "$ERR" | tr "\n" " " `
+        MSG=`cat $ERR | tr "\n" " " `
         addToLog "$MSG"
         echoAndLog "Failed to update file metadata in METAX!"
     fi
@@ -225,7 +225,7 @@ if [ -d "$PROJECT_REPLICATION_ROOT" ]; then
     rm -fr "$PROJECT_REPLICATION_ROOT" 2>$ERR
 
     if [ -s $ERR ]; then
-        MSG=`echo "$ERR" | tr "\n" " " `
+        MSG=`cat $ERR | tr "\n" " " `
         echoAndLog "$MSG"
         errorExit "Failed to delete project files from tape replication cache!"
     fi
@@ -238,7 +238,7 @@ echo "Reporting data deleted for project..."
 $ROOT/utils/admin/report-datadeleted $PROJECT 2>$ERR
 
 if [ -s $ERR ]; then
-    MSG=`echo "$ERR" | tr "\n" " " `
+    MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
     echoAndLog "Error: Failed to report data deleted! (ignored)"
 fi

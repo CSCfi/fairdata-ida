@@ -1,0 +1,138 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script will query the CSC Data Deletion Process microservice to obtain a
+# list of all projects which are closed and have a deletedata substate, and then
+# will suspend each project which is not yet suspended and will delete each
+# project which is past the 90 day grace period. It is expected that this script
+# will be executed nightly.
+# --------------------------------------------------------------------------------
+
+GRACE_PERIOD="7776000" # 90 days
+
+USAGE="
+Usage: delete-closed-projects
+       delete-closed-projects -h"
+
+PROJECT="null"
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+for NEEDS_PROG in jq
+do
+    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
+    if [ ! -e "$PROG_LOCATION" ]; then
+        errorExit "Can't find $NEEDS_PROG in your \$PATH. Aborting."
+    fi
+done
+
+#--------------------------------------------------------------------------------
+
+echo "Retrieving projects with a CSC data deletion process substate 'deletedata'..."
+
+OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?services=IDA" 2>$ERR`
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
+    errorExit "Failed to retrieve projects from microservice"
+fi
+
+PROJECTS=`echo "$OUT" | jq '.[] | select(.state == "deletedata") | .number' --raw-output 2>$ERR`
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
+    errorExit "Failed to parse project JSON retrieved from microservice"
+fi
+
+for PROJECT in $PROJECTS; do
+
+    echo "Checking if project ${PROJECT} is suspended..."
+
+    SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
+               tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend*\"" | grep "\"project\": *\"$PROJECT\"" | \
+               sed -e 's/^.*"initiated": *"//' | sed -e 's/".*$//' | sort -u | tail -1`
+
+    if [ -s $ERR ]; then
+        MSG=`cat $ERR | tr "\n" " " `
+        addToLog "$MSG"
+        errorExit "Failed to retrieve pending actions for project ${PROJECT}"
+    fi
+
+    if [ "$SUSPENDED" = "" ]; then
+
+        echoAndLog "Suspending project ${PROJECT}"
+    
+        $ROOT/utils/admin/suspend-project $PROJECT --delete 2>$ERR
+
+        if [ -s $ERR ]; then
+            errorExit "Failed to suspend project ${PROJECT}"
+        fi
+
+    else
+
+        echo "Project ${PROJECT} was suspended ${SUSPENDED}"
+        echo "Checking if project ${PROJECT} is past the grace period..."
+
+        NOW=`date -u +"%s"`
+        SECONDS=`date -u -d "$SUSPENDED" +"%s"`
+        ELAPSED=`expr $NOW - $SECONDS`
+
+        if [ "$DEBUG" = "true" ]; then
+            echo "Project suspended: $SUSPENDED"
+            echo "Project suspended: $SECONDS seconds"
+            echo "Current time:      $NOW seconds"
+            echo "Elapsed time:      $ELAPSED seconds"
+            echo "Grace period:      $GRACE_PERIOD seconds"
+        fi
+
+        if [ $ELAPSED -gt $GRACE_PERIOD ]; then
+
+            echoAndLog "Deleting project ${PROJECT}"
+    
+            $ROOT/utils/admin/delete-project $PROJECT 2>$ERR
+
+            if [ -s $ERR ]; then
+                errorExit "Failed to delete project ${PROJECT}"
+            fi
+        else
+            echo "Project ${PROJECT} is still within the grace period"
+        fi
+    fi
+
+done
+
+#--------------------------------------------------------------------------------
+
+rm $ERR 2>/dev/null
+
+addToLog "DONE"
