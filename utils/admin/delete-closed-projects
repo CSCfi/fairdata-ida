@@ -22,18 +22,15 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 # This script will query the CSC Data Deletion Process microservice to obtain a
-# list of all projects which are closed and have a deletedata substate, and then
-# will suspend each project which is not yet suspended and will delete each
-# project which is past the 90 day grace period. It is expected that this script
-# will be executed nightly.
+# list of all projects which are closed and have either a grace or deletedata
+# substate, and then will suspend each project which is not yet suspended and
+# will delete each project which has a deletedata substate.
+#
+# It is expected that this script will be executed nightly.
 # --------------------------------------------------------------------------------
 
-GRACE_PERIOD="7776000" # 90 days
-
-USAGE="
-Usage: delete-closed-projects
-       delete-closed-projects -h"
-
+SCRIPT=`basename $0`
+USAGE="Usage: $SCRIPT"
 PROJECT="null"
 
 INIT_FILE=`dirname $0`/lib/init_admin_script.sh
@@ -46,87 +43,87 @@ else
     exit 1
 fi
 
-for NEEDS_PROG in jq
-do
-    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
-    if [ ! -e "$PROG_LOCATION" ]; then
-        errorExit "Can't find $NEEDS_PROG in your \$PATH. Aborting."
-    fi
-done
-
 #--------------------------------------------------------------------------------
 
-echo "Retrieving projects with a CSC data deletion process substate 'deletedata'..."
+echo "Retrieving list of projects with a CSC data deletion process substate 'grace'..."
 
-OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?services=IDA" 2>$ERR`
-
-if [ -s $ERR ]; then
-    MSG=`cat $ERR | tr "\n" " " `
-    addToLog "$MSG"
-    errorExit "Failed to retrieve projects from microservice"
-fi
-
-PROJECTS=`echo "$OUT" | jq '.[] | select(.state == "deletedata") | .number' --raw-output 2>$ERR`
+GRACE_PROJECTS=`$ROOT/utils/admin/list-grace-projects 2>$ERR`
 
 if [ -s $ERR ]; then
-    MSG=`cat $ERR | tr "\n" " " `
-    addToLog "$MSG"
-    errorExit "Failed to parse project JSON retrieved from microservice"
+    cat $ERR >&2
+    errorExit "Failed to retrieve grace projects"
 fi
 
-for PROJECT in $PROJECTS; do
+echo "Retrieving list of projects with a CSC data deletion process substate 'deletedata'..."
 
-    echo "Checking if project ${PROJECT} is suspended..."
+DELETEDATA_PROJECTS=`$ROOT/utils/admin/list-deletedata-projects 2>$ERR`
 
-    SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
-               tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend*\"" | grep "\"project\": *\"$PROJECT\"" | \
-               sed -e 's/^.*"initiated": *"//' | sed -e 's/".*$//' | sort -u | tail -1`
+if [ -s $ERR ]; then
+    cat $ERR >&2
+    errorExit "Failed to retrieve deletedata projects"
+fi
 
-    if [ -s $ERR ]; then
-        MSG=`cat $ERR | tr "\n" " " `
-        addToLog "$MSG"
-        errorExit "Failed to retrieve pending actions for project ${PROJECT}"
-    fi
+echo "Retrieving list of projects which are already suspended..."
 
-    if [ "$SUSPENDED" = "" ]; then
+SUSPENDED_PROJECTS=`$ROOT/utils/admin/list-suspended-projects 2>$ERR`
 
-        echoAndLog "Suspending project ${PROJECT}"
+if [ -s $ERR ]; then
+    cat $ERR >&2
+    errorExit "Failed to retrieve suspended projects"
+fi
+
+for PROJECT in $GRACE_PROJECTS; do
+
+    IS_SUSPENDED=`echo "$SUSPENDED_PROJECTS" | grep "$PROJECT"`
+
+    if [ "$IS_SUSPENDED" = "" ]; then
+
+        # Only actually suspend the project if in production, otherwise just inform about appropriate actions but do nothing
+
+        if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+
+            $ROOT/utils/admin/suspend-project $PROJECT --delete 2>$ERR
+
+            if [ -s $ERR ]; then
+                cat $ERR >&2
+                errorExit "Failed to suspend project ${PROJECT}"
+            fi
+
+            echoAndLog "Project ${PROJECT} has been suspended"
     
-        $ROOT/utils/admin/suspend-project $PROJECT --delete 2>$ERR
+        else
 
-        if [ -s $ERR ]; then
-            errorExit "Failed to suspend project ${PROJECT}"
+            echo "Project ${PROJECT} should be suspended"
+
         fi
 
     else
 
-        echo "Project ${PROJECT} was suspended ${SUSPENDED}"
-        echo "Checking if project ${PROJECT} is past the grace period..."
+        echo "Project ${PROJECT} is already suspended"
 
-        NOW=`date -u +"%s"`
-        SECONDS=`date -u -d "$SUSPENDED" +"%s"`
-        ELAPSED=`expr $NOW - $SECONDS`
+    fi
 
-        if [ "$DEBUG" = "true" ]; then
-            echo "Project suspended: $SUSPENDED"
-            echo "Project suspended: $SECONDS seconds"
-            echo "Current time:      $NOW seconds"
-            echo "Elapsed time:      $ELAPSED seconds"
-            echo "Grace period:      $GRACE_PERIOD seconds"
+done
+
+for PROJECT in $DELETEDATA_PROJECTS; do
+
+    # Only actually delete the project if in production, otherwise just inform about appropriate actions but do nothing
+
+    if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+
+        $ROOT/utils/admin/delete-project $PROJECT 2>$ERR
+
+        if [ -s $ERR ]; then
+            cat $ERR >&2
+            errorExit "Failed to delete project ${PROJECT}"
         fi
 
-        if [ $ELAPSED -gt $GRACE_PERIOD ]; then
-
-            echoAndLog "Deleting project ${PROJECT}"
+        echoAndLog "Project ${PROJECT} has been deleted"
     
-            $ROOT/utils/admin/delete-project $PROJECT 2>$ERR
+    else
 
-            if [ -s $ERR ]; then
-                errorExit "Failed to delete project ${PROJECT}"
-            fi
-        else
-            echo "Project ${PROJECT} is still within the grace period"
-        fi
+        echo "Project ${PROJECT} should be deleted"
+
     fi
 
 done

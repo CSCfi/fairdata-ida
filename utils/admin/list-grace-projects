@@ -49,7 +49,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?services=IDA&states=deletedata&open=false" 2>$ERR`
+OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?services=IDA&states=grace&open=false" 2>$ERR`
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
