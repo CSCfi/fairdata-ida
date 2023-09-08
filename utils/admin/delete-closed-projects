@@ -26,6 +26,8 @@
 # substate, and then will suspend each project which is not yet suspended and
 # will delete each project which has a deletedata substate.
 #
+# Internal projects and projects which do not exist in IDA are skipped.
+#
 # It is expected that this script will be executed nightly.
 # --------------------------------------------------------------------------------
 
@@ -72,59 +74,81 @@ if [ -s $ERR ]; then
     errorExit "Failed to retrieve suspended projects"
 fi
 
+echo "Retrieving list of projects which are internal..."
+
+INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects 2>$ERR`
+
+if [ -s $ERR ]; then
+    cat $ERR >&2
+    errorExit "Failed to retrieve internal projects"
+fi
+
 for PROJECT in $GRACE_PROJECTS; do
+
+    IS_INTERNAL=`echo "$INTERNAL_PROJECTS" | grep "$PROJECT"`
+
+    if [ "$IS_INTERNAL" ]; then
+        echo "Project ${PROJECT} is internal (skipped)"
+        continue
+    fi
+
+    if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
+        echo "Project ${PROJECT} does not exist in IDA (ignored)"
+        continue
+    fi
 
     IS_SUSPENDED=`echo "$SUSPENDED_PROJECTS" | grep "$PROJECT"`
 
-    if [ "$IS_SUSPENDED" = "" ]; then
-
-        # Only actually suspend the project if in production, otherwise just inform about appropriate actions but do nothing
-
-        if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-
-            $ROOT/utils/admin/suspend-project $PROJECT --delete 2>$ERR
-
-            if [ -s $ERR ]; then
-                cat $ERR >&2
-                errorExit "Failed to suspend project ${PROJECT}"
-            fi
-
-            echoAndLog "Project ${PROJECT} has been suspended"
-    
-        else
-
-            echo "Project ${PROJECT} should be suspended"
-
-        fi
-
-    else
-
+    if [ "$IS_SUSPENDED" ]; then
         echo "Project ${PROJECT} is already suspended"
-
+        continue
     fi
+
+    # Only actually suspend the project if in production, otherwise just inform about appropriate actions but do nothing
+
+    if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
+        echo "Project ${PROJECT} should be suspended"
+        continue
+    fi
+
+    $ROOT/utils/admin/suspend-project $PROJECT --delete 2>$ERR
+
+    if [ -s $ERR ]; then
+        cat $ERR >&2
+        errorExit "Failed to suspend project ${PROJECT}"
+    fi
+
+    echoAndLog "Project ${PROJECT} has been suspended"
 
 done
 
 for PROJECT in $DELETEDATA_PROJECTS; do
 
-    # Only actually delete the project if in production, otherwise just inform about appropriate actions but do nothing
+    IS_INTERNAL=`echo "$INTERNAL_PROJECTS" | grep "$PROJECT"`
 
-    if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-
-        $ROOT/utils/admin/delete-project $PROJECT 2>$ERR
-
-        if [ -s $ERR ]; then
-            cat $ERR >&2
-            errorExit "Failed to delete project ${PROJECT}"
-        fi
-
-        echoAndLog "Project ${PROJECT} has been deleted"
-    
-    else
-
-        echo "Project ${PROJECT} should be deleted"
-
+    if [ "$IS_INTERNAL" ]; then
+        echo "Project ${PROJECT} is internal (skipped)"
+        continue
     fi
+
+    if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
+        echo "Project ${PROJECT} does not exist in IDA (ignored)" >&2
+        continue
+    fi
+
+    if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
+        echo "Project ${PROJECT} should be deleted"
+        continue
+    fi
+
+    $ROOT/utils/admin/delete-project $PROJECT 2>$ERR
+
+    if [ -s $ERR ]; then
+        cat $ERR >&2
+        errorExit "Failed to delete project ${PROJECT}"
+    fi
+
+    echoAndLog "Project ${PROJECT} has been deleted"
 
 done
 
