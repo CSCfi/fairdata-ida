@@ -75,6 +75,16 @@ if [ "$ROOT" = "" ]; then
     exit 1
 fi
 
+if [ $METAX_API_VERSION -ge 3 ]; then
+    # TODO add bearer token header when supported
+    # NOTE: it may be necessary to refactor the predefined curl commands to omit the -u parameter and add it everywhere basic auth is used
+    METAX_CREDENTIALS=""
+else
+    METAX_CREDENTIALS="-u ${METAX_API_USER}:${METAX_API_PASS}"
+fi
+
+IDA_CREDENTIALS="-u $NC_ADMIN_USER:$NC_ADMIN_PASS"
+
 #--------------------------------------------------------------------------------
 # Verify that we are in a test environment
 
@@ -137,7 +147,7 @@ echo "Flushing all action and file records from IDA service database..."
 for PROJECT in $PROJECTS; do
     STEP="   Flushing $PROJECT"
     printf "%${PADDING}s" "$STEP"
-    OUT=`$CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "$URL_BASE_IDA/api/flush?project=$PROJECT" 2>&1`
+    OUT=`$CURL_POST $IDA_CREDENTIALS "$URL_BASE_IDA/api/flush?project=$PROJECT" 2>&1`
     if [ "$?" -ne 0 ]; then
         failure "$OUT (ignored)"
     else
@@ -152,7 +162,11 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
     for PROJECT in $PROJECTS; do
         STEP="   Flushing $PROJECT"
         printf "%${PADDING}s" "$STEP"
-        OUT=`$CURL_POST $METAX_API_USER:$METAX_API_PASS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 2>&1`
+        if [ $METAX_API_VERSION -ge 3 ]; then
+            OUT=`$CURL_DELETE $METAX_CREDENTIALS "$METAX_API_ROOT_URL/files?project=$PROJECT&storage_service=ida&flush=true" 2>&1`
+        else
+            OUT=`$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/files/flush_project?project_identifier=$PROJECT" 2>&1`
+        fi
         if [ "$?" -ne 0 ]; then
             failure "$OUT (ignored)"
         else
@@ -165,7 +179,11 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
     for USER in $USERS; do
         STEP="   Flushing $USER"
         printf "%${PADDING}s" "$STEP"
-        OUT=`$CURL_POST $METAX_API_USER:$METAX_API_PASS "$METAX_API_RPC_URL/datasets/flush_user_data?metadata_provider_user=$USER" 2>&1`
+        if [ $METAX_API_VERSION -ge 3 ]; then
+            OUT=`$CURL_DELETE $METAX_CREDENTIALS "$METAX_API_ROOT_URL/user/$USER&flush=true" 2>&1`
+        else
+            OUT=`$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/datasets/flush_user_data?metadata_provider_user=$USER" 2>&1`
+        fi
         if [ "$?" -ne 0 ]; then
             failure "$OUT (ignored)"
         else
@@ -420,7 +438,7 @@ FOUND=`echo "$PROJECTS" | grep "test_project_p"`
 
 if [ "$FOUND" ]; then
     echo "Creating pending action in project test_project_p..."
-    $CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_p&pathname=/&action=freeze" >/dev/null
+    $CURL_POST $IDA_CREDENTIALS "${IDA_API_ROOT_URL}/actions?project=test_project_p&pathname=/&action=freeze" >/dev/null
 fi
 
 #--------------------------------------------------------------------------------
@@ -429,5 +447,5 @@ FOUND=`echo "$PROJECTS" | grep "test_project_f"`
 
 if [ "$FOUND" ]; then
     echo "Creating failed action in project test_project_f..."
-    $CURL_POST $NC_ADMIN_USER:$NC_ADMIN_PASS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${TIMESTAMP}" >/dev/null
+    $CURL_POST $IDA_CREDENTIALS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${TIMESTAMP}" >/dev/null
 fi

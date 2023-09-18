@@ -66,9 +66,6 @@ class Config {
 		$this->configFilePath = $this->configDir.$fileName;
 		$this->configFileName = $fileName;
 		$this->readData();
-		// Force ISO 8610 UTC log timestamps
-		$this->set('logtimezone','UTC');
-		$this->set('logdateformat', 'Y-m-d\\TH:i:s\\Z');
 	}
 
 	/**

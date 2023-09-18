@@ -35,31 +35,63 @@ import os
 import sys
 from tests.common.utils import load_configuration
 
-DATASET_TEMPLATE = {
-    "data_catalog": "urn:nbn:fi:att:data-catalog-ida", 
-    "metadata_provider_user": "test_user_a", 
-    "metadata_provider_org": "test_organization_a", 
+DATASET_TEMPLATE_V3 = {
+    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
+    "metadata_provider_user": "test_user_a",
+    "metadata_provider_org": "test_organization_a",
+    "access_rights": {
+        "access_type": {
+            "url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
+        }
+    },
+    "creator": [
+        {
+            "@type": "Person",
+            "member_of": {
+                "@type": "Organization",
+                "name": {
+                    "en": "Test Organization A"
+                }
+            },
+            "name": "Test User A"
+        }
+    ],
+    "description": {
+        "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    },
+    "title": {
+        "en": "Test Dataset"
+    },
+    "preservation": {
+        "state": 0
+    }
+}
+
+DATASET_TEMPLATE_V1 = {
+    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
+    "metadata_provider_user": "test_user_a",
+    "metadata_provider_org": "test_organization_a",
     "research_dataset": {
         "access_rights": {
             "access_type": {
                 "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
             }
-        }, 
+        },
         "creator": [
             {
-                "@type": "Person", 
+                "@type": "Person",
                 "member_of": {
-                    "@type": "Organization", 
+                    "@type": "Organization",
                     "name": {
                         "en": "Test Organization A"
                     }
-                }, 
+                },
                 "name": "Test User A"
             }
-        ], 
+        ],
         "description": {
             "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        }, 
+        },
         "title": {
             "en": "Test Dataset"
         }
@@ -107,7 +139,8 @@ class TestHousekeeping(unittest.TestCase):
         self.success = False
 
         # timeout when waiting for actions to complete
-        self.timeout = 10800 # 3 hours
+        #self.timeout = 10800 # 3 hours
+        self.timeout = 600 # 10 minutes
 
         self.assertEqual(self.config["METAX_AVAILABLE"], 1)
 
@@ -151,7 +184,11 @@ class TestHousekeeping(unittest.TestCase):
         metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
         for pid in dataset_pids:
             print ("   %s" % pid)
-            requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=metax_user, verify=False)
+            if self.config["METAX_API_VERSION"] >= 3:
+                # TODO: add bearer token header when supported
+                requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), verify=False)
+            else:
+                requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=metax_user, verify=False)
 
 
     def flushDownloads(self):
@@ -193,7 +230,7 @@ class TestHousekeeping(unittest.TestCase):
                     partial = response_json.get('partial', [])
                     for req in partial:
                         if not pending:
-                            pending = req.get('status') not in [ 'SUCCESS', 'FAILED' ] 
+                            pending = req.get('status') not in [ 'SUCCESS', 'FAILED' ]
                 if pending:
                     looped = True
                     print(".", end='', flush=True)
@@ -254,7 +291,7 @@ class TestHousekeeping(unittest.TestCase):
            has completed such that all metadata is recorded in Metax.
 
         3. A dataset will be created in Metax, with files included from the frozen folder.
-        
+
         4. The download service will be tested based on the defined dataset, requesting generation of
            multiple packages, both for full and partial dataset, listings of pending and available
            package generation, retrieval of authorization tokens, and download of individual files.
@@ -284,17 +321,37 @@ class TestHousekeeping(unittest.TestCase):
         self.assertEqual(len(experiment_1_files), 13)
 
         print("Creating dataset containing all files in scope of frozen folder")
-        dataset_data = DATASET_TEMPLATE
-        dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
-        response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
+        if self.config["METAX_API_VERSION"] >= 3:
+            dataset_data = DATASET_TEMPLATE_V3
+            dataset_data['title'] = DATASET_TITLES[0]
+            dataset_data['fileset'] = {
+                "storage_service": "ida",
+                "project": "test_project_a",
+                "directory_actions": [
+                    {
+                        "action": "add",
+                        "pathname": "/testdata/2017-08/Experiment_1/"
+                    }
+                ]
+            }
+            #print(json.dumps(dataset_data, indent=4))
+            # TODO: add bearer token header when supported
+            response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, verify=False)
+        else:
+            dataset_data = DATASET_TEMPLATE_V1
+            dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
+            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
+            response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset = response.json()
-        dataset_pid = dataset.get('identifier')
+        if self.config["METAX_API_VERSION"] >= 3:
+            dataset_pid = dataset.get('id')
+        else:
+            dataset_pid = dataset.get('identifier')
         self.assertIsNotNone(dataset_pid)
 
         # --------------------------------------------------------------------------------
-  
+
         print("Verify that no active package generation requests exist for dataset")
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
@@ -322,25 +379,25 @@ class TestHousekeeping(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Authorize complete dataset package download") 
+        print("Authorize complete dataset package download")
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download complete dataset package using authorization token") 
+        print("Download complete dataset package using authorization token")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        print("Authorize complete dataset package download") 
+        print("Authorize complete dataset package download")
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Update generation timestamp of dataset package to be far in the past") 
+        print("Update generation timestamp of dataset package to be far in the past")
         data = { "package": package, "timestamp": "2000-01-01 00:00:00" }
         response = requests.post("https://localhost:4431/update_package_timestamps", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -350,7 +407,7 @@ class TestHousekeeping(unittest.TestCase):
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 409, response.content.decode(sys.stdout.encoding))
 
-        print("Attempt to authorize outdated complete dataset package download") 
+        print("Attempt to authorize outdated complete dataset package download")
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 409, response.content.decode(sys.stdout.encoding))
@@ -365,6 +422,8 @@ class TestHousekeeping(unittest.TestCase):
         self.assertEqual(result, 0)
 
         old_package = package
+
+        print("Old package: %s" % old_package)
 
         print("Request generation of new complete dataset package (triggers housekeeping, removing old package)")
         data = { "dataset": dataset_pid }
@@ -423,7 +482,7 @@ class TestHousekeeping(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Update package file size in database to be zero") 
+        print("Update package file size in database to be zero")
         data = { "package": package, "size_bytes": 0 }
         response = requests.post("https://localhost:4431/update_package_file_size", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -466,7 +525,7 @@ class TestHousekeeping(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Update package file size in cache to be zero") 
+        print("Update package file size in cache to be zero")
         cmd = "%s/dev_config/utils/empty-package-file %s 2>&1 >/dev/null" % (self.config["DOWNLOAD_SERVICE_ROOT"], package)
         result = os.system(cmd)
         self.assertEqual(result, 0)

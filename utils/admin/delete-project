@@ -202,12 +202,18 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
     if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
         echo "Marking all project files as deleted in METAX..."
         METAX_ENDPOINT="delete_project"
+        FLUSH_RECORDS="false"
     else
         echo "Flushing all project records from METAX..."
         METAX_ENDPOINT="flush_project"
+        FLUSH_RECORDS="true"
     fi
     
-    $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR >/dev/null
+    if [ $METAX_API_VERSION -ge 3 ]; then
+        $CURL_DELETE $METAX_CREDENTIALS "${METAX_API_ROOT_URL}/files?project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR
+    else
+        $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR
+    fi
 
     if [ -s $ERR ]; then
         MSG=`cat $ERR | tr "\n" " " `

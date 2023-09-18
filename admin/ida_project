@@ -193,7 +193,7 @@ if [ "$1" == "ADD" ]; then
     echoAndLog "Creating project shared staging folder..."
 
     # create the project read-write staging directory to share under project users home
-    OUT=`$CURL_MKCOL "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_STAGING_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_MKCOL -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_STAGING_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Failed to create staging directory, curl error $CURL_ERROR $OUT"
@@ -209,7 +209,7 @@ if [ "$1" == "ADD" ]; then
 
     # share the project staging directory to the group with read-write privileges
     echoAndLog "Sharing project shared staging folder..."
-    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share staging directory, curl error $CURL_ERROR $OUT"
@@ -222,7 +222,7 @@ if [ "$1" == "ADD" ]; then
     echoAndLog "Creating project shared frozen folder..."
 
     # create the project frozen directory to share under project users home
-    OUT=`$CURL_MKCOL "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_FROZEN_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_MKCOL -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_FROZEN_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Create frozen directory, curl error $CURL_ERROR $OUT"
@@ -238,7 +238,7 @@ if [ "$1" == "ADD" ]; then
 
     # share the project frozen directory to the group with read-write privileges
     echoAndLog "Sharing project shared frozen folder..."
-    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share frozen directory, curl error $CURL_ERROR $OUT"
@@ -253,7 +253,7 @@ fi
 if [ "$1" == "SHARE" ]; then
 
     # share the staging directory to the group with read-write privileges
-    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share staging directory failed, curl error $CURL_ERROR $OUT"
@@ -264,7 +264,7 @@ if [ "$1" == "SHARE" ]; then
     fi
 
     # share the project frozen directory to the group with read-only privileges
-    OUT=`$CURL_POST "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share frozen directory failed, curl error $CURL_ERROR $OUT"
@@ -279,7 +279,7 @@ fi
 if [ "$1" == "UNSHARE" ]; then
 
     # get the share id of the project staging directory
-    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get staging directory share ID, curl error $CURL_ERROR $OUT"
@@ -289,7 +289,7 @@ if [ "$1" == "UNSHARE" ]; then
             echoAndLog "Warning: Project \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
         else
             # unshare project staging directory (delete sharing relationship)
-            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
             CURL_ERROR="$?"
             if [ "$CURL_ERROR" -ne "0" ]; then
                 echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
@@ -302,7 +302,7 @@ if [ "$1" == "UNSHARE" ]; then
     fi
 
     # get the share id of the project frozen directory
-    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get frozen directory share ID, curl error $CURL_ERROR $OUT"
@@ -312,7 +312,7 @@ if [ "$1" == "UNSHARE" ]; then
             echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
         else
             # unshare project frozen directory (delete sharing relationship)
-            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
             CURL_ERROR="$?"
             if [ "$CURL_ERROR" -ne "0" ]; then
                 echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
@@ -348,7 +348,7 @@ if [ "$1" == "DISABLE" ]; then
     fi
 
     # get the share id of the project staging directory
-    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get staging directory share ID, curl error $CURL_ERROR $OUT"
@@ -358,7 +358,7 @@ if [ "$1" == "DISABLE" ]; then
             echoAndLog "Warning: Project \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
         else
             # unshare project staging directory (delete sharing relationship)
-            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
             CURL_ERROR="$?"
             if [ "$CURL_ERROR" -ne "0" ]; then
                 echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
@@ -371,7 +371,7 @@ if [ "$1" == "DISABLE" ]; then
     fi
 
     # get the share id of the project frozen directory
-    SHARE_ID=`$CURL_GET "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get frozen directory share ID, curl error $CURL_ERROR $OUT"
@@ -381,7 +381,7 @@ if [ "$1" == "DISABLE" ]; then
             echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
         else
             # unshare project frozen directory (delete sharing relationship)
-            OUT=`$CURL_DELETE "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
             CURL_ERROR="$?"
             if [ "$CURL_ERROR" -ne "0" ]; then
                 echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
@@ -401,7 +401,7 @@ if [ "$1" == "DISABLE" ]; then
     fi
 
     # delete group
-    OUT=`$CURL_DELETE "${NC_ADMIN_USER}:${NC_ADMIN_PASS}" "${URL_BASE_GROUP}/${PROJECT_GROUP}" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_DELETE -u "${NC_ADMIN_USER}:${NC_ADMIN_PASS}" "${URL_BASE_GROUP}/${PROJECT_GROUP}" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Delete group, curl error $CURL_ERROR $OUT"

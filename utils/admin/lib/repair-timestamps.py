@@ -38,6 +38,11 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 DEBUG = False
 
+METAX_API_ROOT_URL = os.environ['METAX_API_ROOT_URL']
+METAX_API_USER = os.environ['METAX_API_USER']
+METAX_API_PASS = os.environ['METAX_API_PASS']
+METAX_API_VERSION = int(os.environ['METAX_API_VERSION'])
+
 
 def main():
 
@@ -110,10 +115,16 @@ def main():
                     update_nextcloud_modified_timestamp(project, pathname, modified_timestamp)
                     if frozen_file:
                         update_ida_modified_timestamp(project, frozen_file_pid, modified_timestamp)
-                        update_metax_timestamp('file_modified', frozen_file_pid, modified_timestamp)
+                        if METAX_API_VERSION >= 3:
+                            update_metax_timestamp('modified', frozen_file_pid, modified_timestamp)
+                        else:
+                            update_metax_timestamp('file_modified', frozen_file_pid, modified_timestamp)
 
                 if frozen_timestamp_error:
-                    update_metax_timestamp('file_frozen', frozen_file_pid, frozen_timestamp)
+                    if METAX_API_VERSION >= 3:
+                        update_metax_timestamp('frozen', frozen_file_pid, frozen_timestamp)
+                    else:
+                        update_metax_timestamp('file_frozen', frozen_file_pid, frozen_timestamp)
 
     except Exception as error:
         try:
@@ -195,11 +206,16 @@ def update_metax_timestamp(field_name, file_pid, timestamp):
     if DEBUG:
         print("UPDATING METAX TIMESTAMP: %s %s %s" % (field_name, file_pid, timestamp))
 
-    url = "%s/files/%s" % (os.environ['METAX_API_ROOT_URL'], file_pid)
-    data = { field_name: timestamp }
-    auth = (os.environ['METAX_API_USER'], os.environ['METAX_API_PASS'])
-
-    response = requests.patch(url, auth=auth, json=data)
+    if METAX_API_VERSION >= 3:
+        url = "%s/files/patch-many" % METAX_API_ROOT_URL
+        data = [{ "storage_service": "ida", "storage_identifier": file_pid, field_name: timestamp }]
+        # TODO: add bearer token header when supported
+        response = requests.post(url, json=data)
+    else:
+        url = "%s/files/%s" % (METAX_API_ROOT_URL, file_pid)
+        data = { field_name: timestamp }
+        auth = ( METAX_API_USER, METAX_API_PASS )
+        response = requests.patch(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
         print("Warning: Failed to update %s timestamp in Metax for pid %s: %d %s"

@@ -69,7 +69,11 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PERMS="g+rwX,o-rwx"
+if [ "$IDA_ENVIRONMENT" = "DEV" ]; then
+    PERMS="g+rwX,o+rwX"
+else
+    PERMS="g+rwX,o-rwx"
+fi
 
 chown -R -P $HTTPD_USER:$HTTPD_USER $ROOT
 chown $HTTPD_USER:$HTTPD_USER $ROOT/config/config.sh

@@ -21,23 +21,21 @@
 # @link https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-from contextlib import suppress
-from hashlib import sha256
-from json import loads as json_loads, dumps as json_dumps
-from time import sleep
-import glob
 import os
+import time
+import glob
 import pwd
 import signal
 import socket
 import sys
-
 import pika
 import psutil
 import requests
-
+from contextlib import suppress
+from hashlib import sha256
+from json import loads as json_loads, dumps as json_dumps
 from agents.exceptions import ApiAuthnzError, HttpApiNotResponding, MonitoringFilePermissionError
-from agents.utils.utils import get_settings, load_variables_from_uida_conf_files, get_logger, make_ba_http_header, current_time
+from agents.utils.utils import get_settings, load_variables_from_uida_conf_files, get_logger, make_ba_http_header, generate_timestamp
 
 
 class GenericAgent():
@@ -77,7 +75,15 @@ class GenericAgent():
         self.last_failed_action = {}
         self.last_updated_action = {}
 
+        # Use UTC
+        os.environ["TZ"] = "UTC"
+        time.tzset()
+
+        # Initialize logger
         self._logger = get_logger(self.name, self._uida_conf_vars)
+        self._logger.info("TZ=%s" % str(time.tzname))
+
+        # Perform initial housekeeping
         self.connect()
         self._cleanup_old_sentinel_monitoring_files()
 
@@ -96,7 +102,7 @@ class GenericAgent():
 
 
     def _get_name(self):
-        return '[ %s-%s-%d ]' % (self._machine_name, self.__class__.__name__, self._process_pid)
+        return '%s-%s' % (self._machine_name, self.__class__.__name__)
 
 
     def connect(self):
@@ -194,7 +200,7 @@ class GenericAgent():
                     if not is_offline_logged:
                         self._logger.warning('Sentinel offline file present. Sleeping...')
                         is_offline_logged = True
-                    sleep(60)
+                    time.sleep(60)
 
                 if is_offline_logged:
                     self._logger.info('Sentinel offline file no longer present. Resuming...')
@@ -207,7 +213,7 @@ class GenericAgent():
                     if not dependencies_not_ok_logged:
                         self._logger.warning('Dependencies not OK. Sleeping...')
                         dependencies_not_ok_logged = True
-                    sleep(60)
+                    time.sleep(60)
 
                 if dependencies_not_ok_logged:
                     self._logger.info('Dependencies OK. Resuming...')
@@ -236,7 +242,7 @@ class GenericAgent():
                 self.gevent.sleep(0)
             else:
                 # only this agent is being executed in this process
-                sleep(self._settings['main_loop_delay'])
+                time.sleep(self._settings['main_loop_delay'])
 
 
     def consume_one(self, queue=None):
@@ -325,12 +331,12 @@ class GenericAgent():
                 queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
             except Exception as e:
                 self._logger.warning('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
-                sleep(5)
+                time.sleep(5)
                 return 0
 
         except Exception as e:
             self._logger.warning('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
-            sleep(5)
+            time.sleep(5)
             return 0
 
         if queue_state.method.message_count > 0:
@@ -446,7 +452,7 @@ class GenericAgent():
 
         # update existing action record in memory with the timestamp as well for convenience,
         # although not strictly necessary.
-        action[sub_action_name] = current_time()
+        action[sub_action_name] = generate_timestamp()
 
         self._update_action_to_db(action, { sub_action_name: action[sub_action_name] })
         self.last_completed_sub_action = {
@@ -463,7 +469,7 @@ class GenericAgent():
         The action will no longer be automatically retried.
         """
         self._logger.info('Updating failed timestamp in IDA db for action %s' % action['pid'])
-        error_data = { 'failed': current_time(), 'error': str(exception) }
+        error_data = { 'failed': generate_timestamp(), 'error': str(exception) }
         self._update_action_to_db(action, error_data)
         self._logger.warning('Marked action with pid %s as failed.' % action['pid'])
         self.last_failed_action = { 'action_pid': action['pid'], 'data': error_data }
@@ -522,7 +528,7 @@ class GenericAgent():
             action[sub_action_retry_info] = {}
 
         action[sub_action_retry_info]['previous_error'] = str(exception)
-        action[sub_action_retry_info]['previous_attempt'] = current_time()
+        action[sub_action_retry_info]['previous_attempt'] = generate_timestamp()
         retry_interval = self._settings['retry_policy'][sub_action_name]['retry_interval']
 
         if isinstance(exception, HttpApiNotResponding):
@@ -632,8 +638,8 @@ class GenericAgent():
 
                 if response.status_code in (401, 403):
                     raise ApiAuthnzError(
-                        'Authentication error on HTTP request to %s: %s. This probably requires intervention.'
-                        % (url, response.content)
+                        'Authentication error on HTTP %s request to %s: %s. This probably requires intervention.'
+                        % (method, url, response.content)
                     )
 
                 return response
@@ -650,13 +656,13 @@ class GenericAgent():
                 retry_index = i - 1 if i - 1 < len(retry_policy['retry_intervals']) else -1
 
                 self._logger.warning(
-                    'HTTP request to %s resulted in an error: %s. This does not count towards retries. Retrying in %d seconds...'
-                    % (url, str(e), retry_policy['retry_intervals'][retry_index])
+                    'HTTP %s request to %s resulted in an error: %s. This does not count towards retries. Retrying in %d seconds...'
+                    % (method, url, str(e), retry_policy['retry_intervals'][retry_index])
                 )
-                sleep(retry_policy['retry_intervals'][retry_index])
+                time.sleep(retry_policy['retry_intervals'][retry_index])
 
-        raise HttpApiNotResponding('HTTP request %s did not respond after %d attempts.'
-            % (url, self._current_http_request_retry))
+        raise HttpApiNotResponding('HTTP %s request %s did not respond after %d attempts.'
+            % (method, url, self._current_http_request_retry))
 
 
     def _get_file_checksum(self, file_path, block_size=65536):
@@ -667,13 +673,15 @@ class GenericAgent():
         with open(file_path, 'rb') as f:
             for block in iter(lambda: f.read(block_size), b''):
                 sha.update(block)
-        return sha.hexdigest()
+        return sha.hexdigest().lower()
 
 
     def _get_checksum_value(self, checksum):
         """
-        Return a plain checksum value, given either a checksum URI or a plain checksum value
+        Return a plain checksum value, given either a SHA-256 checksum URI or a plain checksum value
+        Normalize returned string to lowercase
         """
+        checksum = checksum.lower()
         if checksum.startswith('sha256:'):
             return checksum[7:]
         return checksum
@@ -681,8 +689,10 @@ class GenericAgent():
 
     def _get_checksum_uri(self, checksum):
         """
-        Return an sha256: checksum URI, given either a plain checksum value or a checksum URI
+        Return an SHA-256 checksum URI, given either a plain SHA-256 checksum value or a SHA-256 checksum URI
+        Normalize returned string to lowercase
         """
+        checksum = checksum.lower()
         if checksum.startswith('sha256:'):
             return checksum
         return 'sha256:%s' % checksum
@@ -717,7 +727,7 @@ class GenericAgent():
                     'ACTION="%s"\n'
                     'ACTION_PID="%s"\n'
                     'PROCESSING_STARTED="%s"\n'
-                    % (self._hostname, self.__class__.__name__, self._process_pid, message['project'], message['action'], message['pid'], current_time())
+                    % (self._hostname, self.__class__.__name__, self._process_pid, message['project'], message['action'], message['pid'], generate_timestamp())
                 )
         except PermissionError:
             st = os.stat(self._sentinel_monitoring_file)
@@ -772,6 +782,7 @@ class GenericAgent():
             p.info['pid'] for p in psutil.process_iter(attrs=['pid', 'name', 'cmdline'])
             if 'python' in p.info['name']
             and 'cmdline' in p.info
+            and len(p.info['cmdline']) > 1
             and p.info['cmdline'][-1].startswith('agents.')
             and p.info['cmdline'][-1].endswith('_agent')
         ]

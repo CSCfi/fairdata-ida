@@ -205,6 +205,62 @@ class BaseAgentTestCase(TestCase):
                 status=204
             )
 
+        # POST to metax /files/post-many
+        self._prepare_response(
+            responses.POST,
+            'metax',
+            '/files/post-many',
+            status=200,
+            body=json_dumps({
+                'success': [
+                    { 'object': 'a successfully created object' }
+                ],
+                'failed': []
+            })
+        )
+
+        # POST to metax /files/patch-many
+        self._prepare_response(
+            responses.POST,
+            'metax',
+            '/files/patch-many',
+            status=200,
+            body=json_dumps({
+                'success': [
+                    { 'object': 'a successfully created object' }
+                ],
+                'failed': []
+            })
+        )
+
+        # POST to metax /files/put-many
+        self._prepare_response(
+            responses.POST,
+            'metax',
+            '/files/put-many',
+            status=200,
+            body=json_dumps({
+                'success': [
+                    { 'object': 'a successfully created object' }
+                ],
+                'failed': []
+            })
+        )
+
+        # POST to metax /files/delete-many
+        self._prepare_response(
+            responses.POST,
+            'metax',
+            '/files/delete-many',
+            status=200,
+            body=json_dumps({
+                'success': [
+                    { 'object': 'a successfully created object' }
+                ],
+                'failed': []
+            })
+        )
+
     def _init_files(self):
         """
         Create files to the file system from test data

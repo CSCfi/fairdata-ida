@@ -15,6 +15,7 @@ project.sublime-project
 /housekeeping
 /data
 /log
+/agents/tests/tests.log
 /config
 /venv
 /snapshots

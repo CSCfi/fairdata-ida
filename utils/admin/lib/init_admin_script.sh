@@ -107,6 +107,10 @@ if [ "$METAX_API_ROOT_URL" = "" ]; then
     errorExit "The variable METAX_API_ROOT_URL must be defined"
 fi
 
+if [ "$METAX_API_VERSION" = "" ]; then
+    errorExit "The variable METAX_API_VERSION must be defined"
+fi
+
 if [ "$IDA_API_ROOT_URL" = "" ]; then
     errorExit "The variable IDA_API_ROOT_URL must be defined"
 fi
@@ -150,9 +154,16 @@ PROJECT_LOCK="${PROJECT_STORAGE_OC_DATA_ROOT}/LOCK"
 PROJECT_SUSPENDED="${PROJECT_STORAGE_OC_DATA_ROOT}/SUSPENDED"
 PROJECT_REPLICATION_ROOT="${DATA_REPLICATION_ROOT}/projects/${PROJECT}"
 PROJECT_TRASH_DATA_ROOT="${TRASH_DATA_ROOT}/${TIMESTAMP}_${PROJECT}"
-PROJECT_USER_CREDENTIALS="${PROJECT_USER}:${PROJECT_USER_PASS}"
-ADMIN_CREDENTIALS="${NC_ADMIN_USER}:${NC_ADMIN_PASS}"
-METAX_CREDENTIALS="${METAX_API_USER}:${METAX_API_PASS}"
+PROJECT_USER_CREDENTIALS="-u ${PROJECT_USER}:${PROJECT_USER_PASS}"
+ADMIN_CREDENTIALS="-u ${NC_ADMIN_USER}:${NC_ADMIN_PASS}"
+
+if [ $METAX_API_VERSION -ge 3 ]; then
+    # TODO add bearer token header when supported
+    # NOTE: it may be necessary to refactor the predefined curl commands to omit the -u parameter and add it everywhere basic auth is used
+    METAX_CREDENTIALS=""
+else
+    METAX_CREDENTIALS="-u ${METAX_API_USER}:${METAX_API_PASS}"
+fi
 
 ERR="/tmp/${SCRIPT}.$$.err"
 
@@ -166,6 +177,8 @@ if [ "$DEBUG" = "true" ]; then
     echo ""
     echo "NC_ADMIN_USER                $NC_ADMIN_USER"
     echo "NC_ADMIN_PASS                $NC_ADMIN_PASS"
+    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
+    echo "METAX_API_VERSION            $METAX_API_VERSION"
     echo "METAX_API_USER               $METAX_API_USER"
     echo "METAX_API_PASS               $METAX_API_PASS"
     echo "HTTPD_USER                   $HTTPD_USER"
@@ -174,6 +187,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
     echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
     echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
+    echo "METAX_API_VERSION            $METAX_API_VERSION"
     echo "ROOT                         $ROOT"
     echo "STORAGE_OC_DATA_ROOT         $STORAGE_OC_DATA_ROOT"
     echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT"

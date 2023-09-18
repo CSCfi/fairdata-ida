@@ -91,13 +91,25 @@ if [ "$ID" != "$HTTPD_USER" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+# Determine the version of Metax being used
+
+METAX_API_VERSION=$(echo "$METAX_API_ROOT_URL" | grep '/rest/')
+
+if [ -n "$METAX_API_VERSION" ]; then
+    METAX_API_VERSION=1
+else
+    METAX_API_VERSION=3
+fi
+
+#--------------------------------------------------------------------------------
 # Common initialization for all scripts
 
-CURL_GET='curl --fail -k -s -S -u'
-CURL_POST='curl --fail -k -s -S -X POST -u'
-CURL_DELETE='curl --fail -k -s -S -X DELETE -u'
-CURL_MKCOL='curl --fail -k -s -S -X MKCOL -u'
-CURL_PATCH='curl --fail -k -s -S -X PATCH -u'
+CURL_OPS="--fail -k -s -S"
+CURL_GET="curl $CURL_OPS"
+CURL_POST="curl $CURL_OPS -X POST"
+CURL_DELETE="curl $CURL_OPS -X DELETE"
+CURL_MKCOL="curl $CURL_OPS -X MKCOL"
+CURL_PATCH="curl $CURL_OPS -X PATCH"
 
 TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 

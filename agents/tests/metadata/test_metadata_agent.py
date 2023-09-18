@@ -51,27 +51,28 @@ class TestMetadataAgent(MetadataAgent):
     metax_post_called = False
     metax_post_data = []
 
+
     def __init__(self, *args, **kwargs):
         super(TestMetadataAgent, self).__init__(*args, **kwargs)
         self._uida_conf_vars = deepcopy(self._uida_conf_vars)
+        self._logger.debug('Test Metax API version: %d' % self._uida_conf_vars['METAX_API_VERSION'])
 
     def _http_request(self, method, url, data=None, headers=None):
         res = super(TestMetadataAgent, self)._http_request(method, url, data=data, headers=headers)
 
         if 'metax' in url:
             self.metax_called = True
+            if method == 'delete':
+                self.metax_delete_called = True
+                self.metax_delete_data = data
+            elif method == 'post':
+                self.metax_post_called = True
+                self.metax_post_data = data
         elif 'ida' in url:
             self.ida_called = True
-
-        if 'metax' in url and method == 'delete':
-            self.metax_delete_called = True
-            self.metax_delete_data = data
-        elif 'metax' in url and method == 'post':
-            self.metax_post_called = True
-            self.metax_post_data = data
-        elif 'ida' in url and 'files' in url and method == 'post':
-            self.ida_post_files_called = True
-            self.ida_post_files_data = data
+            if 'files' in url and method == 'post':
+                self.ida_post_files_called = True
+                self.ida_post_files_data = data
 
         return res
 
@@ -131,6 +132,7 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
         self.assertEqual(self.agent.last_completed_sub_action['action_pid'], self.TEST_FREEZE_ACTION_WITH_ONE_NODE['pid'])
         self.assert_messages_ended_in_failed_queue(0)
 
+
     def test_aggregate_technical_metadata(self):
         """
         An action, which has already processed the checksums previously, should result in
@@ -139,25 +141,39 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
 
         print("   %s" % inspect.currentframe().f_code.co_name)
 
-        expected_node_metadata = [{
-            'byte_size': 3728,
-            'file_name': 'test01.dat',
-            'checksum': {
-                'checked': '2017-10-10T12:00:00Z',
-                'value': self.TEST_FREEZE_NODE_CHECKSUM,
-                'algorithm': 'SHA-256'
-            },
-            'project_identifier': 'Project_X',
-            'file_storage': 1,
-            'open_access': True,
-            'file_modified': '2017-10-16T12:45:08Z',
-            'file_uploaded': 'time_of_upload',
-            'file_path': '/Custom_Experiment/test01.dat',
-            'identifier': 'pidveryuniquefilepidhere',
-            'file_format': 'dat',
-            'file_frozen': '2017-10-26T07:48:45Z',
-            'user_created': 'TestUser@cscuserid'
-        }]
+        if self._uida_conf_vars['METAX_API_VERSION'] >= 3:
+            expected_node_metadata = [{
+                'storage_service': 'ida',
+                'storage_identifier': 'pidveryuniquefilepidhere',
+                'project': 'Project_X',
+                'pathname': '/Custom_Experiment/test01.dat',
+                'filename': 'test01.dat',
+                'size': 3728,
+                'checksum': "sha256:%s" % self.TEST_FREEZE_NODE_CHECKSUM,
+                'user': 'TestUser',
+                'modified': '2017-10-16T12:45:08Z',
+                'frozen': '2017-10-26T07:48:45Z',
+            }]
+        else:
+            expected_node_metadata = [{
+                'file_storage': 1,
+                'identifier': 'pidveryuniquefilepidhere',
+                'project_identifier': 'Project_X',
+                'file_path': '/Custom_Experiment/test01.dat',
+                'file_name': 'test01.dat',
+                'file_format': 'dat',
+                'byte_size': 3728,
+                'checksum': {
+                    'checked': '2017-10-10T12:00:00Z',
+                    'value': self.TEST_FREEZE_NODE_CHECKSUM,
+                    'algorithm': 'SHA-256'
+                },
+                'user_created': 'TestUser@cscuserid',
+                'file_uploaded': 'time_of_upload',
+                'file_modified': '2017-10-16T12:45:08Z',
+                'file_frozen': '2017-10-26T07:48:45Z',
+                'open_access': True,
+            }]
 
         # set a date on the action when the checksum processing was supposedly completed
         self.TEST_FREEZE_ACTION_WITH_ONE_NODE['checksums'] = '2017-10-10T12:00:00Z'
@@ -167,14 +183,15 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
         self.TEST_FREEZE_ACTION_NODE['metadata'] = 'time_of_upload'
         generated_metadata = self.agent._aggregate_technical_metadata(self.TEST_FREEZE_ACTION_WITH_ONE_NODE, [ self.TEST_FREEZE_ACTION_NODE ])
 
-        self.assertEqual('file_uploaded' in generated_metadata[0], True)
-
-        # copy this value for the rest of the assertion to be valid, since this
-        # always comes from current time and cant be hardcoded.
-        expected_node_metadata[0]['file_uploaded'] = generated_metadata[0]['file_uploaded']
+        if self._uida_conf_vars['METAX_API_VERSION'] < 3:
+            self.assertEqual('file_uploaded' in generated_metadata[0], True)
+            # copy this value for the rest of the assertion to be valid, since this
+            # always comes from current time and cant be hardcoded.
+            expected_node_metadata[0]['file_uploaded'] = generated_metadata[0]['file_uploaded']
 
         self.assertEqual(generated_metadata, expected_node_metadata)
         self.assert_messages_ended_in_failed_queue(0)
+
 
     @responses.activate
     def test_process_metadata_publication(self):
@@ -196,6 +213,7 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
         self.assertEqual(self.agent.last_completed_sub_action['action_pid'], self.TEST_FREEZE_ACTION_WITH_ONE_NODE['pid'])
         self.assert_messages_ended_in_failed_queue(0)
 
+
     @responses.activate
     def test_process_metadata_deletion(self):
 
@@ -207,8 +225,12 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
         self.agent._process_metadata_deletion(unfreeze_action)
 
         # check delete request is sent to metax-api
-        self.assertEqual(self.agent.metax_delete_called, True)
-        self.assertEqual(len(self.agent.metax_delete_data), 1)
+        if self._uida_conf_vars['METAX_API_VERSION'] >= 3:
+            self.assertEqual(self.agent.metax_post_called, True)
+            self.assertEqual(len(self.agent.metax_post_data), 1)
+        else:
+            self.assertEqual(self.agent.metax_delete_called, True)
+            self.assertEqual(len(self.agent.metax_delete_data), 1)
 
         # check sub-action completion is updated to ida db
         self.assertEqual('completed' in self.agent.last_completed_sub_action, True)
@@ -255,6 +277,7 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         self.assertEqual(self.agent.last_completed_sub_action['action_pid'], self.TEST_FREEZE_ACTION_WITH_ONE_NODE['pid'])
         self.assert_messages_ended_in_failed_queue(0)
 
+
     @responses.activate
     def test_consume_one_when_checksums_already_completed(self):
         """
@@ -281,6 +304,7 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         self.assertEqual(self.agent.last_completed_sub_action['action_pid'], published_message['pid'])
         self.assert_messages_ended_in_failed_queue(0)
 
+
     @responses.activate
     def test_consume_one_unfreeze_action(self):
         """
@@ -299,13 +323,18 @@ class MetadataAgentProcessQueueTests(MetadataAgentTestsCommon):
         self.assertEqual(self.agent.messages_in_queue(), 0)
 
         # check delete request was sent to metax api
-        self.assertEqual(self.agent.metax_delete_called, True)
-        self.assertEqual(len(self.agent.metax_delete_data), 1)
+        if self._uida_conf_vars['METAX_API_VERSION'] >= 3:
+            self.assertEqual(self.agent.metax_post_called, True)
+            self.assertEqual(len(self.agent.metax_post_data), 1)
+        else:
+            self.assertEqual(self.agent.metax_delete_called, True)
+            self.assertEqual(len(self.agent.metax_delete_data), 1)
 
         # check sub-action completion is updated to ida db
         self.assertEqual('completed' in self.agent.last_completed_sub_action, True)
         self.assertEqual(self.agent.last_completed_sub_action['action_pid'], published_message['pid'])
         self.assert_messages_ended_in_failed_queue(0)
+
 
     @responses.activate
     def test_consume_one_complete_action_without_metax(self):

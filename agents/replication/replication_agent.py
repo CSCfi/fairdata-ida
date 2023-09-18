@@ -28,7 +28,7 @@ import shutil
 from subprocess import PIPE, run
 from agents.common import GenericAgent
 from agents.exceptions import ReplicationRootNotMounted
-from agents.utils.utils import construct_file_path, current_time
+from agents.utils.utils import construct_file_path, generate_timestamp
 
 
 class ReplicationAgent(GenericAgent):
@@ -118,7 +118,7 @@ class ReplicationAgent(GenericAgent):
 
         self._check_replication_root_is_mounted()
         nodes = self._get_nodes_associated_with_action(action)
-        replication_start_time = current_time()
+        replication_start_time = generate_timestamp()
         files_copied = 0
 
         for node in nodes:
@@ -175,7 +175,7 @@ class ReplicationAgent(GenericAgent):
 
         self._logger.debug('Replication root at %s OK' % self._uida_conf_vars['DATA_REPLICATION_ROOT'])
 
-    def _copy_to_replication_location(self, node, timestamp=current_time()):
+    def _copy_to_replication_location(self, node, timestamp=generate_timestamp()):
         """
         Copy a single node from frozen location to replication location.
 

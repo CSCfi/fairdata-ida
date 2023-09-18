@@ -21,17 +21,20 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 
-from copy import deepcopy
-from datetime import datetime
+import sys
+import dateutil.parser
 import importlib.util
 import logging
 import logging.handlers
-import sys
+from datetime import datetime
+from copy import deepcopy
 from base64 import b64encode
-
 from agents.settings import test as test_settings
 from agents.settings import development as development_settings
 from agents.settings import production as production_settings
+
+LOG_ENTRY_FORMAT = '%(asctime)s %(name)s (%(process)d) %(levelname)s %(message)s'
+TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ' # ISO 8601 UTC
 
 
 def _load_module_from_file(made_up_module_name, file_path):
@@ -69,11 +72,39 @@ def construct_file_path(_uida_conf_vars, node_data, replication=False):
     return full_file_path
 
 
-def current_time():
+def normalize_timestamp(timestamp):
     """
-    Get iso-formatted current time
+    Returns the input timestamp as a normalized ISO 8601 UTC timestamp string YYYY-MM-DDThh:mm:ssZ
     """
-    return datetime.utcnow().replace(microsecond=0).isoformat() + 'Z'
+
+    # Sniff the input timestamp value and convert to a datetime instance as needed
+    if isinstance(timestamp, str):
+        timestamp = datetime.utcfromtimestamp(dateutil.parser.parse(timestamp).timestamp())
+    elif isinstance(timestamp, float) or isinstance(timestamp, int):
+        timestamp = datetime.utcfromtimestamp(timestamp)
+    elif not isinstance(timestamp, datetime):
+        raise Exception("Invalid timestamp value")
+
+    # Return the normalized ISO UTC timestamp string
+    return timestamp.strftime(TIMESTAMP_FORMAT)
+
+
+def generate_timestamp():
+    """
+    Get current time as normalized ISO 8601 UTC timestamp string
+    """
+    return normalize_timestamp(datetime.utcnow().replace(microsecond=0))
+
+
+def normalize_logging():
+    """
+    Normalize all logging to use UTC ISO8601 timestamp formats and a constent layout
+    """
+    loggers = [logging.getLogger()]  # get the root logger
+    loggers = loggers + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for logger in loggers:
+        for handler in logger.handlers:
+            handler.setFormatter(logging.Formatter(LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT))
 
 
 def executing_test_case():
@@ -87,14 +118,10 @@ def get_logger(logger_name='logger', uida_conf_vars=None):
     """
     settings = get_settings(uida_conf_vars)
     logger = logging.getLogger(logger_name)
-
-    formatter = logging.Formatter(fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
     file_handler = logging.handlers.WatchedFileHandler(load_variables_from_uida_conf_files()['RABBIT_WORKER_LOG_FILE'])
-    file_handler.setFormatter(formatter)
-
     logger.addHandler(file_handler)
     logger.setLevel(logging.getLevelName(settings['log_level']))
-
+    normalize_logging()
     return logger
 
 
@@ -107,12 +134,10 @@ def get_settings(uida_conf_vars=None):
     if executing_test_case():
         return deepcopy(test_settings)
 
+    # If in TEST or DEV environment, always use DEBUG level logging
     if uida_conf_vars != None and uida_conf_vars.get('IDA_ENVIRONMENT', False) in ('TEST', 'DEV'):
         dev_settings = deepcopy(development_settings)
-        if uida_conf_vars.get('DEBUG', None) == "true":
-            dev_settings['log_level'] = 'DEBUG'
-        else:
-            dev_settings['log_level'] = 'INFO'
+        dev_settings['log_level'] = 'DEBUG'
         return dev_settings
 
     return deepcopy(production_settings)
@@ -164,6 +189,11 @@ def load_variables_from_uida_conf_files():
         'PROJECT_USER_PREFIX':  service_constants.PROJECT_USER_PREFIX,
         'MAX_FILE_COUNT':  service_constants.MAX_FILE_COUNT
     }
+
+    if '/rest/' in server_conf.METAX_API_ROOT_URL:
+        uida_conf_vars['METAX_API_VERSION'] = 1
+    else:
+        uida_conf_vars['METAX_API_VERSION'] = 3
 
     try:
         uida_conf_vars['RABBIT_PROTOCOL'] = server_conf.RABBIT_PROTOCOL

@@ -468,7 +468,12 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         pid = file_data["pid"]
-        response = requests.delete("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+        if self.config["METAX_API_VERSION"] >= 3:
+            data = [{ "storage_service": "ida", "storage_identifier": pid }]
+            # TODO: add bearer token header when supported
+            response = requests.post("%s/files/delete-many" % self.config["METAX_API_ROOT_URL"], json=data, verify=False)
+        else:
+            response = requests.delete("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 200)
 
         pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"

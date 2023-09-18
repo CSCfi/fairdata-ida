@@ -174,16 +174,16 @@ while [ $MAX_SET_COUNT -gt 0 ]; do
 
     if [ "$DEBUG" = "true" ]; then
         if [ "$SIMULATE_AGENTS" = "true" ]; then
-            echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+            echo "$CURL_POST -u $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
         else
-            echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+            echo "$CURL_POST -u $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
         fi
     fi
 
     if [ "$SIMULATE_AGENTS" = "true" ]; then
-        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+        OUT=`$CURL_POST -u $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
     else
-        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+        OUT=`$CURL_POST -u $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
     fi
 
     if [ -s $ERR ]; then

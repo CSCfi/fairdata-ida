@@ -58,12 +58,12 @@ RABBIT_MONITOR_PASS="****"
 RABBIT_MONITORING_DIR="/mnt/storage_vol01/log/rabbitmq_monitoring"
 
 METAX_AVAILABLE=1
-METAX_FILE_STORAGE_ID="urn:nbn:fi:att:file-storage-ida"
 METAX_FILE_STORAGE_ID=1
 METAX_API_USER="ida"
-METAX_API_ROOT_URL="https://localhost/rest/v1"
-METAX_API_RPC_URL="https://localhost/rpc/v1"
 METAX_API_PASS="****"
+METAX_API_ROOT_URL="https://localhost/rest/v1"
+METAX_API_RPC_URL="https://localhost/rpc/v1"                # no longer used with Metax v3+
+METAX_FILE_STORAGE_ID="urn:nbn:fi:att:file-storage-ida"     # no longer used with Metax v3+
 
 ROOT="/var/ida"
 OCC="$ROOT/nextcloud/occ"

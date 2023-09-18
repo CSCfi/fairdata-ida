@@ -103,7 +103,7 @@ class FreezingController extends Controller
      * @param FileMapper   $fileMapper   file mapper
      * @param string       $userId       current user
      * @param IConfig      $config       global configuration
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -126,6 +126,12 @@ class FreezingController extends Controller
         } catch (\Exception $e) {
         }
         $this->config = $config->getSystemValue('ida');
+        if (strpos($this->config['METAX_API_ROOT_URL'], '/rest/') !== false) {
+            $this->config['METAX_API_VERSION'] = 1;
+        }
+        else {
+            $this->config['METAX_API_VERSION'] = 3;
+        }
     }
 
     /**
@@ -1407,7 +1413,7 @@ class FreezingController extends Controller
      * @param bool   $batch           specifies whether the action in question is a batch action or a normal action
      *
      * @return Entity
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -1596,7 +1602,12 @@ class FreezingController extends Controller
             $filePIDs[] = $file->getPid();
         }
 
-        $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets';
+        if ($this->config['METAX_API_VERSION'] >= 3) {
+            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?storage_service=ida&file_id_type=storage_identifier';
+        }
+        else {
+            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets';
+        }
         $username = $this->config['METAX_API_USER'];
         $password = $this->config['METAX_API_PASS'];
         $postbody = json_encode($filePIDs);
@@ -1611,7 +1622,6 @@ class FreezingController extends Controller
 
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
-        curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
         curl_setopt($ch, CURLOPT_HEADER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER,
             array(
@@ -1626,6 +1636,14 @@ class FreezingController extends Controller
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+
+        if ($this->config['METAX_API_VERSION'] >= 3) {
+            // TODO add bearer token header when supported
+            ;
+        }
+        else {
+            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+        }
 
         $response = curl_exec($ch);
 
@@ -1654,27 +1672,49 @@ class FreezingController extends Controller
                 $intersecting_dataset_ids = json_decode($body, true);
             }
 
+            // TEMP WORKAROUND
+            if (($this->config['METAX_API_VERSION'] >= 3) && (Util::isAssociativeArray($intersecting_dataset_ids))) {
+                $dataset_pids = array();
+                foreach (array_keys($intersecting_dataset_ids) as $file) {
+                    foreach ($intersecting_dataset_ids[$file] as $dataset_pid) {
+                        $dataset_pids[$dataset_pid] = true;
+                    }
+                }
+                $intersecting_dataset_ids = array_keys($dataset_pids);
+            }
+
+            if (! is_array($intersecting_dataset_ids)) {
+                $intersecting_dataset_ids = array();
+            }
+
             Util::writeLog('ida', 'checkDatasets: ids=' . json_encode($intersecting_dataset_ids), \OCP\Util::DEBUG);
 
             foreach ($intersecting_dataset_ids as $intersecting_dataset_id) {
 
-                // Query Metax for dataset details, first try as PID, then as preferred identifier
+                // Query Metax for dataset details, first try as id, then as preferred identifier
 
                 $queryURL = $this->config['METAX_API_ROOT_URL'] . '/datasets/' . $intersecting_dataset_id;
 
                 $ch = curl_init($queryURL);
 
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
-                curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
                 curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
                 curl_setopt($ch, CURLOPT_FAILONERROR, false);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
-        
+
+                if ($this->config['METAX_API_VERSION'] >= 3) {
+                    // TODO add bearer token header when supported
+                    ;
+                }
+                else {
+                    curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+                }
+
                 $response = curl_exec($ch);
-        
+
                 Util::writeLog('ida', 'checkDatasets: dataset_response=' . $response, \OCP\Util::DEBUG);
 
                 if ($response === false) {
@@ -1682,7 +1722,7 @@ class FreezingController extends Controller
                         . ' curl_errno=' . curl_errno($ch)
                         . ' response=' . $response, \OCP\Util::ERROR);
                     curl_close($ch);
-                    throw new Exception('Failed to retrieve dataset by PID');
+                    throw new Exception('Failed to retrieve dataset by id');
                 }
 
                 $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1690,52 +1730,12 @@ class FreezingController extends Controller
                 curl_close($ch);
 
                 if ($httpcode == 200) {
-
-                    Util::writeLog('ida', 'checkDatasets: pid=' . $intersecting_dataset_id , \OCP\Util::DEBUG);
+                    Util::writeLog('ida', 'checkDatasets: id=' . $intersecting_dataset_id, \OCP\Util::DEBUG);
                     $metax_datasets[] = json_decode($response, true);
-
                 }
                 else {
-
-                    $queryURL = $this->config['METAX_API_ROOT_URL'] . '/datasets?preferred_identifier=' . urlencode($intersecting_dataset_id);
-    
-                    $ch = curl_init($queryURL);
-    
-                    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
-                    curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
-                    curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
-                    curl_setopt($ch, CURLOPT_FAILONERROR, false);
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
-            
-                    $response = curl_exec($ch);
-            
-                    Util::writeLog('ida', 'checkDatasets: dataset_response=' . $response, \OCP\Util::DEBUG);
-
-                    if ($response === false) {
-                        Util::writeLog('ida', 'checkDatasets:'
-                            . ' curl_errno=' . curl_errno($ch)
-                            . ' response=' . $response, \OCP\Util::ERROR);
-                        curl_close($ch);
-                        throw new Exception('Failed to retrieve dataset by preferred identifier');
-                    }
-    
-                    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-                    curl_close($ch);
-
-                    if ($httpcode == 200) {
-
-                        Util::writeLog('ida', 'checkDatasets: preferred_identifier=' . $intersecting_dataset_id , \OCP\Util::DEBUG);
-                        $metax_datasets[] = json_decode($response, true);
-
-                    }
-                    else {
-                        Util::writeLog('ida', 'checkDatasets: ' . $response, \OCP\Util::ERROR);
-                        throw new Exception('Failed to retrieve dataset by either PID or preferred identifier');
-                    }
+                    Util::writeLog('ida', 'checkDatasets: ' . $response, \OCP\Util::ERROR);
+                    throw new Exception('Failed to retrieve dataset by id');
                 }
             }
         }
@@ -1743,27 +1743,52 @@ class FreezingController extends Controller
         foreach ($metax_datasets as $metax_dataset) {
 
             $dataset = array();
-
-            $dataset['pid'] = $metax_dataset['identifier'];
-
-            $dataset['title'] = $metax_dataset['research_dataset']['title']['en']
-                ?? $metax_dataset['research_dataset']['title']['fi']
-                ?? $metax_dataset['research_dataset']['title']['sv']
-                ?? $metax_dataset['research_dataset']['preferred_identifier']
-                ?? $metax_dataset['identifier'];
-
             $dataset['pas'] = false;
 
-            // Any dataset for which the PAS ingestion process is ongoing, indicated by having a
-            // preservation state greater than zero but less than 120
-            if (array_key_exists('preservation_state', $metax_dataset)
-                    &&
-                    $metax_dataset['preservation_state'] > 0
-                    &&
-                    $metax_dataset['preservation_state'] < 120) {
-                $dataset['pas'] = true;
+            if ($this->config['METAX_API_VERSION'] >= 3) {
+
+                $dataset['pid'] = $metax_dataset['id'];
+
+                $dataset['title'] = $metax_dataset['title']['en']
+                                 ?? $metax_dataset['title']['fi']
+                                 ?? $metax_dataset['title']['sv']
+                                 ?? $metax_dataset['persistent_identifier']
+                                 ?? $metax_dataset['id'];
+
+                // Any dataset for which the PAS ingestion process is ongoing, indicated by having a
+                // preservation state greater than zero but less than 120
+                if (array_key_exists('preservation', $metax_dataset)) {
+                    $preservation = $metax_dataset['preservation'];
+                    if (array_key_exists('state', $preservation)
+                            &&
+                            $preservation['state'] > 0
+                            &&
+                            $preservation['state'] < 120) {
+                        $dataset['pas'] = true;
+                    }
+                }
             }
-            
+            else {
+
+                $dataset['pid'] = $metax_dataset['identifier'];
+
+                $dataset['title'] = $metax_dataset['research_dataset']['title']['en']
+                    ?? $metax_dataset['research_dataset']['title']['fi']
+                    ?? $metax_dataset['research_dataset']['title']['sv']
+                    ?? $metax_dataset['research_dataset']['preferred_identifier']
+                    ?? $metax_dataset['identifier'];
+
+                // Any dataset for which the PAS ingestion process is ongoing, indicated by having a
+                // preservation state greater than zero but less than 120
+                if (array_key_exists('preservation_state', $metax_dataset)
+                        &&
+                        $metax_dataset['preservation_state'] > 0
+                        &&
+                        $metax_dataset['preservation_state'] < 120) {
+                    $dataset['pas'] = true;
+                }
+            }
+
             $datasets[] = $dataset;
         }
 
@@ -1783,7 +1808,7 @@ class FreezingController extends Controller
      * @param string   $timestamp the timestamp of when the action was initiated
      *
      * @return Entity
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -1843,7 +1868,7 @@ class FreezingController extends Controller
      * @param string     $timestamp      the timestamp of when the action was initiated
      *
      * @return Entity[]
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -1935,7 +1960,7 @@ class FreezingController extends Controller
      * @param string $pathname        the relative pathname of the node within the shared project staging or frozen folder
      *
      * @return int
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -1982,7 +2007,7 @@ class FreezingController extends Controller
      * @param FileInfo[] $nextcloudNodes one or more FileInfo instances within the scope of the action
      * @param string     $pid            the PID of the action with which the files should be associated
      * @param string     $timestamp      the timestamp of when the action was initiated
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2064,7 +2089,7 @@ class FreezingController extends Controller
      * @param FileInfo[] $nextcloudNodes one or more FileInfo instances within the scope of the action
      *
      * @return boolean
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2121,7 +2146,7 @@ class FreezingController extends Controller
      * @param string     $action         the pid of a just-initiated action (optional)
      *
      * @return boolean
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2214,7 +2239,7 @@ class FreezingController extends Controller
      * @param string $pathname the relative pathname of the node
      *
      * @return boolean
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2275,7 +2300,7 @@ class FreezingController extends Controller
      * @return FileInfo[]
      *
      * @throws MaximumAllowedFilesExceeded
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2327,7 +2352,7 @@ class FreezingController extends Controller
      * @return array
      *
      * @throws MaximumAllowedFilesExceeded
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2430,7 +2455,7 @@ class FreezingController extends Controller
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
      *
      * @return string
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2467,7 +2492,7 @@ class FreezingController extends Controller
      * @param string $pathname the full pathname
      *
      * @return string
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2496,7 +2521,7 @@ class FreezingController extends Controller
      * @param string $pathname the full Nextcloud pathname of a node, including the project staging or frozen root folder
      *
      * @return string
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2532,7 +2557,7 @@ class FreezingController extends Controller
      *
      * @param Action $failedAction the failed action being retried
      * @param Action $retryAction  the action retrying the failed action
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2571,7 +2596,7 @@ class FreezingController extends Controller
      * @param string $pid        the PID of the action with which the files should be associated
      *
      * @return File
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2618,7 +2643,7 @@ class FreezingController extends Controller
      * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
      * @param string $project  the project to which the node belongs
      * @param string $pathname the relative pathname of the folder node
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2661,7 +2686,7 @@ class FreezingController extends Controller
      * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
      * @param string $project  the project to which the node belongs
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2678,7 +2703,7 @@ class FreezingController extends Controller
         );
 
         // If pathname is the root folder '/', move all children within the scope of the root folder.
-        
+
         if ($pathname === '/' || $pathname === '' || $pathname === null) {
             return $this->moveNextcloudNodeChildren($action, $project, $pathname);
         }
@@ -2816,7 +2841,7 @@ class FreezingController extends Controller
      * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
      * @param string $project  the project to which the node belongs
      * @param string $pathname the relative pathname of the folder node
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2846,7 +2871,7 @@ class FreezingController extends Controller
      *
      * @param string $project  the project to which the node belongs
      * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -2856,7 +2881,7 @@ class FreezingController extends Controller
         Util::writeLog('ida', 'deleteNextcloudNode:' . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::INFO);
 
         // If pathname is the root folder '/', delete all children within the scope of the root folder.
-        
+
         if ($pathname === '/' || $pathname === '' || $pathname === null) {
             return $this->deleteNextcloudNodeChildren($project, $pathname);
         }
@@ -2925,7 +2950,7 @@ class FreezingController extends Controller
      *
      * @param string $project  the project to which the folder belongs
      * @param string $pathname the full pathname
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -3596,12 +3621,12 @@ class FreezingController extends Controller
 
     /**
      * Test whether RabbitMQ connection can be opened for publication.
-     * 
+     *
      * TODO: Once the health check endpoint service monitors RabbitMQ, we should be able to do away with
      * all of these connection verifications prior to proceeding with each action...
      *
      * @return boolean
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -3623,7 +3648,7 @@ class FreezingController extends Controller
      * Open a connection to RabbitMQ for publication
      *
      * @return AMQPStreamConnection
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -3821,7 +3846,7 @@ class FreezingController extends Controller
      *
      * @return boolean
      * @throws Exception
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
@@ -3850,7 +3875,7 @@ class FreezingController extends Controller
      *
      * @throws Exception
      * @return boolean
-     * 
+     *
      * @NoAdminRequired
      * @NoCSRFRequired
      */

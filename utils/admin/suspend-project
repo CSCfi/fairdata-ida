@@ -79,7 +79,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "$CURL_POST \"$PROJECT_USER_CREDENTIALS\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\""
 fi
 
-OUT=`$CURL_POST "$PROJECT_USER_CREDENTIALS" "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`
+OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`
 
 if [ ! -e $PROJECT_LOCK ]; then
     errorExit "Failed to lock project ${PROJECT}"

@@ -34,33 +34,66 @@ import time
 import os
 import sys
 import socket
+import json
 from tests.common.utils import load_configuration
 
-DATASET_TEMPLATE = {
-    "data_catalog": "urn:nbn:fi:att:data-catalog-ida", 
-    "metadata_provider_user": "test_user_a", 
-    "metadata_provider_org": "test_organization_a", 
+DATASET_TEMPLATE_V3 = {
+    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
+    "metadata_provider_user": "test_user_a",
+    "metadata_provider_org": "test_organization_a",
+    "access_rights": {
+        "access_type": {
+            "url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
+        }
+    },
+    "creator": [
+        {
+            "@type": "Person",
+            "member_of": {
+                "@type": "Organization",
+                "name": {
+                    "en": "Test Organization A"
+                }
+            },
+            "name": "Test User A"
+        }
+    ],
+    "description": {
+        "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    },
+    "title": {
+        "en": "Test Dataset"
+    },
+    "preservation": {
+        "state": 0
+    }
+}
+
+DATASET_TEMPLATE_V1 = {
+    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
+    "metadata_provider_user": "test_user_a",
+    "metadata_provider_org": "test_organization_a",
     "research_dataset": {
         "access_rights": {
             "access_type": {
                 "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
             }
-        }, 
+        },
         "creator": [
             {
-                "@type": "Person", 
+                "@type": "Person",
                 "member_of": {
-                    "@type": "Organization", 
+                    "@type": "Organization",
                     "name": {
                         "en": "Test Organization A"
                     }
-                }, 
+                },
                 "name": "Test User A"
             }
-        ], 
+        ],
         "description": {
             "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        }, 
+        },
         "title": {
             "en": "Test Dataset"
         }
@@ -108,7 +141,8 @@ class TestDownload(unittest.TestCase):
         self.success = False
 
         # timeout when waiting for actions to complete
-        self.timeout = 10800 # 3 hours
+        #self.timeout = 10800 # 3 hours
+        self.timeout = 600 # 10 minutes
 
         self.assertEqual(self.config["METAX_AVAILABLE"], 1)
 
@@ -152,7 +186,11 @@ class TestDownload(unittest.TestCase):
         metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
         for pid in dataset_pids:
             print ("   %s" % pid)
-            requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=metax_user, verify=False)
+            if self.config["METAX_API_VERSION"] >= 3:
+                # TODO: add bearer token header when supported
+                requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), verify=False)
+            else:
+                requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=metax_user, verify=False)
 
 
     def flushDownloads(self):
@@ -194,7 +232,7 @@ class TestDownload(unittest.TestCase):
                     partial = response_json.get('partial', [])
                     for req in partial:
                         if not pending:
-                            pending = req.get('status') not in [ 'SUCCESS', 'FAILED' ] 
+                            pending = req.get('status') not in [ 'SUCCESS', 'FAILED' ]
                 if pending:
                     looped = True
                     print(".", end='', flush=True)
@@ -255,7 +293,7 @@ class TestDownload(unittest.TestCase):
            has completed such that all metadata is recorded in Metax.
 
         3. A dataset will be created in Metax, with files included from the frozen folder.
-        
+
         4. The download service will be tested based on the defined dataset, requesting generation of
            multiple packages, both for full and partial dataset, listings of pending and available
            package generation, retrieval of authorization tokens, and download of individual files.
@@ -285,22 +323,42 @@ class TestDownload(unittest.TestCase):
         self.assertEqual(len(experiment_1_files), 13)
 
         print("Creating dataset containing all files in scope of frozen folder")
-        dataset_data = DATASET_TEMPLATE
-        dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
-        dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
-        response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
+        if self.config["METAX_API_VERSION"] >= 3:
+            dataset_data = DATASET_TEMPLATE_V3
+            dataset_data['title'] = DATASET_TITLES[0]
+            dataset_data['fileset'] = {
+                "storage_service": "ida",
+                "project": "test_project_a",
+                "directory_actions": [
+                    {
+                        "action": "add",
+                        "pathname": "/testdata/2017-08/Experiment_1/"
+                    }
+                ]
+            }
+            #print(json.dumps(dataset_data, indent=4))
+            # TODO: add bearer token header when supported
+            response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, verify=False)
+        else:
+            dataset_data = DATASET_TEMPLATE_V1
+            dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
+            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
+            response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=metax_user, verify=False)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset = response.json()
-        dataset_pid = dataset.get('identifier')
+        if self.config["METAX_API_VERSION"] >= 3:
+            dataset_pid = dataset.get('id')
+        else:
+            dataset_pid = dataset.get('identifier')
         self.assertIsNotNone(dataset_pid)
 
         # --------------------------------------------------------------------------------
-  
+
         print("Verify that no active package generation requests exist for dataset")
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 404, response.content.decode(sys.stdout.encoding))
 
-        print("Authorize individual dataset file download") 
+        print("Authorize individual dataset file download")
         file = experiment_1_files[0]
         filename = file.get('pathname')
         self.assertIsNotNone(filename)
@@ -310,11 +368,11 @@ class TestDownload(unittest.TestCase):
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download individual dataset file using authorization token") 
+        print("Download individual dataset file using authorization token")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        print("Attempt to download individual dataset file using authorization token a second time") 
+        print("Attempt to download individual dataset file using authorization token a second time")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 401, response.content.decode(sys.stdout.encoding))
 
@@ -341,14 +399,14 @@ class TestDownload(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Authorize complete dataset package download") 
+        print("Authorize complete dataset package download")
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download complete dataset package using authorization token") 
+        print("Download complete dataset package using authorization token")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
@@ -383,14 +441,14 @@ class TestDownload(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        print("Authorize partial dataset package download") 
+        print("Authorize partial dataset package download")
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download partial dataset package using authorization token") 
+        print("Download partial dataset package using authorization token")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
@@ -401,25 +459,25 @@ class TestDownload(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertTrue(os.path.exists(offline_sentinel_file))
 
-        print("Authorize individual dataset file download") 
+        print("Authorize individual dataset file download")
         data = { "dataset": dataset_pid, "file": filename }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Attempt to download individual dataset file while IDA service is offline") 
+        print("Attempt to download individual dataset file while IDA service is offline")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 503, response.content.decode(sys.stdout.encoding))
 
-        print("Authorize existing dataset package download") 
+        print("Authorize existing dataset package download")
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download existing dataset package while IDA service is offline") 
+        print("Download existing dataset package while IDA service is offline")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
@@ -437,7 +495,7 @@ class TestDownload(unittest.TestCase):
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         response_json = response.json()
-        self.assertTrue(response_json.get('status') in ['RETRY', 'PENDING'], response.content.decode(sys.stdout.encoding))
+        self.assertTrue(response_json.get('status') in ['STARTED', 'RETRY', 'PENDING'], response.content.decode(sys.stdout.encoding))
 
         print("Subscribe to notification of generation of dataset package")
         data = { "dataset": dataset_pid, "subscriptionData": "abcdef", "notifyURL": "https://%s:4431/mock_notify" % socket.gethostname() }
@@ -455,7 +513,7 @@ class TestDownload(unittest.TestCase):
         response = requests.get("https://localhost:4431/requests?dataset=%s" % dataset_pid, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         response_json = response.json()
-        self.assertTrue(response_json.get('status') in ['RETRY', 'PENDING'], response.content.decode(sys.stdout.encoding))
+        self.assertTrue(response_json.get('status') in ['STARTED', 'RETRY', 'PENDING'], response.content.decode(sys.stdout.encoding))
 
         print("Returning IDA service to online mode")
         os.remove(offline_sentinel_file)
@@ -479,7 +537,7 @@ class TestDownload(unittest.TestCase):
         print("Verifying subscribed notification of completed dataset package generation was received")
         self.assertTrue(os.path.exists(notification_file))
 
-        print("Authorize complete dataset package download") 
+        print("Authorize complete dataset package download")
         package = response_json.get('package')
         data = { "dataset": dataset_pid, "package": package }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
@@ -487,18 +545,18 @@ class TestDownload(unittest.TestCase):
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download complete dataset package using authorization token") 
+        print("Download complete dataset package using authorization token")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        print("Authorize individual dataset file download") 
+        print("Authorize individual dataset file download")
         data = { "dataset": dataset_pid, "file": filename }
         response = requests.post("https://localhost:4431/authorize", json=data, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         token = response.json().get('token')
         self.assertIsNotNone(token)
 
-        print("Download individual dataset file using authorization token") 
+        print("Download individual dataset file using authorization token")
         response = requests.get("https://localhost:4431/download?token=%s" % token, auth=self.token_auth, verify=False)
         self.assertEqual(response.status_code, 200)
 

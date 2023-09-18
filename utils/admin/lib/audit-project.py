@@ -88,6 +88,11 @@ def main():
         else:
             config.LOG_LEVEL = logging.INFO
     
+        if '/rest/' in config.METAX_API_ROOT_URL:
+            config.METAX_API_VERSION = 1
+        else:
+            config.METAX_API_VERSION = 3
+
         if config.DEBUG == 'true':
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
             sys.stderr.write("HOSTNAME:      %s\n" % socket.gethostname())
@@ -99,6 +104,8 @@ def main():
             sys.stderr.write("DBHOST:        %s\n" % config.DBHOST)
             sys.stderr.write("DBROUSER:      %s\n" % config.DBROUSER)
             sys.stderr.write("DBNAME:        %s\n" % config.DBNAME)
+            sys.stderr.write("METAX_API:     %s\n" % config.METAX_API_ROOT_URL)
+            sys.stderr.write("METAX_VERSION: %s\n" % str(config.METAX_API_VERSION))
             sys.stderr.write("ARGS#:         %d\n" % len(sys.argv))
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
             sys.stderr.write("PID:           %s\n" % config.PID)
@@ -422,8 +429,10 @@ def add_metax_files(nodes, counts, config):
     if config.DEBUG == 'true':
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
-    # We explicitly order frozen file records by unique internal id, to be absolutely sure pagination does not randomly produce duplicates and returns all records
-    url_base = "%s/files?fields=file_path,file_modified,file_frozen,byte_size,identifier,checksum_value,removed&file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
+    if config.METAX_API_VERSION >= 3:
+        url_base = "%s/files?project=%s&storage_service=ida&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
+    else:
+        url_base = "%s/files?file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (config.METAX_API_ROOT_URL, config.PROJECT, config.MAX_FILE_COUNT)
 
     offset = 0
     done = False # we are done when Metax returns less than the specified limit of files
@@ -437,12 +446,20 @@ def add_metax_files(nodes, counts, config):
 
         try:
 
-            response = requests.get(url, auth=(config.METAX_API_USER, config.METAX_API_PASS), verify=False)
+            if config.METAX_API_VERSION >= 3:
+                # TODO: add bearer token header when supported
+                response = requests.get(url)
+            else:
+                response = requests.get(url, auth=(config.METAX_API_USER, config.METAX_API_PASS))
 
             if response.status_code != 200:
                 raise Exception("Failed to retrieve frozen file metadata from Metax for project %s: %d" % (config.PROJECT, response.status_code))
 
             response_data = response.json()
+
+            if config.DEBUG == 'true':
+                sys.stderr.write("QUERY RESPONSE: %s\n" % json.dumps(response_data))
+
             files = response_data['results']
 
         except Exception as error:
@@ -450,32 +467,63 @@ def add_metax_files(nodes, counts, config):
 
         for file in files:
 
+            if config.DEBUG == 'true':
+                sys.stderr.write("FILE: %s\n" % json.dumps(file))
+                sys.stderr.write("REMOVED: %s\n" % json.dumps(file.get("removed")))
+
             # Even though Metax should not return records for removed files, we check just to be absolutely sure...
-            if file["removed"] == False:
+            if not file.get("removed", False):
 
-                pathname = "frozen%s" % file["file_path"]
+                if config.METAX_API_VERSION >= 3:
 
-                # Normalize modified and frozen timestamps to ISO UTC format
+                    pathname = "frozen%s" % file["pathname"]
 
-                modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
-                frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+                    # Normalize modified and frozen timestamps to ISO UTC format
 
-                try:
-                    checksum = str(file["checksum_value"])
-                except Exception as error: # temp workaround for Metax bug
-                    csobject = file["checksum"]
-                    checksum = str(csobject["value"])
-                if checksum.startswith('sha256:'):
-                    checksum = checksum[7:]
+                    modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+                    frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
 
-                node_details = {
-                    'type': 'file',
-                    'size': file["byte_size"],
-                    'pid': file["identifier"],
-                    'checksum': checksum,
-                    'modified': modified,
-                    'frozen': frozen
-                }
+                    checksum = str(file["checksum"])
+                    if checksum.startswith('sha256:'):
+                        checksum = checksum[7:]
+
+                    node_details = {
+                        'type': 'file',
+                        'size': file["size"],
+                        'pid': file["storage_identifier"],
+                        'checksum': checksum,
+                        'modified': modified,
+                        'frozen': frozen
+                    }
+
+                else:
+
+                    pathname = "frozen%s" % file["file_path"]
+
+                    # Normalize modified and frozen timestamps to ISO UTC format
+
+                    modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_modified"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+                    frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file["file_frozen"]).timestamp()).strftime(config.TIMESTAMP_FORMAT) 
+
+                    try:
+                        checksum = str(file["checksum_value"])
+                    except Exception as error: # temp workaround for Metax bug
+                        csobject = file["checksum"]
+                        checksum = str(csobject["value"])
+                    if checksum.startswith('sha256:'):
+                        checksum = checksum[7:]
+
+                    node_details = {
+                        'type': 'file',
+                        'size': file["byte_size"],
+                        'pid': file["identifier"],
+                        'checksum': checksum,
+                        'modified': modified,
+                        'frozen': frozen
+                    }
+
+                if config.DEBUG == 'true':
+                    sys.stderr.write("NODE: %s %s\n" % (pathname, json.dumps(node_details)))
 
                 try:
                     node = nodes[pathname]

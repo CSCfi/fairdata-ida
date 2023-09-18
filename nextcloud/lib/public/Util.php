@@ -531,4 +531,17 @@ class Util {
 	public static function isIe() {
 		return \OC_Util::isIe();
 	}
+
+    public static function isAssociativeArray($arr) {
+        if (!is_array($arr)) {
+            return false; // Not an array at all
+        }
+        // Check if any key is a string
+        foreach ($arr as $key => $value) {
+            if (is_string($key)) {
+                return true; // It has at least one string key, so it's associative
+            }
+        }
+        return false; // All keys are numeric, so it's indexed
+    }
 }

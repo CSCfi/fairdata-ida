@@ -74,7 +74,7 @@ $ROOT/utils/admin/rescan-project "$PROJECT"
 #--------------------------------------------------------------------------------
 echo "Repairing project data in IDA..."
 
-ACTION_PID=`$CURL_POST $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: application/json" "$URL_BASE_IDA/api/repair" 2>$ERR | \
+ACTION_PID=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "Content-Type: application/json" "$URL_BASE_IDA/api/repair" 2>$ERR | \
             grep '"pid":' | sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
 
 if [ -s $ERR ]; then
@@ -95,7 +95,7 @@ echo "Action PID: ${ACTION_PID}"
 # /tmp/$ACTION_PID.$$.pids and /tmp/$ACTION_PID.$$.pathnames files should be identical to the baseline versions.
 
 if [ "$DEBUG" = "true" ]; then
-    $CURL_GET $PROJECT_USER:$PROJECT_USER_PASS -H "Content-Type: application/json" "$URL_BASE_IDA/api/files/action/$ACTION_PID" | \
+    $CURL_GET $PROJECT_USER_CREDENTIALS -H "Content-Type: application/json" "$URL_BASE_IDA/api/files/action/$ACTION_PID" | \
         python -m json.tool >/tmp/$ACTION_PID.$$.json
     grep '"pid"' < /tmp/$ACTION_PID.$$.json > /tmp/$ACTION_PID.$$.pids
     grep '"pathname"' < /tmp/$ACTION_PID.$$.json > /tmp/$ACTION_PID.$$.pathnames
