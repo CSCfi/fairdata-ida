@@ -90,7 +90,7 @@ class TestAuditing(unittest.TestCase):
                 print('')
 
 
-    def waitForPendingActions(self, project, user):
+    def wait_for_pending_actions(self, project, user):
         print("(waiting for pending actions to fully complete)")
         print(".", end='', flush=True)
         response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
@@ -107,7 +107,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
 
 
-    def checkForFailedActions(self, project, user):
+    def check_for_failed_actions(self, project, user):
         print("(verifying no failed actions)")
         response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -115,7 +115,7 @@ class TestAuditing(unittest.TestCase):
         assert(len(actions) == 0)
 
 
-    def auditProject(self, project, suffix, ignore_timestamps = False):
+    def audit_project(self, project, suffix, check_timestamps = False):
         """
         Audit the specified project, verify that the audit report log was created with
         the specified suffix, and load and return the audit report as a JSON object, with
@@ -125,8 +125,8 @@ class TestAuditing(unittest.TestCase):
 
         print ("(auditing project %s)" % project)
         cmd = "sudo -u %s %s/utils/admin/audit-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
-        if ignore_timestamps:
-            cmd = "%s --ignore-timestamps" % cmd 
+        if check_timestamps:
+            cmd = "%s --check-timestamps" % cmd 
         try:
             output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -273,8 +273,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        self.wait_for_pending_actions("test_project_a", test_user_a)
+        self.check_for_failed_actions("test_project_a", test_user_a)
 
         print("(deleting folder /testdata/2017-08/Experiment_1/baseline from frozen area of filesystem)")
         pathname = "%s/testdata/2017-08/Experiment_1/baseline" % frozen_area_root_a
@@ -330,8 +330,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_b", test_user_b)
-        self.checkForFailedActions("test_project_b", test_user_b)
+        self.wait_for_pending_actions("test_project_b", test_user_b)
+        self.check_for_failed_actions("test_project_b", test_user_b)
 
         # retrieve PSO storage id for test_project_b
         cur.execute("SELECT numeric_id from %sstorages WHERE id = 'home::%stest_project_b' LIMIT 1"
@@ -369,8 +369,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_c", test_user_c)
-        self.checkForFailedActions("test_project_c", test_user_c)
+        self.wait_for_pending_actions("test_project_c", test_user_c)
+        self.check_for_failed_actions("test_project_c", test_user_c)
 
         # After repair the frozen file record in IDA and Metax will be purged as it no longer
         # corresponds to a frozen file on disk, and the node type in Nextcloud will be changed
@@ -444,8 +444,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_d", test_user_d)
-        self.checkForFailedActions("test_project_d", test_user_d)
+        self.wait_for_pending_actions("test_project_d", test_user_d)
+        self.check_for_failed_actions("test_project_d", test_user_d)
 
         # After repair there will be one additional node (folder) due to the existence of the 'baseline' directory
         # in both frozen area and staging compared to before freezing the 'baseline' folder and unfreezing test01.dat
@@ -459,8 +459,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_d", test_user_d)
-        self.checkForFailedActions("test_project_d", test_user_d)
+        self.wait_for_pending_actions("test_project_d", test_user_d)
+        self.check_for_failed_actions("test_project_d", test_user_d)
 
         print("(deleting file /testdata/2017-08/Experiment_1/baseline/test02.dat from Metax)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
@@ -597,7 +597,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project A and checking results")
 
-        report_data = self.auditProject("test_project_a", "err")
+        report_data = self.audit_project("test_project_a", "err", True)
 
         report_pathname_a = report_data["reportPathname"]
 
@@ -658,7 +658,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project B and checking results")
 
-        report_data = self.auditProject("test_project_b", "err")
+        report_data = self.audit_project("test_project_b", "err", True)
 
         report_pathname_b = report_data["reportPathname"]
 
@@ -710,7 +710,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project C and checking results")
 
-        report_data = self.auditProject("test_project_c", "err")
+        report_data = self.audit_project("test_project_c", "err", True)
 
         report_pathname_c = report_data["reportPathname"]
 
@@ -778,7 +778,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project D and checking results")
         
-        report_data = self.auditProject("test_project_d", "err")
+        report_data = self.audit_project("test_project_d", "err", True)
 
         report_pathname_d = report_data["reportPathname"]
 
@@ -862,7 +862,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project E and checking results")
         
-        report_data = self.auditProject("test_project_e", "ok")
+        report_data = self.audit_project("test_project_e", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 107)
@@ -890,8 +890,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        self.wait_for_pending_actions("test_project_a", test_user_a)
+        self.check_for_failed_actions("test_project_a", test_user_a)
 
         cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
         try:
@@ -906,8 +906,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.waitForPendingActions("test_project_b", test_user_b)
-        self.checkForFailedActions("test_project_b", test_user_b)
+        self.wait_for_pending_actions("test_project_b", test_user_b)
+        self.check_for_failed_actions("test_project_b", test_user_b)
 
         cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
         try:
@@ -922,8 +922,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.waitForPendingActions("test_project_c", test_user_c)
-        self.checkForFailedActions("test_project_c", test_user_c)
+        self.wait_for_pending_actions("test_project_c", test_user_c)
+        self.check_for_failed_actions("test_project_c", test_user_c)
 
         cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
         try:
@@ -969,8 +969,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.waitForPendingActions("test_project_d", test_user_d)
-        self.checkForFailedActions("test_project_d", test_user_d)
+        self.wait_for_pending_actions("test_project_d", test_user_d)
+        self.check_for_failed_actions("test_project_d", test_user_d)
 
         cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
@@ -980,7 +980,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project A and checking results")
         
-        report_data = self.auditProject("test_project_a", "ok")
+        report_data = self.audit_project("test_project_a", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
@@ -999,7 +999,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project B and checking results")
         
-        report_data = self.auditProject("test_project_b", "ok")
+        report_data = self.audit_project("test_project_b", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
@@ -1018,7 +1018,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project C and checking results")
         
-        report_data = self.auditProject("test_project_c", "ok")
+        report_data = self.audit_project("test_project_c", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
@@ -1044,7 +1044,7 @@ class TestAuditing(unittest.TestCase):
         # node in the next audit, then repair timestamps based on the new audit error
         # report and thereafter should get no errors reported for project D.
 
-        report_data = self.auditProject("test_project_d", "err")
+        report_data = self.audit_project("test_project_d", "err", True)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
@@ -1069,7 +1069,7 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        report_data = self.auditProject("test_project_d", "ok")
+        report_data = self.audit_project("test_project_d", "ok", True)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount", None), 110)

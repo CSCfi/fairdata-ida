@@ -30,7 +30,7 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( --report | --report-errors ) [ email ] ] [ --ignore-timestamps ]
+Usage: $SCRIPT [ ( --report | --report-errors ) [ email ] ] [ --check-timestamps ]
        $SCRIPT -h
 
        email  the email address where audit reports should be sent (defaults to dev team)
@@ -41,11 +41,11 @@ If --report-errors is specified, the auditing results will be emailed, but only 
 
 Emails will be sent to the default distribution list unless an alternative email address is specified.
 
-If --ignore-timestamps is specified, no comparison will be made between disk timestamps and database values.
+If --check-timestamps is specified, comparison will be made between disk timestamps and database values.
 "
 
 PROJECT="null"
-AUDIT_ARGS="$1 $2 $3"
+AUDIT_ARGS="$*"
 
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions

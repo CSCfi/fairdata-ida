@@ -33,7 +33,7 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( timestamp | week | month | year ) ] [ ( --report | --report-errors ) [ email ] ] [ --ignore-timestamps ]
+Usage: $SCRIPT [ ( timestamp | week | month | year ) ] [ ( --report | --report-errors ) [ email ] ] [ --check-timestamps ]
        $SCRIPT -h
 
        timestamp    an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
@@ -48,19 +48,20 @@ If --report-errors is specified, the auditing results will be emailed, but only 
 
 Emails will be sent to the default distribution list unless an alternative email address is specified.
 
-If --ignore-timestamps is specified, no comparison will be made between disk timestamps and database values.
+If --check-timestamps is specified, comparison will be made between disk timestamps and database values.
 "
 
 PROJECT="null"
 
 case "$1" in
-    "--report" | "--report-errors" | "--ignore-timestamps")
+    "--report" | "--report-errors" | "--check-timestamps")
         SINCE=""
-        AUDIT_ARGS="$1 $2 $3"
+        AUDIT_ARGS="$*"
         ;;
     *)
         SINCE="$1"
-        AUDIT_ARGS="$2 $3 $4"
+        shift
+        AUDIT_ARGS="$*"
         ;;
 esac
 

@@ -77,9 +77,9 @@ def main():
 
         #config.DEBUG = 'true' # TEMP HACK
 
-        config.IGNORE_TIMESTAMPS = False
-        if len(sys.argv) == 5 and sys.argv[4] == '--ignore-timestamps':
-            config.IGNORE_TIMESTAMPS = True
+        config.CHECK_TIMESTAMPS = False
+        if len(sys.argv) == 5 and sys.argv[4] == '--check-timestamps':
+            config.CHECK_TIMESTAMPS = True
 
         config.TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -110,7 +110,7 @@ def main():
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
             sys.stderr.write("PID:           %s\n" % config.PID)
             sys.stderr.write("START:         %s\n" % config.START)
-            sys.stderr.write("IGNORE_TS:     %s\n" % config.IGNORE_TIMESTAMPS)
+            sys.stderr.write("CHECK_TS:      %s\n" % config.CHECK_TIMESTAMPS)
     
         # Convert START ISO timestamp strings to epoch seconds
 
@@ -623,7 +623,7 @@ def audit_project(config):
             if filesystem and nextcloud and filesystem['size'] != nextcloud['size']:
                 errors['Node size different for filesystem and Nextcloud'] = True
 
-            if config.IGNORE_TIMESTAMPS == False:
+            if config.CHECK_TIMESTAMPS == True:
                 if filesystem and nextcloud and filesystem['modified'] != nextcloud['modified']:
                     errors['Node modification timestamp different for filesystem and Nextcloud'] = True
 
@@ -669,7 +669,7 @@ def audit_project(config):
                 if ida['size'] != filesystem['size']:
                     errors['Node size different for filesystem and IDA'] = True
 
-                if config.IGNORE_TIMESTAMPS == False:
+                if config.CHECK_TIMESTAMPS == True:
                     if ida['modified'] != filesystem['modified']:
                         errors['Node modification timestamp different for filesystem and IDA'] = True
 
@@ -679,7 +679,7 @@ def audit_project(config):
                 if ida['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and IDA'] = True
 
-                if config.IGNORE_TIMESTAMPS == False:
+                if config.CHECK_TIMESTAMPS == True:
                     if ida['modified'] != nextcloud['modified']:
                         errors['Node modification timestamp different for Nextcloud and IDA'] = True
 
@@ -689,7 +689,7 @@ def audit_project(config):
                 if metax['size'] != filesystem['size']:
                     errors['Node size different for filesystem and Metax'] = True
 
-                if config.IGNORE_TIMESTAMPS == False:
+                if config.CHECK_TIMESTAMPS == True:
                     if metax['modified'] != filesystem['modified']:
                         errors['Node modification timestamp different for filesystem and Metax'] = True
 
@@ -699,7 +699,7 @@ def audit_project(config):
                 if metax['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and Metax'] = True
 
-                if config.IGNORE_TIMESTAMPS == False:
+                if config.CHECK_TIMESTAMPS == True:
                     if metax['modified'] != nextcloud['modified']:
                         errors['Node modification timestamp different for Nextcloud and Metax'] = True
 
@@ -709,7 +709,7 @@ def audit_project(config):
                 if ida['size'] != metax['size']:
                     errors['Node size different for IDA and Metax'] = True
 
-                if config.IGNORE_TIMESTAMPS == False:
+                if config.CHECK_TIMESTAMPS == True:
                     if ida['modified'] != metax['modified']:
                         errors['Node modification timestamp different for IDA and Metax'] = True
                     if ida['frozen'] != metax['frozen']:
@@ -775,7 +775,7 @@ def audit_project(config):
 
     sys.stdout.write("{\n")
     sys.stdout.write("\"project\": %s,\n" % str(json.dumps(config.PROJECT)))
-    sys.stdout.write("\"ignoreTimestamps\": %s,\n" % json.dumps(config.IGNORE_TIMESTAMPS))
+    sys.stdout.write("\"checkTimestamps\": %s,\n" % json.dumps(config.CHECK_TIMESTAMPS))
     sys.stdout.write("\"start\": %s,\n" % str(json.dumps(config.START)))
     sys.stdout.write("\"end\": %s,\n" % str(json.dumps(datetime.utcnow().strftime(config.TIMESTAMP_FORMAT))))
     sys.stdout.write("\"filesystemNodeCount\": %d,\n" % counts['filesystemNodeCount'])
