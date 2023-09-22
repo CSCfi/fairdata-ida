@@ -53,7 +53,7 @@ def main():
 
     try:
 
-        if len(sys.argv) < 4:
+        if len(sys.argv) < 4 or len(sys.argv) > 6:
             raise Exception('Invalid number of arguments')
     
         # Load service configuration and constants, and add command arguments
@@ -61,6 +61,8 @@ def main():
 
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
+
+        #config.DEBUG = 'true' # TEMP HACK
 
         # If in production, ensure we are not running on uida-man.csc.fi
 
@@ -75,11 +77,32 @@ def main():
         config.PROJECT = sys.argv[2]
         config.START = sys.argv[3]
 
-        #config.DEBUG = 'true' # TEMP HACK
-
+        config.AUDIT_STAGING = True
+        config.AUDIT_FROZEN = True
         config.CHECK_TIMESTAMPS = False
-        if len(sys.argv) == 5 and sys.argv[4] == '--check-timestamps':
-            config.CHECK_TIMESTAMPS = True
+
+        if len(sys.argv) == 5:
+            if sys.argv[4] == '--staging':
+                config.AUDIT_FROZEN = False
+            elif sys.argv[4] == '--frozen':
+                config.AUDIT_STAGING = False
+            elif sys.argv[4] == '--check-timestamps':
+                config.CHECK_TIMESTAMPS = True
+            else:
+                raise Exception("Unrecognized argument: " % sys.argv[4])
+
+        if len(sys.argv) == 6:
+            if sys.argv[4] == '--staging':
+                config.AUDIT_FROZEN = False
+            elif sys.argv[4] == '--frozen':
+                config.AUDIT_STAGING = False
+            elif sys.argv[5] == '--check-timestamps':
+                config.CHECK_TIMESTAMPS = True
+            else:
+                raise Exception("Unrecognized argument: " % sys.argv[5])
+
+        if config.AUDIT_STAGING == False and config.AUDIT_FROZEN == False:
+            raise Exception("Only one of --staging or --frozen is allowed")
 
         config.TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -110,7 +133,9 @@ def main():
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
             sys.stderr.write("PID:           %s\n" % config.PID)
             sys.stderr.write("START:         %s\n" % config.START)
-            sys.stderr.write("CHECK_TS:      %s\n" % config.CHECK_TIMESTAMPS)
+            sys.stderr.write("AUDIT_STAGING: %s\n" % config.AUDIT_STAGING)
+            sys.stderr.write("AUDIT_FROZEN:  %s\n" % config.AUDIT_FROZEN)
+            sys.stderr.write("TIMESTAMPS:    %s\n" % config.CHECK_TIMESTAMPS)
     
         # Convert START ISO timestamp strings to epoch seconds
 
@@ -163,103 +188,6 @@ def load_configuration(pathname):
     return config
 
 
-def add_nextcloud_nodes(nodes, counts, config):
-    """
-    Query the Nextcloud database and add all relevant node stats to the auditing data objects
-    provided and according to the configured values provided, limited to nodes modified before
-    the auditing started.
-    """
-
-    if config.DEBUG == 'true':
-        sys.stderr.write("--- Adding nextcloud nodes...\n")
-        # Only count and report files in debug progress, because we track how many files are in in project, not nodes/folders/etc.
-        fileCount = 0
-
-    # Open database connection 
-
-    dblib = psycopg2
-
-    conn = dblib.connect(database=config.DBNAME,
-                         user=config.DBROUSER,
-                         password=config.DBROPASSWORD,
-                         host=config.DBHOST,
-                         port=config.DBPORT)
-
-    cur = conn.cursor()
-
-    # Retrieve PSO storage id for project
-
-    query = "SELECT numeric_id FROM %sstorages \
-             WHERE id = 'home::%s%s' \
-             LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
-
-    if config.DEBUG == 'true':
-        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
-
-    cur.execute(query)
-    rows = cur.fetchall()
-
-    if len(rows) != 1:
-        raise Exception("Failed to retrieve storage id for project %s" % config.PROJECT)
-
-    storage_id = rows[0][0]
-
-    if config.DEBUG == 'true':
-        sys.stderr.write("STORAGE_ID:    %d\n" % (storage_id))
-
-    # Select all records for project nodes created and last modified before START timestamp
-
-    query = "SELECT path, mimetype, size, mtime FROM %sfilecache \
-             WHERE storage = %d \
-             AND path ~ 'files/%s\+?/' \
-             AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, config.PROJECT, config.START_TS)
-
-    if config.DEBUG == 'true':
-        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
-
-    cur.execute(query)
-    rows = cur.fetchall()
-
-    # Construct auditing data object for all selected nodes
-
-    for row in rows:
-
-        #if config.DEBUG == 'true':
-        #    sys.stderr.write("filecache: %s\n" % (str(row)))
-
-        pathname = row[0][5:]
-        project_name_len = len(config.PROJECT)
-        if pathname[(project_name_len + 1)] == '+':
-            pathname = "staging/%s" % pathname[(project_name_len + 3):]
-        else:
-            pathname = "frozen/%s" % pathname[(project_name_len + 2):]
-
-        node_type = 'file'
-        modified = datetime.utcfromtimestamp(row[3]).strftime(config.TIMESTAMP_FORMAT)
-
-        if row[1] == 2:
-            node_type = 'folder'
-
-        if node_type == 'file':
-            if config.DEBUG == 'true':
-                fileCount = fileCount + 1
-            node = {'nextcloud': {'type': node_type, 'size': row[2], 'modified': modified}}
-        else:
-            node = {'nextcloud': {'type': node_type, 'modified': modified}}
-
-        nodes[pathname] = node
-
-        counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
-
-        if config.DEBUG == 'true':
-            #sys.stderr.write("%s: nextcloud: %d %s\n%s\n" % (config.PROJECT, fileCount, pathname, json.dumps(nodes[pathname]['nextcloud'], indent=2, sort_keys=True)))
-            sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, fileCount, pathname))
-
-    # Close database connection and return auditing data object
-
-    conn.close()
-
-
 def add_filesystem_nodes(nodes, counts, config):
     """
     Crawl the filesystem and add all relevant node stats to the auditing data objects
@@ -274,7 +202,17 @@ def add_filesystem_nodes(nodes, counts, config):
 
     pso_root = "%s/%s%s/" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-    command = "cd %s; find files -mindepth 2 -printf \"%%Y\\t%%s\\t%%T@\\t%%p\\n\"" % (pso_root)
+    if config.AUDIT_STAGING == False:
+        find_root = "files/%s/" % config.PROJECT     # select file pathnames only in frozen area
+        min_depth = "1"
+    elif config.AUDIT_FROZEN == False:
+        find_root = "files/%s\+/" % config.PROJECT   # select file pathnames only in staging area
+        min_depth = "1"
+    else:
+        find_root = "files"                          # select file pathnames in both staging and frozen areas
+        min_depth = "2"
+
+    command = "cd %s; find %s -mindepth %s -printf \"%%Y\\t%%s\\t%%T@\\t%%p\\n\"" % (pso_root, find_root, min_depth)
 
     if config.DEBUG == 'true':
         sys.stderr.write("COMMAND: %s\n" % command)
@@ -336,6 +274,120 @@ def add_filesystem_nodes(nodes, counts, config):
                 sys.stderr.write("%s: filesystem: %d %s\n" % (config.PROJECT, fileCount, pathname))
 
 
+def add_nextcloud_nodes(nodes, counts, config):
+    """
+    Query the Nextcloud database and add all relevant node stats to the auditing data objects
+    provided and according to the configured values provided, limited to nodes modified before
+    the auditing started.
+    """
+
+    if config.DEBUG == 'true':
+        sys.stderr.write("--- Adding nextcloud nodes...\n")
+        # Only count and report files in debug progress, because we track how many files are in in project, not nodes/folders/etc.
+        fileCount = 0
+
+    # Open database connection 
+
+    dblib = psycopg2
+
+    conn = dblib.connect(database=config.DBNAME,
+                         user=config.DBROUSER,
+                         password=config.DBROPASSWORD,
+                         host=config.DBHOST,
+                         port=config.DBPORT)
+
+    cur = conn.cursor()
+
+    # Retrieve PSO storage id for project
+
+    query = "SELECT numeric_id FROM %sstorages \
+             WHERE id = 'home::%s%s' \
+             LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
+
+    if config.DEBUG == 'true':
+        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
+
+    cur.execute(query)
+    rows = cur.fetchall()
+
+    if len(rows) != 1:
+        raise Exception("Failed to retrieve storage id for project %s" % config.PROJECT)
+
+    storage_id = rows[0][0]
+
+    if config.DEBUG == 'true':
+        sys.stderr.write("STORAGE_ID:    %d\n" % (storage_id))
+
+    # Select all records for project nodes created and last modified before START timestamp
+
+    if config.AUDIT_STAGING == False:
+        path_pattern = "files/%s/" % config.PROJECT     # select file pathnames only in frozen area
+    elif config.AUDIT_FROZEN == False:
+        path_pattern = "files/%s\+/" % config.PROJECT   # select file pathnames only in staging area
+    else:
+        path_pattern = "files/%s\+?/" % config.PROJECT  # select file pathnames in both staging and frozen areas
+
+    # TODO use oc_filecache_extended upload_time rather than oc_filecache mtime to exclude files uploaded after
+    # the auditing process started, since the mtime will be based on the local modification time of the user's
+    # machine on upload and can be in the past even if uploaded after the auditing started!
+
+    query = "SELECT path, mimetype, size, mtime FROM %sfilecache \
+             WHERE storage = %d \
+             AND path ~ '%s' \
+             AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, path_pattern, config.START_TS)
+
+    if config.DEBUG == 'true':
+        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
+
+    cur.execute(query)
+    rows = cur.fetchall()
+
+    # Construct auditing data object for all selected nodes
+
+    for row in rows:
+
+        #if config.DEBUG == 'true':
+        #    sys.stderr.write("filecache: %s\n" % (str(row)))
+
+        pathname = row[0][5:]
+        project_name_len = len(config.PROJECT)
+        if pathname[(project_name_len + 1)] == '+':
+            pathname = "staging/%s" % pathname[(project_name_len + 3):]
+        else:
+            pathname = "frozen/%s" % pathname[(project_name_len + 2):]
+
+        node_type = 'file'
+        modified = datetime.utcfromtimestamp(row[3]).strftime(config.TIMESTAMP_FORMAT)
+
+        if row[1] == 2:
+            node_type = 'folder'
+
+        if node_type == 'file':
+            if config.DEBUG == 'true':
+                fileCount = fileCount + 1
+            node_details = {'type': node_type, 'size': row[2], 'modified': modified}
+        else:
+            node_details = {'type': node_type, 'modified': modified}
+
+        try:
+            node = nodes[pathname]
+            node['nextcloud'] = node_details
+        except KeyError:
+            node = {}
+            node['nextcloud'] = node_details
+            nodes[pathname] = node
+    
+        counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
+
+        if config.DEBUG == 'true':
+            #sys.stderr.write("%s: nextcloud: %d %s\n%s\n" % (config.PROJECT, fileCount, pathname, json.dumps(nodes[pathname]['nextcloud'], indent=2, sort_keys=True)))
+            sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, fileCount, pathname))
+
+    # Close database connection and return auditing data object
+
+    conn.close()
+
+
 def add_frozen_files(nodes, counts, config):
     """
     Query the IDA database and add all relevant frozen file stats to the auditing data objects
@@ -343,6 +395,11 @@ def add_frozen_files(nodes, counts, config):
     which have no pending metadata postprocessing (i.e. only frozen files with metadata timestamps
     and no cleared or removed timestamps, and a metadata timestamp less than the start timestamp)
     """
+
+    if config.AUDIT_FROZEN == False:
+        if config.DEBUG == 'true':
+            sys.stderr.write("--- Skipping IDA frozen files...\n")
+        return
 
     if config.DEBUG == 'true':
         sys.stderr.write("--- Adding IDA frozen files...\n")
@@ -408,11 +465,11 @@ def add_frozen_files(nodes, counts, config):
             node['ida'] = node_details
             nodes[pathname] = node
     
-        counts['idaNodeCount'] = counts['idaNodeCount'] + 1
+        counts['frozenFileCount'] = counts['frozenFileCount'] + 1
 
         if config.DEBUG == 'true':
-            #sys.stderr.write("%s: ida: %d %s\n%s\n" % (config.PROJECT, counts['idaNodeCount'], pathname, json.dumps(nodes[pathname]['ida'], indent=2, sort_keys=True)))
-            sys.stderr.write("%s: ida: %d %s\n" % (config.PROJECT, counts['idaNodeCount'], pathname))
+            #sys.stderr.write("%s: ida: %d %s\n%s\n" % (config.PROJECT, counts['frozenFileCount'], pathname, json.dumps(nodes[pathname]['ida'], indent=2, sort_keys=True)))
+            sys.stderr.write("%s: ida: %d %s\n" % (config.PROJECT, counts['frozenFileCount'], pathname))
 
     # Close database connection and return auditing data object
 
@@ -426,6 +483,11 @@ def add_metax_files(nodes, counts, config):
     published to metax before the start timestamp.
     """
     
+    if config.AUDIT_FROZEN == False:
+        if config.DEBUG == 'true':
+            sys.stderr.write("--- Skipping Metax frozen files...\n")
+        return
+
     if config.DEBUG == 'true':
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
@@ -533,7 +595,7 @@ def add_metax_files(nodes, counts, config):
                     node['metax'] = node_details
                     nodes[pathname] = node
 
-                counts['metaxNodeCount'] = counts['metaxNodeCount'] + 1
+                counts['metaxFileCount'] = counts['metaxFileCount'] + 1
 
         if len(files) < config.MAX_FILE_COUNT:
             done = True
@@ -548,13 +610,13 @@ def audit_project(config):
 
     logging.info("START %s %s" % (config.PROJECT, config.START))
 
-    counts = {'nextcloudNodeCount': 0, 'filesystemNodeCount': 0, 'idaNodeCount': 0, 'metaxNodeCount': 0}
+    counts = {'nextcloudNodeCount': 0, 'filesystemNodeCount': 0, 'frozenFileCount': 0, 'metaxFileCount': 0}
     nodes = SortedDict({})
 
     # Populate auditing data objects for all nodes in scope according to the configured values provided
 
-    add_nextcloud_nodes(nodes, counts, config)
     add_filesystem_nodes(nodes, counts, config)
+    add_nextcloud_nodes(nodes, counts, config)
     add_frozen_files(nodes, counts, config)
     add_metax_files(nodes, counts, config)
 
@@ -775,13 +837,15 @@ def audit_project(config):
 
     sys.stdout.write("{\n")
     sys.stdout.write("\"project\": %s,\n" % str(json.dumps(config.PROJECT)))
-    sys.stdout.write("\"checkTimestamps\": %s,\n" % json.dumps(config.CHECK_TIMESTAMPS))
     sys.stdout.write("\"start\": %s,\n" % str(json.dumps(config.START)))
     sys.stdout.write("\"end\": %s,\n" % str(json.dumps(datetime.utcnow().strftime(config.TIMESTAMP_FORMAT))))
+    sys.stdout.write("\"auditStaging\": %s,\n" % json.dumps(config.AUDIT_STAGING))
+    sys.stdout.write("\"auditFrozen\": %s,\n" % json.dumps(config.AUDIT_FROZEN))
+    sys.stdout.write("\"checkTimestamps\": %s,\n" % json.dumps(config.CHECK_TIMESTAMPS))
     sys.stdout.write("\"filesystemNodeCount\": %d,\n" % counts['filesystemNodeCount'])
     sys.stdout.write("\"nextcloudNodeCount\": %d,\n" % counts['nextcloudNodeCount'])
-    sys.stdout.write("\"idaNodeCount\": %d,\n" % counts['idaNodeCount'])
-    sys.stdout.write("\"metaxNodeCount\": %d,\n" % counts['metaxNodeCount'])
+    sys.stdout.write("\"frozenFileCount\": %d,\n" % counts['frozenFileCount'])
+    sys.stdout.write("\"metaxFileCount\": %d,\n" % counts['metaxFileCount'])
     sys.stdout.write("\"invalidNodeCount\": %d" % invalidNodeCount)
 
     if invalidNodeCount > 0:

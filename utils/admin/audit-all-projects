@@ -21,27 +21,22 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-
 # This script audits all existing projects in the IDA service, limited to nodes
 # created or modified before the start of the auditing process.
-
 # --------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( --report | --report-errors ) [ email ] ] [ --check-timestamps ]
+Usage: $SCRIPT [ ( --staging | --frozen ) ] [ --check-timestamps ] [ ( --report | --report-errors ) [ email ] ]
        $SCRIPT -h
 
-       email  the email address where audit reports should be sent (defaults to dev team)
-
-If --report is specified, the auditing results will be emailed, even if successful.
-
-If --report-errors is specified, the auditing results will be emailed, but only if errors are detected.
-
-Emails will be sent to the default distribution list unless an alternative email address is specified.
-
-If --check-timestamps is specified, comparison will be made between disk timestamps and database values.
+       --staging           auditing will be limited to files in the staging area
+       --frozen            auditing will be limited to files in the frozen area
+       --check-timestamps  comparisons will be made between disk timestamps and database values
+       --report            auditing results will be emailed
+       --report-errors     auditing results will be emailed, but only if errors are detected
+       email               the email address where audit reports should be sent (defaults to dev team)
 "
 
 PROJECT="null"

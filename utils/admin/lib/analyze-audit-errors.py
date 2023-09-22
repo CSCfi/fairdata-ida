@@ -52,7 +52,9 @@ def main():
            data = json.load(f)
 
         analysis["project"] = data["project"]
-        analysis["ignoreTimestamps"] = data["ignoreTimestamps"]
+        analysis["auditStaging"] = data["auditStaging"]
+        analysis["auditFrozen"] = data["auditFrozen"]
+        analysis["checkTimestamps"] = data["checkTimestamps"]
 
         nodes = data.get("invalidNodes", {})
 
@@ -263,8 +265,10 @@ def output_analysis(analysis):
 
     sys.stdout.write('{\n')
     sys.stdout.write('    "project": "%s",\n' % analysis["project"])
-    sys.stdout.write('    "ignoreTimestamps": %s,\n' % json.dumps(analysis["ignoreTimestamps"]))
-    sys.stdout.write('    "node_count": %d,\n' % analysis["node_count"])
+    sys.stdout.write('    "auditStaging": %s,\n' % json.dumps(analysis["auditStaging"]))
+    sys.stdout.write('    "auditFrozen": %s,\n' % json.dumps(analysis["auditFrozen"]))
+    sys.stdout.write('    "checkTimestamps": %s,\n' % json.dumps(analysis["checkTimestamps"]))
+    sys.stdout.write('    "invalidNodeCount": %d,\n' % analysis["node_count"])
     oldest = analysis.get("oldest")
     newest = analysis.get("newest")
     if oldest and newest:
@@ -361,14 +365,20 @@ def output_error(name, error, first):
 
 
 def output_nodes(nodes):
-    sys.stdout.write('                    "nodes": [\n')
+    sys.stdout.write('                    "nodes": [')
+    first_node = True
     for node in nodes:
+        if first_node:
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(",\n")
         node_start = node.get("start")
         node_end = node.get("end")
         if node_start and node_end:
-            sys.stdout.write('                        { "start": "%s", "end": "%s", "pathname": "%s" },\n' % ( node_start, node_end, node["pathname"]))
+            sys.stdout.write('                        { "start": "%s", "end": "%s", "pathname": "%s" }' % ( node_start, node_end, node["pathname"]))
         else:
-            sys.stdout.write('                        { "pathname": "%s" },\n' % node["pathname"])
+            sys.stdout.write('                        { "pathname": "%s" }' % node["pathname"])
+        first_node = False
     sys.stdout.write('                    ]\n')
 
 

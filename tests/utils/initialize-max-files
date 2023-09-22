@@ -28,7 +28,6 @@
 #
 # This script is safe to execute in any environment, including production.
 #
-
 # The project must ALREADY exist and the folder "MaxFiles" folder must NOT exist;
 # or else the script will exit with an error. This ensures against accidental
 # corruption of existing data or creation of new projects in production.

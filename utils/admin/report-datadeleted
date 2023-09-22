@@ -45,14 +45,6 @@ fi
 
 #--------------------------------------------------------------------------------
 
-for NEEDS_PROG in jq
-do
-    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
-    if [ ! -e "$PROG_LOCATION" ]; then
-        errorExit "Can't find $NEEDS_PROG in your \$PATH. Aborting."
-    fi
-done
-
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?projects=$PROJECT" 2>$ERR`
 
 if [ -s $ERR ]; then

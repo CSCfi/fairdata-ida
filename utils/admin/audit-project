@@ -21,32 +21,27 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-#
 # This script audits the specified project in the IDA service, limited to nodes
 # created or modified before the start of the auditing process.
 #
 # The script directly queries the database tables and filesystems, and it is
 # not necessary for Apache/Nextcloud/IDA to be running in order to execute this
 # script; only the database needs to be running.
-#
 # --------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT project [ ( --report | --report-errors ) [ email ] ] [ --check-timestamps ]
+Usage: $SCRIPT project [ ( --staging | --frozen ) ] [ --check-timestamps ] [ ( --report | --report-errors ) [ email ] ]
        $SCRIPT -h
 
-       project    the project to be audited
-       email      the email address where audit reports should be sent (defaults to dev team)
-
-If --report is specified, the auditing results will be emailed, even if successful.
-
-If --report-errors is specified, the auditing results will be emailed, but only if errors are detected.
-
-Emails will be sent to the default distribution list unless an alternative email address is specified.
-
-If --check-timestamps is specified, comparison will be made between disk timestamps and database values.
+       project             the project to be audited
+       --staging           auditing will be limited to files in the staging area
+       --frozen            auditing will be limited to files in the frozen area
+       --check-timestamps  comparisons will be made between disk timestamps and database values
+       --report            auditing results will be emailed
+       --report-errors     auditing results will be emailed, but only if errors are detected
+       email               the email address where audit reports should be sent (defaults to dev team)
 "
 
 # --------------------------------------------------------------------------------
@@ -61,49 +56,72 @@ else
     exit 1
 fi
 
+#DEBUG="true" # TEMP HACK
+
 #--------------------------------------------------------------------------------
 
 REPORT_REQ=""
 RECIPIENTS=""
+FILE_AREA=""
 CHECK_TIMESTAMPS=""
 
-if [ "$2" = "--report" ] || [ "$2" = "--report-errors" ]; then
+shift # got PROJECT from first argument via init_audit_script.sh
 
-    REPORT_REQ="$2"
+while [ "$1" ]; do
 
-    if [ "$3" = "--check-timestamps" ]; then
-        CHECK_TIMESTAMPS="$3"
-        RECIPIENTS="$EMAIL_RECIPIENTS"
-    else
-        RECIPIENTS="$3"
-        CHECK_TIMESTAMPS="$4"
-    fi
-fi
+    case "$1" in
+        "--staging" | "--frozen")
+            if [ "$FILE_AREA" ]; then
+                echo "Only one of --staging or --frozen is allowed"
+                exit 1
+            fi
+            FILE_AREA="$1"
+            ;;
+        "--check-timestamps")
+            CHECK_TIMESTAMPS="$1"
+            ;;
+        "--report" | "--report-errors")
+            if [ "$REPORT_REQ" ]; then
+                echo "Only one of --report or --report-errors is allowed"
+                exit 1
+            fi
+            REPORT_REQ="$1"
+            ;;
+        *)
+            if [ "$REPORT_REQ" != "" ] && [ "$RECIPIENTS" = "" ]; then
+                RECIPIENTS="$1"
+            else
+                echo "Invalid argument: $1"
+                exit 1
+            fi
+            ;;
+    esac
 
-if [ "$2" = "--check-timestamps" ]; then
-    CHECK_TIMESTAMPS="$2"
-fi
+    shift
+
+done
 
 if [ "$REPORT_REQ" != "" ]; then
     if [ "$RECIPIENTS" = "" ]; then
         RECIPIENTS="$EMAIL_RECIPIENTS"
     fi
-    if [ "$RECIPIENTS" = "" ]; then
-        RECIPIENTS="$EMAIL_RECIPIENTS"
-    fi
 fi
 
-#DEBUG="true" # TEMP HACK
+AUDIT_ARGS="${FILE_AREA} ${CHECK_TIMESTAMPS}"
+
+#--------------------------------------------------------------------------------
 
 if [ "$DEBUG" = "true" ]; then
+    echo "ROOT:       $ROOT"
     echo "PROJECT:    $PROJECT"
-    echo "REPORT_REQ: $REPORT_REQ $RECIPIENTS"
-    echo "CHECK_TS:   $CHECK_TIMESTAMPS"
+    echo "START:      $START"
+    echo "AUDIT_ARGS: $AUDIT_ARGS"
+    echo "REPORT_REQ: $REPORT_REQ"
+    echo "RECIPIENTS: $RECIPIENTS"
 fi
 
 #--------------------------------------------------------------------------------
 
-PROJECT_STORAGE_OC_DATA_ROOT="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files"
 if [ ! -d "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
     errorExit "The specified project ${PROJECT} does not exist"
 fi
@@ -118,20 +136,28 @@ mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
 
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $CHECK_TIMESTAMPS | python -m json.tool > $REPORT_BASE
+python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $AUDIT_ARGS > $$.out
+
+if [ $? -ne 0 ]; then
+    rm $$.out 2>/dev/null
+    errorExit "Auditing of project $PROJECT failed"
+fi
+
+cat $$.out | jq --indent 4 > $REPORT_BASE
 
 if [ $? -ne 0 ]; then
     if [ -f $REPORT_BASE ]; then
         if [ -s $REPORT_BASE ]; then
-            rm $REPORT_BASE
+            mv $$.out $REPORT_BASE.err
         else
             mv $REPORT_BASE $REPORT_BASE.err
         fi
     fi
-    errorExit "Auditing of project $PROJECT failed"
+    rm $$.out 2>/dev/null
+    errorExit "Formatting of auditing report for project $PROJECT failed"
 fi
 
-REPORT="$REPORT_BASE.ok"
+rm $$.out 2>/dev/null
 
 SEND_REPORT="false"
 
@@ -139,38 +165,57 @@ if [ "$REPORT_REQ" = "--report" ]; then
     SEND_REPORT="true"
 fi
 
-OK=`head $REPORT_BASE | grep "\"invalidNodeCount\" *: *0\b"`
+OK=`head -15 $REPORT_BASE | grep "\"invalidNodeCount\" *: *0\b"`
 
-if [ "$OK" = "" ]; then
-    REPORT="$REPORT_BASE.err"
+if [ "$OK" ]; then
+
+    REPORT="$REPORT_BASE.ok"
+    mv $REPORT_BASE $REPORT
+
+else
+
     if [ "$REPORT_REQ" = "--report-errors" ]; then
         SEND_REPORT="true"
     fi
+
+    REPORT="$REPORT_BASE.err"
+    mv $REPORT_BASE $REPORT
+
+    $ROOT/utils/admin/analyze-audit-errors "$REPORT"
+
+    if [ $? -ne 0 ]; then
+        errorExit "Analysis of audit error report $REPORT failed"
+    fi
 fi
 
-mv $REPORT_BASE $REPORT
-
-HOSTNAME=`hostname`
+# Send email if specified
 
 if [ "$DEBUG" = "true" ]; then
     echo "--- $SCRIPT ---"
     echo "REPORT:        $REPORT"
     echo "SEND_REPORT:   $SEND_REPORT"
+    echo "RECIPIENTS:    $RECIPIENTS"
 fi
 
-if [ "$SEND_REPORT" = "true" ]; then
+if [ "$SEND_REPORT" = "true" ] && [ "$RECIPIENTS" != "" ]; then
 
-    SUBJECT="Auditing errors reported for project $PROJECT"
-    MESSAGE="$REPORT"
+    HOSTNAME=`hostname`
+
+    SUBJECT="Auditing report for project $PROJECT"
 
     if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
-        SUBJECT="$IDA_ENVIRONMENT: $SUBJECT"
-        MESSAGE="${HOSTNAME}:${MESSAGE}"
+        SUBJECT="${IDA_ENVIRONMENT} (${HOSTNAME}) ${SUBJECT}"
     fi
 
-    if [ "$RECIPIENTS" != "" ]; then
-        echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
+    if [ "$OK" ]; then
+        SUBJECT="${SUBJECT} - OK"
+        MESSAGE_FILE="$REPORT"
+    else
+        SUBJECT="${SUBJECT} - Errors Reported"
+        MESSAGE_FILE="$REPORT.analysis.summary"
     fi
+
+    cat "$MESSAGE_FILE" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
 fi
 
 echo "Audit results saved to file $REPORT" 

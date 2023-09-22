@@ -87,6 +87,6 @@ if [ -s $ERR ]; then
     errorExit "Failed to retrieve file details"
 fi
 
-echo "$OUT" | python -m json.tool
+echo "$OUT" | jq --indent 4
 
 addToLog "DONE"

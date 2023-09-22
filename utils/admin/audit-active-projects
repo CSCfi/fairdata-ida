@@ -21,49 +21,47 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-#
 # This script audits all projects in the IDA service which have had any activity
 # during the specified period or since the specified date(time), if given, or
 # during the past 24 hours if nothing is specified. If only a date is specified,
 # the time T00:00:00Z is used. Auditing is also limited to nodes which have been
 # created or modified since the beginning of the script execution time.
-#
 # --------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( timestamp | week | month | year ) ] [ ( --report | --report-errors ) [ email ] ] [ --check-timestamps ]
+Usage: $SCRIPT [ ( timestamp | week | month | year ) ] [ ( --staging | --frozen ) ] [ --check-timestamps ] [ ( --report | --report-errors ) [ email ] ]
        $SCRIPT -h
 
-       timestamp    an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
-       week         calculate a timestamp one week in the past
-       month        calculate a timestamp one month in the past
-       year         calculate a timestamp one year in the past
-       email        the email address where audit reports should be sent (defaults to dev team)
-
-If --report is specified, the auditing results will be emailed, even if successful.
-
-If --report-errors is specified, the auditing results will be emailed, but only if errors are detected.
-
-Emails will be sent to the default distribution list unless an alternative email address is specified.
-
-If --check-timestamps is specified, comparison will be made between disk timestamps and database values.
+       timestamp           an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
+       week                calculate a timestamp one week in the past
+       month               calculate a timestamp one month in the past
+       year                calculate a timestamp one year in the past
+       --staging           auditing will be limited to files in the staging area
+       --frozen            auditing will be limited to files in the frozen area
+       --check-timestamps  comparisons will be made between disk timestamps and database values
+       --report            auditing results will be emailed
+       --report-errors     auditing results will be emailed, but only if errors are detected
+       email               the email address where audit reports should be sent (defaults to dev team)
 "
 
 PROJECT="null"
+SINCE=""
+AUDIT_ARGS=""
 
-case "$1" in
-    "--report" | "--report-errors" | "--check-timestamps")
-        SINCE=""
-        AUDIT_ARGS="$*"
-        ;;
-    *)
-        SINCE="$1"
-        shift
-        AUDIT_ARGS="$*"
-        ;;
-esac
+if [ $# -gt 0 ]; then
+    case "$1" in
+        "--staging" | "--frozen" | "--check-timestamps" | "--report" | "--report-errors" )
+            AUDIT_ARGS="$*"
+            ;;
+        *)
+            SINCE="$1"
+            shift
+            AUDIT_ARGS="$*"
+            ;;
+    esac
+fi
 
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions

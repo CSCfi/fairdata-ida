@@ -91,6 +91,11 @@ if [ "$ID" != "$HTTPD_USER" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+# Set umask to limit filesystem access to owner and group to be more secure
+
+umask 007
+
+#--------------------------------------------------------------------------------
 # Determine the version of Metax being used
 
 METAX_API_VERSION=$(echo "$METAX_API_ROOT_URL" | grep '/rest/')

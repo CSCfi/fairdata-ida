@@ -33,14 +33,6 @@ else
     exit 1
 fi
 
-for NEEDS_PROG in jq
-do
-    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
-    if [ ! -e "$PROG_LOCATION" ]; then
-        errorExit "Can't find $NEEDS_PROG in your \$PATH. Aborting."
-    fi
-done
-
 #--------------------------------------------------------------------------------
 echo "Verifying project ${PROJECT} exists..."
 
@@ -140,7 +132,7 @@ fi
 echo "Exporting project action and frozen file records from database..."
 
 $CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?projects=${PROJECT}" 2>$ERR | \
-    python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
+    jq --indent 4 > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
@@ -149,7 +141,7 @@ if [ -s $ERR ]; then
 fi
 
 $CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/files/action/all?projects=${PROJECT}" 2>$ERR | \
-    python -m json.tool > "${PROJECT_TRASH_DATA_ROOT}/files.json"
+    jq --indent 4 > "${PROJECT_TRASH_DATA_ROOT}/files.json"
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `

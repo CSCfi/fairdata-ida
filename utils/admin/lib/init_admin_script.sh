@@ -20,6 +20,17 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
+
+# Verify needed utilities are available
+
+for NEEDS_PROG in jq
+do
+    PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
+    if [ ! -e "$PROG_LOCATION" ]; then
+        errorExit "Can't find $NEEDS_PROG in your \$PATH. Aborting."
+    fi
+done
+
 # Initialize script with common definitions
 
 INIT_FILE=`dirname "$(realpath $0)"`/../../lib/init_script.sh

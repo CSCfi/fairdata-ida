@@ -90,13 +90,13 @@ fi
 echo "Action PID: ${ACTION_PID}"
 
 # Test: Reinitialize test project. Freeze top level folder. Retrieve file details for freeze action, normalized
-# with "python -m json.tool" and store in /tmp/baseline.json. Extract all "pid" lines to /tmp/baseline.pids.
+# with "jq --indent 4" and store in /tmp/baseline.json. Extract all "pid" lines to /tmp/baseline.pids.
 # Extract all "pathname" lines to /tmp/baseline.pathnames. Run repair-project on test project. The resultant
 # /tmp/$ACTION_PID.$$.pids and /tmp/$ACTION_PID.$$.pathnames files should be identical to the baseline versions.
 
 if [ "$DEBUG" = "true" ]; then
     $CURL_GET $PROJECT_USER_CREDENTIALS -H "Content-Type: application/json" "$URL_BASE_IDA/api/files/action/$ACTION_PID" | \
-        python -m json.tool >/tmp/$ACTION_PID.$$.json
+        jq --indent 4 >/tmp/$ACTION_PID.$$.json
     grep '"pid"' < /tmp/$ACTION_PID.$$.json > /tmp/$ACTION_PID.$$.pids
     grep '"pathname"' < /tmp/$ACTION_PID.$$.json > /tmp/$ACTION_PID.$$.pathnames
 fi

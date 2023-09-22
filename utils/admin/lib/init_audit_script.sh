@@ -63,13 +63,6 @@ if [ "$DBPASSWORD" = "" ]; then
     errorExit "The variable DBPASSWORD must be defined."
 fi
 
-#--------------------------------------------------------------------------------
-# Verify python virtual environment has been configured
-
-# if [ ! -f "$ROOT/venv/bin/activate" ]; then
-#     errorExit "The python virtual environment has not been initialized!"
-# fi
-
 START="$TIMESTAMP"
 
 if [ "$DEBUG" = "true" ]; then

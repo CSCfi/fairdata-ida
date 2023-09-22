@@ -28,7 +28,7 @@
 #
 # Since the file count of this script is very large, use the script with caution. It
 # should be safe to execute it in non-production.
-
+#
 # The project must ALREADY exist and the folder "OneMillionFiles" folder must NOT exist;
 # or else the script will exit with an error. This ensures against accidental
 # corruption of existing data or creation of new projects in production.
