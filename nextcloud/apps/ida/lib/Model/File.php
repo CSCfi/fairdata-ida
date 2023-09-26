@@ -44,7 +44,7 @@ class File extends Entity implements JsonSerializable
     protected $project;
     protected $size;
     protected $checksum;
-    protected $uploaded; // DEPRECATED
+    protected $uploaded; // DEPRECATED (retrieved from Nextcloud cache when needed)
     protected $modified;
     protected $frozen;
     protected $metadata;

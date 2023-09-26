@@ -167,22 +167,27 @@ fi
 
 OK=`head -15 $REPORT_BASE | grep "\"invalidNodeCount\" *: *0\b"`
 
-if [ "$OK" ]; then
-
-    REPORT="$REPORT_BASE.ok"
-    mv $REPORT_BASE $REPORT
-
+if [ "$OK" != "" ]; then
+   OK="true"
 else
+   OK="false"
+fi
 
+if [ "$OK" = "true" ]; then
+    REPORT="$REPORT_BASE.ok"
+else
+    REPORT="$REPORT_BASE.err"
     if [ "$REPORT_REQ" = "--report-errors" ]; then
         SEND_REPORT="true"
     fi
+fi
 
-    REPORT="$REPORT_BASE.err"
-    mv $REPORT_BASE $REPORT
+mv $REPORT_BASE $REPORT
 
+echo "Audit results saved to file $REPORT" 
+
+if [ "$OK" = "false" ]; then
     $ROOT/utils/admin/analyze-audit-errors "$REPORT"
-
     if [ $? -ne 0 ]; then
         errorExit "Analysis of audit error report $REPORT failed"
     fi
@@ -217,7 +222,5 @@ if [ "$SEND_REPORT" = "true" ] && [ "$RECIPIENTS" != "" ]; then
 
     cat "$MESSAGE_FILE" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
 fi
-
-echo "Audit results saved to file $REPORT" 
 
 addToLog "DONE"

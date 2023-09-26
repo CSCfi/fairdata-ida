@@ -115,7 +115,7 @@ class TestAuditing(unittest.TestCase):
         assert(len(actions) == 0)
 
 
-    def audit_project(self, project, suffix, check_timestamps = True, area = None):
+    def audit_project(self, project, suffix, check_timestamps = True, area = ''):
         """
         Audit the specified project, verify that the audit report log was created with
         the specified suffix, and load and return the audit report as a JSON object, with
@@ -125,7 +125,7 @@ class TestAuditing(unittest.TestCase):
 
         parameters = ""
 
-        if area != None:
+        if area != '':
             parameters = "--%s" % area
             area = " %s" % area
 
@@ -149,24 +149,25 @@ class TestAuditing(unittest.TestCase):
 
         start = output.index("Audit results saved to file ")
         report_pathname = output[start + 28:]
+        report_pathname = report_pathname.split('\n', 1)[0]
 
         print("Verify audit report exists and has the correct suffix")
-        path = Path(report_pathname)
-        self.assertTrue(path.exists(), report_pathname)
-        self.assertTrue(path.is_file(), report_pathname)
         self.assertTrue(report_pathname.endswith(suffix), report_pathname)
+        path = Path(report_pathname)
+        self.assertTrue(path.exists(), path)
+        self.assertTrue(path.is_file(), path)
 
         if report_pathname.endswith('.err'):
 
             print("Verify audit report analysis exists")
             path = Path("%s.analysis" % report_pathname)
-            self.assertTrue(path.exists(), report_pathname)
-            self.assertTrue(path.is_file(), report_pathname)
+            self.assertTrue(path.exists(), path)
+            self.assertTrue(path.is_file(), path)
 
             print("Verify audit report analysis summary exists")
             path = Path("%s.analysis.summary" % report_pathname)
-            self.assertTrue(path.exists(), report_pathname)
-            self.assertTrue(path.is_file(), report_pathname)
+            self.assertTrue(path.exists(), path)
+            self.assertTrue(path.is_file(), path)
 
         print("(loading audit report %s)" % report_pathname)
         try:

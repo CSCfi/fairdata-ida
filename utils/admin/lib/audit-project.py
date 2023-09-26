@@ -62,13 +62,15 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        #config.DEBUG = 'true' # TEMP HACK
+        config.DEBUG = 'true' # TEMP HACK
 
         # If in production, ensure we are not running on uida-man.csc.fi
 
         if config.IDA_ENVIRONMENT == "PRODUCTION":
             if socket.gethostname().startswith("uida-man"):
                 raise Exception ("Do not run project auditing on uida-man.csc.fi!")
+
+        config.MIGRATION_TIMESTAMP = 1541030400 # 2018-11-01T00:00:00Z
 
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
@@ -234,8 +236,6 @@ def add_filesystem_nodes(nodes, counts, config):
         modified = int(float(values['modified']))
         pathname = str(values['pathname'])
 
-        full_pathname = "%s%s" % (pso_root, pathname)
-
         if modified < config.START_TS:
 
             pathname = pathname[5:]
@@ -318,7 +318,7 @@ def add_nextcloud_nodes(nodes, counts, config):
     if config.DEBUG == 'true':
         sys.stderr.write("STORAGE_ID:    %d\n" % (storage_id))
 
-    # Select all records for project nodes created and last modified before START timestamp
+    # Select all records for project nodes uploaded before START timestamp
 
     if config.AUDIT_STAGING == False:
         path_pattern = "files/%s/" % config.PROJECT     # select file pathnames only in frozen area
@@ -327,14 +327,18 @@ def add_nextcloud_nodes(nodes, counts, config):
     else:
         path_pattern = "files/%s\+?/" % config.PROJECT  # select file pathnames in both staging and frozen areas
 
-    # TODO use oc_filecache_extended upload_time rather than oc_filecache mtime to exclude files uploaded after
-    # the auditing process started, since the mtime will be based on the local modification time of the user's
-    # machine on upload and can be in the past even if uploaded after the auditing started!
-
-    query = "SELECT path, mimetype, size, mtime FROM %sfilecache \
-             WHERE storage = %d \
-             AND path ~ '%s' \
-             AND mtime < %d" % (config.DBTABLEPREFIX, storage_id, path_pattern, config.START_TS)
+    query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, extended.upload_time \
+             FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
+             ON cache.fileid = extended.fileid \
+             WHERE cache.storage = %d \
+             AND cache.path ~ '%s' \
+             AND ( extended.upload_time IS NULL OR extended.upload_time < %d )" % (
+                 config.DBTABLEPREFIX,
+                 config.DBTABLEPREFIX,
+                 storage_id,
+                 path_pattern,
+                 config.START_TS
+            )
 
     if config.DEBUG == 'true':
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
@@ -363,10 +367,20 @@ def add_nextcloud_nodes(nodes, counts, config):
             node_type = 'folder'
 
         if node_type == 'file':
+
+            # If there is no upload timestamp, use the latest of the modification or migration timestamp
+            if row[4] in [ None, '', 0 ]:
+                uploaded = datetime.utcfromtimestamp(max(row[3], config.MIGRATION_TIMESTAMP)).strftime(config.TIMESTAMP_FORMAT)
+            else:
+                uploaded = datetime.utcfromtimestamp(row[4]).strftime(config.TIMESTAMP_FORMAT)
+
             if config.DEBUG == 'true':
                 fileCount = fileCount + 1
-            node_details = {'type': node_type, 'size': row[2], 'modified': modified}
-        else:
+
+            node_details = {'type': node_type, 'size': row[2], 'modified': modified, 'uploaded': uploaded}
+
+        else: # node_type == 'folder'
+
             node_details = {'type': node_type, 'modified': modified}
 
         try:

@@ -738,6 +738,42 @@ class TestDatasets(unittest.TestCase):
             elif dataset['pid'] == dataset_6_pid:
                 self.assertTrue(dataset['pas'] == False)
 
+        print("Query IDA for file inventory for project test_project_a")
+        response = requests.get("%s/inventory/test_project_a" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        self.assertEqual(inventory.get('project'), 'test_project_a')
+        self.assertIsNotNone(inventory.get('created'))
+        self.assertIsNone(inventory.get('uploadedBefore'))
+        self.assertFalse(inventory.get('unpublishedOnly', True))
+        self.assertEqual(inventory.get('totalFiles', -1), 5084)
+        self.assertEqual(inventory.get('totalStagedFiles', -1), 32)
+        self.assertEqual(inventory.get('totalFrozenFiles', -1), 5052)
+
+        print("Query IDA for file inventory for project test_project_a excluding published frozen files")
+        response = requests.get("%s/inventory/test_project_a?unpublishedOnly=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        self.assertEqual(inventory.get('project'), 'test_project_a')
+        self.assertIsNotNone(inventory.get('created'))
+        self.assertIsNone(inventory.get('uploadedBefore'))
+        self.assertTrue(inventory.get('unpublishedOnly', False))
+        self.assertEqual(inventory.get('totalFiles', -1), 5033)
+        self.assertEqual(inventory.get('totalStagedFiles', -1), 32)
+        self.assertEqual(inventory.get('totalFrozenFiles', -1), 5001)
+
+        print("Query IDA for file inventory for project test_project_a excluding files uploaded before epoch")
+        response = requests.get("%s/inventory/test_project_a?uploadedBefore=1970-01-01T00:00:00Z" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        self.assertEqual(inventory.get('project'), 'test_project_a')
+        self.assertIsNotNone(inventory.get('created'))
+        self.assertEqual(inventory.get('uploadedBefore'), "1970-01-01T00:00:00Z")
+        self.assertFalse(inventory.get('unpublishedOnly', True))
+        self.assertEqual(inventory.get('totalFiles', -1), 0)
+        self.assertEqual(inventory.get('totalStagedFiles', -1), 0)
+        self.assertEqual(inventory.get('totalFrozenFiles', -1), 0)
+
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done
 

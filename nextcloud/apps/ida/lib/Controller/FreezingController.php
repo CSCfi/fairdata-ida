@@ -132,24 +132,72 @@ class FreezingController extends Controller
         else {
             $this->config['METAX_API_VERSION'] = 3;
         }
+        $this->config['MIGRATION_TIMESTAMP'] = "2018-11-01T00:00:00Z";
+    }
+
+    /**
+     * Get the upload timestamp for the specified node
+     *
+     * @param string $node the nextcloud node info object
+     *
+     * @return string
+     *
+     */
+    protected function getUploadedTimestamp($nodeInfo)
+    {
+        Util::writeLog('ida', 'getUploadedTimestamp', \OCP\Util::DEBUG);
+
+        # For files added via other means than WebDAV/WebUI (e.g. originally migrated files,
+        # files added locally a recorded using occ files:scan, etc.) no upload timestamp will
+        # be recorded and a zero value will be returned by getUploadTime(), corresponding to
+        # the UNIX epoch, in which case we will default to the original migration date from
+        # when project files were migrated from the previous iRODS version of IDA or the
+        # modified timestamp, whichever is latest.
+
+        $uploaded = $nodeInfo->getUploadTime();
+
+        if ($uploaded == 0) {
+            $uploaded = $this->config['MIGRATION_TIMESTAMP'];
+            $modified = Generate::newTimestamp($nodeInfo->getMTime());
+            if (strcmp($modified, $uploaded) > 0) {
+                $uploaded = $modified;
+            }
+        }
+        else {
+            $uploaded = Generate::newTimestamp($uploaded);
+        }
+
+        Util::writeLog('ida', 'getUploadedTimestamp: uploaded=' . $uploaded, \OCP\Util::DEBUG);
+
+        return $uploaded;
     }
 
     /**
      * Return an inventory of all project files stored in the IDA service, both in staging
      * and frozen areas, with all technical metadata about each file.
      *
-     * @param string $project  the project to which the nodes belongs
+     * @param string $project         the project to which the files belong
+     * @param string $uploadedBefore  ISO datetime string excluding files uploaded after the specified datetime
+     * @param string $unpublishedOnly if "true" exclude files which are part of one or more published datasets
      *
      * @return DataResponse
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function getFileInventory($project)
+    public function getFileInventory($project, $uploadedBefore = null, $unpublishedOnly = 'false')
     {
         try {
 
-            Util::writeLog('ida', 'getFileInventory:' . ' project=' . $project, \OCP\Util::INFO);
+            if ($unpublishedOnly === null) {
+                $unpublishedOnly = 'false';
+            }
+
+            Util::writeLog('ida', 'getFileInventory:'
+                . ' project=' . $project
+                . ' uploadedBefore=' . $uploadedBefore
+                . ' unpublishedOnly=' . $unpublishedOnly
+                , \OCP\Util::INFO);
 
             $totalStagedFiles = 0;
             $totalFrozenFiles = 0;
@@ -166,14 +214,19 @@ class FreezingController extends Controller
                 if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
                     $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
+                    $uploaded = $this->getUploadedTimestamp($nodeInfo);
 
-                    $fileInfo = array(
-                        'size' => $nodeInfo->getSize(),
-                        'modified' => Generate::newTimestamp($nodeInfo->getMTime())
-                    );
+                    if ($uploadedBefore == null || $uploaded < $uploadedBefore) {
 
-                    $stagedFiles[$pathname] = $fileInfo;
-                    $totalStagedFiles++;
+                        $fileInfo = array(
+                            'size' => $nodeInfo->getSize(),
+                            'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
+                            'uploaded' => $uploaded
+                        );
+
+                        $stagedFiles[$pathname] = $fileInfo;
+                        $totalStagedFiles++;
+                    }
                 }
             }
 
@@ -181,43 +234,66 @@ class FreezingController extends Controller
 
             $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, "/", 0);
 
+            $datasetFiles = $this->getDatasetFiles($nextcloudNodes);
+
             foreach ($nextcloudNodes as $nodeInfo) {
 
                 if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
                     $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
+                    $uploaded = $this->getUploadedTimestamp($nodeInfo);
 
-                    $fileInfo = array(
-                        'size' => $nodeInfo->getSize(),
-                        'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
-                    );
+                    if ($uploadedBefore == null || $uploaded < $uploadedBefore) {
 
-                    $frozenFile = $this->fileMapper->findByNextcloudNodeId($nodeInfo->getId(), $project);
+                        $datasets = null;
 
-                    if ($frozenFile != null) {
+                        $fileInfo = array(
+                            'size' => $nodeInfo->getSize(),
+                            'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
+                            'uploaded' => $uploaded
+                        );
 
-                        if ($frozenFile->getPid() != null) {
-                            $fileInfo['pid'] = $frozenFile->getPid();
-                        }
+                        $frozenFile = $this->fileMapper->findByNextcloudNodeId($nodeInfo->getId(), $project);
 
-                        $checksum = $frozenFile->getChecksum();
+                        if ($frozenFile != null) {
 
-                        if ($checksum != null) {
-                            // Ensure the checksum is returned as an sha256: checksum URI
-                            if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
-                                $fileInfo['checksum'] = $checksum;
-                            } else {
-                                $fileInfo["checksum"] = 'sha256:' . $checksum;
+                            $filePID = $frozenFile->getPid();
+
+                            if ($filePID != null) {
+                                $fileInfo['pid'] = $filePID;
+                                if (isset($datasetFiles[$filePID])) {
+                                    $datasets = $datasetFiles[$filePID];
+                                }
+                                if ($datasets != null) {
+                                    $fileInfo['datasets'] = $datasets;
+                                    Util::writeLog('ida', 'getFileInventory:'
+                                        . ' pid=' . $filePID
+                                        . ' datasets=' . json_encode($datasets)
+                                        , \OCP\Util::DEBUG);
+                                }
+                            }
+
+                            $checksum = $frozenFile->getChecksum();
+
+                            if ($checksum != null) {
+                                // Ensure the checksum is returned as an sha256: checksum URI
+                                if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
+                                    $fileInfo['checksum'] = $checksum;
+                                } else {
+                                    $fileInfo["checksum"] = 'sha256:' . $checksum;
+                                }
+                            }
+
+                            if ($frozenFile->getFrozen() != null) {
+                                $fileInfo['frozen'] = $frozenFile->getFrozen();
                             }
                         }
 
-                        if ($frozenFile->getFrozen() != null) {
-                            $fileInfo['frozen'] = $frozenFile->getFrozen();
+                        if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
+                            $frozenFiles[$pathname] = $fileInfo;
+                            $totalFrozenFiles++;
                         }
                     }
-
-                    $frozenFiles[$pathname] = $fileInfo;
-                    $totalFrozenFiles++;
                 }
             }
 
@@ -243,6 +319,8 @@ class FreezingController extends Controller
             return new DataResponse(array(
                 'project' => $project,
                 'created' => Generate::newTimestamp(),
+                'uploadedBefore' => $uploadedBefore,
+                'unpublishedOnly' => ($unpublishedOnly === 'true'),
                 'totalFiles' => $totalFiles,
                 'totalStagedFiles' => $totalStagedFiles,
                 'totalFrozenFiles' => $totalFrozenFiles,
@@ -1795,6 +1873,109 @@ class FreezingController extends Controller
         Util::writeLog('ida', 'checkDatasets: datasetCount=' . count($datasets), \OCP\Util::DEBUG);
 
         return ($datasets);
+    }
+
+    /**
+     * Retrieve an associative array containing entries for all frozen files which belong to one or more
+     * Datasets in Metax, for all of the specified frozen file nodes. Keys will be frozen file PIDs and
+     * values will be an array of dataset persistent identifiers. 
+     *
+     * @param Array $nextcloudNodes an array of Nextcloud FileInfo objects
+     *
+     * @return AssociativeArray
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function getDatasetFiles($nextcloudNodes)
+    {
+        Util::writeLog('ida', 'getDatasetFiles: nodeCount=' . count($nextcloudNodes), \OCP\Util::DEBUG);
+
+        // Query Metax for intersecting datasets
+
+        $filePIDs = array();
+
+        foreach ($nextcloudNodes as $fileInfo) {
+            $file = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId());
+            $filePIDs[] = $file->getPid();
+        }
+
+        if ($this->config['METAX_API_VERSION'] >= 3) {
+            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?storage_service=ida&relations=true';
+        }
+        else {
+            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?keys=files';
+        }
+        $username = $this->config['METAX_API_USER'];
+        $password = $this->config['METAX_API_PASS'];
+        $postbody = json_encode($filePIDs);
+
+        Util::writeLog('ida', 'getDatasetFiles: queryURL=' . $queryURL
+                       . ' username=' . $username
+                       . ' password=' . $password
+                       . ' postbody=' . $postbody
+                       , \OCP\Util::DEBUG);
+
+        $ch = curl_init($queryURL);
+
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER,
+            array(
+                'Accept: application/json',
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($postbody)
+            )
+        );
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+        curl_setopt($ch, CURLOPT_FAILONERROR, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+
+        if ($this->config['METAX_API_VERSION'] >= 3) {
+            // TODO add bearer token header when supported
+            ;
+        }
+        else {
+            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+        }
+
+        $response = curl_exec($ch);
+
+        if ($response === false) {
+            Util::writeLog('ida', 'getDatasetFiles:'
+                . ' curl_errno=' . curl_errno($ch)
+                . ' response=' . $response, \OCP\Util::ERROR);
+            curl_close($ch);
+            throw new Exception('Failed to check Metax for intersecting datasets');
+        }
+
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        Util::writeLog('ida', 'getDatasetFiles: datasets_response=' . $response, \OCP\Util::DEBUG);
+
+        if ($httpcode == 200) {
+
+            $datasetFiles = json_decode($response, true);
+
+            if (! is_array($datasetFiles)) {
+                list($ignore, $keep) = explode("200 OK", $response, 2);
+                list($ignore, $body) = explode("\r\n\r\n", $keep, 2);
+                Util::writeLog('ida', 'getDatasetFiles: body=' . $body, \OCP\Util::DEBUG);
+                $datasetFiles = json_decode($body, true);
+            }
+
+            Util::writeLog('ida', 'getDatasetFiles: fileCount=' . count($datasetFiles), \OCP\Util::DEBUG);
+
+            return ($datasetFiles);
+        }
+
+        return (array());
     }
 
     /**

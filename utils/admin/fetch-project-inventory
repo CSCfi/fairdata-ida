@@ -1,0 +1,136 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT project [ --uploaded-before date[time] ] [ --unpublished-only ]
+       $SCRIPT -h
+
+       project             the project to be audited
+       --uploaded-before   limit to files which have an upload timestamp older than the specified timestamp
+       date[time]          an ISO date or UTC timestamp in the format YYYY-MM-DD[Thh:mm:ssZ]
+       --unpublished-only  exclude frozen files which are part of any published datasset
+
+The optional paramters --uploaded-before and --unpublished-only, used together, can be used to identify projects
+which have unpublished files older than a specified time, and construct a list of file pathnames for removal
+"
+
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#DEBUG="true" # TEMP HACK
+
+#--------------------------------------------------------------------------------
+
+UPLOADED_BEFORE="false"
+TIMESTAMP=""
+UNPUBLISHED_ONLY="false"
+
+shift # got PROJECT from first argument via init_audit_script.sh
+
+while [ "$1" ]; do
+
+    case "$1" in
+        "--uploaded-before")
+            UPLOADED_BEFORE="true"
+            ;;
+        "--unpublished-only")
+            UNPUBLISHED_ONLY="true"
+            ;;
+        *)
+            if [ "$UPLOADED_BEFORE" = "true" ] && [ "$TIMESTAMP" = "" ]; then
+                if [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
+                    TIMESTAMP="$1"
+                elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
+                    TIMESTAMP="$1""T00:00:00Z"
+                else
+                    echo "Invalid date[time]: $1"
+                    exit 1
+                fi
+            else
+                echo "Invalid argument: $1"
+                exit 1
+            fi
+            ;;
+    esac
+
+    shift
+
+done
+
+if [ "$UPLOADED_BEFORE" == "true" ] && [ "$TIMESTAMP" = "" ]; then
+    echo "Missing timestamp"
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+URL="${IDA_API_ROOT_URL}/inventory/${PROJECT}"
+
+if [ "$UPLOADED_BEFORE" = "true" ]; then
+    URL="${URL}?uploadedBefore=$TIMESTAMP"
+fi
+
+if [ "$UNPUBLISHED_ONLY" == "true" ]; then
+    SEP="?"
+    if [ "$UPLOADED_BEFORE" == "true" ]; then
+        SEP="&"
+    fi
+    URL="${URL}${SEP}unpublishedOnly=true"
+fi
+
+if [ "$DEBUG" = "true" ]
+then
+    echo "PROJECT:           $PROJECT"
+    echo "UPLOADED_BEFORE:   $UPLOADED_BEFORE"
+    echo "TIMESTAMP:         $TIMESTAMP"
+    echo "UNPUBLISHED_ONLY:  $UNPUBLISHED_ONLY"
+    echo "REQUEST URL:       ${URL}"
+fi
+
+if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
+fi
+
+OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR`
+    addToLog "$MSG"
+    errorExit "Failed to retrieve project inventory"
+fi
+
+echo "$OUT" | jq --indent 4
+
+addToLog "DONE"
