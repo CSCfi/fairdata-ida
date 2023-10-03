@@ -32,16 +32,24 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT project [ ( --staging | --frozen ) ] [ --check-timestamps ] [ ( --report | --report-errors ) [ email ] ]
+Usage: $SCRIPT project [ --changed-since date[time] ] [ ( --staging | --frozen ) ] [ --timestamps ] [ ( --report | --report-errors ) [ email ] ]
        $SCRIPT -h
 
-       project             the project to be audited
-       --staging           auditing will be limited to files in the staging area
-       --frozen            auditing will be limited to files in the frozen area
-       --check-timestamps  comparisons will be made between disk timestamps and database values
-       --report            auditing results will be emailed
-       --report-errors     auditing results will be emailed, but only if errors are detected
-       email               the email address where audit reports should be sent (defaults to dev team)
+       project          the project to be audited
+       --changed-since  auditing will be limited to files uploaded or frozen since the specified date[time]
+       date[time]       an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/
+       --staging        auditing will be limited to files in the staging area
+       --frozen         auditing will be limited to files in the frozen area
+       --timestamps     comparisons will be made between disk timestamps and database values
+       --report         auditing results will be emailed
+       --report-errors  auditing results will be emailed, but only if errors are detected
+       email            the email address where audit reports should be sent (defaults to configured recipient list)
+
+If --changed-since is specified, files and folders which are outside the scope of files uploaded or frozen
+since the specified datetime, including changes only occurring in the filesystem and not known to Nextcloud,
+will not not be reported; only changes which can be identified by timestamp updates in the Nextcloud or Metax
+databases which are later than the specified since timestamp will be audited. To detect filesystem only changes
+you must perform an unrestricted audit without specifying any --changed-since parameter.
 "
 
 # --------------------------------------------------------------------------------
@@ -63,6 +71,7 @@ fi
 REPORT_REQ=""
 RECIPIENTS=""
 FILE_AREA=""
+SINCE=""
 CHECK_TIMESTAMPS=""
 
 shift # got PROJECT from first argument via init_audit_script.sh
@@ -70,6 +79,21 @@ shift # got PROJECT from first argument via init_audit_script.sh
 while [ "$1" ]; do
 
     case "$1" in
+        "--changed-since")
+            if [ "$2" = "" ]; then
+                echo "Missing date[time] argument"
+                exit 1
+            fi
+            if [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
+                SINCE="$2"
+            elif [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
+                SINCE="$2""T00:00:00Z"
+            else
+                echo "Invalid date[time]: $2"
+                exit 1
+            fi
+            shift
+            ;;
         "--staging" | "--frozen")
             if [ "$FILE_AREA" ]; then
                 echo "Only one of --staging or --frozen is allowed"
@@ -77,7 +101,7 @@ while [ "$1" ]; do
             fi
             FILE_AREA="$1"
             ;;
-        "--check-timestamps")
+        "--timestamps")
             CHECK_TIMESTAMPS="$1"
             ;;
         "--report" | "--report-errors")
@@ -107,6 +131,11 @@ if [ "$REPORT_REQ" != "" ]; then
     fi
 fi
 
+# If date(time) not specified, use the unix epoch
+if [ "$SINCE" = "" ]; then
+    SINCE="1970-01-01T00:00:00Z"
+fi
+
 AUDIT_ARGS="${FILE_AREA} ${CHECK_TIMESTAMPS}"
 
 #--------------------------------------------------------------------------------
@@ -115,6 +144,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "ROOT:       $ROOT"
     echo "PROJECT:    $PROJECT"
     echo "START:      $START"
+    echo "SINCE:      $SINCE"
     echo "AUDIT_ARGS: $AUDIT_ARGS"
     echo "REPORT_REQ: $REPORT_REQ"
     echo "RECIPIENTS: $RECIPIENTS"
@@ -134,30 +164,37 @@ REPORT_BASE="${LOG_ROOT}/audits/${YEAR}/${MONTH}/${START}_${PROJECT}"
 
 mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
 
+#--------------------------------------------------------------------------------
+
+OUTPUT="/tmp/$$.out"
+SUMMARY="$OUTPUT.summary"
+
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $AUDIT_ARGS > $$.out
+python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $SINCE $AUDIT_ARGS > $OUTPUT
 
 if [ $? -ne 0 ]; then
-    rm $$.out 2>/dev/null
+    rm $OUTPUT 2>/dev/null
     errorExit "Auditing of project $PROJECT failed"
 fi
 
-cat $$.out | jq --indent 4 > $REPORT_BASE
+if [ $(stat -c %s "$OUTPUT") -eq 0 ]; then
+    cat $OUTPUT > $REPORT_BASE
+else
+    cat $OUTPUT | jq --indent 4 > $REPORT_BASE
+fi
 
 if [ $? -ne 0 ]; then
     if [ -f $REPORT_BASE ]; then
         if [ -s $REPORT_BASE ]; then
-            mv $$.out $REPORT_BASE.err
+            mv $OUTPUT $REPORT_BASE.err
         else
             mv $REPORT_BASE $REPORT_BASE.err
         fi
     fi
-    rm $$.out 2>/dev/null
+    rm $OUTPUT 2>/dev/null
     errorExit "Formatting of auditing report for project $PROJECT failed"
 fi
-
-rm $$.out 2>/dev/null
 
 SEND_REPORT="false"
 
@@ -174,9 +211,9 @@ else
 fi
 
 if [ "$OK" = "true" ]; then
-    REPORT="$REPORT_BASE.ok"
+    REPORT="$REPORT_BASE.OK.json"
 else
-    REPORT="$REPORT_BASE.err"
+    REPORT="$REPORT_BASE.ERR.json"
     if [ "$REPORT_REQ" = "--report-errors" ]; then
         SEND_REPORT="true"
     fi
@@ -186,11 +223,9 @@ mv $REPORT_BASE $REPORT
 
 echo "Audit results saved to file $REPORT" 
 
-if [ "$OK" = "false" ]; then
-    $ROOT/utils/admin/analyze-audit-errors "$REPORT"
-    if [ $? -ne 0 ]; then
-        errorExit "Analysis of audit error report $REPORT failed"
-    fi
+jq 'del(.invalidNodes, .errors)' --indent 4 < $OUTPUT > $SUMMARY
+if [ $? -ne 0 ]; then
+    errorExit "Generation of auditing report summary $REPORT failed"
 fi
 
 # Send email if specified
@@ -212,15 +247,18 @@ if [ "$SEND_REPORT" = "true" ] && [ "$RECIPIENTS" != "" ]; then
         SUBJECT="${IDA_ENVIRONMENT} (${HOSTNAME}) ${SUBJECT}"
     fi
 
-    if [ "$OK" ]; then
+    if [ "$OK" = "true" ]; then
         SUBJECT="${SUBJECT} - OK"
-        MESSAGE_FILE="$REPORT"
     else
         SUBJECT="${SUBJECT} - Errors Reported"
-        MESSAGE_FILE="$REPORT.analysis.summary"
     fi
 
-    cat "$MESSAGE_FILE" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
+    cat "$SUMMARY" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
 fi
+
+cat $SUMMARY
+
+rm $OUTPUT 2>/dev/null
+rm $SUMMARY 2>/dev/null
 
 addToLog "DONE"

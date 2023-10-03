@@ -119,6 +119,10 @@ else
     EXTRA_RELATIONS="test_user_x:test_project_b test_user_x:test_project_c test_user_x:test_project_d test_user_x:test_project_e"
 fi
 
+if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
+    errorExit "Error: The STAGING_FOLDER_SUFFIX must be defined"
+fi
+
 #--------------------------------------------------------------------------------
 
 PADDING="-45"
@@ -339,10 +343,6 @@ for PROJECT in $PROJECTS; do
     STEP="   Initializing data for $PROJECT"
     printf "%${PADDING}s" "$STEP"
 
-    if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
-        errorExit "Error: The STAGING_FOLDER_SUFFIX must be defined"
-    fi
-
     USER="$PROJECT_USER_PREFIX""$PROJECT"
     PROJECT_STAGING_FOLDER="$PROJECT$STAGING_FOLDER_SUFFIX"
     PROJECT_FROZEN_FOLDER="$PROJECT"
@@ -384,6 +384,67 @@ for PROJECT in $PROJECTS; do
     else
         success
     fi
+
+    # Update Nextcloud uploaded timestamp for all test account files to current datetime
+
+    PGPASSWORD="$DBPASSWORD"
+    export PGPASSWORD
+
+    NOW=`date -u +'%s'`
+
+    QUERY="SELECT numeric_id FROM ${DBTABLEPREFIX}storages WHERE id = 'home::${USER}' ORDER BY numeric_id DESC LIMIT 1"
+
+    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+
+    if [ "$?" -ne 0 ]; then
+        failure "failed"
+        echo "Error: Failed to retrieve Nextcloud storage id for $USER: $OUT"
+        exit 1
+    fi
+
+    STORAGE=$(echo "$OUT" | sed -e 's/[^0-9]//g')
+
+    if [ -z "$STORAGE" ]; then
+        failure "failed"
+        echo "Error: Failed to retrieve Nextcloud storage id for $USER"
+        exit 1
+    fi
+
+    QUERY="SELECT fileid FROM ${DBTABLEPREFIX}filecache WHERE storage = $STORAGE AND mimetype != 2 AND path ~ '^files/'"
+
+    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+
+    if [ "$?" -ne 0 ]; then
+        failure "failed"
+        echo "Error: Failed to retrieve Nextcloud file ids for $USER: $OUT"
+        exit 1
+    fi
+
+    FILEIDS=$(echo "$OUT" | sed -e 's/[^0-9][^0-9]*/ /g' | sed -e 's/^  *//' | sed -e 's/  *$//')
+
+    if [ -z "$FILEIDS" ]; then
+        failure "failed"
+        echo "Error: Failed to retrieve Nextcloud file ids for $USER"
+        exit 1
+    fi
+
+    for FILEID in $FILEIDS; do
+
+        QUERY="INSERT INTO ${DBTABLEPREFIX}filecache_extended \
+              (fileid, metadata_etag, creation_time, upload_time) \
+              VALUES ($FILEID, null, 0, $NOW) \
+              ON CONFLICT (fileid) DO UPDATE \
+              SET upload_time = $NOW"
+
+        OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" 2>&1)
+
+        if [ "$?" -ne 0 ]; then
+            failure "failed"
+            echo "Error: Failed to update Nextcloud upload timestamp for file $FILEID for $USER: $OUT"
+            exit 1
+        fi
+
+    done
 
 done
 

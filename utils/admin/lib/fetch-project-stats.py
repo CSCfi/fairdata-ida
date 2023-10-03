@@ -40,12 +40,17 @@
 import importlib.util
 import sys
 import os
+import time
 import re
 import logging
 import psycopg2
 from pathlib import Path
 from datetime import datetime, timezone
 from time import strftime
+
+# Use UTC
+os.environ["TZ"] = "UTC"
+time.tzset()
 
 
 def hr_to_bytes(value_string):

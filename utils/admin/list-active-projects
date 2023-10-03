@@ -32,10 +32,10 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( timestamp | week | month | year ) ] 
+Usage: $SCRIPT [ ( date[time] | week | month | year ) ] 
        $SCRIPT -h
 
-       timestamp    an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
+       date[time]   an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
        week         calculate a timestamp one week in the past
        month        calculate a timestamp one month in the past
        year         calculate a timestamp one year in the past
@@ -56,30 +56,24 @@ else
     exit 1
 fi
 
+#DEBUG="true" # TEMP HACK
+
 #--------------------------------------------------------------------------------
 
 TZ=UTC
 
 SINCE=""
 
-# If relative period specified, calculate accordingly
-if [[ "$1" =~ ^(week|month|year)$ ]]; then
-    SINCE=`date -d "$START - 1 $1" +"%Y-%m-%dT%H:%M:%SZ"`
-fi
-
-# If date(time) is specified, ensure it is valid
-if [ "$SINCE" = "" ]; then
-    if [ "$1" != "" ]; then
-        if [[ ! "$1" =~ ^[12][0-9]{3}-[01][0-9]-[0-3][0-9]T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
-            # If only date specified, add default time component for beginning of that day.
-            if [[ "$1" =~ ^[12][0-9]{3}-[01][0-9]-[0-3][0-9]$ ]]; then
-                SINCE="${1}T00:00:00Z"
-            else
-                errorExit "Invalid timestamp: $1"
-            fi
-        else
-            SINCE="$1"
-        fi
+if [ "$1" ]; then
+    if [[ "$1" =~ ^(week|month|year)$ ]]; then
+        SINCE=`date -d "$START - 1 $1" +"%Y-%m-%dT%H:%M:%SZ"`
+    elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
+        SINCE="$1"
+    elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
+        SINCE="$1""T00:00:00Z"
+    else
+        echo "Invalid date[time]: $1"
+        exit 1
     fi
 fi
 
@@ -87,8 +81,6 @@ fi
 if [ "$SINCE" = "" ]; then
     SINCE=`date -d "$START - 24 hours" +"%Y-%m-%dT%H:%M:%SZ"`
 fi
-
-#DEBUG="true" # TEMP HACK
 
 if [ "$DEBUG" = "true" ]; then
     echo "SINCE: $SINCE"
@@ -101,7 +93,7 @@ fi
 
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/list-active-projects.py $ROOT $SINCE $START
+python -u $ROOT/utils/admin/lib/list-active-projects.py $ROOT $SINCE
 
 if [ $? -ne 0 ]; then
     errorExit "Failed to retrieve listing of active projects"

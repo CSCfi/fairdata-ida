@@ -29,7 +29,6 @@
 # --------------------------------------------------------------------------------
 
 import requests
-import urllib
 import subprocess
 import unittest
 import psycopg2
@@ -40,10 +39,12 @@ import sys
 import shutil
 import json
 from pathlib import Path
-from tests.common.utils import load_configuration
 from datetime import datetime
+from tests.common.utils import load_configuration, generate_timestamp
+
 
 class TestAuditing(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/auditing/test_auditing")
@@ -52,6 +53,9 @@ class TestAuditing(unittest.TestCase):
 
         # load service configuration variables
         self.config = load_configuration()
+
+        self.config['START'] = generate_timestamp()
+        print("START: %s" % self.config['START'])
 
         # keep track of success, for reference in tearDown
         self.success = False
@@ -65,6 +69,11 @@ class TestAuditing(unittest.TestCase):
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
+
+        time.sleep(1)
+        self.config['INITIALIZED'] = generate_timestamp()
+        print("INITIALIZED: %s" % self.config['INITIALIZED'])
+        time.sleep(1)
 
 
     def tearDown(self):
@@ -115,26 +124,36 @@ class TestAuditing(unittest.TestCase):
         assert(len(actions) == 0)
 
 
-    def audit_project(self, project, suffix, check_timestamps = True, area = ''):
+    def remove_report(self, pathname):
+        try:
+            os.remove(pathname)
+        except:
+            pass
+
+
+    def audit_project(self, project, status, since = None, area = None, check_timestamps = True):
         """
-        Audit the specified project, verify that the audit report log was created with
-        the specified suffix, and load and return the audit report as a JSON object, with
+        Audit the specified project, verify that the audit report file was created with
+        the specified status, and load and return the audit report as a JSON object, with
         the audit report pathname defined in the returned object for later timestamp
         repair if/as needed.
         """
 
         parameters = ""
 
-        if area != '':
-            parameters = "--%s" % area
+        if since:
+            parameters = "%s --changed-since %s" % (parameters, since)
+
+        if area:
+            parameters = "%s --%s" % (parameters, area)
             area = " %s" % area
 
         if check_timestamps:
-            parameters = "%s --check-timestamps" % parameters 
+            parameters = "%s --timestamps" % parameters
 
         #parameters = "%s --report" % parameters # TEMP DEBUG
 
-        print ("(auditing project %s%s)" % (project, area))
+        print ("(auditing project %s%s)" % (project, parameters))
 
         cmd = "sudo -u %s %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
 
@@ -151,32 +170,21 @@ class TestAuditing(unittest.TestCase):
         report_pathname = output[start + 28:]
         report_pathname = report_pathname.split('\n', 1)[0]
 
-        print("Verify audit report exists and has the correct suffix")
-        self.assertTrue(report_pathname.endswith(suffix), report_pathname)
+        print("Verify audit report exists and has the correct status")
+        self.assertTrue(report_pathname.endswith(".%s.json" % status), report_pathname)
         path = Path(report_pathname)
         self.assertTrue(path.exists(), path)
         self.assertTrue(path.is_file(), path)
-
-        if report_pathname.endswith('.err'):
-
-            print("Verify audit report analysis exists")
-            path = Path("%s.analysis" % report_pathname)
-            self.assertTrue(path.exists(), path)
-            self.assertTrue(path.is_file(), path)
-
-            print("Verify audit report analysis summary exists")
-            path = Path("%s.analysis.summary" % report_pathname)
-            self.assertTrue(path.exists(), path)
-            self.assertTrue(path.is_file(), path)
 
         print("(loading audit report %s)" % report_pathname)
         try:
             report_data = json.load(open(report_pathname))
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
-        self.assertEqual(report_data.get("project", None), project)
+        self.assertEqual(report_data.get("project"), project)
 
         report_data["reportPathname"] = report_pathname
+
         return report_data
 
 
@@ -185,40 +193,72 @@ class TestAuditing(unittest.TestCase):
         """
         Overview:
 
-        1. The test projects and user accounts will be created and initialized as usual.
+        1. Test projects and user accounts will be created and initialized as usual, and a
+           timestamp INITIALIZED will be created after initialization.
 
-        2. The following actions and modifications will be made to specific test projects:
+        2. The following actions and modifications will be made to specific test projects, and
+           a second timestamp MODIFIED will be created after modifications:
 
         a. Project A will have a folder frozen, and will have files both added and deleted from both
-           the frozen space and staging area in the filesystem only, such that the staging area also
-           contains more files on disk than the frozen area, covering errors where Nextcloud and the
-           filesystem disagree on the existence of files and folders, and the number of nodes.
+           the frozen space and staging area in the filesystem only, covering errors where Nextcloud and
+           the filesystem disagree on the existence of files and folders, and the number of nodes.
 
         b. Project B will have a folder frozen, and will have files both changed in size and touched
            with new modification timestamps in the filesystem, covering errors where Nextcloud and the
            filesystem disagree about size and modification timestamps of files.
-        
+
         c. Project C will have a folder frozen, and will have files replaced by folders and folders
            replaced by files in both the frozen and staging areas of the filesystem, preserving the
            same exact pathnames, covering errors where Nextcloud and the filesystem disagree about
            the type of nodes.
-        
+
         d. Project D will have a folder frozen, and will have changes to files in IDA, Metax, and
            replication, removing a file from IDA, removing a file from Metax, removing a file
            from replication, and changing file details for a file in IDA such that it disagrees
            with both Metax and replication.
 
-        e. Project E will have no modifications of any kind, and therefore should not have any log
-           entries, and the audit will be expected to find no errors of any kind..
+        e. Project E will have no modifications of any kind, and therefore should not have any errors
+           reported of any kind.
 
-        3. The script list-active-projects will be run and the script output verified to include the
-           three projects A, B, C, and D but not E.
-            
-        4. The script audit-project will be run on all of the projects A, B, C, D, and E and the
-           audit report logs checked for correctness, that they exist and have the correct suffix,
-           and that all expected errors are reported correctly and no other errors are reported.
-           
-        Note: no testing of the emailing functionality will be done, only the correctness of the 
+        3. Active project listings will be tested with the following variations:
+
+        a. An active project listing will be generated with the START timestamp and the script output
+           to include all projects A, B, C, D and E.
+
+        b. An active project listing will be generated with the INITIALIZED timestamp and the script output
+           verified to include the projects A, B, C, and D but not E.
+
+        c. An active project listing will be generated with the MODIFIED timestamp and the script output
+           verified to include none of the projects A, B, C, D or E.
+
+        4. All projects A, B, C, D, and E will be audited with the following variations and results
+           checked for correctness, that the report files exist and have the correct status, that all
+           expected errors are reported correctly, and no other errors are reported, and that project E
+           has no errors reported for any variation.
+        
+        a. Projects will be audited with the --timestamps parameter and no restrictions (exhaustive audit).
+
+        b. Projects will be audited with --staging --timestamps parameters, limiting checks to files
+           in the staging area.
+
+        c. Projects will be audited with --frozen --timestamps parameters, limiting checks to files
+           in the frozen area.
+
+        d. Projects will be audited with --changed-since START --timestamps, limiting checks to files
+           uploaded or frozen since the START timestamp, and their ancestor folders.
+
+        e. Projects will be audited with --changed-since INITIALIZED --timestamps, limiting checks to files
+           uploaded or frozen since the INITIALIZED timestamp, and their ancestor folders.
+
+        f. Projects will be audited with --changed-since MODIFIED --timestamps, limiting checks to files
+           uploaded or frozen since the MODIFIED timestamp, and their ancestor folders, verifying no errors
+           reported for any projects.
+
+        5. Projects A, B, C, and D will be fully repaired and then re-audited with the --timestamps parameter
+           and no restrictions (exhaustive audit), and results checked to ensure correct node counts and verifying
+           no errors reported for any projects.
+
+        Note: no testing of the emailing functionality will be done, only the correctness of the
         auditing process and reported results.
         """
 
@@ -243,15 +283,7 @@ class TestAuditing(unittest.TestCase):
 
         # --------------------------------------------------------------------------------
 
-        # Get current time, for SINCE, before making explicit modifications to test projects
-        self.config["SINCE"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        # Ensure that all modification timestamps are at least one second later than SINCE 
-        time.sleep(1)
-
-        # --------------------------------------------------------------------------------
-
-        # open database connection 
+        # open database connection
 
         dblib = psycopg2
 
@@ -265,7 +297,7 @@ class TestAuditing(unittest.TestCase):
                              port=self.config["DBPORT"])
 
         cur = conn.cursor()
-    
+
         # --------------------------------------------------------------------------------
 
         print("--- Modifying state of test project A")
@@ -399,7 +431,7 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
-        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk 
+        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk
         print("(replacing file /testdata/2017-10/Experiment_3/baseline/test03.dat from staging area of filesystem with same-named folder)")
         # Delete file /testdata/2017-10/Experiment_3/baseline/test03.dat from staging area
         pathname = "%s/testdata/2017-10/Experiment_3/baseline/test03.dat" % staging_area_root_c
@@ -417,7 +449,7 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
-        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk 
+        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk
         print("(replacing folder /testdata/empty_folder from staging area of filesystem with same-named file)")
         # Delete folder /testdata/empty_folder from staging area
         pathname = "%s/testdata/empty_folder" % staging_area_root_c
@@ -572,13 +604,46 @@ class TestAuditing(unittest.TestCase):
         # to the START timestamp cutoff)
 
         time.sleep(1)
+        self.config['MODIFIED'] = generate_timestamp()
+        print("MODIFIED: %s" % self.config['MODIFIED'])
+        time.sleep(1)
 
         # --------------------------------------------------------------------------------
 
         print("--- Checking detection of active projects")
 
-        print("(retrieving list of active projects)")
-        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["SINCE"])
+        print("(retrieving list of active projects since initialization)")
+        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (
+            self.config["HTTPD_USER"],
+            self.config["ROOT"],
+            self.config["START"]
+        )
+        try:
+            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        print("Verify active projects list includes project A")
+        self.assertIn("test_project_a", output)
+
+        print("Verify active projects list includes project B")
+        self.assertIn("test_project_b", output)
+
+        print("Verify active projects list includes project C")
+        self.assertIn("test_project_c", output)
+
+        print("Verify active projects list includes project D")
+        self.assertIn("test_project_d", output)
+
+        print("Verify active projects list includes project E")
+        self.assertIn("test_project_e", output)
+
+        print("(retrieving list of active projects since initialization)")
+        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (
+            self.config["HTTPD_USER"],
+            self.config["ROOT"],
+            self.config["INITIALIZED"]
+        )
         try:
             output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding)
         except subprocess.CalledProcessError as error:
@@ -598,105 +663,299 @@ class TestAuditing(unittest.TestCase):
 
         print("Verify active projects list does not include project E")
         self.assertNotIn("test_project_e", output)
-        
+
+        print("(retrieving list of active projects since modifications)")
+        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (
+            self.config["HTTPD_USER"],
+            self.config["ROOT"],
+            self.config["MODIFIED"]
+        )
+        try:
+            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        print("Verify active projects list does not include project A")
+        self.assertNotIn("test_project_a", output)
+
+        print("Verify active projects list does not include project B")
+        self.assertNotIn("test_project_b", output)
+
+        print("Verify active projects list does not include project C")
+        self.assertNotIn("test_project_c", output)
+
+        print("Verify active projects list does not include project D")
+        self.assertNotIn("test_project_d", output)
+
+        print("Verify active projects list does not include project E")
+        self.assertNotIn("test_project_e", output)
+
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "err")
+        report_data = self.audit_project("test_project_a", "ERR")
 
         report_pathname_a = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 97)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 6)
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 6)
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 16)
+        self.assertEqual(report_data.get("invalidNodeCount"), 16)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 16)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 2)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
             self.fail(str(error))
         self.assertEqual(len(nodes), report_data['invalidNodeCount'])
 
-        summary_pathname_a = "%s.analysis.summary" % report_pathname_a
-
-        print("(loading audit report summary %s)" % summary_pathname_a)
-        try:
-            summary_data = json.load(open(summary_pathname_a))
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-
-        print("Verify summary details agree with error report details")
-        self.assertEqual(summary_data.get("project", None), report_data["project"])
-        self.assertEqual(summary_data.get("auditStaging", None), report_data["auditStaging"])
-        self.assertEqual(summary_data.get("auditFrozen", None), report_data["auditFrozen"])
-        self.assertEqual(summary_data.get("checkTimestamps", None), report_data["checkTimestamps"])
-        self.assertEqual(summary_data.get("invalidNodeCount", None), report_data["invalidNodeCount"])
-
         # Verify select invalid node error messages for each type of error...
 
         print("Verify correct error report of Nextcloud folder missing from filesystem")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in filesystem" in errors)
-        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline", None)
+        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in filesystem" in errors)
 
         print("Verify correct error report of Nextcloud file missing from filesystem")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in filesystem" in errors)
-        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat", None)
+        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in filesystem" in errors)
 
         print("Verify correct error report of filesystem file missing from Nextcloud")
-        node = nodes.get("staging/testdata/2017-08/Experiment_1/baseline/test01.dat", None)
+        node = nodes.get("staging/testdata/2017-08/Experiment_1/baseline/test01.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in Nextcloud" in errors)
+
+        print("--- Auditing staging area of project A and checking results")
+
+        report_data = self.audit_project("test_project_a", "ERR", area="staging")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 93)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 98)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 9)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 9)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 2)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in staging area")
+        self.assertFalse(any(map(lambda key: key.startswith('frozen/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing frozen area of project A and checking results")
+
+        report_data = self.audit_project("test_project_a", "ERR", area="frozen")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 4)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 11)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 7)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 7)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 1)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in frozen area")
+        self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project A after start of tests and checking results")
+
+        report_data = self.audit_project("test_project_a", "ERR", since=self.config['START'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 95)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 14)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 14)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 1)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project A after initialization and checking results")
+
+        report_data = self.audit_project("test_project_a", "ERR", since=self.config['INITIALIZED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 6)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 13)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 7)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 7)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 1)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project A after modifications and checking results")
+
+        report_data = self.audit_project("test_project_a", "OK", since=self.config['MODIFIED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project B and checking results")
 
-        report_data = self.audit_project("test_project_b", "err")
+        report_data = self.audit_project("test_project_b", "ERR")
 
         report_pathname_b = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 6)
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 6)
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 2)
+        self.assertEqual(report_data.get("invalidNodeCount"), 2)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 6)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 6)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
@@ -706,49 +965,218 @@ class TestAuditing(unittest.TestCase):
         # Verify both invalid node error messages...
 
         print("Verify correct error report of Nextcloud file size conflict with filesystem")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node size different for filesystem and Nextcloud" in errors)
-        nextcloud = node.get("nextcloud", None)
+        nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
-        self.assertEqual(nextcloud.get("type", None), "file")
-        self.assertEqual(nextcloud.get("size", None), 123)
+        self.assertEqual(nextcloud.get("type"), "file")
+        self.assertEqual(nextcloud.get("size"), 123)
 
         print("Verify correct error report of Nextcloud modification timestamp conflict with filesystem")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test04.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test04.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node modification timestamp different for filesystem and Nextcloud" in errors)
-        nextcloud = node.get("nextcloud", None)
+        nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
-        self.assertEqual(nextcloud.get("type", None), "file")
-        self.assertEqual(nextcloud.get("modified", None), "2017-07-14T02:40:00Z")
+        self.assertEqual(nextcloud.get("type"), "file")
+        self.assertEqual(nextcloud.get("modified"), "2017-07-14T02:40:00Z")
+
+        print("--- Auditing staging area of project B and checking results")
+
+        report_data = self.audit_project("test_project_b", "OK", area="staging")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 98)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 98)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing frozen area of project B and checking results")
+
+        report_data = self.audit_project("test_project_b", "ERR", area="frozen")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 11)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 11)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 2)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 6)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 6)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in frozen area")
+        self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project B after start of tests and checking results")
+
+        report_data = self.audit_project("test_project_b", "ERR", since=self.config['START'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 2)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 6)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 6)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project B after initialization and checking results")
+
+        report_data = self.audit_project("test_project_b", "ERR", since=self.config['INITIALIZED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 13)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 13)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 2)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 6)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 6)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project B after modifications and checking results")
+
+        report_data = self.audit_project("test_project_b", "OK", since=self.config['MODIFIED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project C and checking results")
 
-        report_data = self.audit_project("test_project_c", "err")
+        report_data = self.audit_project("test_project_c", "ERR")
 
         report_pathname_c = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 6)
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 6)
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 3)
+        self.assertEqual(report_data.get("invalidNodeCount"), 3)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 5)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 3)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
@@ -758,65 +1186,240 @@ class TestAuditing(unittest.TestCase):
         # Verify all three invalid node error messages...
 
         print("Verify correct error report of Nextcloud file type conflict with filesystem folder")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
-        nextcloud = node.get("nextcloud", None)
+        nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
-        self.assertEqual(nextcloud.get("type", None), "file")
-        filesystem = node.get("filesystem", None)
+        self.assertEqual(nextcloud.get("type"), "file")
+        filesystem = node.get("filesystem")
         self.assertIsNotNone(filesystem)
-        self.assertEqual(filesystem.get("type", None), "folder")
+        self.assertEqual(filesystem.get("type"), "folder")
 
-        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat", None)
+        node = nodes.get("staging/testdata/2017-10/Experiment_3/baseline/test03.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
-        nextcloud = node.get("nextcloud", None)
+        nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
-        self.assertEqual(nextcloud.get("type", None), "file")
-        filesystem = node.get("filesystem", None)
+        self.assertEqual(nextcloud.get("type"), "file")
+        filesystem = node.get("filesystem")
         self.assertIsNotNone(filesystem)
-        self.assertEqual(filesystem.get("type", None), "folder")
+        self.assertEqual(filesystem.get("type"), "folder")
 
         print("Verify correct error report of Nextcloud folder type conflict with filesystem file")
-        node = nodes.get("staging/testdata/empty_folder", None)
+        node = nodes.get("staging/testdata/empty_folder")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node type different for filesystem and Nextcloud" in errors)
-        nextcloud = node.get("nextcloud", None)
+        nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
-        self.assertEqual(nextcloud.get("type", None), "folder")
-        filesystem = node.get("filesystem", None)
+        self.assertEqual(nextcloud.get("type"), "folder")
+        filesystem = node.get("filesystem")
         self.assertIsNotNone(filesystem)
-        self.assertEqual(filesystem.get("type", None), "file")
+        self.assertEqual(filesystem.get("type"), "file")
+
+        print("--- Auditing staging area of project C and checking results")
+
+        report_data = self.audit_project("test_project_c", "ERR", area="staging")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 98)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 98)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 2)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 2)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 1)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in staging area")
+        self.assertFalse(any(map(lambda key: key.startswith('frozen/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing frozen area of project C and checking results")
+
+        report_data = self.audit_project("test_project_c", "ERR", area="frozen")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 11)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 11)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 1)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 3)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 3)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in frozen area")
+        self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project C after start of tests and checking results")
+
+        report_data = self.audit_project("test_project_c", "ERR", since=self.config['START'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 3)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 5)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 3)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project C after initialization and checking results")
+
+        report_data = self.audit_project("test_project_c", "ERR", since=self.config['INITIALIZED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 13)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 13)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 1)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 3)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 3)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project C after modifications and checking results")
+
+        report_data = self.audit_project("test_project_c", "OK", since=self.config['MODIFIED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project D and checking results")
-        
-        report_data = self.audit_project("test_project_d", "err")
+
+        report_data = self.audit_project("test_project_d", "ERR")
 
         report_pathname_d = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 5)
+        self.assertEqual(report_data.get("frozenFileCount"), 5)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 5)
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 6)
+        self.assertEqual(report_data.get("invalidNodeCount"), 6)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 17)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 16)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
         try:
             nodes = report_data["invalidNodes"]
         except Exception as error:
@@ -826,23 +1429,23 @@ class TestAuditing(unittest.TestCase):
         # Verify all invalid node error messages...
 
         print("Verify correct error report of frozen file known to Metax but missing from IDA")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in IDA" in errors)
 
         print("Verify correct error report of frozen file known to IDA but missing from Metax")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test02.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test02.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in Metax" in errors)
 
         print("Verify correct error report of IDA file size conflict with Metax")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test03.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test03.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node size different for IDA and Metax" in errors)
 
@@ -859,51 +1462,379 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue("Node modification timestamp different for IDA and Metax" in errors)
 
         print("Verify correct error report of IDA file missing from replication")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test04.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test04.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in replication" in errors)
 
         print("Verify correct error report of IDA file size conflict with replication")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test05.dat", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test05.dat")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node size different for replication and IDA" in errors)
 
         print("Verify correct error report of IDA file type conflict with replication")
-        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/zero_size_file", None)
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/zero_size_file")
         self.assertIsNotNone(node)
-        errors = node.get("errors", None)
+        errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node type different for replication and IDA" in errors)
+
+        print("--- Auditing staging area of project D and checking results")
+
+        report_data = self.audit_project("test_project_d", "OK", area="staging")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 100)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 100)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in staging area")
+        self.assertFalse(any(map(lambda key: key.startswith('frozen/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing frozen area of project D and checking results")
+
+        report_data = self.audit_project("test_project_d", "ERR", area="frozen")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 10)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 10)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 5)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 6)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 17)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 16)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        print("Verify all reported invalid nodes are in frozen area")
+        self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project D after start of tests and checking results")
+
+        report_data = self.audit_project("test_project_d", "ERR", since=self.config['START'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 4)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 6)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 8)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 7)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project D after initialization and checking results")
+
+        report_data = self.audit_project("test_project_d", "ERR", since=self.config['INITIALIZED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 13)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 13)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 4)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 6)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 8)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 7)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project D after modifications and checking results")
+
+        report_data = self.audit_project("test_project_d", "OK", since=self.config['MODIFIED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project E and checking results")
-        
-        report_data = self.audit_project("test_project_e", "ok")
+
+        report_data = self.audit_project("test_project_e", "OK")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 107)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 107)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 107)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 107)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 0)
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 0)
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing staging area of project E and checking results")
+
+        report_data = self.audit_project("test_project_e", "OK", area="staging")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 105)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 105)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing frozen area of project E and checking results")
+
+        report_data = self.audit_project("test_project_e", "OK", area="frozen")
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 2)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 2)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project E after start of tests and checking results")
+
+        report_data = self.audit_project("test_project_e", "OK", since=self.config['START'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 107)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 107)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project E after initialization and checking results")
+
+        report_data = self.audit_project("test_project_e", "OK", since=self.config['INITIALIZED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
+
+        print("--- Auditing changes in project E after modifications and checking results")
+
+        report_data = self.audit_project("test_project_e", "OK", since=self.config['MODIFIED'])
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Repairing projects A, B, C, and D for re-auditing")
-        
+
         print("(repairing project A)")
         cmd = "sudo -u %s %s/utils/admin/repair-project test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         try:
@@ -999,65 +1930,106 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
+        self.remove_report(report_pathname_a)
+        self.remove_report(report_pathname_b)
+        self.remove_report(report_pathname_c)
+        self.remove_report(report_pathname_d)
+
         print("--- Re-auditing project A and checking results")
-        
-        report_data = self.audit_project("test_project_a", "ok")
+
+        report_data = self.audit_project("test_project_a", "OK")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 97)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 97)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 97)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 97)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 0)
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 0)
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         print("--- Re-auditing project B and checking results")
-        
-        report_data = self.audit_project("test_project_b", "ok")
+
+        report_data = self.audit_project("test_project_b", "OK")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 6)
+        self.assertEqual(report_data.get("frozenFileCount"), 6)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 6)
+        self.assertEqual(report_data.get("metaxFileCount"), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         print("--- Re-auditing project C and checking results")
-        
-        report_data = self.audit_project("test_project_c", "ok")
+
+        report_data = self.audit_project("test_project_c", "OK")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 5)
+        self.assertEqual(report_data.get("frozenFileCount"), 5)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 5)
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        self.remove_report(report_data['reportPathname'])
 
         print("--- Re-auditing project D and checking results")
-        
+
         # Because we change the pid and timestamps of one file prior to the previous
         # repair, we still will get that file reported with timestamp discrepancies
         # because the timestamp repair would be unable to fix the timstamps in IDA
@@ -1065,22 +2037,22 @@ class TestAuditing(unittest.TestCase):
         # node in the next audit, then repair timestamps based on the new audit error
         # report and thereafter should get no errors reported for project D.
 
-        report_data = self.audit_project("test_project_d", "err")
+        report_data = self.audit_project("test_project_d", "ERR")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 5)
+        self.assertEqual(report_data.get("frozenFileCount"), 5)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 5)
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 1)
+        self.assertEqual(report_data.get("invalidNodeCount"), 1)
 
         report_pathname_d = report_data["reportPathname"]
 
@@ -1090,60 +2062,36 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        report_data = self.audit_project("test_project_d", "ok")
+        self.remove_report(report_pathname_d)
+
+        report_data = self.audit_project("test_project_d", "OK")
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
 
         print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 5)
+        self.assertEqual(report_data.get("frozenFileCount"), 5)
 
         print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 5)
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
 
-        print("--- Re-auditing staging area of project D and checking results")
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
 
-        report_data = self.audit_project("test_project_d", "ok", area="staging")
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
 
-        print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 100)
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
 
-        print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 100)
-
-        print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 0)
-
-        print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 0)
-
-        print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
-
-        print("--- Re-auditing frozen area of project D and checking results")
-
-        report_data = self.audit_project("test_project_d", "ok", area="frozen")
-
-        print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount", None), 10)
-
-        print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount", None), 10)
-
-        print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount", None), 5)
-
-        print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount", None), 5)
-
-        print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount", None), 0)
+        self.remove_report(report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

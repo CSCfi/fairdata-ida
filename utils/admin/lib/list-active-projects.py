@@ -34,32 +34,39 @@ from time import strftime
 from subprocess import Popen, PIPE
 from stat import *
 
+# Use UTC
+os.environ["TZ"] = "UTC"
+time.tzset()
+
 
 def main():
 
     try:
 
-        if len(sys.argv) != 4:
+        if len(sys.argv) != 3:
             raise Exception('Invalid number of arguments')
-    
+
         # Load service configuration and constants, and add command arguments
         # and global values needed for auditing
 
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
+        #config.DEBUG = 'true' # TEMP HACK
+
+        config.TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PID = os.getpid()
         config.SINCE = sys.argv[2]
-        config.START = sys.argv[3]
 
         if config.DEBUG == 'true':
             config.LOG_LEVEL = logging.DEBUG
         else:
             config.LOG_LEVEL = logging.INFO
-    
+
         if config.DEBUG == 'true':
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
@@ -72,7 +79,7 @@ def main():
             sys.stderr.write("ARGS#:         %d\n" % len(sys.argv))
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
             sys.stderr.write("PID:           %s\n" % config.PID)
-    
+
         # Convert SINCE ISO timestamp string to epoch seconds
 
         since_datetime = dateutil.parser.isoparse(config.SINCE)
@@ -80,22 +87,10 @@ def main():
 
         if config.DEBUG == 'true':
             sys.stderr.write("SINCE:         %s\n" % config.SINCE)
+            sys.stderr.write("SINCE_DT:      %s\n" % since_datetime.strftime(config.TIMESTAMP_FORMAT))
             sys.stderr.write("SINCE_TS:      %d\n" % config.SINCE_TS)
-            sys.stderr.write("SINCE_DT:      %s\n" % str(since_datetime))
-            since_datetime_check = datetime.fromtimestamp(config.SINCE_TS, timezone.utc)
-            sys.stderr.write("SINCE_DT_CHK:  %s\n" % str(since_datetime_check))
-
-        # Convert START ISO timestamp string to epoch seconds
-
-        start_datetime = dateutil.parser.isoparse(config.START)
-        config.START_TS = start_datetime.replace(tzinfo=timezone.utc).timestamp()
-
-        if config.DEBUG == 'true':
-            sys.stderr.write("START:         %s\n" % config.START)
-            sys.stderr.write("START_TS:      %d\n" % config.START_TS)
-            sys.stderr.write("START_DT:      %s\n" % str(start_datetime))
-            start_datetime_check = datetime.fromtimestamp(config.START_TS, timezone.utc)
-            sys.stderr.write("START_DT_CHK:  %s\n" % str(start_datetime_check))
+            since_datetime_check = datetime.utcfromtimestamp(config.SINCE_TS).strftime(config.TIMESTAMP_FORMAT)
+            sys.stderr.write("SINCE_TS_CHK:  %s\n" % str(since_datetime_check))
 
         # Initialize logging with UTC timestamps
 
@@ -140,10 +135,10 @@ def load_configuration(pathname):
 def add_from_ida_action_table(projects, config):
     """
     Query the ida_action table in the database for all actions initiated, complated
-    or failed between the SINCE and START timestamps and record their projects.
+    or failed later than the SINCE timestamp and record their projects.
     """
 
-    # Open database connection 
+    # Open database connection
 
     dblib = psycopg2
 
@@ -155,15 +150,18 @@ def add_from_ida_action_table(projects, config):
 
     cur = conn.cursor()
 
-    # Select project from all actions initiated, completed, or failed after SINCE and before START
+    # Select project from all actions initiated, completed, or failed after SINCE timestamp
 
     cur.execute("SELECT project FROM %sida_action \
                  WHERE \
                  ( initiated > '%s' \
                    OR ( completed IS NOT NULL AND completed > '%s' ) \
-                   OR ( failed    IS NOT NULL AND failed    > '%s' ) ) \
-                 AND initiated < '%s'"
-                 % (config.DBTABLEPREFIX, config.SINCE, config.SINCE, config.SINCE, config.START))
+                   OR ( failed    IS NOT NULL AND failed    > '%s' ) )" % (
+                    config.DBTABLEPREFIX,
+                    config.SINCE,
+                    config.SINCE,
+                    config.SINCE
+                ))
 
     rows = cur.fetchall()
 
@@ -185,12 +183,12 @@ def add_from_ida_action_table(projects, config):
 def add_from_filecache_table(projects, config):
     """
     Query the filecache table in the database for the storage ids of all nodes
-    created or updated between the SINCE and START timestamps, and for each
-    storage id, check if the storage owner is a PSO user, and if so, extract
-    the project name from the PSO username and record the project.
+    uploaded or modified after the SINCE timestamp, and for each storage id, if the
+    storage owner is a PSO user, extract the project name from the PSO username and
+    record the project.
     """
 
-    # Open database connection 
+    # Open database connection
 
     dblib = psycopg2
 
@@ -202,10 +200,20 @@ def add_from_filecache_table(projects, config):
 
     cur = conn.cursor()
 
-    # Select unique set of storage ids from all nodes created or modified after SINCE and before START
+    # Select unique set of storage ids from all files uploaded after SINCE
 
-    cur.execute("SELECT DISTINCT storage FROM %sfilecache WHERE mtime > %d AND mtime < %d"
-                 % (config.DBTABLEPREFIX, config.SINCE_TS, config.START_TS))
+    query = "SELECT DISTINCT cache.storage \
+             FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
+             ON cache.fileid = extended.fileid \
+             WHERE cache.mtime > %d \
+             OR ( extended.upload_time IS NOT NULL AND extended.upload_time > %d )" % (
+                 config.DBTABLEPREFIX,
+                 config.DBTABLEPREFIX,
+                 config.SINCE_TS,
+                 config.SINCE_TS
+            )
+
+    cur.execute(query)
 
     rows = cur.fetchall()
 
@@ -252,11 +260,11 @@ def list_active_projects(config):
     key tables in the database for activity.
     """
 
-    logging.info("START %s" % config.START)
+    logging.info("START since=%s" % config.SINCE)
 
     projects = SortedDict({})
 
-    # Identify active projects from each of the key databases 
+    # Identify active projects from each of the key databases
 
     add_from_ida_action_table(projects, config)
     add_from_filecache_table(projects, config)

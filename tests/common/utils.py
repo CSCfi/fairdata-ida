@@ -23,19 +23,16 @@
 
 import importlib.util
 import os
+import time
 import subprocess
+import dateutil.parser
+from datetime import datetime, timezone
 
+# Use UTC
+os.environ["TZ"] = "UTC"
+time.tzset()
 
-class bcolors:
-    HEAD = '\033[35;1m'
-    LINE = '\033[34;1m'
-    PASS = '\033[92;1m'
-    FAIL = '\033[91;1m'
-    END = '\033[0m'
-    ERROR = '\033[35;1m'
-    SKIP = '\033[94;1m'
-    TOTAL = "\033[90;1m"
-    BOLD = "\033[1m"
+TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ' # ISO 8601 UTC
 
 
 def _load_module_from_file(module_name, file_path):
@@ -91,7 +88,7 @@ def load_configuration():
         'DBROPASSWORD':           server_configuration.DBROPASSWORD,
         'DBHOST':                 server_configuration.DBHOST,
         'DBPORT':                 server_configuration.DBPORT,
-        'DBTABLEPREFIX':          server_configuration.DBTABLEPREFIX,      
+        'DBTABLEPREFIX':          server_configuration.DBTABLEPREFIX,
         'RABBIT_HOST':            server_configuration.RABBIT_HOST,
         'RABBIT_PORT':            server_configuration.RABBIT_PORT,
         'RABBIT_WEB_API_PORT':    server_configuration.RABBIT_WEB_API_PORT,
@@ -104,7 +101,8 @@ def load_configuration():
         'METAX_AVAILABLE':        server_configuration.METAX_AVAILABLE,
         'METAX_API_ROOT_URL':     server_configuration.METAX_API_ROOT_URL,
         'METAX_API_USER':         server_configuration.METAX_API_USER,
-        'METAX_API_PASS':         server_configuration.METAX_API_PASS
+        'METAX_API_PASS':         server_configuration.METAX_API_PASS,
+        'START':                  generate_timestamp()
     }
 
     if hasattr(server_configuration, 'DOWNLOAD_SERVICE_ROOT'):
@@ -169,4 +167,28 @@ def stop_agents():
         return True
     except subprocess.CalledProcessError as e:
         return False
+
+
+def normalize_timestamp(timestamp):
+    """
+    Returns the input timestamp as a normalized ISO 8601 UTC timestamp string YYYY-MM-DDThh:mm:ssZ
+    """
+
+    # Sniff the input timestamp value and convert to a datetime instance as needed
+    if isinstance(timestamp, str):
+        timestamp = datetime.utcfromtimestamp(dateutil.parser.parse(timestamp).timestamp())
+    elif isinstance(timestamp, float) or isinstance(timestamp, int):
+        timestamp = datetime.utcfromtimestamp(timestamp)
+    elif not isinstance(timestamp, datetime):
+        raise Exception("Invalid timestamp value")
+
+    # Return the normalized ISO UTC timestamp string
+    return timestamp.strftime(TIMESTAMP_FORMAT)
+
+
+def generate_timestamp():
+    """
+    Get current time as normalized ISO 8601 UTC timestamp string
+    """
+    return normalize_timestamp(datetime.utcnow().replace(microsecond=0))
 

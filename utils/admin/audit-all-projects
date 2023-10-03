@@ -28,15 +28,15 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( --staging | --frozen ) ] [ --check-timestamps ] [ ( --report | --report-errors ) [ email ] ]
+Usage: $SCRIPT [ ( --staging | --frozen ) ] [ --timestamps ] [ ( --report | --report-errors ) [ email ] ]
        $SCRIPT -h
 
-       --staging           auditing will be limited to files in the staging area
-       --frozen            auditing will be limited to files in the frozen area
-       --check-timestamps  comparisons will be made between disk timestamps and database values
-       --report            auditing results will be emailed
-       --report-errors     auditing results will be emailed, but only if errors are detected
-       email               the email address where audit reports should be sent (defaults to dev team)
+       --staging        auditing will be limited to files in the staging area
+       --frozen         auditing will be limited to files in the frozen area
+       --timestamps     comparisons will be made between disk timestamps and database values
+       --report         auditing results will be emailed
+       --report-errors  auditing results will be emailed, but only if errors are detected
+       email            the email address where audit reports should be sent (defaults to dev team)
 "
 
 PROJECT="null"

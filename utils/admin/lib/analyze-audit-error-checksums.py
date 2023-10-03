@@ -26,7 +26,6 @@ import sys
 import json
 import logging
 from hashlib import sha256
-from pathlib import Path
 from sortedcontainers import SortedDict
 
 
