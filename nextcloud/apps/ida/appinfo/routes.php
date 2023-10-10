@@ -265,7 +265,28 @@ return [
             // Restricted to PSO user. Project name is derived from PSO username
             // Required parameters:
             //     pathname = pathname of the node, beginning with either 'frozen/' or 'staging/'
-            //     timestamp = the ISO formatted timestamp string to be recorded
+            //     timestamp = the ISO UTC formatted timestamp string to be recorded
+        ],
+        
+        [
+            // Repair the Nextcloud file cache checksum for a specific file pathname
+            'name' => 'Freezing#repairCacheChecksum',
+            'url'  => '/api/repairCacheChecksum',
+            'verb' => 'POST'
+            // Restricted to PSO user. Project name is derived from PSO username
+            // Required parameters:
+            //     pathname = pathname of the file, beginning with either 'frozen/' or 'staging/'
+            //     checksum = an SHA-256 checksum, either in URI form or without URI prefix
+        ],
+        
+        [
+            // Retrieve the Nextcloud file cache checksum for a specific file pathname
+            'name' => 'Freezing#retrieveCacheChecksum',
+            'url'  => '/api/retrieveCacheChecksum',
+            'verb' => 'GET'
+            // Restricted to PSO user. Project name is derived from PSO username
+            // Required parameters:
+            //     pathname = pathname of the file, beginning with either 'frozen/' or 'staging/'
         ],
         
         // Scope Intersection Tests

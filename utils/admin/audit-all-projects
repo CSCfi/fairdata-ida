@@ -57,8 +57,6 @@ fi
 
 # --------------------------------------------------------------------------------
 
-#DEBUG="true" # TEMP HACK
-
 PROJECTS=`$ROOT/utils/admin/list-projects`
 INTERNAL_PROJECTS=""
 

@@ -385,7 +385,7 @@ for PROJECT in $PROJECTS; do
         success
     fi
 
-    # Update Nextcloud uploaded timestamp for all test account files to current datetime
+    # Update Nextcloud uploaded timestamp to current datetime and generate cache checksum for all test account files
 
     PGPASSWORD="$DBPASSWORD"
     export PGPASSWORD
@@ -443,8 +443,15 @@ for PROJECT in $PROJECTS; do
             echo "Error: Failed to update Nextcloud upload timestamp for file $FILEID for $USER: $OUT"
             exit 1
         fi
-
     done
+
+    OUT=$($ROOT/utils/admin/generate-missing-checksums $PROJECT 2>&1)
+
+    if [ "$?" -ne 0 ]; then
+        failure "failed"
+        echo "Error: Failed to generate cache checksums for project $PROJECT"
+        exit 1
+    fi
 
 done
 
@@ -508,5 +515,5 @@ FOUND=`echo "$PROJECTS" | grep "test_project_f"`
 
 if [ "$FOUND" ]; then
     echo "Creating failed action in project test_project_f..."
-    $CURL_POST $IDA_CREDENTIALS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${TIMESTAMP}" >/dev/null
+    $CURL_POST $IDA_CREDENTIALS "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${START}" >/dev/null
 fi

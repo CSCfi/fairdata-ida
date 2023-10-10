@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
-# Copyright (C) 2019 Ministry of Education and Culture, Finland
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -21,9 +21,25 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-# Initialize script with common definitions
+# This script ensures that all files stored in Nextcloud have an SHA-256 checksum
+# defined in the Nextcloud cache, generating checksums as needed
+#
+# Missing checksums can be generated either for a specific project or for all
+# projects if no project is specified; and if done for all projects, generation
+# is done project by project to keep database queries and memory usage reasonable
+# --------------------------------------------------------------------------------
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+SCRIPT=`basename "$(realpath $0)"`
+PROJECT="null"
+
+USAGE="
+Usage: $SCRIPT [project]
+       $SCRIPT -h
+"
+
+#--------------------------------------------------------------------------------
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -35,17 +51,16 @@ fi
 
 #--------------------------------------------------------------------------------
 
-if [ "$LDAP_HOST_URL" = "" ]; then
-    errorExit "No LDAP connection configured!"
+PROJECTS="$1"
+
+if [ -z "$PROJECTS" ]; then
+    PROJECTS=`$ROOT/utils/admin/list-projects`
 fi
 
-#--------------------------------------------------------------------------------
+source $ROOT/venv/bin/activate
 
-export LDAP_HOST_URL
-export LDAP_BIND_USER
-export LDAP_PASSWORD
-export LDAP_SEARCH_BASE
-
-$ROOT/utils/admin/lib/fetch_project_emails.pl $PROJECT | tr '\n' ',' | sed -e 's/,$//'
+for PROJECT in $PROJECTS; do
+    python -u $ROOT/utils/admin/lib/generate_missing_checksums.py "$ROOT" "$PROJECT"
+done
 
 addToLog "DONE"

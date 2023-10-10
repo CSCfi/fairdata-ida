@@ -171,6 +171,22 @@ class BaseAgentTestCase(TestCase):
                 status=204
             )
 
+        # GET checksum
+        self._prepare_response(
+            responses.GET,
+            'ida',
+            '/retrieveCacheChecksum',
+            status=404
+        )
+
+        # POST checksum
+        self._prepare_response(
+            responses.POST,
+            'ida',
+            '/repairCacheChecksum',
+            status=200
+        )
+
         # GET to metax root API URL
         self._prepare_response(
             responses.GET,

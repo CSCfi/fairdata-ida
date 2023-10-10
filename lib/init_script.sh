@@ -64,12 +64,26 @@ fi
 
 CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
 
+# Allow environment setting to override configuration for debug output
+if [ "$DEBUG" != "" ]; then
+    ENV_DEBUG="$DEBUG"
+fi
+
 if [ -e $CONFIG_FILE ]
 then
     . $CONFIG_FILE
 else
     echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
     exit 1
+fi
+
+if [ "$ENV_DEBUG" ]; then
+    DEBUG="$ENV_DEBUG"
+    unset ENV_DEBUG
+fi
+
+if [ "$DEBUG" = "" ]; then
+    DEBUG="false"
 fi
 
 #--------------------------------------------------------------------------------
@@ -116,9 +130,14 @@ CURL_DELETE="curl $CURL_OPS -X DELETE"
 CURL_MKCOL="curl $CURL_OPS -X MKCOL"
 CURL_PATCH="curl $CURL_OPS -X PATCH"
 
-TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
+START=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 PROCESSID="$$"
+
+if [ "$DEBUG" = "true" ]; then
+    echo "--- $PROCESSID $SCRIPT ---"
+    echo "START: $START"
+fi
 
 #--------------------------------------------------------------------------------
 # Initialize log and tmp folders, if necessary...
@@ -163,7 +182,7 @@ if [ ! -e $LOG ]; then
     fi
 fi
 
-OUT=`echo "$TIMESTAMP $SCRIPT ($PROCESSID) START $@" 2>/dev/null >>"$LOG"`
+OUT=`echo "$START $SCRIPT ($PROCESSID) START $@" 2>/dev/null >>"$LOG"`
 if [ "$?" -ne 0 ]; then
     echo "Can't write to log file \"$LOG\"" >&2
     exit 1

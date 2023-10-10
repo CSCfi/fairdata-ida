@@ -73,5 +73,5 @@ PIDS=`$CURL_GET $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/inventory/${PROJE
     | tr '\n' ' ' | tr ',' '\n' | grep '"pid":' | sed -e 's/^.*\"pid\": *\"//' | sed -e 's/\".*$//' | tr '\n' ' '`
 
 for PID in $PIDS; do
-    $CURL_POST $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/files/${PID}" -H "Content-Type: application/json" -d "{ \"frozen\": \"${TIMESTAMP}\" }" > /dev/null
+    $CURL_POST $PROJECT_USER_CREDENTIALS "${IDA_API_ROOT_URL}/files/${PID}" -H "Content-Type: application/json" -d "{ \"frozen\": \"${START}\" }" > /dev/null
 done

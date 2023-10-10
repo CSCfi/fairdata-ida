@@ -59,7 +59,7 @@ ACTION="$2"
 
 ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
 
-REQUEST_URL="https://localhost/apps/ida/api/actions/${ACTION}?project=${PROJECT}&error=Manually+marked+as+failed&failed=${TIMESTAMP}"
+REQUEST_URL="https://localhost/apps/ida/api/actions/${ACTION}?project=${PROJECT}&error=Manually+marked+as+failed&failed=${START}"
 
 echo "Marking action ${ACTION} in project ${PROJECT} as failed..."
 

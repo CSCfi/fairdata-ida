@@ -86,7 +86,7 @@ export DATA_REPLICATION_ROOT
 
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/analyze-audit-error-checksums.py $* > $REPORT
+python -u $ROOT/utils/admin/lib/analyze_audit_error_checksums.py $* | jq --indent 4 > $REPORT
 
 echo "Analysis results saved to file $REPORT"
 

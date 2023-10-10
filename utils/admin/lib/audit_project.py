@@ -21,7 +21,6 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 
-import importlib.util
 import sys
 import os
 import socket
@@ -35,11 +34,10 @@ import dateutil.parser
 from datetime import datetime, timezone
 from pathlib import Path
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from sortedcontainers import SortedList
-from sortedcontainers import SortedDict
-from time import strftime
+from sortedcontainers import SortedList, SortedDict
 from subprocess import Popen, PIPE
 from stat import *
+from utils import *
 
 # Use UTC
 os.environ['TZ'] = 'UTC'
@@ -49,20 +47,20 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 # Node contexts:
 #
-# filesystem    glusterfs filesystem stats
-# Nextcloud     Nextcloud database records
-# IDA           IDA frozen file records
-# Metax         Metax file records
+# filesystem    glusterfs filesystem details
+# nextcloud     Nextcloud file cache details
+# ida           IDA frozen file details
+# metax         Metax file details
 
 def main():
 
     try:
 
-        # Arguments:
-        #
-        # ROOT PROJECT START SINCE [ ( --staging | --frozen ) ] [ --timestamps ]
+        # Arguments: ROOT PROJECT START SINCE [ ( --full | [ ( --staging | --frozen ) ] [ --timestamps ] [ --checksums ] ) ]
 
-        if len(sys.argv) < 5 or len(sys.argv) > 7:
+        argc = len(sys.argv)
+
+        if argc < 5:
             raise Exception('Invalid number of arguments')
 
         # Load service configuration and constants, and add command arguments
@@ -71,17 +69,9 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        #config.DEBUG = 'true' # TEMP HACK
-
         # If in production, ensure we are not running on uida-man.csc.fi
-
-        if config.IDA_ENVIRONMENT == 'PRODUCTION':
-            if socket.gethostname().startswith('uida-man'):
-                raise Exception ("Do not run project auditing on uida-man.csc.fi!")
-
-        config.TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
-        config.MIGRATION = '2018-11-01T00:00:00Z'
-        config.MIGRATION_TS = 1541030400
+        if config.IDA_ENVIRONMENT == 'PRODUCTION' and socket.gethostname().startswith('uida-man'):
+            raise Exception ("Do not run project auditing on uida-man.csc.fi!")
 
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
@@ -91,36 +81,48 @@ def main():
 
         config.START = sys.argv[3]
         config.SINCE = sys.argv[4]
-        config.CHANGED_ONLY = (config.SINCE > config.MIGRATION)
+        config.CHANGED_ONLY = (config.SINCE > IDA_MIGRATION)
 
+        config.FULL_AUDIT = False
         config.AUDIT_STAGING = True
         config.AUDIT_FROZEN = True
-        config.CHECK_TIMESTAMPS = False
+        config.AUDIT_TIMESTAMPS = False
+        config.AUDIT_CHECKSUMS = False
 
-        if len(sys.argv) >= 6:
-            if sys.argv[5] == '--staging':
-                config.AUDIT_FROZEN = False
-            elif sys.argv[5] == '--frozen':
-                config.AUDIT_STAGING = False
-            elif sys.argv[5] == '--timestamps':
-                config.CHECK_TIMESTAMPS = True
-            else:
-                raise Exception("Unrecognized argument: " % sys.argv[5])
+        if argc > 5:
+            for i in range(5,argc):
+                arg = sys.argv[i]
+                if arg == '--full':
+                    if config.AUDIT_STAGING == False:
+                        raise Exception("Only one of --full or --frozen is allowed")
+                    if config.AUDIT_FROZEN == False:
+                        raise Exception("Only one of --full or --staging is allowed")
+                    config.FULL_AUDIT = True
+                    config.CHANGED_ONLY = False
+                    config.AUDIT_FROZEN = True
+                    config.AUDIT_STAGING = True
+                    config.AUDIT_TIMESTAMPS = True
+                    config.AUDIT_CHECKSUMS = True
+                elif arg == '--staging':
+                    if config.FULL_AUDIT:
+                        raise Exception("Only one of --full or --staging is allowed")
+                    if config.AUDIT_STAGING == False:
+                        raise Exception("Only one of --staging or --frozen is allowed")
+                    config.AUDIT_FROZEN = False
+                elif arg == '--frozen':
+                    if config.FULL_AUDIT:
+                        raise Exception("Only one of --full or --frozen is allowed")
+                    if config.AUDIT_FROZEN == False:
+                        raise Exception("Only one of --staging or --frozen is allowed")
+                    config.AUDIT_STAGING = False
+                elif arg == '--timestamps':
+                    config.AUDIT_TIMESTAMPS = True
+                elif arg == '--checksums':
+                    config.AUDIT_CHECKSUMS = True
+                else:
+                    raise Exception("Unrecognized argument: " % arg)
 
-        if len(sys.argv) == 7:
-            if sys.argv[6] == '--staging':
-                config.AUDIT_FROZEN = False
-            elif sys.argv[6] == '--frozen':
-                config.AUDIT_STAGING = False
-            elif sys.argv[6] == '--timestamps':
-                config.CHECK_TIMESTAMPS = True
-            else:
-                raise Exception("Unrecognized argument: " % sys.argv[6])
-
-        if config.AUDIT_STAGING == False and config.AUDIT_FROZEN == False:
-            raise Exception("Only one of --staging or --frozen is allowed")
-
-        if [ config.DEBUG == 'true' ]:
+        if config.DEBUG:
             config.LOG_LEVEL = logging.DEBUG
         else:
             config.LOG_LEVEL = logging.INFO
@@ -130,7 +132,7 @@ def main():
         else:
             config.METAX_API_VERSION = 3
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
             sys.stderr.write("HOSTNAME:      %s\n" % socket.gethostname())
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
@@ -143,46 +145,48 @@ def main():
             sys.stderr.write("DBNAME:        %s\n" % config.DBNAME)
             sys.stderr.write("METAX_API:     %s\n" % config.METAX_API_ROOT_URL)
             sys.stderr.write("METAX_VERSION: %s\n" % str(config.METAX_API_VERSION))
-            sys.stderr.write("ARGS#:         %d\n" % len(sys.argv))
+            sys.stderr.write("ARGS#:         %d\n" % argc)
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
             sys.stderr.write("PID:           %s\n" % config.PID)
-            sys.stderr.write("AUDIT_STAGING: %s\n" % config.AUDIT_STAGING)
-            sys.stderr.write("AUDIT_FROZEN:  %s\n" % config.AUDIT_FROZEN)
-            sys.stderr.write("CHKTIMESTAMPS: %s\n" % config.CHECK_TIMESTAMPS)
-            sys.stderr.write("MIGRATION:     %s\n" % config.MIGRATION)
-            sys.stderr.write("MIGRATION_TS:  %s\n" % config.MIGRATION_TS)
+            sys.stderr.write("CHANGED_ONLY   %s\n" % config.CHANGED_ONLY)
+            sys.stderr.write("STAGING:       %s\n" % config.AUDIT_STAGING)
+            sys.stderr.write("FROZEN:        %s\n" % config.AUDIT_FROZEN)
+            sys.stderr.write("TIMESTAMPS:    %s\n" % config.AUDIT_TIMESTAMPS)
+            sys.stderr.write("CHECKSUMS:     %s\n" % config.AUDIT_CHECKSUMS)
+            sys.stderr.write("MIGRATION:     %s\n" % IDA_MIGRATION)
+            sys.stderr.write("MIGRATION_TS:  %s\n" % IDA_MIGRATION_TS)
 
         # Convert START ISO timestamp strings to epoch seconds
 
         start_datetime = dateutil.parser.isoparse(config.START)
         config.START_TS = start_datetime.replace(tzinfo=timezone.utc).timestamp()
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("START:         %s\n" % config.START)
-            sys.stderr.write("START_DT:      %s\n" % start_datetime.strftime(config.TIMESTAMP_FORMAT))
+            sys.stderr.write("START_DT:      %s\n" % normalize_timestamp(start_datetime))
             sys.stderr.write("START_TS:      %d\n" % config.START_TS)
-            start_datetime_check = datetime.utcfromtimestamp(config.START_TS).strftime(config.TIMESTAMP_FORMAT)
-            sys.stderr.write("START_TS_CHK:  %s\n" % str(start_datetime_check))
+            start_datetime_check = normalize_timestamp(datetime.utcfromtimestamp(config.START_TS))
+            sys.stderr.write("START_TS_CHK:  %s\n" % start_datetime_check)
 
         # Convert SINCE ISO timestamp strings to epoch seconds
 
         since_datetime = dateutil.parser.isoparse(config.SINCE)
         config.SINCE_TS = since_datetime.replace(tzinfo=timezone.utc).timestamp()
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("SINCE:         %s\n" % config.SINCE)
-            sys.stderr.write("SINCE_DT:      %s\n" % since_datetime.strftime(config.TIMESTAMP_FORMAT))
+            sys.stderr.write("SINCE_DT:      %s\n" % normalize_timestamp(since_datetime))
             sys.stderr.write("SINCE_TS:      %d\n" % config.SINCE_TS)
-            since_datetime_check = datetime.utcfromtimestamp(config.SINCE_TS).strftime(config.TIMESTAMP_FORMAT)
-            sys.stderr.write("SINCE_TS_CHK:  %s\n" % str(since_datetime_check))
+            since_datetime_check = normalize_timestamp(datetime.utcfromtimestamp(config.SINCE_TS))
+            sys.stderr.write("SINCE_TS_CHK:  %s\n" % since_datetime_check)
 
         # Initialize logging using UTC timestamps
 
         logging.basicConfig(
             filename=config.LOG,
             level=config.LOG_LEVEL,
-            format="%s %s (%s) %s" % ('%(asctime)s', config.SCRIPT, config.PID, '%(message)s'),
-            datefmt=config.TIMESTAMP_FORMAT)
+            format=LOG_ENTRY_FORMAT,
+            datefmt=TIMESTAMP_FORMAT)
 
         logging.Formatter.converter = time.gmtime
 
@@ -205,23 +209,6 @@ def main():
         sys.exit(1)
 
 
-def load_configuration(pathname):
-    """
-    Load and return as a dict variables from the main ida configuration file
-    """
-    module_name = 'config.variables'
-    try:
-        # python versions >= 3.5
-        module_spec = importlib.util.spec_from_file_location(module_name, pathname)
-        config = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(config)
-    except AttributeError:
-        # python versions < 3.5
-        from importlib.machinery import SourceFileLoader
-        config = SourceFileLoader(module_name, pathname).load_module()
-    return config
-
-
 def add_frozen_files(nodes, counts, config):
     """
     Query the IDA database and add all relevant frozen file stats to the auditing data objects
@@ -230,22 +217,20 @@ def add_frozen_files(nodes, counts, config):
     """
 
     if config.AUDIT_FROZEN == False:
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("--- Skipping IDA frozen files...\n")
         return
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("--- Adding IDA frozen files...\n")
 
     # Open database connection
 
-    dblib = psycopg2
-
-    conn = dblib.connect(database=config.DBNAME,
-                         user=config.DBROUSER,
-                         password=config.DBROPASSWORD,
-                         host=config.DBHOST,
-                         port=config.DBPORT)
+    conn = psycopg2.connect(database=config.DBNAME,
+                            user=config.DBROUSER,
+                            password=config.DBROPASSWORD,
+                            host=config.DBHOST,
+                            port=config.DBPORT)
 
     cur = conn.cursor()
 
@@ -262,7 +247,7 @@ def add_frozen_files(nodes, counts, config):
              AND '%s' < frozen \
              AND frozen < '%s' " % (config.DBTABLEPREFIX, config.PROJECT, config.SINCE, config.START)
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
     cur.execute(query)
@@ -272,7 +257,7 @@ def add_frozen_files(nodes, counts, config):
 
     for row in rows:
 
-        #if config.DEBUG == 'true':
+        #if config.DEBUG:
         #    sys.stderr.write("ida_frozen: %s\n" % (str(row)))
 
         checksum = str(row[4])
@@ -291,6 +276,13 @@ def add_frozen_files(nodes, counts, config):
             'replicated': row[6]
         }
 
+        if node_details['size'] in [ None, 'None', 'null', '', False ]:
+            node_details['size'] = 0
+
+        for field in [ 'pid', 'checksum', 'modified', 'frozen', 'replicated' ]:
+            if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+                node_details[field] = None
+
         try:
             node = nodes[pathname]
             node['ida'] = node_details
@@ -301,10 +293,11 @@ def add_frozen_files(nodes, counts, config):
 
         counts['frozenFileCount'] = counts['frozenFileCount'] + 1
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("%s: ida: %d %s\n" % (config.PROJECT, counts['frozenFileCount'], pathname))
 
     # Close database connection
+    cur.close()
     conn.close()
 
 
@@ -316,11 +309,11 @@ def add_metax_files(nodes, counts, config):
     """
 
     if config.AUDIT_FROZEN == False:
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("--- Skipping Metax frozen files...\n")
         return
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
     if config.METAX_API_VERSION >= 3:
@@ -345,7 +338,7 @@ def add_metax_files(nodes, counts, config):
 
         url = "%s&offset=%d" % (url_base, offset)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY URL: %s\n" % url)
 
         try:
@@ -361,8 +354,8 @@ def add_metax_files(nodes, counts, config):
 
             response_data = response.json()
 
-            if config.DEBUG == 'true':
-                sys.stderr.write("QUERY RESPONSE: %s\n" % json.dumps(response_data))
+            #if config.DEBUG:
+            #    sys.stderr.write("QUERY RESPONSE: %s\n" % json.dumps(response_data))
 
             files = response_data['results']
 
@@ -371,7 +364,7 @@ def add_metax_files(nodes, counts, config):
 
         for file in files:
 
-            if config.DEBUG == 'true':
+            if config.DEBUG:
                 sys.stderr.write("FILE: %s\n" % json.dumps(file))
                 sys.stderr.write("REMOVED: %s\n" % json.dumps(file.get('removed')))
 
@@ -381,8 +374,8 @@ def add_metax_files(nodes, counts, config):
                 if config.METAX_API_VERSION >= 3:
 
                     pathname = "frozen%s" % file['pathname']
-                    modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file['modified']).timestamp()).strftime(config.TIMESTAMP_FORMAT)
-                    frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file['frozen']).timestamp()).strftime(config.TIMESTAMP_FORMAT)
+                    modified = normalize_timestamp(file['modified'])
+                    frozen = normalize_timestamp(file['frozen'])
 
                     checksum = str(file['checksum'])
                     if checksum.startswith('sha256:'):
@@ -397,7 +390,14 @@ def add_metax_files(nodes, counts, config):
                         'frozen': frozen
                     }
 
-                    if config.DEBUG == 'true':
+                    if node_details['size'] in [ None, 'None', 'null', '', False ]:
+                        node_details['size'] = 0
+
+                    for field in [ 'pid', 'checksum', 'modified', 'frozen' ]:
+                        if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+                            node_details[field] = None
+
+                    if config.DEBUG:
                         sys.stderr.write("NODE: %s %s\n" % (pathname, json.dumps(node_details)))
 
                     try:
@@ -412,21 +412,14 @@ def add_metax_files(nodes, counts, config):
 
                 else:
 
-                    frozen = datetime.utcfromtimestamp(dateutil.parser.isoparse(file['file_frozen']).timestamp()).strftime(config.TIMESTAMP_FORMAT)
+                    frozen = normalize_timestamp(file['file_frozen'])
 
                     # Only continue for files frozen after SINCE
                     if config.SINCE < frozen:
 
                         pathname = "frozen%s" % file['file_path']
-                        modified = datetime.utcfromtimestamp(dateutil.parser.isoparse(file['file_modified']).timestamp()).strftime(config.TIMESTAMP_FORMAT)
-
-                        try:
-                            checksum = str(file['checksum_value'])
-                        except Exception as error: # temp workaround for Metax bug
-                            csobject = file['checksum']
-                            checksum = str(csobject['value'])
-                        if checksum.startswith('sha256:'):
-                            checksum = checksum[7:]
+                        modified = normalize_timestamp(file['file_modified'])
+                        checksum = file['checksum']['value']
 
                         node_details = {
                             'type': 'file',
@@ -437,7 +430,14 @@ def add_metax_files(nodes, counts, config):
                             'frozen': frozen
                         }
 
-                        if config.DEBUG == 'true':
+                        if node_details['size'] in [ None, 'None', 'null', '', False ]:
+                            node_details['size'] = 0
+
+                        for field in [ 'pid', 'checksum', 'modified', 'frozen' ]:
+                            if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+                                node_details[field] = None
+
+                        if config.DEBUG:
                             sys.stderr.write("NODE: %s %s\n" % (pathname, json.dumps(node_details)))
 
                         try:
@@ -465,18 +465,16 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     file_count = 0
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("--- Adding nextcloud nodes...\n")
 
     # Open database connection
 
-    dblib = psycopg2
-
-    conn = dblib.connect(database=config.DBNAME,
-                         user=config.DBROUSER,
-                         password=config.DBROPASSWORD,
-                         host=config.DBHOST,
-                         port=config.DBPORT)
+    conn = psycopg2.connect(database=config.DBNAME,
+                            user=config.DBROUSER,
+                            password=config.DBROPASSWORD,
+                            host=config.DBHOST,
+                            port=config.DBPORT)
 
     cur = conn.cursor()
 
@@ -486,7 +484,7 @@ def add_nextcloud_nodes(nodes, counts, config):
              WHERE id = 'home::%s%s' \
              LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
     cur.execute(query)
@@ -497,7 +495,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     storage_id = rows[0][0]
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("STORAGE_ID:    %d\n" % (storage_id))
 
     # If CHANGED_ONLY is true, first populate any Nextcloud node details based on already populated node pathnames
@@ -508,7 +506,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
         for pathname, node in list(nodes.items()):
 
-            if config.DEBUG == 'true':
+            if config.DEBUG:
                 sys.stderr.write("%s: existing: node pathname: %s\n" % (config.PROJECT, pathname))
 
             # If the node Nextcloud details have not already been recorded...
@@ -519,7 +517,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                 else:
                     path = "files/%s+/%s" % (config.PROJECT, pathname[8:])
 
-                query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, extended.upload_time \
+                query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
                          FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
                          ON cache.fileid = extended.fileid \
                          WHERE cache.storage = %d \
@@ -530,7 +528,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                              path
                         )
 
-                if config.DEBUG == 'true':
+                if config.DEBUG:
                     sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
                 cur.execute(query)
@@ -538,7 +536,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                 if row:
 
-                    if config.DEBUG == 'true':
+                    if config.DEBUG:
                         sys.stderr.write("filecache: %s\n" % (str(row)))
 
                     node_type = 'file'
@@ -546,20 +544,34 @@ def add_nextcloud_nodes(nodes, counts, config):
                     if row[1] == 2:
                         node_type = 'folder'
 
-                    modified = datetime.utcfromtimestamp(row[3]).strftime(config.TIMESTAMP_FORMAT)
+                    size = row[2]
+
+                    modified = normalize_timestamp(datetime.utcfromtimestamp(row[3]))
 
                     if node_type == 'file':
 
-                        # If there is no upload timestamp, use the latest of the modification or migration timestamp
-                        if row[4] in [ None, '', 0 ]:
-                            uploaded = datetime.utcfromtimestamp(max(row[3], config.MIGRATION_TS)).strftime(config.TIMESTAMP_FORMAT)
+                        file_count = file_count + 1
+
+                        if row[4] in [ None, 'None', 'null', '', 0, False ]:
+                            checksum = None
                         else:
-                            uploaded = datetime.utcfromtimestamp(row[4]).strftime(config.TIMESTAMP_FORMAT)
+                            checksum = row[4].lower()
+                            if checksum.startswith('sha256:'):
+                                checksum = checksum[7:]
 
-                        if config.DEBUG == 'true':
-                            file_count = file_count + 1
+                        # If there is no upload timestamp, use the latest of the modification or migration timestamp
+                        if row[5] in [ None, 'None', 'null', '', 0, False ]:
+                            uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], IDA_MIGRATION_TS)))
+                        else:
+                            uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[5]))
 
-                        node_details = {'type': node_type, 'size': row[2], 'modified': modified, 'uploaded': uploaded}
+                        node_details = {
+                            'type': node_type,
+                            'size': size,
+                            'modified': modified,
+                            'checksum': checksum,
+                            'uploaded': uploaded
+                        }
 
                     else: # node_type == 'folder'
 
@@ -569,7 +581,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                     counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
 
-                    if config.DEBUG == 'true':
+                    if config.DEBUG:
                         sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, file_count, pathname))
 
     # Add all relevant Nexcloud node records not already recorded
@@ -585,7 +597,7 @@ def add_nextcloud_nodes(nodes, counts, config):
     # SINCE_TS, else limit query to nodes with either no upload timestamp or upload earlier than START_TS
 
     if config.CHANGED_ONLY:
-        query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, extended.upload_time \
+        query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
                  FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
                  ON cache.fileid = extended.fileid \
                  WHERE cache.storage = %d \
@@ -605,7 +617,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                      config.START_TS
                 )
     else:
-        query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, extended.upload_time \
+        query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
                  FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
                  ON cache.fileid = extended.fileid \
                  WHERE cache.storage = %d \
@@ -620,7 +632,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                      config.START_TS
                 )
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
     cur.execute(query)
@@ -630,7 +642,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     for row in rows:
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("filecache: %s\n" % (str(row)))
 
         pathname = row[0][5:]
@@ -649,20 +661,26 @@ def add_nextcloud_nodes(nodes, counts, config):
             if row[1] == 2:
                 node_type = 'folder'
 
-            modified = datetime.utcfromtimestamp(row[3]).strftime(config.TIMESTAMP_FORMAT)
+            modified = normalize_timestamp(datetime.utcfromtimestamp(row[3]))
 
             if node_type == 'file':
 
-                # If there is no upload timestamp, use the latest of the modification or migration timestamp
-                if row[4] in [ None, '', 0 ]:
-                    uploaded = datetime.utcfromtimestamp(max(row[3], config.MIGRATION_TS)).strftime(config.TIMESTAMP_FORMAT)
-                else:
-                    uploaded = datetime.utcfromtimestamp(row[4]).strftime(config.TIMESTAMP_FORMAT)
-    
-                if config.DEBUG == 'true':
-                    file_count = file_count + 1
+                file_count = file_count + 1
 
-                node_details = {'type': node_type, 'size': row[2], 'modified': modified, 'uploaded': uploaded}
+                if row[4] in [ None, 'None', 'null', '', 0, False ]:
+                    checksum = None
+                else:
+                    checksum = row[4].lower()
+                    if checksum.startswith('sha256:'):
+                        checksum = checksum[7:]
+
+                # If there is no upload timestamp, use the latest of the modification or migration timestamp
+                if row[5] in [ None, 'None', 'null', '', 0, False ]:
+                    uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], IDA_MIGRATION_TS)))
+                else:
+                    uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[5]))
+
+                node_details = {'type': node_type, 'size': row[2], 'modified': modified, 'checksum': checksum, 'uploaded': uploaded}
 
             else: # node_type == 'folder'
 
@@ -677,7 +695,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
             counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
 
-            if config.DEBUG == 'true':
+            if config.DEBUG:
                 sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, file_count, pathname))
 
     # If CHANGED_ONLY is true, the query above only selected changed nodes, but we also want all ancestor
@@ -706,7 +724,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                 node_pathname = "%s/%s" % (area, level_pathname)
                 node = nodes.get(node_pathname)
 
-                if config.DEBUG == 'true':
+                if config.DEBUG:
                     sys.stderr.write("%s: nextcloud: ancestor folder pathname: %s\n" % (config.PROJECT, node_pathname))
 
                 # If the node filesystem details have not already been recorded...
@@ -728,18 +746,18 @@ def add_nextcloud_nodes(nodes, counts, config):
                                  path_pattern
                             )
 
-                    if config.DEBUG == 'true':
+                    if config.DEBUG:
                         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
 
                     cur.execute(query)
                     row = cur.fetchone()
 
-                    #if config.DEBUG == 'true':
+                    #if config.DEBUG:
                     #    sys.stderr.write("filecache: %s\n" % (str(row)))
 
                     if row:
 
-                        modified = datetime.utcfromtimestamp(row[1]).strftime(config.TIMESTAMP_FORMAT)
+                        modified = normalize_timestamp(datetime.utcfromtimestamp(row[1]))
                         node_details = {'type': 'folder', 'modified': modified}
 
                         if node:
@@ -751,10 +769,11 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                         counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
 
-                        if config.DEBUG == 'true':
+                        if config.DEBUG:
                             sys.stderr.write("%s: nextcloud: ancestor folder: %s\n" % (config.PROJECT, node_pathname))
 
     # Close database connection
+    cur.close()
     conn.close()
 
 
@@ -765,7 +784,7 @@ def add_filesystem_nodes(nodes, counts, config):
     NOTE: must be called last, after adding node details from all other contexts
     """
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("--- Adding filesystem nodes...\n")
 
     file_count = 0
@@ -779,7 +798,7 @@ def add_filesystem_nodes(nodes, counts, config):
 
         for pathname in list(nodes.keys()):
 
-            if config.DEBUG == 'true':
+            if config.DEBUG:
                 sys.stderr.write("%s: existing: node pathname: %s\n" % (config.PROJECT, pathname))
 
             path_levels = pathname.split(os.sep)
@@ -793,21 +812,21 @@ def add_filesystem_nodes(nodes, counts, config):
                 node_pathname = "%s/%s" % (area, level_pathname)
                 node = nodes.get(node_pathname)
 
-                if config.DEBUG == 'true':
+                if config.DEBUG:
                     sys.stderr.write("%s: filesystem: node pathname: %s\n" % (config.PROJECT, node_pathname))
 
                 # If the node filesystem details have not already been recorded...
                 if (node is None) or ('filesystem' not in node):
 
                     if area == 'frozen':
-                        full_pathname = "%sfiles/%s/%s" % (pso_root, config.PROJECT, level_pathname)
+                        filesystem_pathname = "%sfiles/%s/%s" % (pso_root, config.PROJECT, level_pathname)
                     else:
-                        full_pathname = "%sfiles/%s+/%s" % (pso_root, config.PROJECT, level_pathname)
+                        filesystem_pathname = "%sfiles/%s+/%s" % (pso_root, config.PROJECT, level_pathname)
 
-                    if config.DEBUG == 'true':
-                        sys.stderr.write("%s: filesystem: full pathname: %s\n" % (config.PROJECT, full_pathname))
+                    if config.DEBUG:
+                        sys.stderr.write("%s: filesystem: pathname: %s\n" % (config.PROJECT, filesystem_pathname))
 
-                    path = Path(full_pathname)
+                    path = Path(filesystem_pathname)
 
                     if path.exists():
 
@@ -817,12 +836,18 @@ def add_filesystem_nodes(nodes, counts, config):
                         if modified < config.START_TS:
 
                             node_type = 'file'
-                            modified = datetime.utcfromtimestamp(modified).strftime(config.TIMESTAMP_FORMAT)
+                            modified = normalize_timestamp(datetime.utcfromtimestamp(modified))
                             size = node_stats.st_size
 
                             if path.is_file():
                                 file_count = file_count + 1
-                                node_details = {'type': node_type, 'size': size, 'modified': modified}
+                                if config.AUDIT_CHECKSUMS:
+                                    checksum = generate_checksum(filesystem_pathname)
+                                    if checksum.startswith('sha256:'):
+                                        checksum = checksum[7:]
+                                    node_details = {'type': node_type, 'size': size, 'modified': modified, 'checksum': checksum}
+                                else:
+                                    node_details = {'type': node_type, 'size': size, 'modified': modified}
                             else:
                                 node_type = 'folder'
                                 node_details = {'type': node_type, 'modified': modified}
@@ -836,7 +861,7 @@ def add_filesystem_nodes(nodes, counts, config):
 
                             counts['filesystemNodeCount'] = counts['filesystemNodeCount'] + 1
 
-                            if config.DEBUG == 'true':
+                            if config.DEBUG:
                                 sys.stderr.write("%s: filesystem: %d %s %s\n" % (config.PROJECT, file_count, node_type, node_pathname))
 
     else:
@@ -853,7 +878,7 @@ def add_filesystem_nodes(nodes, counts, config):
 
         command = "cd %s; find %s -mindepth %s -printf \"%%Y\\t%%s\\t%%T@\\t%%p\\n\"" % (pso_root, find_root, min_depth)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("COMMAND: %s\n" % command)
 
         pipe = Popen(command, shell=True, stdout=PIPE)
@@ -872,6 +897,7 @@ def add_filesystem_nodes(nodes, counts, config):
             size = int(values['size'])
             modified = int(float(values['modified']))
             pathname = str(values['pathname'])
+            filesystem_pathname = "%s%s" % (pso_root, pathname)
 
             if modified < config.START_TS:
 
@@ -884,15 +910,20 @@ def add_filesystem_nodes(nodes, counts, config):
 
                 node_type = 'file'
 
-                modified = datetime.utcfromtimestamp(modified).strftime(config.TIMESTAMP_FORMAT)
+                modified = normalize_timestamp(datetime.utcfromtimestamp(modified))
 
                 if type == 'd':
                     node_type = 'folder'
 
                 if node_type == 'file':
-                    if config.DEBUG == 'true':
-                        file_count = file_count + 1
-                    node_details = {'type': node_type, 'size': size, 'modified': modified}
+                    file_count = file_count + 1
+                    if config.AUDIT_CHECKSUMS:
+                        checksum = generate_checksum(filesystem_pathname)
+                        if checksum.startswith('sha256:'):
+                            checksum = checksum[7:]
+                        node_details = {'type': node_type, 'size': size, 'modified': modified, 'checksum': checksum}
+                    else:
+                        node_details = {'type': node_type, 'size': size, 'modified': modified}
                 else:
                     node_details = {'type': node_type, 'modified': modified}
 
@@ -906,7 +937,7 @@ def add_filesystem_nodes(nodes, counts, config):
 
                 counts['filesystemNodeCount'] = counts['filesystemNodeCount'] + 1
 
-                if config.DEBUG == 'true':
+                if config.DEBUG:
                     sys.stderr.write("%s: filesystem: %d %s %s\n" % (config.PROJECT, file_count, node_type, pathname))
 
 
@@ -926,7 +957,7 @@ def audit_project(config):
     add_nextcloud_nodes(nodes, counts, config)  # must be second to last
     add_filesystem_nodes(nodes, counts, config) # must be last
 
-    if config.DEBUG == 'true':
+    if config.DEBUG:
         sys.stderr.write("NODES: %s\n" % json.dumps(nodes, indent=4))
 
     # Iterate over all nodes, logging and reporting all errors
@@ -971,7 +1002,7 @@ def audit_project(config):
         if (nextcloud and nextcloud['type'] == 'file') or (filesystem and filesystem['type'] == 'file') or (ida and ida['type'] == 'file') or (metax and metax['type'] == 'file'):
             file_count = file_count + 1
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("%s: auditing: %d %s\n" % (config.PROJECT, file_count, pathname))
 
         # Check that node exists in both filesystem and Nextcloud, and with same type
@@ -992,7 +1023,7 @@ def audit_project(config):
             if filesystem and nextcloud and filesystem['size'] != nextcloud['size']:
                 errors['Node size different for filesystem and Nextcloud'] = True
 
-            if config.CHECK_TIMESTAMPS == True:
+            if config.AUDIT_TIMESTAMPS:
                 if filesystem and nextcloud and filesystem['modified'] != nextcloud['modified']:
                     errors['Node modification timestamp different for filesystem and Nextcloud'] = True
 
@@ -1038,7 +1069,7 @@ def audit_project(config):
                 if ida['size'] != filesystem['size']:
                     errors['Node size different for filesystem and IDA'] = True
 
-                if config.CHECK_TIMESTAMPS == True:
+                if config.AUDIT_TIMESTAMPS:
                     if ida['modified'] != filesystem['modified']:
                         errors['Node modification timestamp different for filesystem and IDA'] = True
 
@@ -1048,7 +1079,7 @@ def audit_project(config):
                 if ida['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and IDA'] = True
 
-                if config.CHECK_TIMESTAMPS == True:
+                if config.AUDIT_TIMESTAMPS:
                     if ida['modified'] != nextcloud['modified']:
                         errors['Node modification timestamp different for Nextcloud and IDA'] = True
 
@@ -1058,7 +1089,7 @@ def audit_project(config):
                 if metax['size'] != filesystem['size']:
                     errors['Node size different for filesystem and Metax'] = True
 
-                if config.CHECK_TIMESTAMPS == True:
+                if config.AUDIT_TIMESTAMPS:
                     if metax['modified'] != filesystem['modified']:
                         errors['Node modification timestamp different for filesystem and Metax'] = True
 
@@ -1068,7 +1099,7 @@ def audit_project(config):
                 if metax['size'] != nextcloud['size']:
                     errors['Node size different for Nextcloud and Metax'] = True
 
-                if config.CHECK_TIMESTAMPS == True:
+                if config.AUDIT_TIMESTAMPS:
                     if metax['modified'] != nextcloud['modified']:
                         errors['Node modification timestamp different for Nextcloud and Metax'] = True
 
@@ -1078,14 +1109,11 @@ def audit_project(config):
                 if ida['size'] != metax['size']:
                     errors['Node size different for IDA and Metax'] = True
 
-                if config.CHECK_TIMESTAMPS == True:
+                if config.AUDIT_TIMESTAMPS:
                     if ida['modified'] != metax['modified']:
                         errors['Node modification timestamp different for IDA and Metax'] = True
                     if ida['frozen'] != metax['frozen']:
                         errors['Node frozen timestamp different for IDA and Metax'] = True
-
-                if ida['checksum'] != metax['checksum']:
-                    errors['Node checksum different for IDA and Metax'] = True
 
                 if ida['pid'] != metax['pid']:
                     errors['Node pid different for IDA and Metax'] = True
@@ -1093,27 +1121,27 @@ def audit_project(config):
             # if known in IDA and replication timestamp defined in IDA details, check if file details agree
             if ida:
 
-                replicated = ida.get('replicated', False)
+                replicated = ida.get('replicated')
 
-                if replicated == 'None' or replicated == None:
+                if replicated in [ None, 'None', 'null', '', 0, False ]:
                     replicated = False
 
                 if replicated != False:
 
-                    full_pathname = "%s/projects/%s%s" % (config.DATA_REPLICATION_ROOT, config.PROJECT, pathname[6:])
+                    filesystem_pathname = "%s/projects/%s%s" % (config.DATA_REPLICATION_ROOT, config.PROJECT, pathname[6:])
 
-                    #if config.DEBUG == 'true':
-                    #    sys.stderr.write("REPLICATION PATHNAME: %s\n" % full_pathname)
+                    #if config.DEBUG:
+                    #    sys.stderr.write("REPLICATION PATHNAME: %s\n" % filesystem_pathname)
 
-                    path = Path(full_pathname)
+                    path = Path(filesystem_pathname)
 
                     if path.exists():
 
                         if path.is_file():
 
-                            fsstat = os.stat(full_pathname)
+                            fsstat = os.stat(filesystem_pathname)
                             size = fsstat.st_size
-                            modified = datetime.utcfromtimestamp(fsstat.st_mtime).strftime(config.TIMESTAMP_FORMAT)
+                            modified = normalize_timestamp(datetime.utcfromtimestamp(fsstat.st_mtime))
 
                             node['replication'] = {'type': 'file', 'size': size, 'modified': modified}
 
@@ -1128,6 +1156,56 @@ def audit_project(config):
                     else:
                         errors['Node does not exist in replication'] = True
 
+        if config.AUDIT_CHECKSUMS:
+
+            filesystem_checksum = None
+            nextcloud_checksum = None
+            ida_checksum = None
+            metax_checksum = None
+
+            if filesystem and filesystem['type'] == 'file':
+                filesystem_checksum = filesystem.get('checksum')
+                if filesystem_checksum in [ None, 'None', 'null', '', 0, False ]:
+                    filesystem_checksum = None
+                    # We generate new checksums for all files on disk so if missing for some reason, report an error
+                    errors['Node checksum missing for filesystem'] = True
+
+            if nextcloud and nextcloud['type'] == 'file':
+                nextcloud_checksum = nextcloud.get('checksum')
+                if nextcloud_checksum in [ None, 'None', 'null', '', 0, False ]:
+                    nextcloud_checksum = None
+                    # It's possible that files have no cache checksum, so no error will be reported if missing
+
+            if ida and ida['type'] == 'file':
+                ida_checksum = ida.get('checksum')
+                if ida_checksum in [ None, 'None', 'null', '', 0, False ]:
+                    ida_checksum = None
+                    errors['Node checksum missing for IDA'] = True
+
+            if metax and metax['type'] == 'file':
+                metax_checksum = metax.get('checksum')
+                if metax_checksum in [ None, 'None', 'null', '', 0, False ]:
+                    metax_checksum = None
+                    errors['Node checksum missing for Metax'] = True
+
+            if filesystem_checksum and nextcloud_checksum and filesystem_checksum != nextcloud_checksum:
+                errors['Node checksum different for filesystem and Nextcloud'] = True
+
+            if filesystem_checksum and ida_checksum and filesystem_checksum != ida_checksum:
+                errors['Node checksum different for filesystem and IDA'] = True
+
+            if filesystem_checksum and metax_checksum and filesystem_checksum != metax_checksum:
+                errors['Node checksum different for filesystem and Metax'] = True
+
+            if nextcloud_checksum and ida_checksum and nextcloud_checksum != ida_checksum:
+                errors['Node checksum different for Nextcloud and IDA'] = True
+
+            if nextcloud_checksum and metax_checksum and nextcloud_checksum != metax_checksum:
+                errors['Node checksum different for Nextcloud and Metax'] = True
+
+            if ida_checksum and metax_checksum and ida_checksum != metax_checksum:
+                errors['Node checksum different for IDA and Metax'] = True
+
         # If any errors were detected, add the node to the set of invalid nodes
         # and increment the invalid node count
 
@@ -1136,21 +1214,22 @@ def audit_project(config):
             invalidNodes[pathname] = node
             invalidNodeCount = invalidNodeCount + 1
 
-            if config.DEBUG == 'true':
+            if config.DEBUG:
                 for error in node['errors']:
                     sys.stderr.write("Error: %s\n" % error)
 
     report = {}
     report['project'] = config.PROJECT
     report['start'] = config.START
-    report['end'] = datetime.utcnow().strftime(config.TIMESTAMP_FORMAT)
+    report['end'] = generate_timestamp()
     if config.SINCE == "1970-01-01T00:00:00Z":
         report['changedSince'] = None
     else:
         report['changedSince'] = config.SINCE
     report['auditStaging'] = config.AUDIT_STAGING
     report['auditFrozen'] = config.AUDIT_FROZEN
-    report['checkTimestamps'] = config.CHECK_TIMESTAMPS
+    report['auditTimestamps'] = config.AUDIT_TIMESTAMPS
+    report['auditChecksums'] = config.AUDIT_CHECKSUMS
     report['filesystemNodeCount'] = counts['filesystemNodeCount']
     report['nextcloudNodeCount'] = counts['nextcloudNodeCount']
     report['frozenFileCount'] = counts['frozenFileCount']
@@ -1332,17 +1411,18 @@ def output_report(report):
     sys.stdout.write('"project": %s,\n' % json.dumps(report.get('project')))
     sys.stdout.write('"start": %s,\n' % json.dumps(report.get('start')))
     sys.stdout.write('"end": %s,\n' % json.dumps(report.get('end')))
-    sys.stdout.write('"changedSince": %s,\n' % json.dumps(report['changedSince']))
-    sys.stdout.write('"auditStaging": %s,\n' % json.dumps(report['auditStaging']))
-    sys.stdout.write('"auditFrozen": %s,\n' % json.dumps(report['auditFrozen']))
-    sys.stdout.write('"checkTimestamps": %s,\n' % json.dumps(report['checkTimestamps']))
+    sys.stdout.write('"changedSince": %s,\n' % json.dumps(report.get('changedSince')))
+    sys.stdout.write('"auditStaging": %s,\n' % json.dumps(report.get('auditStaging')))
+    sys.stdout.write('"auditFrozen": %s,\n' % json.dumps(report.get('auditFrozen')))
+    sys.stdout.write('"auditTimestamps": %s,\n' % json.dumps(report.get('auditTimestamps')))
+    sys.stdout.write('"auditChecksums": %s,\n' % json.dumps(report.get('auditChecksums')))
     sys.stdout.write('"filesystemNodeCount\": %d,\n' % report.get('filesystemNodeCount', 0))
     sys.stdout.write('"nextcloudNodeCount\": %d,\n' % report.get('nextcloudNodeCount', 0))
     sys.stdout.write('"frozenFileCount\": %d,\n' % report.get('frozenFileCount', 0))
     sys.stdout.write('"metaxFileCount\": %d,\n' % report.get('metaxFileCount', 0))
     sys.stdout.write('"invalidNodeCount": %d,\n' % report.get('invalidNodeCount', 0))
     sys.stdout.write('"errorNodeCount": %d,\n' % report.get('errorNodeCount', 0))
-    sys.stdout.write('"errorCount": %d,\n' % report['errorCount'])
+    sys.stdout.write('"errorCount": %d,\n' % report.get('errorCount', 0))
     sys.stdout.write('"oldest": %s,\n' % json.dumps(report.get('oldest')))
     sys.stdout.write('"newest": %s,\n' % json.dumps(report.get('newest')))
     output_errors(report)
@@ -1475,9 +1555,13 @@ def output_nodes(nodes):
         node_end = node.get('end')
 
         if node_start and node_end:
-            sys.stdout.write('{ "start": "%s", "end": "%s", "pathname": "%s" }' % ( node_start, node_end, node['pathname']))
+            sys.stdout.write('{ "start": %s, "end": %s, "pathname": %s }' % (
+                 json.dumps(node_start),
+                 json.dumps(node_end),
+                 json.dumps(node.get('pathname'))
+            ))
         else:
-            sys.stdout.write('{ "pathname": "%s" }' % node['pathname'])
+            sys.stdout.write('{ "pathname": %s }' % json.dumps(node.get('pathname')))
 
         first_node = False
 
@@ -1502,117 +1586,58 @@ def output_invalid_nodes(report):
             first = False
 
             sys.stdout.write('%s: {' % str(json.dumps(pathname)))
-            sys.stdout.write('\n"errors": %s' % str(json.dumps(node['errors'])))
+            sys.stdout.write('\n"errors": %s' % str(json.dumps(node.get('errors'))))
 
-            try:
-                node_details = node['filesystem']
+            node_details = node.get('filesystem')
+            if node_details:
                 sys.stdout.write(',\n"filesystem": {')
-                sys.stdout.write('\n"type": "%s"' % node_details['type'])
-                if node_details['type'] == 'file':
-                    try:
-                        sys.stdout.write(',\n"size": %d' % node_details['size'])
-                    except:
-                        pass
-                try:
-                    sys.stdout.write(',\n"modified": "%s"' % node_details['modified'])
-                except:
-                    pass
+                sys.stdout.write('\n"type": %s' % json.dumps(node_details.get('type')))
+                if node_details.get('type') == 'file':
+                    sys.stdout.write(',\n"size": %d' % node_details.get('size', 0))
+                    sys.stdout.write(',\n"checksum": %s' % json.dumps(node_details.get('checksum')))
+                sys.stdout.write(',\n"modified": %s' % json.dumps(node_details.get('modified')))
                 sys.stdout.write('}')
-            except:
-                pass
 
-            try:
-                node_details = node['nextcloud']
+            node_details = node.get('nextcloud')
+            if node_details:
                 sys.stdout.write(',\n"nextcloud": {')
-                sys.stdout.write('\n"type": "%s"' % node_details['type'])
-                if node_details['type'] == 'file':
-                    try:
-                        sys.stdout.write(',\n"size": %d' % node_details['size'])
-                    except:
-                        pass
-                try:
-                    sys.stdout.write(',\n"modified": "%s"' % node_details['modified'])
-                except:
-                    pass
+                sys.stdout.write('\n"type": %s' % json.dumps(node_details.get('type')))
+                if node_details.get('type') == 'file':
+                    sys.stdout.write(',\n"size": %d' % node_details.get('size', 0))
+                    sys.stdout.write(',\n"checksum": %s' % json.dumps(node_details.get('checksum')))
+                sys.stdout.write(',\n"modified": %s' % json.dumps(node_details.get('modified')))
                 sys.stdout.write('\n}')
-            except:
-                pass
 
-            try:
-                node_details = node['ida']
+            node_details = node.get('ida')
+            if node_details:
                 sys.stdout.write(',\n"ida": {')
-                sys.stdout.write('\n"type": "file"')
-                try:
-                    sys.stdout.write(',\n"size": %d' % node_details['size'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"pid": "%s"' % node_details['pid'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"checksum": "%s"' % node_details['checksum'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"modified": "%s"' % node_details['modified'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"frozen": "%s"' % node_details['frozen'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"replicated": "%s"' % node_details['replicated'])
-                except:
-                    pass
+                sys.stdout.write('\n"type": %s' % json.dumps(node_details.get('type')))
+                sys.stdout.write(',\n"size": %d' % node_details.get('size', 0))
+                sys.stdout.write(',\n"pid": %s' % json.dumps(node_details.get('pid')))
+                sys.stdout.write(',\n"checksum": %s' % json.dumps(node_details.get('checksum')))
+                sys.stdout.write(',\n"frozen": %s' % json.dumps(node_details.get('frozen')))
+                sys.stdout.write(',\n"replicated": %s' % json.dumps(node_details.get('replicated')))
+                sys.stdout.write(',\n"modified": %s' % json.dumps(node_details.get('modified')))
                 sys.stdout.write('\n}')
-            except:
-                pass
 
-            try:
-                node_details = node['metax']
+            node_details = node.get('metax')
+            if node_details:
                 sys.stdout.write(',\n"metax": {')
-                sys.stdout.write('\n"type": "file"')
-                try:
-                    sys.stdout.write(',\n"size": %d' % node_details['size'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"pid": "%s"' % node_details['pid'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"checksum": "%s"' % node_details['checksum'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"modified": "%s"' % node_details['modified'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"frozen": "%s"' % node_details['frozen'])
-                except:
-                    pass
+                sys.stdout.write('\n"type": %s' % json.dumps(node_details.get('type')))
+                sys.stdout.write(',\n"size": %d' % node_details.get('size', 0))
+                sys.stdout.write(',\n"pid": %s' % json.dumps(node_details.get('pid')))
+                sys.stdout.write(',\n"checksum": %s' % json.dumps(node_details.get('checksum')))
+                sys.stdout.write(',\n"modified": %s' % json.dumps(node_details.get('modified')))
+                sys.stdout.write(',\n"frozen": %s' % json.dumps(node_details.get('frozen')))
                 sys.stdout.write('\n}')
-            except:
-                pass
 
-            try:
-                node_details = node['replication']
+            node_details = node.get('replication')
+            if node_details:
                 sys.stdout.write(',\n"replication": {')
-                sys.stdout.write('\n"type": "file"')
-                try:
-                    sys.stdout.write(',\n"size": %d' % node_details['size'])
-                except:
-                    pass
-                try:
-                    sys.stdout.write(',\n"modified": "%s"' % node_details['modified'])
-                except:
-                    pass
+                sys.stdout.write('\n"type": %s' % json.dumps(node_details.get('type')))
+                sys.stdout.write(',\n"size": %d' % node_details.get('size', 0))
+                sys.stdout.write(',\n"modified": %s' % json.dumps(node_details.get('modified')))
                 sys.stdout.write('}')
-            except:
-                pass
 
             sys.stdout.write('\n}')
 

@@ -27,6 +27,127 @@
 # depend on. The state of the test accounts and data must be taken into account
 # whenever adding tests at any particular point in that execution sequence.
 # --------------------------------------------------------------------------------
+#
+# Overview:
+#
+# 1. Test projects and user accounts will be created and initialized as usual, and
+#    a timestamp INITIALIZED will be created after initialization.
+#
+# 2. The following actions and modifications will be made to specific test projects,
+#    and a second timestamp MODIFIED will be created after modifications:
+#
+# a. Project A will have a folder frozen, and will have files both added and deleted
+#    from both the frozen space and staging area in the filesystem only, covering
+#    errors where Nextcloud and the filesystem disagree on the existence of files
+#    and folders, and the number of nodes.
+#
+# b. Project B will have a folder frozen, and will have files both changed in size
+#    and touched with new modification timestamps in the filesystem, covering errors
+#    where Nextcloud and the filesystem disagree about size and modification
+#    timestamps of files.
+#
+# c. Project C will have a folder frozen, and will have files replaced by folders
+#    and folders replaced by files in both the frozen and staging areas of the
+#    filesystem, preserving the same exact pathnames, covering errors where
+#    Nextcloud and the filesystem disagree about the type of nodes.
+#
+# d. Project D will have a folder frozen, and will have changes to files in IDA,
+#    Metax, and replication, removing a file from IDA, removing a file from Metax,
+#    removing a file from replication, and changing file details for a file in IDA
+#    such that it disagrees with both Metax and replication.
+#
+# e. Project E will have no modifications of any kind, and therefore should not
+#    have any errors reported of any kind.
+#
+# 3. Active project listings will be tested with the following variations:
+#
+# a. An active project listing will be generated with the START timestamp and the
+#    script output to include all projects A, B, C, D and E.
+#
+# b. An active project listing will be generated with the INITIALIZED timestamp and
+#    the script output verified to include the projects A, B, C, and D but not E.
+#
+# c. An active project listing will be generated with the MODIFIED timestamp and
+#    the script output verified to include none of the projects A, B, C, D or E.
+#
+# 4. All projects A, B, C, D, and E will be audited with the following variations
+#    and results checked for correctness, that the report files exist and have the
+#    correct status, that all expected errors are reported correctly, and no other
+#    errors are reported, and that project E has no errors reported for any
+#    variation.
+#
+# a. Projects will be audited with the --full parameter and no restrictions
+#    (exhaustive audit).
+#
+# b. Projects will be audited with --staging --timestamps --checksums parameters,
+#    limiting checks to files in the staging area.
+#
+# c. Projects will be audited with --frozen --timestamps --checksums parameters,
+#    limiting checks to files in the frozen area.
+#
+# d. Projects will be audited with --changed-since START --timestamps --checksums
+#    parameters, limiting checks to files uploaded or frozen since the START
+#    timestamp, and their ancestor folders.
+#
+# e. Projects will be audited with --changed-since INITIALIZED --timestamps
+#    --checksums parameters, limiting checks to files uploaded or frozen since
+#    the INITIALIZED timestamp, and their ancestor folders.
+#
+# f. Projects will be audited with --changed-since MODIFIED --timestamps
+#    --checksums parameters, limiting checks to files uploaded or frozen since
+#    the MODIFIED timestamp, and their ancestor folders, verifying no errors
+#    reported for any projects.
+#
+# 5. Projects A, B, C, and D will be fully repaired and then audited with
+#    the --full parameter and no restrictions (exhaustive audit), and results
+#    checked to ensure correct node counts and verifying no errors reported for
+#    any projects.
+#
+# 6. Checksum checks as part of the freezing process will be tested as follows:
+# 
+# a. Project A will be modified by changing the cache checksums of three files
+#    in staging, freezing the directory containing the files, and verifying that
+#    the freeze action fails and the three checksum mismatches are reported.
+#
+# b. Project A will then be audited with the --full parameter and the expected
+#    errors verified.
+# 
+# c. Project A will then be repaired and audited with the --full parameter to
+#    ensure that the checksums are restored based on the files on disk, and that
+#    the project state is as if the failed freeze action had
+#    completed successfully.
+#
+# 6. Checksum and timestamp option checks will be tested as follows:
+# 
+# a. Project B will be modified by changing the cache checksums of three frozen
+#    files, in the cache, IDA, and Metax respectively, and the cache checksum of
+#    one file in staging.
+#    
+# b. Project B will be further modified by changing the modified timestamp of
+#    three different frozen files, in the cache, IDA, and Metax respectively, and the
+#    cache modified timestamp of one different file in staging.
+#    
+# c. Project B will then be audited with no parameters (no checksum nor
+#    timestamp checks) to verify that no errors are reported.
+# 
+# d. Project B will then be audited with the --checksums parameters (no timestamp
+#    checks) to verify that all expected checksum errors are reported but no
+#    timestamp errors are reported.
+# 
+# e. Project B will then be audited with the --timestamps parameters (no checksum
+#    checks) to verify that all expected timestamp errors are reported but no
+#    checksum errors are reported.
+# 
+# f. Project B will then be audited with the --full parameter (both checksum
+#    and timestamp checks) to verify that all expected checksum and timestamp
+#    errors are reported.
+# 
+# g. Project B will then be repaired and audited with the --full parameter to
+#    ensure that no errors are reported.
+#
+# Note: no testing of the emailing functionality will be done, only the
+# correctness of the auditing process and reported results.
+# --------------------------------------------------------------------------------
 
 import requests
 import subprocess
@@ -39,8 +160,7 @@ import sys
 import shutil
 import json
 from pathlib import Path
-from datetime import datetime
-from tests.common.utils import load_configuration, generate_timestamp
+from tests.common.utils import load_configuration, normalize_timestamp, generate_timestamp
 
 
 class TestAuditing(unittest.TestCase):
@@ -70,6 +190,14 @@ class TestAuditing(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
+        # ensure all cache checksums have been generated for test_project_a (if OK, assume OK for all test projects)
+        cmd = "sudo -u %s %s/utils/admin/list-missing-checksums test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+            self.assertEqual(len(output), 0)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
         time.sleep(1)
         self.config['INITIALIZED'] = generate_timestamp()
         print("INITIALIZED: %s" % self.config['INITIALIZED'])
@@ -80,7 +208,7 @@ class TestAuditing(unittest.TestCase):
         # flush all test projects, user accounts, and data, but only if all tests passed,
         # else leave projects and data as-is so test project state can be inspected
 
-        if self.success:
+        if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
             print("(cleaning)")
             cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             result = os.system(cmd)
@@ -116,12 +244,16 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
 
 
-    def check_for_failed_actions(self, project, user):
+    def check_for_failed_actions(self, project, user, should_be_failed = False):
         print("(verifying no failed actions)")
         response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
-        assert(len(actions) == 0)
+        if should_be_failed:
+            assert(len(actions) > 0)
+        else:
+            assert(len(actions) == 0)
+        return actions
 
 
     def remove_report(self, pathname):
@@ -131,34 +263,43 @@ class TestAuditing(unittest.TestCase):
             pass
 
 
-    def audit_project(self, project, status, since = None, area = None, check_timestamps = True):
+    def audit_project(self, project, status, since = None, area = None, timestamps = True, checksums = True):
         """
-        Audit the specified project, verify that the audit report file was created with
-        the specified status, and load and return the audit report as a JSON object, with
-        the audit report pathname defined in the returned object for later timestamp
-        repair if/as needed.
+        Audit the specified project, verify that the audit report file was created with the specified
+        status, and load and return the audit report as a JSON object, with the audit report pathname
+        defined in the returned object for later timestamp repair if/as needed.
+
+        A full audit with no restrictions and including timestamps and checksums is done by default.
         """
 
         parameters = ""
 
-        if since:
-            parameters = "%s --changed-since %s" % (parameters, since)
+        if since is None and area is None and timestamps and checksums:
+            parameters = " --full"
 
-        if area:
-            parameters = "%s --%s" % (parameters, area)
-            area = " %s" % area
+        else:
 
-        if check_timestamps:
-            parameters = "%s --timestamps" % parameters
+            if since:
+                parameters = "%s --changed-since %s" % (parameters, since)
 
-        #parameters = "%s --report" % parameters # TEMP DEBUG
+            if area:
+                parameters = "%s --%s" % (parameters, area)
+                area = " %s" % area
+
+            if timestamps:
+                parameters = "%s --timestamps" % parameters
+
+            if checksums:
+                parameters = "%s --checksums" % parameters
+
+        #parameters = "%s --report" % parameters
 
         print ("(auditing project %s%s)" % (project, parameters))
 
         cmd = "sudo -u %s %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
 
         try:
-            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
@@ -190,77 +331,13 @@ class TestAuditing(unittest.TestCase):
 
     def test_auditing(self):
 
-        """
-        Overview:
+        invalid_timestamp = "2023-01-01T00:00:00Z"
+        invalid_timestamp_seconds = 1672531200
+        invalid_checksum = "a1b2c3d4e5"
+        invalid_checksum_uri = "sha256:%s" % invalid_checksum
 
-        1. Test projects and user accounts will be created and initialized as usual, and a
-           timestamp INITIALIZED will be created after initialization.
-
-        2. The following actions and modifications will be made to specific test projects, and
-           a second timestamp MODIFIED will be created after modifications:
-
-        a. Project A will have a folder frozen, and will have files both added and deleted from both
-           the frozen space and staging area in the filesystem only, covering errors where Nextcloud and
-           the filesystem disagree on the existence of files and folders, and the number of nodes.
-
-        b. Project B will have a folder frozen, and will have files both changed in size and touched
-           with new modification timestamps in the filesystem, covering errors where Nextcloud and the
-           filesystem disagree about size and modification timestamps of files.
-
-        c. Project C will have a folder frozen, and will have files replaced by folders and folders
-           replaced by files in both the frozen and staging areas of the filesystem, preserving the
-           same exact pathnames, covering errors where Nextcloud and the filesystem disagree about
-           the type of nodes.
-
-        d. Project D will have a folder frozen, and will have changes to files in IDA, Metax, and
-           replication, removing a file from IDA, removing a file from Metax, removing a file
-           from replication, and changing file details for a file in IDA such that it disagrees
-           with both Metax and replication.
-
-        e. Project E will have no modifications of any kind, and therefore should not have any errors
-           reported of any kind.
-
-        3. Active project listings will be tested with the following variations:
-
-        a. An active project listing will be generated with the START timestamp and the script output
-           to include all projects A, B, C, D and E.
-
-        b. An active project listing will be generated with the INITIALIZED timestamp and the script output
-           verified to include the projects A, B, C, and D but not E.
-
-        c. An active project listing will be generated with the MODIFIED timestamp and the script output
-           verified to include none of the projects A, B, C, D or E.
-
-        4. All projects A, B, C, D, and E will be audited with the following variations and results
-           checked for correctness, that the report files exist and have the correct status, that all
-           expected errors are reported correctly, and no other errors are reported, and that project E
-           has no errors reported for any variation.
-        
-        a. Projects will be audited with the --timestamps parameter and no restrictions (exhaustive audit).
-
-        b. Projects will be audited with --staging --timestamps parameters, limiting checks to files
-           in the staging area.
-
-        c. Projects will be audited with --frozen --timestamps parameters, limiting checks to files
-           in the frozen area.
-
-        d. Projects will be audited with --changed-since START --timestamps, limiting checks to files
-           uploaded or frozen since the START timestamp, and their ancestor folders.
-
-        e. Projects will be audited with --changed-since INITIALIZED --timestamps, limiting checks to files
-           uploaded or frozen since the INITIALIZED timestamp, and their ancestor folders.
-
-        f. Projects will be audited with --changed-since MODIFIED --timestamps, limiting checks to files
-           uploaded or frozen since the MODIFIED timestamp, and their ancestor folders, verifying no errors
-           reported for any projects.
-
-        5. Projects A, B, C, and D will be fully repaired and then re-audited with the --timestamps parameter
-           and no restrictions (exhaustive audit), and results checked to ensure correct node counts and verifying
-           no errors reported for any projects.
-
-        Note: no testing of the emailing functionality will be done, only the correctness of the
-        auditing process and reported results.
-        """
+        pso_user_a = ("PSO_test_project_a", self.config["PROJECT_USER_PASS"])
+        pso_user_b = ("PSO_test_project_b", self.config["PROJECT_USER_PASS"])
 
         test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
         test_user_b = ("test_user_b", self.config["TEST_USER_PASS"])
@@ -299,10 +376,12 @@ class TestAuditing(unittest.TestCase):
         cur = conn.cursor()
 
         # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
 
         print("--- Modifying state of test project A")
 
-        print("(freezing folder /testdata/2017-08/Experiment_1/baseline in project A)")
+        print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -359,7 +438,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project B")
 
-        print("(freezing folder /testdata/2017-08/Experiment_1/baseline in project B)")
+        print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -387,10 +466,9 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node size")
 
         print("(changing modified timestamp of Nextcloud file node /testdata/2017-08/Experiment_1/baseline/test04.dat in frozen area)")
-        # 1500000000 = "2017-07-14T02:40:00Z"
         pathname = "files/test_project_b/testdata/2017-08/Experiment_1/baseline/test04.dat"
         cur.execute("UPDATE %sfilecache SET mtime = %d WHERE storage = %d AND path = '%s'"
-                    % (self.config["DBTABLEPREFIX"], 1500000000, storage_id_b, pathname))
+                    % (self.config["DBTABLEPREFIX"], invalid_timestamp_seconds, storage_id_b, pathname))
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
 
@@ -398,7 +476,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project C")
 
-        print("(freezing folder /testdata/2017-08/Experiment_1/baseline in project C)")
+        print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -473,7 +551,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project D")
 
-        print("(freezing folder /testdata/2017-08/Experiment_1/baseline in project D)")
+        print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -619,7 +697,7 @@ class TestAuditing(unittest.TestCase):
             self.config["START"]
         )
         try:
-            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding)
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding)
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
@@ -645,7 +723,7 @@ class TestAuditing(unittest.TestCase):
             self.config["INITIALIZED"]
         )
         try:
-            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding)
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding)
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
@@ -671,7 +749,7 @@ class TestAuditing(unittest.TestCase):
             self.config["MODIFIED"]
         )
         try:
-            output = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding)
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding)
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
@@ -695,8 +773,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project A and checking results")
 
         report_data = self.audit_project("test_project_a", "ERR")
-
         report_pathname_a = report_data["reportPathname"]
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 97)
@@ -765,6 +846,10 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing staging area of project A and checking results")
 
         report_data = self.audit_project("test_project_a", "ERR", area="staging")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertFalse(report_data.get('auditFrozen'), True)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 93)
@@ -799,6 +884,10 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing frozen area of project A and checking results")
 
         report_data = self.audit_project("test_project_a", "ERR", area="frozen")
+        self.assertFalse(report_data.get('auditStaging'), True)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 4)
@@ -833,6 +922,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project A after start of tests and checking results")
 
         report_data = self.audit_project("test_project_a", "ERR", since=self.config['START'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 95)
@@ -864,6 +958,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project A after initialization and checking results")
 
         report_data = self.audit_project("test_project_a", "ERR", since=self.config['INITIALIZED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 6)
@@ -895,6 +994,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project A after modifications and checking results")
 
         report_data = self.audit_project("test_project_a", "OK", since=self.config['MODIFIED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -928,6 +1032,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project B and checking results")
 
         report_data = self.audit_project("test_project_b", "ERR")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         report_pathname_b = report_data["reportPathname"]
 
@@ -984,11 +1093,16 @@ class TestAuditing(unittest.TestCase):
         nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
         self.assertEqual(nextcloud.get("type"), "file")
-        self.assertEqual(nextcloud.get("modified"), "2017-07-14T02:40:00Z")
+        self.assertEqual(nextcloud.get("modified"), invalid_timestamp)
 
         print("--- Auditing staging area of project B and checking results")
 
         report_data = self.audit_project("test_project_b", "OK", area="staging")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertFalse(report_data.get('auditFrozen'), True)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 98)
@@ -1020,6 +1134,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing frozen area of project B and checking results")
 
         report_data = self.audit_project("test_project_b", "ERR", area="frozen")
+        self.assertFalse(report_data.get('auditStaging'), True)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 11)
@@ -1054,6 +1173,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project B after start of tests and checking results")
 
         report_data = self.audit_project("test_project_b", "ERR", since=self.config['START'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 109)
@@ -1085,6 +1209,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project B after initialization and checking results")
 
         report_data = self.audit_project("test_project_b", "ERR", since=self.config['INITIALIZED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1116,6 +1245,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project B after modifications and checking results")
 
         report_data = self.audit_project("test_project_b", "OK", since=self.config['MODIFIED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1149,6 +1283,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project C and checking results")
 
         report_data = self.audit_project("test_project_c", "ERR")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         report_pathname_c = report_data["reportPathname"]
 
@@ -1183,7 +1322,7 @@ class TestAuditing(unittest.TestCase):
             self.fail(str(error))
         self.assertEqual(len(nodes), report_data['invalidNodeCount'])
 
-        # Verify all three invalid node error messages...
+        # Verify all invalid node error messages...
 
         print("Verify correct error report of Nextcloud file type conflict with filesystem folder")
         node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test01.dat")
@@ -1226,6 +1365,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing staging area of project C and checking results")
 
         report_data = self.audit_project("test_project_c", "ERR", area="staging")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertFalse(report_data.get('auditFrozen'), True)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 98)
@@ -1260,6 +1404,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing frozen area of project C and checking results")
 
         report_data = self.audit_project("test_project_c", "ERR", area="frozen")
+        self.assertFalse(report_data.get('auditStaging'), True)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 11)
@@ -1294,6 +1443,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project C after start of tests and checking results")
 
         report_data = self.audit_project("test_project_c", "ERR", since=self.config['START'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 109)
@@ -1325,6 +1479,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project C after initialization and checking results")
 
         report_data = self.audit_project("test_project_c", "ERR", since=self.config['INITIALIZED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1356,6 +1515,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project C after modifications and checking results")
 
         report_data = self.audit_project("test_project_c", "OK", since=self.config['MODIFIED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1392,6 +1556,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project D and checking results")
 
         report_data = self.audit_project("test_project_d", "ERR")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         report_pathname_d = report_data["reportPathname"]
 
@@ -1411,10 +1580,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("invalidNodeCount"), 6)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 17)
+        self.assertEqual(report_data.get("errorNodeCount"), 19)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 16)
+        self.assertEqual(report_data.get("errorCount"), 18)
 
         print("Verify correct oldest and newest dates")
         self.assertIsNotNone(report_data.get("oldest"))
@@ -1434,6 +1603,8 @@ class TestAuditing(unittest.TestCase):
         errors = node.get("errors")
         self.assertIsNotNone(errors)
         self.assertTrue("Node does not exist in IDA" in errors)
+        self.assertTrue("Node does not exist in Nextcloud" in errors)
+        self.assertTrue("Node does not exist in filesystem" in errors)
 
         print("Verify correct error report of frozen file known to IDA but missing from Metax")
         node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test02.dat")
@@ -1449,8 +1620,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(errors)
         self.assertTrue("Node size different for IDA and Metax" in errors)
 
-        print("Verify correct error report of IDA file checksum conflict with Metax")
+        print("Verify correct error report of IDA file checksum conflict with both filesystem and Metax")
         self.assertTrue("Node checksum different for IDA and Metax" in errors)
+        self.assertTrue("Node checksum different for Nextcloud and IDA" in errors)
+        self.assertTrue("Node checksum different for filesystem and IDA" in errors)
 
         print("Verify correct error report of IDA file pid conflict with Metax")
         self.assertTrue("Node pid different for IDA and Metax" in errors)
@@ -1485,6 +1658,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing staging area of project D and checking results")
 
         report_data = self.audit_project("test_project_d", "OK", area="staging")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertFalse(report_data.get('auditFrozen'), True)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 100)
@@ -1519,6 +1697,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing frozen area of project D and checking results")
 
         report_data = self.audit_project("test_project_d", "ERR", area="frozen")
+        self.assertFalse(report_data.get('auditStaging'), True)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 10)
@@ -1536,10 +1719,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("invalidNodeCount"), 6)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 17)
+        self.assertEqual(report_data.get("errorNodeCount"), 19)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 16)
+        self.assertEqual(report_data.get("errorCount"), 18)
 
         print("Verify correct oldest and newest dates")
         self.assertIsNotNone(report_data.get("oldest"))
@@ -1553,6 +1736,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project D after start of tests and checking results")
 
         report_data = self.audit_project("test_project_d", "ERR", since=self.config['START'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 110)
@@ -1584,6 +1772,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project D after initialization and checking results")
 
         report_data = self.audit_project("test_project_d", "ERR", since=self.config['INITIALIZED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1615,6 +1808,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project D after modifications and checking results")
 
         report_data = self.audit_project("test_project_d", "OK", since=self.config['MODIFIED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1648,6 +1846,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing project E and checking results")
 
         report_data = self.audit_project("test_project_e", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 107)
@@ -1679,6 +1882,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing staging area of project E and checking results")
 
         report_data = self.audit_project("test_project_e", "OK", area="staging")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertFalse(report_data.get('auditFrozen'), True)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 105)
@@ -1710,6 +1918,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing frozen area of project E and checking results")
 
         report_data = self.audit_project("test_project_e", "OK", area="frozen")
+        self.assertFalse(report_data.get('auditStaging'), True)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 2)
@@ -1741,6 +1954,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project E after start of tests and checking results")
 
         report_data = self.audit_project("test_project_e", "OK", since=self.config['START'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 107)
@@ -1772,6 +1990,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project E after initialization and checking results")
 
         report_data = self.audit_project("test_project_e", "OK", since=self.config['INITIALIZED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1803,6 +2026,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Auditing changes in project E after modifications and checking results")
 
         report_data = self.audit_project("test_project_e", "OK", since=self.config['MODIFIED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1836,52 +2064,34 @@ class TestAuditing(unittest.TestCase):
         print("--- Repairing projects A, B, C, and D for re-auditing")
 
         print("(repairing project A)")
-        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
         self.wait_for_pending_actions("test_project_a", test_user_a)
         self.check_for_failed_actions("test_project_a", test_user_a)
 
-        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
-        try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-
         print("(repairing project B)")
-        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
         self.wait_for_pending_actions("test_project_b", test_user_b)
         self.check_for_failed_actions("test_project_b", test_user_b)
 
-        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
-        try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-
         print("(repairing project C)")
-        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_c" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
         self.wait_for_pending_actions("test_project_c", test_user_c)
         self.check_for_failed_actions("test_project_c", test_user_c)
-
-        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
-        try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
 
         print("(repairing project D)")
 
@@ -1900,7 +2110,7 @@ class TestAuditing(unittest.TestCase):
         self.assertFalse(path.exists())
         cmd = "sudo -u %s touch %s" % (self.config["HTTPD_USER"], pathname)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except Exception as error:
             self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
         self.assertTrue(path.exists())
@@ -1915,20 +2125,14 @@ class TestAuditing(unittest.TestCase):
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
 
-        cmd = "sudo -u %s %s/utils/admin/repair-project test_project_d" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
         self.wait_for_pending_actions("test_project_d", test_user_d)
         self.check_for_failed_actions("test_project_d", test_user_d)
-
-        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
-        try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
 
         self.remove_report(report_pathname_a)
         self.remove_report(report_pathname_b)
@@ -1938,6 +2142,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Re-auditing project A and checking results")
 
         report_data = self.audit_project("test_project_a", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 97)
@@ -1969,6 +2178,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Re-auditing project B and checking results")
 
         report_data = self.audit_project("test_project_b", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 109)
@@ -2000,6 +2214,11 @@ class TestAuditing(unittest.TestCase):
         print("--- Re-auditing project C and checking results")
 
         report_data = self.audit_project("test_project_c", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 109)
@@ -2038,6 +2257,11 @@ class TestAuditing(unittest.TestCase):
         # report and thereafter should get no errors reported for project D.
 
         report_data = self.audit_project("test_project_d", "ERR")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 110)
@@ -2058,13 +2282,18 @@ class TestAuditing(unittest.TestCase):
 
         cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
-            start = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).strip()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
         self.remove_report(report_pathname_d)
 
         report_data = self.audit_project("test_project_d", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 110)
@@ -2092,6 +2321,474 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("newest"))
 
         self.remove_report(report_data['reportPathname'])
+
+        print("--- Modifying state of test project A for checksum validation during freezing")
+
+        print("(changing cache checksums of three files in staging in folder /testdata/2017-08/Experiment_2/baseline)")
+        data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test01.dat", "checksum": invalid_checksum_uri }
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertEqual(response_data['project'], 'test_project_a')
+        self.assertEqual(response_data['pathname'], 'staging/testdata/2017-08/Experiment_2/baseline/test01.dat')
+        self.assertEqual(response_data['checksum'], invalid_checksum_uri)
+        self.assertIsNotNone(response_data['nodeId'])
+        data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test02.dat", "checksum": invalid_checksum_uri }
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertEqual(response_data['project'], 'test_project_a')
+        self.assertEqual(response_data['pathname'], 'staging/testdata/2017-08/Experiment_2/baseline/test02.dat')
+        self.assertEqual(response_data['checksum'], invalid_checksum_uri)
+        self.assertIsNotNone(response_data['nodeId'])
+        data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test03.dat", "checksum": invalid_checksum_uri }
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertEqual(response_data['project'], 'test_project_a')
+        self.assertEqual(response_data['pathname'], 'staging/testdata/2017-08/Experiment_2/baseline/test03.dat')
+        self.assertEqual(response_data['checksum'], invalid_checksum_uri)
+        self.assertIsNotNone(response_data['nodeId'])
+
+        print("(freezing folder /testdata/2017-08/Experiment_2/baseline)")
+        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2/baseline"}
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        self.wait_for_pending_actions("test_project_a", test_user_a)
+
+        print("--- Verifying freeze action failed due to checksum mismatch")
+
+        actions = self.check_for_failed_actions("test_project_a", test_user_a, should_be_failed = True)
+        assert(len(actions) == 1)
+        action = actions[0]
+        self.assertEqual(action.get('action'), 'freeze')
+        self.assertEqual(action.get('project'), 'test_project_a')
+        self.assertEqual(action.get('user'), 'test_user_a')
+        self.assertEqual(action.get('pathname'), '/testdata/2017-08/Experiment_2/baseline')
+        self.assertIsNotNone(action.get('failed'))
+        self.assertIsNotNone(action.get('error'))
+        self.assertTrue(action['error'].startswith('Files on disk do not match their Nextcloud cache checksums (total: 3):'))
+
+        print("--- Verifying modified state of Project A")
+
+        print("(retrieving inventory for Project A)")
+        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        frozen = inventory.get('frozen')
+        self.assertIsNotNone(frozen)
+        for pathname in [ "/testdata/2017-08/Experiment_2/baseline/test01.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test02.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test03.dat" ]:
+            file = frozen.get(pathname)
+            self.assertIsNotNone(file)
+            self.assertIsNotNone(file.get('frozen'))
+            checksum = file.get('checksum')
+            self.assertIsNotNone(checksum)
+            self.assertEqual(checksum, invalid_checksum_uri)
+            self.assertEqual(checksum, invalid_checksum_uri, "%s %s != %s" % (pathname, checksum, invalid_checksum_uri))
+
+        print("--- Auditing project A and verifying checksum errors reported")
+
+        report_data = self.audit_project("test_project_a", "ERR")
+        report_pathname = report_data["reportPathname"]
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
+        self.assertEqual(report_data.get('invalidNodeCount'), 6)
+        self.assertEqual(report_data.get('errorNodeCount'), 15)
+        self.assertEqual(report_data.get('errorCount'), 3)
+        errors = list(report_data['errors'].keys())
+        self.assertEqual(len(errors), 3)
+        self.assertTrue('Node checksum different for filesystem and Nextcloud' in errors)
+        self.assertTrue('Node checksum missing for IDA' in errors)
+        self.assertTrue('Node does not exist in Metax' in errors)
+
+        print("--- Repairing project A")
+
+        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname)
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        self.wait_for_pending_actions("test_project_a", test_user_a)
+        self.check_for_failed_actions("test_project_a", test_user_a)
+
+        print("--- Auditing project A and verifying no errors are reported")
+
+        report_data = self.audit_project("test_project_a", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
+
+        print("--- Verifying repaired state of Project A")
+
+        print("(retrieving inventory for Project A)")
+        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        frozen = inventory.get('frozen')
+        self.assertIsNotNone(frozen)
+        for pathname in [ "/testdata/2017-08/Experiment_2/baseline/test01.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test02.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test03.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test04.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test05.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/zero_size_file" ]:
+            file = frozen.get(pathname)
+            self.assertIsNotNone(file)
+            self.assertIsNotNone(file.get('frozen'))
+            checksum = file.get('checksum')
+            self.assertIsNotNone(checksum)
+            self.assertNotEqual(checksum, invalid_checksum_uri, pathname)
+            cacheChecksum = file.get('cacheChecksum')
+            self.assertIsNotNone(cacheChecksum)
+            self.assertNotEqual(cacheChecksum, invalid_checksum_uri, pathname)
+
+        # --------------------------------------------------------------------------------
+
+        print("--- Modifying state of test project B for checksum and timestamp option checks")
+
+        print("(freezing folder /testdata/2017-08/Experiment_2/baseline)")
+        data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_2/baseline"}
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        self.wait_for_pending_actions("test_project_b", test_user_b)
+        self.check_for_failed_actions("test_project_b", test_user_b)
+
+        # retrieve PSO storage id for test_project_b
+        cur.execute("SELECT numeric_id from %sstorages WHERE id = 'home::%stest_project_b' LIMIT 1"
+                    % (self.config["DBTABLEPREFIX"], self.config["PROJECT_USER_PREFIX"]))
+        rows = cur.fetchall()
+        if len(rows) != 1:
+            self.fail("Failed to retrieve storage id for test_project_b")
+        storage_id_b = rows[0][0]
+
+        print("(changing checksum in Nextcloud of frozen file /testdata/2017-08/Experiment_2/baseline/test01.dat)")
+        pathname = "files/test_project_b/testdata/2017-08/Experiment_2/baseline/test01.dat"
+        cur.execute("UPDATE %sfilecache SET checksum = '%s' WHERE storage = %d AND path = '%s'"
+                    % (self.config["DBTABLEPREFIX"], invalid_checksum_uri, storage_id_b, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
+
+        print("(changing checksum in IDA of frozen file /testdata/2017-08/Experiment_2/baseline/test02.dat)")
+        pathname = "/testdata/2017-08/Experiment_2/baseline/test02.dat"
+        cur.execute("UPDATE %sida_frozen_file SET checksum = '%s' WHERE project = 'test_project_b' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], invalid_checksum, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file checksum")
+
+        print("(changing checksum in Metax of frozen file /testdata/2017-08/Experiment_2/baseline/test03.dat)")
+        data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_2/baseline/test03.dat"}
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        file_data = response.json()
+        pid = file_data["pid"]
+        if self.config["METAX_API_VERSION"] >= 3:
+            data = [{ "storage_service": "ida", "storage_identifier": pid, "checksum": invalid_checksum_uri }]
+            # TODO: add bearer token header when supported
+            response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], json=data, verify=False)
+        else:
+            data = { "checksum": { "algorithm": "SHA-256", "value": invalid_checksum, "checked": self.config['START'] } }
+            response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, json=data, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("(changing checksum in Nextcloud of staging file /testdata/2017-08/Experiment_2/test04.dat)")
+        pathname = "files/test_project_b+/testdata/2017-08/Experiment_2/test04.dat"
+        cur.execute("UPDATE %sfilecache SET checksum = '%s' WHERE storage = %d AND path = '%s'"
+                    % (self.config["DBTABLEPREFIX"], invalid_checksum_uri, storage_id_b, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
+
+        print("(changing modified timestamp in Nextcloud of frozen file /testdata/2017-08/Experiment_2/baseline/test01.dat)")
+        pathname = "files/test_project_b/testdata/2017-08/Experiment_2/baseline/test01.dat"
+        cur.execute("UPDATE %sfilecache SET mtime = %d WHERE storage = %d AND path = '%s'"
+                    % (self.config["DBTABLEPREFIX"], invalid_timestamp_seconds, storage_id_b, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
+
+        print("(changing modified timestamp in IDA of frozen file /testdata/2017-08/Experiment_2/baseline/test02.dat)")
+        pathname = "/testdata/2017-08/Experiment_2/baseline/test02.dat"
+        cur.execute("UPDATE %sida_frozen_file SET modified = '%s' WHERE project = 'test_project_b' AND pathname = '%s'"
+                    % (self.config["DBTABLEPREFIX"], invalid_timestamp, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file modification timestamp")
+
+        print("(changing modified timestamp in Metax of frozen file /testdata/2017-08/Experiment_2/baseline/test03.dat)")
+        if self.config["METAX_API_VERSION"] >= 3:
+            data = [{ "storage_service": "ida", "storage_identifier": pid, "modified": invalid_timestamp }]
+            # TODO: add bearer token header when supported
+            response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], json=data, verify=False)
+        else:
+            data = { "file_modified": invalid_timestamp }
+            response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, json=data, verify=False)
+        self.assertEqual(response.status_code, 200)
+
+        print("(changing modified timestamp in Nextcloud of staging file /testdata/2017-08/Experiment_2/test04.dat)")
+        pathname = "files/test_project_b+/testdata/2017-08/Experiment_2/test04.dat"
+        cur.execute("UPDATE %sfilecache SET mtime = %d WHERE storage = %d AND path = '%s'"
+                    % (self.config["DBTABLEPREFIX"], invalid_timestamp_seconds, storage_id_b, pathname))
+        conn.commit()
+        self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
+
+        time.sleep(5)
+
+        print("--- Verifying modified state of Project B")
+
+        print("(retrieving inventory for Project B)")
+        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        frozen = inventory.get('frozen')
+        staging = inventory.get('staging')
+        self.assertIsNotNone(frozen)
+        self.assertIsNotNone(staging)
+
+        pathname = "/testdata/2017-08/Experiment_2/baseline/test01.dat"
+        file = frozen.get(pathname)
+        self.assertIsNotNone(file)
+        self.assertIsNotNone(file.get('frozen'))
+        checksum = file.get('checksum')
+        self.assertIsNotNone(checksum)
+        self.assertNotEqual(checksum, invalid_checksum_uri)
+        cacheChecksum = file.get('cacheChecksum')
+        self.assertIsNotNone(cacheChecksum)
+        self.assertEqual(cacheChecksum, invalid_checksum_uri)
+        modified = file.get('modified')
+        self.assertIsNotNone(modified)
+        self.assertNotEqual(modified, invalid_timestamp)
+        cacheModified = file.get('cacheModified')
+        self.assertIsNotNone(cacheModified)
+        self.assertEqual(cacheModified, invalid_timestamp)
+
+        pathname = "/testdata/2017-08/Experiment_2/baseline/test02.dat"
+        file = frozen.get(pathname)
+        self.assertIsNotNone(file)
+        self.assertIsNotNone(file.get('frozen'))
+        checksum = file.get('checksum')
+        self.assertIsNotNone(checksum)
+        self.assertEqual(checksum, invalid_checksum_uri)
+        cacheChecksum = file.get('cacheChecksum')
+        self.assertIsNotNone(cacheChecksum)
+        self.assertNotEqual(cacheChecksum, invalid_checksum_uri)
+        modified = file.get('modified')
+        self.assertIsNotNone(modified)
+        self.assertEqual(modified, invalid_timestamp)
+        cacheModified = file.get('cacheModified')
+        self.assertIsNotNone(cacheModified)
+        self.assertNotEqual(cacheModified, invalid_timestamp)
+
+        pathname = "/testdata/2017-08/Experiment_2/baseline/test03.dat"
+        file = frozen.get(pathname)
+        self.assertIsNotNone(file)
+        self.assertIsNotNone(file.get('frozen'))
+        checksum = file.get('checksum')
+        self.assertIsNotNone(checksum)
+        self.assertNotEqual(checksum, invalid_checksum_uri)
+        cacheChecksum = file.get('cacheChecksum')
+        self.assertIsNotNone(cacheChecksum)
+        self.assertNotEqual(cacheChecksum, invalid_checksum_uri)
+        modified = file.get('modified')
+        self.assertIsNotNone(modified)
+        self.assertNotEqual(modified, invalid_timestamp)
+        cacheModified = file.get('cacheModified')
+        self.assertIsNotNone(cacheModified)
+        self.assertNotEqual(cacheModified, invalid_timestamp)
+
+        pathname = "/testdata/2017-08/Experiment_2/test04.dat"
+        file = staging.get(pathname)
+        self.assertIsNotNone(file)
+        self.assertIsNone(file.get('frozen'))
+        checksum = file.get('checksum')
+        self.assertIsNotNone(checksum)
+        self.assertEqual(checksum, invalid_checksum_uri)
+        cacheChecksum = file.get('cacheChecksum')
+        self.assertIsNone(cacheChecksum)
+        modified = file.get('modified')
+        self.assertIsNotNone(modified)
+        self.assertEqual(modified, invalid_timestamp)
+        cacheModified = file.get('cacheModified')
+        self.assertIsNone(cacheModified)
+
+        if self.config["METAX_API_VERSION"] >= 3:
+            # TODO: add bearer token header when supported
+            response = requests.get("%s/files?storage_service=ida&storage_identifier=%s" % (self.config["METAX_API_ROOT_URL"], pid), verify=False)
+        else:
+            response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+        self.assertEqual(response.status_code, 200)
+        file = response.json()
+        self.assertIsNotNone(file)
+        if self.config["METAX_API_VERSION"] >= 3:
+            self.assertEqual(file['checksum'], invalid_checksum_uri)
+            self.assertEqual(normalize_timestamp(file['modified']), invalid_timestamp)
+        else:
+            self.assertEqual(file['checksum']['value'], invalid_checksum)
+            self.assertEqual(normalize_timestamp(file['file_modified']), invalid_timestamp)
+
+        print("--- Auditing project B with neither checksum nor timestamp options and verifying no errors reported")
+
+        report_data = self.audit_project("test_project_b", "OK", checksums = False, timestamps = False)
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertFalse(report_data.get('auditChecksums'), True)
+        self.assertFalse(report_data.get('auditTimestamps'), True)
+        self.assertEqual(report_data.get('invalidNodeCount'), 0)
+        self.assertEqual(report_data.get('errorNodeCount'), 0)
+        self.assertEqual(report_data.get('errorCount'), 0)
+        self.assertIsNone(report_data.get('changedSince'))
+
+        print("--- Auditing project B with --checksums parameter and verifying only checksum errors are reported")
+
+        report_data = self.audit_project("test_project_b", "ERR", checksums = True, timestamps = False)
+        report_pathname = report_data["reportPathname"]
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertFalse(report_data.get('auditTimestamps'), True)
+        self.assertIsNone(report_data.get('changedSince'))
+        self.assertEqual(report_data.get('invalidNodeCount'), 4)
+        self.assertEqual(report_data.get('errorNodeCount'), 10)
+        self.assertEqual(report_data.get('errorCount'), 6)
+        errors = list(report_data['errors'].keys())
+        self.assertEqual(len(errors), 6)
+        self.assertTrue('Node checksum different for IDA and Metax' in errors)
+        self.assertTrue('Node checksum different for Nextcloud and IDA' in errors)
+        self.assertTrue('Node checksum different for Nextcloud and Metax' in errors)
+        self.assertTrue('Node checksum different for filesystem and IDA' in errors)
+        self.assertTrue('Node checksum different for filesystem and Metax' in errors)
+        self.assertTrue('Node checksum different for filesystem and Nextcloud' in errors)
+
+        print("--- Auditing project B with --timestamp parameter and verifying only timestamp errors are reported")
+
+        report_data = self.audit_project("test_project_b", "ERR", checksums = False, timestamps = True)
+        report_pathname = report_data["reportPathname"]
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertFalse(report_data.get('auditChecksums'), True)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
+        self.assertEqual(report_data.get('invalidNodeCount'), 4)
+        self.assertEqual(report_data.get('errorNodeCount'), 10)
+        self.assertEqual(report_data.get('errorCount'), 6)
+        errors = list(report_data['errors'].keys())
+        self.assertEqual(len(errors), 6)
+        self.assertTrue('Node modification timestamp different for IDA and Metax' in errors)
+        self.assertTrue('Node modification timestamp different for Nextcloud and IDA' in errors)
+        self.assertTrue('Node modification timestamp different for Nextcloud and Metax' in errors)
+        self.assertTrue('Node modification timestamp different for filesystem and IDA' in errors)
+        self.assertTrue('Node modification timestamp different for filesystem and Metax' in errors)
+        self.assertTrue('Node modification timestamp different for filesystem and Nextcloud' in errors)
+
+        print("--- Auditing project B with --full parameter and verifying both checksum and timestamp errors are reported")
+
+        report_data = self.audit_project("test_project_b", "ERR")
+        report_pathname = report_data["reportPathname"]
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
+        self.assertEqual(report_data.get('invalidNodeCount'), 4)
+        self.assertEqual(report_data.get('errorNodeCount'), 20)
+        self.assertEqual(report_data.get('errorCount'), 12)
+        errors = list(report_data['errors'].keys())
+        self.assertEqual(len(errors), 12)
+        self.assertTrue('Node checksum different for IDA and Metax' in errors)
+        self.assertTrue('Node checksum different for Nextcloud and IDA' in errors)
+        self.assertTrue('Node checksum different for Nextcloud and Metax' in errors)
+        self.assertTrue('Node checksum different for filesystem and IDA' in errors)
+        self.assertTrue('Node checksum different for filesystem and Metax' in errors)
+        self.assertTrue('Node checksum different for filesystem and Nextcloud' in errors)
+        self.assertTrue('Node modification timestamp different for IDA and Metax' in errors)
+        self.assertTrue('Node modification timestamp different for Nextcloud and IDA' in errors)
+        self.assertTrue('Node modification timestamp different for Nextcloud and Metax' in errors)
+        self.assertTrue('Node modification timestamp different for filesystem and IDA' in errors)
+        self.assertTrue('Node modification timestamp different for filesystem and Metax' in errors)
+        self.assertTrue('Node modification timestamp different for filesystem and Nextcloud' in errors)
+
+        print("--- Repairing project B")
+
+        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname)
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        self.wait_for_pending_actions("test_project_b", test_user_b)
+        self.check_for_failed_actions("test_project_b", test_user_b)
+
+        print("--- Auditing project with --full parameter and verifying no errors are reported")
+
+        report_data = self.audit_project("test_project_b", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('invalidNodeCount'), 0)
+        self.assertEqual(report_data.get('errorNodeCount'), 0)
+        self.assertEqual(report_data.get('errorCount'), 0)
+        self.assertIsNone(report_data.get('changedSince'))
+
+        print("--- Verifying repaired state of Project B")
+
+        print("(retrieving inventory for Project B)")
+        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b, verify=False)
+        self.assertEqual(response.status_code, 200)
+        inventory = response.json()
+        frozen = inventory.get('frozen')
+        staging = inventory.get('staging')
+        self.assertIsNotNone(frozen)
+        self.assertIsNotNone(staging)
+        for pathname in [ "/testdata/2017-08/Experiment_2/baseline/test01.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test02.dat",
+                          "/testdata/2017-08/Experiment_2/baseline/test03.dat" ]:
+            file = frozen.get(pathname)
+            self.assertIsNotNone(file)
+            self.assertIsNotNone(file.get('frozen'))
+            checksum = file.get('checksum')
+            self.assertIsNotNone(checksum)
+            self.assertNotEqual(checksum, invalid_checksum_uri, pathname)
+            self.assertNotEqual(checksum, invalid_checksum, pathname)
+            modified = file.get('modified')
+            self.assertIsNotNone(modified)
+            self.assertNotEqual(modified, invalid_timestamp, pathname)
+        pathname = "/testdata/2017-08/Experiment_2/test04.dat"
+        file = staging.get(pathname)
+        self.assertIsNotNone(file)
+        self.assertIsNone(file.get('frozen'))
+        checksum = file.get('checksum')
+        self.assertIsNotNone(checksum)
+        self.assertNotEqual(checksum, invalid_checksum_uri)
+        self.assertNotEqual(checksum, invalid_checksum)
+        modified = file.get('modified')
+        self.assertIsNotNone(modified)
+        self.assertNotEqual(modified, invalid_timestamp)
+
+        if self.config["METAX_API_VERSION"] >= 3:
+            # TODO: add bearer token header when supported
+            response = requests.get("%s/files?storage_service=ida&storage_identifier=%s" % (self.config["METAX_API_ROOT_URL"], pid), verify=False)
+        else:
+            response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+        self.assertEqual(response.status_code, 200)
+        file = response.json()
+        self.assertIsNotNone(file)
+        if self.config["METAX_API_VERSION"] >= 3:
+            self.assertNotEqual(file['checksum'], invalid_checksum_uri)
+            self.assertNotEqual(normalize_timestamp(file['modified']), invalid_timestamp)
+        else:
+            self.assertNotEqual(file['checksum']['value'], invalid_checksum)
+            self.assertNotEqual(normalize_timestamp(file['file_modified']), invalid_timestamp)
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

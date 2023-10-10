@@ -9,3 +9,4 @@ CREATE INDEX oc_ida_action_storage_idx ON oc_ida_action (storage) USING BTREE; -
 CREATE INDEX oc_ida_action_completed_idx ON oc_ida_action (completed) USING BTREE; -- WHERE completed IS NULL;
 CREATE INDEX oc_ida_action_failed_idx ON oc_ida_action (failed) USING BTREE; -- WHERE failed IS NULL;
 CREATE INDEX oc_ida_action_cleared_idx ON oc_ida_action (cleared) USING BTREE; -- WHERE cleared IS NULL;
+CREATE INDEX oc_filecache_storage_idx ON oc_filecache (storage, mimetype, checksum) USING BTREE;

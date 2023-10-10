@@ -62,10 +62,3 @@ fi
 if [ "$DBPASSWORD" = "" ]; then
     errorExit "The variable DBPASSWORD must be defined."
 fi
-
-START="$TIMESTAMP"
-
-if [ "$DEBUG" = "true" ]; then
-    echo "--- $SCRIPT ---"
-    echo "START:         $START"
-fi

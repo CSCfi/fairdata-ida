@@ -47,6 +47,7 @@ import psycopg2
 from pathlib import Path
 from datetime import datetime, timezone
 from time import strftime
+from utils import *
 
 # Use UTC
 os.environ["TZ"] = "UTC"
@@ -108,9 +109,7 @@ def main():
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PROJECT = sys.argv[2]
 
-        #config.DEBUG = 'true' # TEMP HACK
-
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
             sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)
@@ -140,7 +139,7 @@ def main():
                  WHERE userid = '%s%s' AND configkey = 'quota' \
                  LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -151,14 +150,14 @@ def main():
 
         quota = rows[0][0]
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUOTA: %s\n" % quota)
 
         # Note: Quotas are defined in gibibytes though Nextcloud uses the incorrect unit designator 'GB'
 
         quota_bytes = int(hr_to_bytes(quota))
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUOTA: %d\n" % quota_bytes)
 
         # Retrieve PSO storage id for project
@@ -167,7 +166,7 @@ def main():
                  WHERE id = 'home::%s%s' \
                  LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -178,7 +177,7 @@ def main():
 
         storage_id = rows[0][0]
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("STORAGE_ID:    %d\n" % (storage_id))
 
         # Calculate total number of records for all files in frozen area
@@ -188,7 +187,7 @@ def main():
                  AND mimetype != 2 \
                  AND path LIKE 'files/%s/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -206,7 +205,7 @@ def main():
                  AND mimetype != 2 \
                  AND path LIKE 'files/%s/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -224,7 +223,7 @@ def main():
                  AND mimetype != 2 \
                  AND path LIKE 'files/%s+/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -242,7 +241,7 @@ def main():
                  AND mimetype != 2 \
                  AND path LIKE 'files/%s+/%%' " % (config.DBTABLEPREFIX, storage_id, config.PROJECT)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -258,7 +257,7 @@ def main():
         query = "SELECT MAX(mtime) FROM %sfilecache \
                  WHERE storage = %d" % (config.DBTABLEPREFIX, storage_id)
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
 
         cur.execute(query)
@@ -318,23 +317,6 @@ def main():
             sys.stderr.write("ERROR: %s\n" % str(logerror))
         sys.stderr.write("ERROR: %s\n" % str(error))
         sys.exit(1)
-
-
-def load_configuration(pathname):
-    """
-    Load and return as a dict variables from the main ida configuration file
-    """
-    module_name = "config.variables"
-    try:
-        # python versions >= 3.5
-        module_spec = importlib.util.spec_from_file_location(module_name, pathname)
-        config = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(config)
-    except AttributeError:
-        # python versions < 3.5
-        from importlib.machinery import SourceFileLoader
-        config = SourceFileLoader(module_name, pathname).load_module()
-    return config
 
 
 if __name__ == "__main__":

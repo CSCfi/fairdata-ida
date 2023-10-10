@@ -31,6 +31,7 @@ import sys
 import pika
 import psutil
 import requests
+import urllib.parse
 from contextlib import suppress
 from hashlib import sha256
 from json import loads as json_loads, dumps as json_dumps
@@ -418,19 +419,26 @@ class GenericAgent():
 
             if updated_only:
                 # Only update nodes which are flagged as having been updated
-                try:
-                    update_node = node['_updated']
-                except:
-                    update_node = False
+                update_node = node.get('_updated', False)
 
             if update_node:
+
+                # Update IDA frozen file record
                 data = {}
                 for field in fields:
                     data[field] = node[field]
                 response = self._ida_api_request('post', '/files/%s' % node['pid'], data=data)
                 if response.status_code not in (200, 201, 204):
-                    error_msg = 'IDA API returned an error when trying to update node pid %s. Error message from API: %s'
+                    error_msg = 'IDA API returned an error when trying to update frozen file record for pid %s. Error message from API: %s'
                     raise Exception(error_msg % (node['pid'], str(response.content)))
+
+                # If a checksum mismatch was reported for a repair action, repair the checksum in the Nextcloud file cache
+                if node.get('_checksum_mismatch', False):
+                    data = { 'pathname': 'frozen%s' % node['pathname'], 'checksum': node['checksum'] }
+                    response = self._ida_api_request('post', '/repairCacheChecksum', data=data)
+                    if response.status_code not in (200, 201, 204):
+                        error_msg = 'IDA API returned an error when trying to update cache checksum for pid %s. Error message from API: %s'
+                        raise Exception(error_msg % (node['pid'], str(response.content)))
 
 
     def _sub_action_processed(self, action, sub_action_name):
@@ -665,6 +673,21 @@ class GenericAgent():
             % (method, url, self._current_http_request_retry))
 
 
+    def _get_cache_checksum(self, pathname):
+        """
+        Retrieve Nextcloud cache checksum, if any, for frozen file with specified relative pathname
+        """
+
+        response = self._ida_api_request('get', '/retrieveCacheChecksum?pathname=%s' % urllib.parse.quote('frozen%s' % pathname))
+        if response.status_code not in (200, 201, 204):
+            return None
+        node = response.json()
+        checksum = node.get('checksum', None)
+        if checksum is not None and isinstance(checksum, str) and checksum.strip() != '':
+            return checksum.lower()
+        return None
+
+
     def _get_file_checksum(self, file_path, block_size=65536):
         """
         Generate an SHA-256 checksum for the specified file
@@ -673,7 +696,10 @@ class GenericAgent():
         with open(file_path, 'rb') as f:
             for block in iter(lambda: f.read(block_size), b''):
                 sha.update(block)
-        return sha.hexdigest().lower()
+        checksum = sha.hexdigest()
+        if checksum is not None and isinstance(checksum, str) and checksum.strip() != '':
+            return checksum.lower()
+        return None
 
 
     def _get_checksum_value(self, checksum):
@@ -681,10 +707,12 @@ class GenericAgent():
         Return a plain checksum value, given either a SHA-256 checksum URI or a plain checksum value
         Normalize returned string to lowercase
         """
-        checksum = checksum.lower()
-        if checksum.startswith('sha256:'):
-            return checksum[7:]
-        return checksum
+        if checksum is not None and isinstance(checksum, str) and checksum.strip() != '':
+            checksum = checksum.lower()
+            if checksum.startswith('sha256:'):
+                return checksum[7:]
+            return checksum
+        return None
 
 
     def _get_checksum_uri(self, checksum):
@@ -692,10 +720,12 @@ class GenericAgent():
         Return an SHA-256 checksum URI, given either a plain SHA-256 checksum value or a SHA-256 checksum URI
         Normalize returned string to lowercase
         """
-        checksum = checksum.lower()
-        if checksum.startswith('sha256:'):
-            return checksum
-        return 'sha256:%s' % checksum
+        if checksum is not None and isinstance(checksum, str) and checksum.strip() != '':
+            checksum = checksum.lower()
+            if checksum.startswith('sha256:'):
+                return checksum
+            return 'sha256:%s' % checksum
+        return None
 
 
     def _is_offline(self):

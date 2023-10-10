@@ -68,8 +68,6 @@ else
     exit 1
 fi
 
-#DEBUG="true" # TEMP HACK
-
 # --------------------------------------------------------------------------------
 # Process command line options
 
@@ -116,8 +114,6 @@ if [ "$DEBUG" = "true" ]; then
     echo "AUDIT_ARGS: $AUDIT_ARGS"
     echo "INTERNAL:   $INTERNAL_PROJECTS"
 fi
-
-exit
 
 for PROJECT in $PROJECTS; do
     INTERNAL=`echo " $INTERNAL_PROJECTS " | grep " $PROJECT "`

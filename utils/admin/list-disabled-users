@@ -39,18 +39,16 @@ fi
 
 #--------------------------------------------------------------------------------
 
-echo "Disabled users:"
-
-USERS=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
+USERS=`$CURL_GET $ADMIN_CREDENTIALS "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
        grep "<element>" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u`
 
 for USER in $USERS; do 
 
-    ENABLED=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" |
+    ENABLED=`$CURL_GET $ADMIN_CREDENTIALS "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" |
              grep "<enabled>" | sed -e 's/^.*<enabled>//' | sed -e 's/<.*$//'`
 
-    if [ "$ENABLED" != "true" ]; then
-        echo "  $USER"
+    if [ "$ENABLED" != "1" ] && [ "$ENABLED" != "true" ]; then
+        echo "$USER"
     fi
 done
 

@@ -32,15 +32,28 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT project [ --changed-since date[time] ] [ ( --staging | --frozen ) ] [ --timestamps ] [ ( --report | --report-errors ) [ email ] ]
+Usage: $SCRIPT project [ OPTIONS ]
        $SCRIPT -h
 
+       OPTIONS:
+
+       --full
+       --changed-since date[time] 
+       ( --staging | --frozen ) 
+       --timestamps 
+       --checksums 
+       ( --report | --report-errors ) [ email ] 
+
+       WHERE:
+
        project          the project to be audited
+       --full           full audit, overrides any options --changed-since --staging --frozen; implies --timestamps --checksums
        --changed-since  auditing will be limited to files uploaded or frozen since the specified date[time]
        date[time]       an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/
        --staging        auditing will be limited to files in the staging area
        --frozen         auditing will be limited to files in the frozen area
        --timestamps     comparisons will be made between disk timestamps and database values
+       --checksums      comparisons will be made between new filesystem checksum and recorded cache, IDA, and Metax checksums
        --report         auditing results will be emailed
        --report-errors  auditing results will be emailed, but only if errors are detected
        email            the email address where audit reports should be sent (defaults to configured recipient list)
@@ -64,22 +77,41 @@ else
     exit 1
 fi
 
-#DEBUG="true" # TEMP HACK
-
 #--------------------------------------------------------------------------------
 
 REPORT_REQ=""
 RECIPIENTS=""
 FILE_AREA=""
 SINCE=""
-CHECK_TIMESTAMPS=""
+FULL_AUDIT=""
+AUDIT_TIMESTAMPS=""
+AUDIT_CHECKSUMS=""
 
 shift # got PROJECT from first argument via init_audit_script.sh
 
 while [ "$1" ]; do
 
     case "$1" in
+        "--full")
+            if [ "$SINCE" ]; then
+                echo "Only one of --full or --changed-since is allowed"
+                exit 1
+            fi
+            if [ "$FILE_AREA" ]; then
+                echo "Only one of --full or $FILE_AREA is allowed"
+                exit 1
+            fi
+            FULL_AUDIT="$1"
+            AUDIT_TIMESTAMPS=""
+            AUDIT_CHECKSUMS=""
+            SINCE=""
+            FILE_AREA=""
+            ;;
         "--changed-since")
+            if [ "$FULL_AUDIT" ]; then
+                echo "Only one of --full or --changed-since is allowed"
+                exit 1
+            fi
             if [ "$2" = "" ]; then
                 echo "Missing date[time] argument"
                 exit 1
@@ -95,6 +127,10 @@ while [ "$1" ]; do
             shift
             ;;
         "--staging" | "--frozen")
+            if [ "$FULL_AUDIT" ]; then
+                echo "Only one of --full or $1 is allowed"
+                exit 1
+            fi
             if [ "$FILE_AREA" ]; then
                 echo "Only one of --staging or --frozen is allowed"
                 exit 1
@@ -102,7 +138,10 @@ while [ "$1" ]; do
             FILE_AREA="$1"
             ;;
         "--timestamps")
-            CHECK_TIMESTAMPS="$1"
+            AUDIT_TIMESTAMPS="$1"
+            ;;
+        "--checksums")
+            AUDIT_CHECKSUMS="$1"
             ;;
         "--report" | "--report-errors")
             if [ "$REPORT_REQ" ]; then
@@ -136,7 +175,7 @@ if [ "$SINCE" = "" ]; then
     SINCE="1970-01-01T00:00:00Z"
 fi
 
-AUDIT_ARGS="${FILE_AREA} ${CHECK_TIMESTAMPS}"
+AUDIT_ARGS="${FULL_AUDIT} ${FILE_AREA} ${AUDIT_TIMESTAMPS} ${AUDIT_CHECKSUMS}"
 
 #--------------------------------------------------------------------------------
 
@@ -171,7 +210,7 @@ SUMMARY="$OUTPUT.summary"
 
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/audit-project.py $ROOT $PROJECT $START $SINCE $AUDIT_ARGS > $OUTPUT
+python -u $ROOT/utils/admin/lib/audit_project.py $ROOT $PROJECT $START $SINCE $AUDIT_ARGS > $OUTPUT
 
 if [ $? -ne 0 ]; then
     rm $OUTPUT 2>/dev/null

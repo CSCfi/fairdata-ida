@@ -30,7 +30,7 @@
 # /initialize-one-million-files
 #
 # Use the script with caution. It should be safe to execute it in non-production.
-
+#
 # The project and the folder "OneMillionFiles" folder must ALREADY exist,
 # or else the script will exit with an error. This ensures against accidental
 # corruption of existing data.
@@ -55,9 +55,7 @@
 # /testdata/OneMillionFiles/1000000_files/5000_files_200/1000_files_10/100_files_10/10_files_10/test_file_10.dat
 #
 #--------------------------------------------------------------------------------
-
 # Initialization from /tests/utils/
-#--------------------------------------------------------------------------------
 
 . `dirname $0`/../../lib/init_script.sh
 
@@ -94,8 +92,9 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
-PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PSO_USER}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
+PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
+PROJECT_USER_CREDENTIALS="-u ${PROJECT_USER}:${PROJECT_USER_PASS}"
 ONE_MILLION_FILES_FOLDER="${PROJECT_STAGING_FOLDER}/testdata/OneMillionFiles"
 
 #--------------------------------------------------------------------------------
@@ -174,16 +173,16 @@ while [ $MAX_SET_COUNT -gt 0 ]; do
 
     if [ "$DEBUG" = "true" ]; then
         if [ "$SIMULATE_AGENTS" = "true" ]; then
-            echo "$CURL_POST -u $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+            echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
         else
-            echo "$CURL_POST -u $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+            echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
         fi
     fi
 
     if [ "$SIMULATE_AGENTS" = "true" ]; then
-        OUT=`$CURL_POST -u $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
     else
-        OUT=`$CURL_POST -u $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
     fi
 
     if [ -s $ERR ]; then
@@ -214,5 +213,5 @@ echo ""
 
 echo "Updating Nextcloud file cache..."
 
-$OCC files:scan -q $PSO_USER
+$OCC files:scan -q $PROJECT_USER
 

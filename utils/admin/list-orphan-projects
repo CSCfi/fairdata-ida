@@ -42,7 +42,7 @@ fi
 
 for PROJECT in `$SCRIPT_DIR/list-projects`; do
 
-    USERS=`$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
+    USERS=`$CURL_GET $ADMIN_CREDENTIALS "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
         grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | \
         sed -e 's/<.*$//' | tr "\n" " " | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//' `
 

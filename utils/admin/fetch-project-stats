@@ -53,9 +53,9 @@ fi
 source $ROOT/venv/bin/activate
 
 if [ "$2" = "csv" ]; then
-    python $ROOT/utils/admin/lib/fetch-project-stats.py $ROOT $PROJECT csv
+    python -u $ROOT/utils/admin/lib/fetch_project_stats.py $ROOT $PROJECT csv
 else
-    python $ROOT/utils/admin/lib/fetch-project-stats.py $ROOT $PROJECT | jq --indent 4
+    python -u $ROOT/utils/admin/lib/fetch_project_stats.py $ROOT $PROJECT | jq --indent 4
 fi
 
 addToLog "DONE"

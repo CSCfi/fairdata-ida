@@ -22,7 +22,7 @@
 #--------------------------------------------------------------------------------
 
 IDA_ENVIRONMENT="TEST"
-DEBUG="true"
+DEBUG="false"
 
 HTTPD_USER="apache"
 

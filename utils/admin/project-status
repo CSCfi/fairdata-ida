@@ -92,11 +92,11 @@ echo "    ${STORAGE_VOLUME}"
 
 echo "Users: "
 
-$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
+$CURL_GET $ADMIN_CREDENTIALS "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
     grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
 
 echo "Action status: "
 
-$CURL_GET $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/status" | jq | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
+$CURL_GET $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/status" | jq --indent 4 | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
 
 addToLog "DONE"

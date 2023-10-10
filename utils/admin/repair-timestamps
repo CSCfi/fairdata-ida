@@ -67,30 +67,8 @@ fi
 
 #--------------------------------------------------------------------------------
 
-export PROJECT_USER_PREFIX
-export PROJECT_USER_PASS
-
-export IDA_API_ROOT_URL
-
-export METAX_API_ROOT_URL
-export METAX_API_VERSION
-export METAX_API_USER
-export METAX_API_PASS
-
-#export STORAGE_OC_DATA_ROOT
-#export STAGING_FOLDER_SUFFIX
-
-#export DBNAME
-#export DBHOST
-#export DBPORT
-#export DBTABLEPREFIX
-#export DBUSER
-#export DBPASSWORD
-
-#--------------------------------------------------------------------------------
-
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/repair-timestamps.py $*
+python -u $ROOT/utils/admin/lib/repair_timestamps.py $ROOT "$ERROR_FILE"
 
 addToLog "DONE"

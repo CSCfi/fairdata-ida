@@ -79,10 +79,10 @@ echo "Clearing suspend action for project ${PROJECT}..."
 for PID in $PIDS; do
 
     if [ "$DEBUG" = "true" ]; then
-         echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions/$PID?cleared=$TIMESTAMP\""
+         echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions/$PID?cleared=$START\""
     fi
 
-    OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "$IDA_API_ROOT_URL/actions/$PID?cleared=$TIMESTAMP"`
+    OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "$IDA_API_ROOT_URL/actions/$PID?cleared=$START"`
 
     SUCCESS=`echo "$OUT" | grep '"cleared":'`
 

@@ -154,8 +154,6 @@ function errorExitM {
 #--------------------------------------------------------------------------------
 # Initialize loging and audit reporting
 
-START="$TIMESTAMP"
-
 LOG_ROOT=`dirname "$(realpath $LOG)"`
 LOG_BASE="${LOG_ROOT}/migrations/${START}_${PROJECT}"
 MIGRATION_LOG="${LOG_BASE}.log"

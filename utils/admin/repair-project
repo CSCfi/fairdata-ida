@@ -41,7 +41,30 @@
 #
 # DO NOT EXECUTE THIS SCRIPT WITHOUT FIRST COORDINATING WITH THE IDA PO AND
 # THE PROJECT USERS!!!!
-#
+#--------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+PROJECT="null"
+
+USAGE="
+Usage: $SCRIPT ( project | error_file )
+       $SCRIPT -h
+
+       project     the project to be repaired
+       error_file  the pathname of an audit error file
+"
+
+#--------------------------------------------------------------------------------
+
+ERROR_FILE=''
+
+if [ -f "$1" ]; then
+    ERROR_FILE="$1"
+    PROJECT=$(jq '.project' --raw-output < "$ERROR_FILE")
+else
+    PROJECT="$1"
+fi
+
 #--------------------------------------------------------------------------------
 # Initialize script with common definitions
 
@@ -70,6 +93,18 @@ fi
 echo "Rescanning project files in Nextcloud..."
 
 $ROOT/utils/admin/rescan-project "$PROJECT"
+
+#--------------------------------------------------------------------------------
+
+if [ "$ERROR_FILE" ]; then
+
+    echo "Repairing any timestamp errors..."
+    $ROOT/utils/admin/repair-timestamps "$ERROR_FILE"
+
+    echo "Repairing any checksum errors..."
+    $ROOT/utils/admin/repair-checksums "$ERROR_FILE"
+
+fi
 
 #--------------------------------------------------------------------------------
 echo "Repairing project data in IDA..."

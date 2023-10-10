@@ -147,12 +147,13 @@ class FreezingController extends Controller
     {
         Util::writeLog('ida', 'getUploadedTimestamp', \OCP\Util::DEBUG);
 
-        # For files added via other means than WebDAV/WebUI (e.g. originally migrated files,
-        # files added locally a recorded using occ files:scan, etc.) no upload timestamp will
-        # be recorded and a zero value will be returned by getUploadTime(), corresponding to
-        # the UNIX epoch, in which case we will default to the original migration date from
-        # when project files were migrated from the previous iRODS version of IDA or the
-        # modified timestamp, whichever is latest.
+        # For files added via other means than the WebUI or command line tools (e.g. vanilla
+        # WebDAV, originally migrated files, files added locally and recorded using the
+        # occ files:scan command, etc.) no upload timestamp will be recorded and a zero value
+        # will be returned by the Nextcloud NodeInfo method getUploadTime(), corresponding to
+        # the UNIX epoch, in which case we will default to either the "IDA epoch", i.e. the
+        # original migration date from when project files were migrated from the previous iRODS
+        # version of IDA, or the modified timestamp, whichever is latest.
 
         $uploaded = $nodeInfo->getUploadTime();
 
@@ -179,13 +180,14 @@ class FreezingController extends Controller
      * @param string $project         the project to which the files belong
      * @param string $uploadedBefore  ISO datetime string excluding files uploaded after the specified datetime
      * @param string $unpublishedOnly if "true" exclude files which are part of one or more published datasets
+     * @param string $testing         if "true" includes additional information needed by automated tests
      *
      * @return DataResponse
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function getFileInventory($project, $uploadedBefore = null, $unpublishedOnly = 'false')
+    public function getFileInventory($project, $uploadedBefore = null, $unpublishedOnly = 'false', $testing = 'false')
     {
         try {
 
@@ -221,6 +223,7 @@ class FreezingController extends Controller
                         $fileInfo = array(
                             'size' => $nodeInfo->getSize(),
                             'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
+                            'checksum' => $nodeInfo->getChecksum(),
                             'uploaded' => $uploaded
                         );
 
@@ -248,8 +251,6 @@ class FreezingController extends Controller
                         $datasets = null;
 
                         $fileInfo = array(
-                            'size' => $nodeInfo->getSize(),
-                            'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
                             'uploaded' => $uploaded
                         );
 
@@ -257,10 +258,16 @@ class FreezingController extends Controller
 
                         if ($frozenFile != null) {
 
+                            $fileInfo['size'] = $frozenFile->getSize();
+                            $fileInfo['modified'] = $frozenFile->getModified();
+                            $fileInfo['frozen'] = $frozenFile->getFrozen();
+                            $fileInfo['metadata'] = $frozenFile->getMetadata();
+                            $fileInfo['replicated'] = $frozenFile->getReplicated();
+
                             $filePID = $frozenFile->getPid();
+                            $fileInfo['pid'] = $filePID;
 
                             if ($filePID != null) {
-                                $fileInfo['pid'] = $filePID;
                                 if (isset($datasetFiles[$filePID])) {
                                     $datasets = $datasetFiles[$filePID];
                                 }
@@ -273,19 +280,27 @@ class FreezingController extends Controller
                                 }
                             }
 
+                            $cacheChecksum = $nodeInfo->getChecksum();
                             $checksum = $frozenFile->getChecksum();
 
+                            if ($checksum == null) {
+                                $checksum = $nodeInfo->getChecksum();
+                            }
+
+                            // Ensure the checksum is returned as an sha256: checksum URI
+
                             if ($checksum != null) {
-                                // Ensure the checksum is returned as an sha256: checksum URI
-                                if ($checksum[0] === 's' && substr($checksum, 0, 7) === "sha256:") {
+                                if (substr($checksum, 0, 7) == 'sha256:') {
                                     $fileInfo['checksum'] = $checksum;
                                 } else {
                                     $fileInfo["checksum"] = 'sha256:' . $checksum;
                                 }
                             }
 
-                            if ($frozenFile->getFrozen() != null) {
-                                $fileInfo['frozen'] = $frozenFile->getFrozen();
+                            if ($testing == 'true') {
+                                $fileInfo['cacheSize'] = $nodeInfo->getSize();
+                                $fileInfo["cacheChecksum"] = $cacheChecksum;
+                                $fileInfo["cacheModified"] = Generate::newTimestamp($nodeInfo->getMTime());
                             }
                         }
 
@@ -1878,7 +1893,7 @@ class FreezingController extends Controller
     /**
      * Retrieve an associative array containing entries for all frozen files which belong to one or more
      * Datasets in Metax, for all of the specified frozen file nodes. Keys will be frozen file PIDs and
-     * values will be an array of dataset persistent identifiers. 
+     * values will be an array of dataset persistent identifiers.
      *
      * @param Array $nextcloudNodes an array of Nextcloud FileInfo objects
      *
@@ -2238,7 +2253,16 @@ class FreezingController extends Controller
                     if ($newFileEntity->getSize() === null) {
                         $newFileEntity->setSize(0 + $fileInfo->getSize());
                         // If the size was unknown, assume the checksum is invalid and purge it (to be repaired by the agent)
-                        $newFileEntity->setChecksum(null);
+                        $checksum = $fileInfo->getChecksum();
+                        if ($checksum == null || $checksum == '') {
+                            $newFileEntity->setChecksum(null);
+                        }
+                        else {
+                            if (substr($checksum, 0, 7) == "sha256:") {
+                                $checksum = substr($checksum, 7);
+                            }
+                            $newFileEntity->setChecksum($checksum);
+                        }
                     }
                     if ($newFileEntity->getModified() == null) {
                         $newFileEntity->setModified(Generate::newTimestamp($fileInfo->getMTime()));
@@ -3727,6 +3751,9 @@ class FreezingController extends Controller
      *
      * Restricted to PSO user. Project name is derived from PSO username.
      *
+     * @param string $pathname   pathname of the file, beginning with either 'frozen/' or 'staging/'
+     * @param string $timestamp  the ISO UTC formatted timestamp string to be recorded
+     *
      * @return DataResponse
      *
      * @NoAdminRequired
@@ -3759,14 +3786,14 @@ class FreezingController extends Controller
 
             if (str_starts_with($pathname, 'frozen/')) {
                 $action = 'unfreeze';
-                $pathname = substr($pathname, strlen('frozen'));
+                $relativePathname = substr($pathname, strlen('frozen'));
             }
             else {
                 $action = 'freeze';
-                $pathname = substr($pathname, strlen('staging'));
+                $relativePathname = substr($pathname, strlen('staging'));
             }
 
-            $fullPathname = $this->buildFullPathname($action, $project, $pathname);
+            $fullPathname = $this->buildFullPathname($action, $project, $relativePathname);
 
             Util::writeLog('ida', 'repairNodeTimestamp: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
 
@@ -3784,6 +3811,10 @@ class FreezingController extends Controller
 
                 $fileInfo->getStorage()->getCache()->update($nodeId, $data);
 
+                Util::writeLog('ida', 'repairNodeTimestamp: project=' . $project
+                    . ' pathname=' . $pathname
+                    . ' modified=' . $modified, \OCP\Util::INFO);
+
                 return new DataResponse(array(
                     'project' => $project,
                     'pathname' => $pathname,
@@ -3797,6 +3828,165 @@ class FreezingController extends Controller
 
         } catch (Exception $e) {
             return API::serverErrorResponse('repairNodeTimestamp: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Repair the Nextcloud file cache checksum for a specific file pathname as reported in an auditing
+     * report, beginning with either the prefix 'staging/' or 'frozen/'.
+     *
+     * Restricted to PSO user. Project name is derived from PSO username.
+     *
+     * @param string $pathname  pathname of the file, beginning with either 'frozen/' or 'staging/'
+     * @param string $checksum  an SHA-256 checksum, either in URI form or without URI prefix
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function repairCacheChecksum($pathname, $checksum)
+    {
+        Util::writeLog('ida', 'repairCacheChecksum:'
+            . ' user=' . $this->userId
+            . ' pathname=' . $pathname
+            . ' checksum=' . $checksum,
+            \OCP\Util::DEBUG);
+
+        try {
+
+            // Ensure user is PSO user...
+
+            if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
+                return API::forbiddenErrorResponse();
+            }
+
+            // Extract project name from PSO user name...
+
+            $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
+
+            // If pathname starts with 'frozen/' then use action 'unfreeze' to get full pathname,
+            // else pathname starts with 'staging/' so use action 'freeze' to get full pathname;
+            // and remove the prefix from the pathname.
+
+            if (str_starts_with($pathname, 'frozen/')) {
+                $action = 'unfreeze';
+                $relativePathname = substr($pathname, strlen('frozen'));
+            }
+            else {
+                $action = 'freeze';
+                $relativePathname = substr($pathname, strlen('staging'));
+            }
+
+            $fullPathname = $this->buildFullPathname($action, $project, $relativePathname);
+
+            Util::writeLog('ida', 'repairCacheChecksum: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+
+            $fileInfo = $this->fsView->getFileInfo($fullPathname);
+
+            if ($fileInfo) {
+
+                $nodeId = $fileInfo->getId();
+
+                if (substr($checksum, 0, 7) != "sha256:") {
+                    $checksum = 'sha256:' . $checksum;
+                }
+
+                Util::writeLog('ida', 'repairCacheChecksum: nodeId=' . $nodeId, \OCP\Util::DEBUG);
+
+                $data = [ 'checksum' => $checksum ];
+
+                $fileInfo->getStorage()->getCache()->update($nodeId, $data);
+
+                Util::writeLog('ida', 'repairCacheChecksum: project=' . $project . ' pathname=' . $pathname . ' checksum=' . $checksum, \OCP\Util::INFO);
+
+                return new DataResponse(array(
+                    'project' => $project,
+                    'pathname' => $pathname,
+                    'checksum' => $checksum,
+                    'nodeId' => $nodeId
+                ));
+            }
+
+            // No node found with the specified pathname so return 404
+            return API::notFoundErrorResponse();
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('repairCacheChecksum: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Retrieve the Nextcloud file cache checksum for a specific file pathname as reported in an auditing
+     * report, beginning with either the prefix 'staging/' or 'frozen/' (if any).
+     *
+     * Restricted to PSO user. Project name is derived from PSO username.
+     *
+     * @param string $pathname  pathname of the file, beginning with either 'frozen/' or 'staging/'
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function retrieveCacheChecksum($pathname)
+    {
+        Util::writeLog('ida', 'retrieveCacheChecksum:'
+            . ' user=' . $this->userId
+            . ' pathname=' . $pathname,
+            \OCP\Util::DEBUG);
+
+        try {
+
+            // Ensure user is PSO user...
+
+            if (strpos($this->userId, Constants::PROJECT_USER_PREFIX) !== 0) {
+                return API::forbiddenErrorResponse();
+            }
+
+            // Extract project name from PSO user name...
+
+            $project = substr($this->userId, strlen(Constants::PROJECT_USER_PREFIX));
+
+            // If pathname starts with 'frozen/' then use action 'unfreeze' to get full pathname,
+            // else pathname starts with 'staging/' so use action 'freeze' to get full pathname;
+            // and remove the prefix from the pathname.
+
+            if (str_starts_with($pathname, 'frozen/')) {
+                $action = 'unfreeze';
+                $relativePathname = substr($pathname, strlen('frozen'));
+            }
+            else {
+                $action = 'freeze';
+                $relativePathname = substr($pathname, strlen('staging'));
+            }
+
+            $fullPathname = $this->buildFullPathname($action, $project, $relativePathname);
+
+            Util::writeLog('ida', 'retrieveCacheChecksum: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+
+            $fileInfo = $this->fsView->getFileInfo($fullPathname);
+
+            if ($fileInfo) {
+
+                $nodeId = $fileInfo->getId();
+                $checksum = strtolower($fileInfo->getChecksum());
+
+                Util::writeLog('ida', 'retrieveCacheChecksum: checksum=' . $checksum, \OCP\Util::DEBUG);
+
+                return new DataResponse(array(
+                    'project' => $project,
+                    'pathname' => $pathname,
+                    'checksum' => $checksum,
+                    'nodeId' => $nodeId
+                ));
+            }
+
+            // No node found with the specified pathname so return 404
+            return API::notFoundErrorResponse();
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('retrieveCacheChecksum: ' . $e->getMessage());
         }
     }
 

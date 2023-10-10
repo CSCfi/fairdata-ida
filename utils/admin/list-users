@@ -39,7 +39,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-$CURL_GET $ADMIN_CREDENTIALS "${REQUEST_URL_ROOT}/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
+$CURL_GET $ADMIN_CREDENTIALS "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
     grep "<element>" | grep -v "<element>admin<" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u 
 
 addToLog "DONE"

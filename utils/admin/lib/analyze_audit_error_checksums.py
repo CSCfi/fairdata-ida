@@ -27,7 +27,7 @@ import json
 import logging
 from hashlib import sha256
 from sortedcontainers import SortedDict
-
+from utils import *
 
 DEBUG = False
 
@@ -39,7 +39,7 @@ def main():
         include_replication = False
 
         if DEBUG:
-            print("ARGV: %s" % json.dumps(sys.argv))
+            sys.stderr.write("ARGV: %s\n" % json.dumps(sys.argv))
 
         argc = len(sys.argv)
 
@@ -141,7 +141,7 @@ def get_node_type(node):
             node_type = context_details.get("type")
         if node_type:
             if DEBUG:
-                print("NODE TYPE: %s" % node_type)
+                sys.stderr.write("NODE TYPE: %s\n" % node_type)
             return node_type
     raise Exception("Failed to determine node type")
 
@@ -149,7 +149,7 @@ def get_node_type(node):
 def get_node_checksum(node):
     checksum = node['ida']['checksum']
     if DEBUG:
-        print("CHECKSUM: %s" % checksum)
+        sys.stderr.write("CHECKSUM: %s\n" % checksum)
     return checksum
 
 
@@ -158,28 +158,12 @@ def generate_filesystem_pathname(project, pathname, replication = False):
     if replication:
         filesystem_pathname = "%s/%s/%s" % (os.environ['DATA_REPLICATION_ROOT'], project, pathname)
         if DEBUG:
-            print("REPLICATION PATHNAME: %s" % filesystem_pathname)
+            sys.stderr.write("REPLICATION PATHNAME: %s\n" % filesystem_pathname)
     else:
         filesystem_pathname = "%s/%s%s/files/%s/%s" % (os.environ['STORAGE_OC_DATA_ROOT'], os.environ['PROJECT_USER_PREFIX'], project, project, pathname)
         if DEBUG:
-            print("FILESYSTEM PATHNAME: %s" % filesystem_pathname)
+            sys.stderr.write("FILESYSTEM PATHNAME: %s\n" % filesystem_pathname)
     return filesystem_pathname
-
-
-def generate_checksum(filesystem_pathname):
-    if not os.path.isfile(filesystem_pathname):
-        return None
-    block_size = 65536
-    sha = sha256()
-    with open(filesystem_pathname, 'rb') as f:
-        for block in iter(lambda: f.read(block_size), b''):
-            sha.update(block)
-    checksum = sha.hexdigest()
-    if checksum.startswith('sha256:'):
-        checksum = checksum[7:]
-    if DEBUG:
-        print("NEW CHECKSUM: %s" % checksum)
-    return checksum
 
 
 def output_analysis(analysis):
@@ -199,10 +183,10 @@ def output_analysis(analysis):
     # }
 
     print('{')
-    print('    "project": "%s",' % analysis["project"])
-    print('    "includeReplication": %s,' % json.dumps(analysis["includeReplication"]))
-    print('    "frozenFilesChecked": %d,' % analysis["frozenFilesChecked"])
-    print('    "frozenFiles": {')
+    print('"project": "%s",' % analysis["project"])
+    print('"includeReplication": %s,' % json.dumps(analysis["includeReplication"]))
+    print('"frozenFilesChecked": %d,' % analysis["frozenFilesChecked"])
+    print('"frozenFiles": {')
 
     frozen_files = analysis["frozenFiles"]
     pathnames = frozen_files.keys()
@@ -211,20 +195,18 @@ def output_analysis(analysis):
 
     for pathname in pathnames:
         if not first:
-            print('        },')
+            print('},')
         else:
             first = False
         frozen_file = frozen_files[pathname]
-        print('        "%s": {' % pathname)
-        print('            "checksum": "%s",' % frozen_file["checksum"])
+        print('"%s": {' % pathname)
+        print('"checksum": "%s",' % frozen_file["checksum"])
         if frozen_file.get('replicationCopyOK', None) != None:
-            print('            "replicationCopyOK": %s,' % json.dumps(frozen_file["replicationCopyOK"]))
+            print('"replicationCopyOK": %s,' % json.dumps(frozen_file["replicationCopyOK"]))
         if frozen_file.get('filesystemCopyOK', None) != None:
-            print('            "filesystemCopyOK": %s' % json.dumps(frozen_file["filesystemCopyOK"]))
+            print('"filesystemCopyOK": %s' % json.dumps(frozen_file["filesystemCopyOK"]))
 
-    print('        }')
-    print('    }')
-    print('}')
+    print('}}}')
 
 
 if __name__ == "__main__":

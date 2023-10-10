@@ -154,8 +154,8 @@ if [ "$QUARANTINE_PERIOD" = "" ]; then
     errorExit "The variable QUARANTINE_PERIOD must be defined"
 fi
 
-if [ "$TIMESTAMP" = "" ]; then
-    errorExit "The variable TIMESTAMP must be defined"
+if [ "$START" = "" ]; then
+    errorExit "The variable START must be defined"
 fi
 
 PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
@@ -164,7 +164,7 @@ PROJECT_STORAGE_OC_DATA_ROOT="${PROJECT_ROOT}/files"
 PROJECT_LOCK="${PROJECT_STORAGE_OC_DATA_ROOT}/LOCK"
 PROJECT_SUSPENDED="${PROJECT_STORAGE_OC_DATA_ROOT}/SUSPENDED"
 PROJECT_REPLICATION_ROOT="${DATA_REPLICATION_ROOT}/projects/${PROJECT}"
-PROJECT_TRASH_DATA_ROOT="${TRASH_DATA_ROOT}/${TIMESTAMP}_${PROJECT}"
+PROJECT_TRASH_DATA_ROOT="${TRASH_DATA_ROOT}/${START}_${PROJECT}"
 PROJECT_USER_CREDENTIALS="-u ${PROJECT_USER}:${PROJECT_USER_PASS}"
 ADMIN_CREDENTIALS="-u ${NC_ADMIN_USER}:${NC_ADMIN_PASS}"
 
@@ -178,46 +178,47 @@ fi
 
 ERR="/tmp/${SCRIPT}.$$.err"
 
+HOSTNAME=`hostname`
+
 if [ "$FORCE_HTTP" = "true" ]; then
-    REQUEST_URL_ROOT="http://${ADMIN_CREDENTIALS}@localhost"
+    LOCAL_ROOT_URL="http://${HOSTNAME}"
 else
-    REQUEST_URL_ROOT="https://${ADMIN_CREDENTIALS}@localhost"
+    LOCAL_ROOT_URL="https://${HOSTNAME}"
 fi
 
 if [ "$DEBUG" = "true" ]; then
     echo ""
-    echo "NC_ADMIN_USER                $NC_ADMIN_USER"
-    echo "NC_ADMIN_PASS                $NC_ADMIN_PASS"
-    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
-    echo "METAX_API_VERSION            $METAX_API_VERSION"
-    echo "METAX_API_USER               $METAX_API_USER"
-    echo "METAX_API_PASS               $METAX_API_PASS"
-    echo "HTTPD_USER                   $HTTPD_USER"
-    echo "PROJECT_USER_PASS            $PROJECT_USER_PASS"
-    echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX"
-    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
-    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
-    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
-    echo "METAX_API_VERSION            $METAX_API_VERSION"
+    echo "HOSTNAME                     $HOSTNAME"
     echo "ROOT                         $ROOT"
     echo "STORAGE_OC_DATA_ROOT         $STORAGE_OC_DATA_ROOT"
     echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT"
+    echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT"
+    echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT"
+    echo "LOCAL_ROOT_URL               $LOCAL_ROOT_URL"
+    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
+    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
+    echo "METAX_API_VERSION            $METAX_API_VERSION"
+    echo "HTTPD_USER                   $HTTPD_USER"
+    echo "NC_ADMIN_USER                $NC_ADMIN_USER"
+    echo "NC_ADMIN_PASS                $NC_ADMIN_PASS"
+    echo "METAX_API_USER               $METAX_API_USER"
+    echo "METAX_API_PASS               $METAX_API_PASS"
+    echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
     echo "OCC                          $OCC"
     echo "EMAIL_SENDER                 $EMAIL_SENDER"
     echo "EMAIL_RECIPIENTS             $EMAIL_RECIPIENTS"
     echo "TRASH_DATA_ROOT              $TRASH_DATA_ROOT"
     echo "QUARANTINE_PERIOD            $QUARANTINE_PERIOD"
+    echo "PROJECT_USER_PREFIX          $PROJECT_USER_PREFIX"
+    echo "PROJECT_USER_PASS            $PROJECT_USER_PASS"
     echo "PROJECT_USER                 $PROJECT_USER"
     echo "PROJECT_STORAGE_OC_DATA_ROOT $PROJECT_STORAGE_OC_DATA_ROOT"
     echo "PROJECT_LOCK                 $PROJECT_LOCK"
     echo "PROJECT_SUSPENDED            $PROJECT_SUSPENDED"
-    echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT"
-    echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT"
     echo "PROJECT_USER_CREDENTIALS     $PROJECT_USER_CREDENTIALS"
     echo "ADMIN_CREDENTIALS            $ADMIN_CREDENTIALS"
     echo "LOG                          $LOG"
     echo "ERR                          $ERR"
-    echo "REQUEST_URL_ROOT             $REQUEST_URL_ROOT"
     echo ""
 fi
 

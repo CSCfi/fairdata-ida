@@ -49,12 +49,10 @@ else
     exit 1
 fi
 
-#DEBUG="true" # TEMP HACK
-
 #--------------------------------------------------------------------------------
 
-UPLOADED_BEFORE="false"
 TIMESTAMP=""
+UPLOADED_BEFORE="false"
 UNPUBLISHED_ONLY="false"
 
 shift # got PROJECT from first argument via init_audit_script.sh

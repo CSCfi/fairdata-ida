@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from time import strftime
 from subprocess import Popen, PIPE
 from stat import *
+from utils import *
 
 # Use UTC
 os.environ["TZ"] = "UTC"
@@ -52,22 +53,18 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        #config.DEBUG = 'true' # TEMP HACK
-
-        config.TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
-
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PID = os.getpid()
         config.SINCE = sys.argv[2]
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             config.LOG_LEVEL = logging.DEBUG
         else:
             config.LOG_LEVEL = logging.INFO
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
             sys.stderr.write("ROOT:          %s\n" % config.ROOT)
             sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)
@@ -85,11 +82,11 @@ def main():
         since_datetime = dateutil.parser.isoparse(config.SINCE)
         config.SINCE_TS = since_datetime.replace(tzinfo=timezone.utc).timestamp()
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("SINCE:         %s\n" % config.SINCE)
-            sys.stderr.write("SINCE_DT:      %s\n" % since_datetime.strftime(config.TIMESTAMP_FORMAT))
+            sys.stderr.write("SINCE_DT:      %s\n" % since_datetime.strftime(TIMESTAMP_FORMAT))
             sys.stderr.write("SINCE_TS:      %d\n" % config.SINCE_TS)
-            since_datetime_check = datetime.utcfromtimestamp(config.SINCE_TS).strftime(config.TIMESTAMP_FORMAT)
+            since_datetime_check = datetime.utcfromtimestamp(config.SINCE_TS).strftime(TIMESTAMP_FORMAT)
             sys.stderr.write("SINCE_TS_CHK:  %s\n" % str(since_datetime_check))
 
         # Initialize logging with UTC timestamps
@@ -97,8 +94,8 @@ def main():
         logging.basicConfig(
             filename=config.LOG,
             level=config.LOG_LEVEL,
-            format="%s %s (%s) %s" % ('%(asctime)s', config.SCRIPT, config.PID, '%(message)s'),
-            datefmt="%Y-%m-%dT%H:%M:%SZ")
+            format=LOG_ENTRY_FORMAT,
+            datefmt=TIMESTAMP_FORMAT)
 
         logging.Formatter.converter = time.gmtime
 
@@ -113,23 +110,6 @@ def main():
             sys.stderr.write("%s\n" % str(logerror))
         sys.stderr.write("%s\n" % str(error))
         sys.exit(1)
-
-
-def load_configuration(pathname):
-    """
-    Load and return as a dict variables from the main ida configuration file
-    """
-    module_name = "config.variables"
-    try:
-        # python versions >= 3.5
-        module_spec = importlib.util.spec_from_file_location(module_name, pathname)
-        config = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(config)
-    except AttributeError:
-        # python versions < 3.5
-        from importlib.machinery import SourceFileLoader
-        config = SourceFileLoader(module_name, pathname).load_module()
-    return config
 
 
 def add_from_ida_action_table(projects, config):
@@ -172,7 +152,7 @@ def add_from_ida_action_table(projects, config):
         project = row[0]
         projects[project] = True
 
-        if config.DEBUG == 'true':
+        if config.DEBUG:
             sys.stderr.write("ida_action:    %s\n" % project)
 
     # Close database connection
@@ -246,7 +226,7 @@ def add_from_filecache_table(projects, config):
 
             projects[project] = True
 
-            if config.DEBUG == 'true':
+            if config.DEBUG:
                 sys.stderr.write("filecache:     %s\n" % project)
 
     # Close database connection
@@ -272,7 +252,8 @@ def list_active_projects(config):
     # Output projects
 
     for project in projects.keys():
-       sys.stdout.write("%s\n" % project)
+        if os.path.exists("%s/%s%s/files/%s/" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, project, project)):
+            print("%s" % project)
 
     logging.info("DONE")
 

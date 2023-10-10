@@ -22,9 +22,11 @@
 #--------------------------------------------------------------------------------
 
 import os
+import json
 
 from agents.common import GenericAgent
 from agents.utils.utils import construct_file_path, make_ba_http_header, generate_timestamp
+from sortedcontainers import SortedDict
 
 class MetadataAgent(GenericAgent):
 
@@ -205,6 +207,8 @@ class MetadataAgent(GenericAgent):
 
         self._logger.debug('Generating checksums...')
 
+        checksum_mismatch_pids = []
+
         for node in nodes:
             if self._graceful_shutdown_started:
                 raise SystemExit
@@ -222,6 +226,7 @@ class MetadataAgent(GenericAgent):
 
             # Assume no updates to either file size or checksum required
             node_updated = False
+            checksum_mismatch = False
 
             # Get reported file size, if defined
             try:
@@ -264,9 +269,38 @@ class MetadataAgent(GenericAgent):
 
             # If either new file size or new checksum, update node values and flag node as updated
             if node_updated:
+
+                # Verify generated checksum matches cache checksum for file, if any; if not, record mismatch
+                cache_checksum = self._get_checksum_value(self._get_cache_checksum(node['pathname']))
+                self._logger.debug('Cache checksum for file %s (%s): %s' % (node['pathname'], node['pid'], cache_checksum))
+                if cache_checksum is not None and cache_checksum != '' and cache_checksum != node_checksum:
+                    self._logger.warn('Checksum mismatch for file %s (%s): cache checksum %s != generated checksum %s' % (
+                        node['pathname'],
+                        node['pid'],
+                        cache_checksum,
+                        node_checksum
+                    ))
+                    checksum_mismatch = True
+                    checksum_mismatch_pids.append(node['pathname'])
+
                 node['size'] = node_size
                 node['checksum'] = node_checksum
-                node['_updated'] = node_updated
+                node['_updated'] = True
+                node['_checksum_mismatch'] = checksum_mismatch
+
+        # If there are checksum mismatches and action is not repair, fail the action; else, files with mismatched
+        # checksums will be updated in the cache with the newly generated checksums below
+
+        checksum_mismatch_pid_count = len(checksum_mismatch_pids)
+
+        if checksum_mismatch_pid_count > 0 and action['action'] != 'repair':
+            if checksum_mismatch_pid_count > 500:
+                checksum_mismatch_pids = checksum_mismatch_pids[:500]
+                checksum_mismatch_pids.append("...")
+            raise Exception('Files on disk do not match their Nextcloud cache checksums (total: %d): %s' % (
+                checksum_mismatch_pid_count,
+                json.dumps(checksum_mismatch_pids)
+            ))
 
         # Update db records for all updated nodes
         self._logger.info('Updating checksum and size values in IDA db for all files associated with action %s' % action['pid'])
