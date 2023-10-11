@@ -75,6 +75,15 @@ if [ "$ROOT" = "" ]; then
     exit 1
 fi
 
+#--------------------------------------------------------------------------------
+# Verify that we are not in production
+
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    errorExit "Error: This script can not be run in a production environment. Aborting."
+fi
+
+#--------------------------------------------------------------------------------
+
 if [ $METAX_API_VERSION -ge 3 ]; then
     # TODO add bearer token header when supported
     # NOTE: it may be necessary to refactor the predefined curl commands to omit the -u parameter and add it everywhere basic auth is used
@@ -84,15 +93,6 @@ else
 fi
 
 IDA_CREDENTIALS="-u $NC_ADMIN_USER:$NC_ADMIN_PASS"
-
-#--------------------------------------------------------------------------------
-# Verify that we are in a test environment
-
-if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
-    errorExit "Error: This script can not be run in a production environment. Aborting."
-fi
-
-#--------------------------------------------------------------------------------
 
 CONFIG=""
 
@@ -125,7 +125,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PADDING="-45"
+PADDING="-55"
 
 function failure {
     echo "FAILED: " "$@"
@@ -184,7 +184,7 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
         STEP="   Flushing $USER"
         printf "%${PADDING}s" "$STEP"
         if [ $METAX_API_VERSION -ge 3 ]; then
-            OUT=`$CURL_DELETE $METAX_CREDENTIALS "$METAX_API_ROOT_URL/user/$USER&flush=true" 2>&1`
+            OUT=`$CURL_DELETE $METAX_CREDENTIALS "$METAX_API_ROOT_URL/user/$USER?flush=true" 2>&1`
         else
             OUT=`$CURL_POST $METAX_CREDENTIALS "$METAX_API_RPC_URL/datasets/flush_user_data?metadata_provider_user=$USER" 2>&1`
         fi
@@ -352,7 +352,6 @@ for PROJECT in $PROJECTS; do
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
         exit 1
-        continue
     fi
 
     rm -fr `find $STORAGE_OC_DATA_ROOT/$USER/files -name .DS_Store`
@@ -362,7 +361,6 @@ for PROJECT in $PROJECTS; do
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
         exit 1
-        continue
     fi
 
     OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_FROZEN_FOLDER/testdata/empty_folder`
@@ -385,72 +383,32 @@ for PROJECT in $PROJECTS; do
         success
     fi
 
-    # Update Nextcloud uploaded timestamp to current datetime and generate cache checksum for all test account files
+    # Update Nextcloud uploaded timestamp to current datetime
 
-    PGPASSWORD="$DBPASSWORD"
-    export PGPASSWORD
+    STEP="   Initializing upload timestamps for ${PROJECT}"
+    printf "%${PADDING}s" "$STEP"
 
-    NOW=`date -u +'%s'`
-
-    QUERY="SELECT numeric_id FROM ${DBTABLEPREFIX}storages WHERE id = 'home::${USER}' ORDER BY numeric_id DESC LIMIT 1"
-
-    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+    OUT=`$ROOT/tests/utils/initialize-upload-timestamps $PROJECT 2>&1`
 
     if [ "$?" -ne 0 ]; then
-        failure "failed"
-        echo "Error: Failed to retrieve Nextcloud storage id for $USER: $OUT"
+        failure "$OUT"
         exit 1
+    else
+        success
     fi
 
-    STORAGE=$(echo "$OUT" | sed -e 's/[^0-9]//g')
+    # Generate cache checksums for all test files
 
-    if [ -z "$STORAGE" ]; then
-        failure "failed"
-        echo "Error: Failed to retrieve Nextcloud storage id for $USER"
-        exit 1
-    fi
+    STEP="   Generating cache checksums for ${PROJECT}"
+    printf "%${PADDING}s" "$STEP"
 
-    QUERY="SELECT fileid FROM ${DBTABLEPREFIX}filecache WHERE storage = $STORAGE AND mimetype != 2 AND path ~ '^files/'"
-
-    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+    OUT=`$ROOT/utils/admin/generate-missing-checksums $PROJECT 2>&1`
 
     if [ "$?" -ne 0 ]; then
-        failure "failed"
-        echo "Error: Failed to retrieve Nextcloud file ids for $USER: $OUT"
+        failure "$OUT"
         exit 1
-    fi
-
-    FILEIDS=$(echo "$OUT" | sed -e 's/[^0-9][^0-9]*/ /g' | sed -e 's/^  *//' | sed -e 's/  *$//')
-
-    if [ -z "$FILEIDS" ]; then
-        failure "failed"
-        echo "Error: Failed to retrieve Nextcloud file ids for $USER"
-        exit 1
-    fi
-
-    for FILEID in $FILEIDS; do
-
-        QUERY="INSERT INTO ${DBTABLEPREFIX}filecache_extended \
-              (fileid, metadata_etag, creation_time, upload_time) \
-              VALUES ($FILEID, null, 0, $NOW) \
-              ON CONFLICT (fileid) DO UPDATE \
-              SET upload_time = $NOW"
-
-        OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" 2>&1)
-
-        if [ "$?" -ne 0 ]; then
-            failure "failed"
-            echo "Error: Failed to update Nextcloud upload timestamp for file $FILEID for $USER: $OUT"
-            exit 1
-        fi
-    done
-
-    OUT=$($ROOT/utils/admin/generate-missing-checksums $PROJECT 2>&1)
-
-    if [ "$?" -ne 0 ]; then
-        failure "failed"
-        echo "Error: Failed to generate cache checksums for project $PROJECT"
-        exit 1
+    else
+        success
     fi
 
 done
