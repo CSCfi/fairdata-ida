@@ -4,6 +4,7 @@
 .eclipse
 .vscode
 .gitignore
+.psql_history
 *~
 *.log
 *.pyc

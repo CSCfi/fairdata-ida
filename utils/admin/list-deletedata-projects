@@ -41,12 +41,6 @@ if [ "$CSC_DATA_DELETION_MICROSERVICE" == "" ]; then
     errorExit "The variable CSC_DATA_DELETION_MICROSERVICE is not defined in the configuration. Aborting." >&2
 fi
 
-PROG_LOCATION=`/usr/bin/which jq 2>/dev/null`
-
-if [ ! -e "$PROG_LOCATION" ]; then
-    errorExit "Can't find jq in your \$PATH"
-fi
-
 #--------------------------------------------------------------------------------
 
 OUT=`curl --fail -k -s -S "$CSC_DATA_DELETION_MICROSERVICE/projects?services=IDA&states=deletedata&open=false" 2>$ERR`

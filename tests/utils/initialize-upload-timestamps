@@ -28,6 +28,7 @@
 # This script should NOT be run in production!
 #
 #--------------------------------------------------------------------------------
+
 . `dirname $0`/../../lib/init_script.sh
 
 if [ "$ROOT" = "" ]; then
@@ -40,6 +41,12 @@ fi
 
 if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
     errorExit "Error: This script can not be run in a production environment. Aborting."
+fi
+
+PROG_LOCATION=`/usr/bin/which psql 2>/dev/null`
+
+if [ ! -e "$PROG_LOCATION" ]; then
+    errorExit "Can't find psql in your \$PATH"
 fi
 
 #--------------------------------------------------------------------------------

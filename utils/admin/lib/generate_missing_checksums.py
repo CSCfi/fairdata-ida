@@ -93,32 +93,29 @@ def main():
 
         generate_missing_checksums(config)
 
-    except Exception as error:
+    except Exception as e:
         try:
-            logging.error(str(error))
-        except Exception as logerror:
-            sys.stderr.write("ERROR: %s\n" % str(logerror))
-        sys.stderr.write("ERROR: %s\n" % str(error))
+            logging.error(str(e).strip())
+        except Exception as le:
+            sys.stderr.write("ERROR: %s\n" % str(le).strip())
+        sys.stderr.write("ERROR: %s\n" % str(e).strip())
         sys.exit(1)
 
 
 def generate_missing_checksums(config):
 
-    if config.DEBUG:
-        sys.stderr.write("Generating missing checksums for project: %s\n" % config.PROJECT)
-        sys.stderr.write("Identifying files with missing checksums...\n")
+    sys.stdout.write("Generating missing checksums for project: %s\n" % config.PROJECT)
+    sys.stdout.write("Identifying files with missing checksums...\n")
 
     files = get_files_with_no_checksum(config)
 
     count = len(files)
 
-    if config.DEBUG:
-        sys.stderr.write("Files with missing checksums: %d\n" % count)
+    sys.stdout.write("Files with missing checksums: %d\n" % count)
 
     for pathname, file in list(files.items()):
 
-        if config.DEBUG:
-            sys.stderr.write("Generating checksum for %s\n" % pathname[5:])
+        sys.stdout.write("Generating checksum for %s\n" % pathname[5:])
 
         checksum = generate_checksum("%s/%s%s/%s" % (
             config.STORAGE_OC_DATA_ROOT,
@@ -127,10 +124,9 @@ def generate_missing_checksums(config):
             pathname
         ))
 
-        if not checksum.startswith('sha256:'):
-            checksum = "sha256:%s" % checksum
-
         if checksum:
+            if not checksum.startswith('sha256:'):
+                checksum = "sha256:%s" % checksum
             file['checksum'] = checksum
 
     store_checksums_in_cache(config, files)
@@ -141,14 +137,13 @@ def store_checksums_in_cache(config, files):
     Store all checksums for all provided files to the Nextcloud file cache
     """
 
-    if config.DEBUG:
-        sys.stderr.write("Recording checksums to Nextcloud cache...\n")
+    sys.stdout.write("Recording checksums to Nextcloud cache...\n")
 
     # Open database connection
 
     conn = psycopg2.connect(database=config.DBNAME,
-                            user=config.DBROUSER,
-                            password=config.DBROPASSWORD,
+                            user=config.DBUSER,
+                            password=config.DBPASSWORD,
                             host=config.DBHOST,
                             port=config.DBPORT)
 
@@ -172,19 +167,16 @@ def store_checksums_in_cache(config, files):
                 conn.commit()
 
                 if cur.rowcount == 1:
-                    msg = "Checksum %s recorded in cache for %s" % (checksum, pathname[5:])
+                    msg = "Checksum %s recorded in cache for %s %s" % (checksum, config.PROJECT, pathname[5:])
                     logging.info(msg)
-                    if config.DEBUG:
-                        sys.stderr.write("%s\n" % msg)
+                    sys.stdout.write("%s\n" % msg)
                 else:
                     conn.rollback()
-                    if config.DEBUG:
-                        sys.stderr.write("Warning: Failed to record checksum for %s\n" % pathname[5:])
+                    sys.stdout.write("Warning: Failed to record checksum for %s %s\n" % (config.PROJECT, pathname[5:]))
 
         except Exception as e:
             conn.rollback()
-            if config.DEBUG:
-                sys.stderr.write("Warning: Failed to record checksum for %s: %s\n" % (pathname[5:], str(e)))
+            sys.stdout.write("Warning: Failed to record checksum for %s %s: %s\n" % (config.PROJECT, pathname[5:], str(e).strip()))
 
     # Close database connection
     cur.close()
@@ -203,8 +195,8 @@ def get_cache_file_details(config):
     # Open database connection
 
     conn = psycopg2.connect(database=config.DBNAME,
-                            user=config.DBROUSER,
-                            password=config.DBROPASSWORD,
+                            user=config.DBUSER,
+                            password=config.DBPASSWORD,
                             host=config.DBHOST,
                             port=config.DBPORT)
 

@@ -56,6 +56,11 @@ def main():
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
 
+        if config.IDA_API_ROOT_URL.startswith('https://localhost/'):
+            config.VERIFY_SSL=False
+        else:
+            config.VERIFY_SSL=True
+
         # Initialize logging using UTC timestamps
 
         if config.DEBUG:
@@ -76,11 +81,11 @@ def main():
         with open(sys.argv[2]) as f:
            data = json.load(f)
 
-        project = data["project"]
+        config.PROJECT = data["project"]
 
         nodes = data.get("invalidNodes", {})
 
-        logging.info("START %s %s" % (project, generate_timestamp()))
+        logging.info("START %s %s" % (config.PROJECT, generate_timestamp()))
 
         # for each invalid node in audit report:
         #     if the node has any modified timestamp error:
@@ -127,9 +132,9 @@ def main():
                     frozen_timestamp = get_frozen_timestamp(config, node)
 
                 if modification_timestamp_error:
-                    update_nextcloud_modified_timestamp(config, project, pathname, modified_timestamp)
+                    update_nextcloud_modified_timestamp(config, pathname, modified_timestamp)
                     if frozen_file:
-                        update_ida_modified_timestamp(config, project, pathname, frozen_file_pid, modified_timestamp)
+                        update_ida_modified_timestamp(config, pathname, frozen_file_pid, modified_timestamp)
                         if config.METAX_API_VERSION >= 3:
                             update_metax_timestamp(config, 'modified', pathname, frozen_file_pid, modified_timestamp)
                         else:
@@ -143,12 +148,12 @@ def main():
 
         logging.info("DONE")
 
-    except Exception as error:
+    except Exception as e:
         try:
-            logging.error(str(error))
-        except Exception as logerror:
-            sys.stderr.write("ERROR: %s\n" % str(logerror))
-        sys.stderr.write("ERROR: %s\n" % str(error))
+            logging.error(str(e).strip())
+        except Exception as le:
+            sys.stderr.write("ERROR: %s\n" % str(le).strip())
+        sys.stderr.write("ERROR: %s\n" % str(e).strip())
         sys.exit(1)
 
 
@@ -186,47 +191,48 @@ def get_frozen_file_pid(config, node):
     return pid
 
 
-def update_nextcloud_modified_timestamp(config, project, pathname, timestamp):
+def update_nextcloud_modified_timestamp(config, pathname, timestamp):
 
     url = "%s/repairNodeTimestamp" % config.IDA_API_ROOT_URL
     data = { "pathname": pathname, "modified": timestamp }
-    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, project), config.PROJECT_USER_PASS)
+    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, json=data)
+    response = requests.post(url, auth=auth, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
-        sys.stderr.write("Warning: Failed to update modified timestamp in Nextcloud to %s for pathname %s: %d %s\n" % (
+        msg = "Warning: Failed to update modified timestamp in Nextcloud to %s for %s %s: %d" % (
             timestamp,
+            config.PROJECT,
             pathname,
-            response.status_code,
-            response.content.decode(sys.stdout.encoding)
-        ))
+            response.status_code
+        )
+        logging.warning(msg)
     else:
-        msg = "Updated modified timestamp in Nextcloud to %s for pathname %s" % (timestamp, pathname)
+        msg = "Updated modified timestamp in Nextcloud to %s for %s %s" % (timestamp, config.PROJECT, pathname)
         logging.info(msg)
-        sys.stderr.write("%s\n" % msg)
+    sys.stdout.write("%s\n" % msg)
 
 
-def update_ida_modified_timestamp(config, project, pathname, file_pid, timestamp):
+def update_ida_modified_timestamp(config, pathname, file_pid, timestamp):
 
     url = "%s/files/%s" % (config.IDA_API_ROOT_URL, file_pid)
     data = { "modified": timestamp }
-    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, project), config.PROJECT_USER_PASS)
+    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, json=data)
+    response = requests.post(url, auth=auth, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
-        sys.stderr.write("Warning: Failed to update modified timestamp in IDA to %s for pathname %s: %d %s\n" % (
+        msg = "Warning: Failed to update modified timestamp in IDA to %s for %s %s: %d" % (
             timestamp,
+            config.PROJECT,
             pathname,
-            response.status_code,
-            response.content.decode(sys.stdout.encoding)
-        ))
+            response.status_code
+        )
+        logging.warning(msg)
     else:
-        msg = "Updated modified timestamp in IDA to %s for pathname %s" % (timestamp, pathname)
+        msg = "Updated modified timestamp in IDA to %s for %s %s" % (timestamp, config.PROJECT, pathname)
         logging.info(msg)
-        if config.DEBUG:
-            sys.stderr.write("%s\n" % msg)
+    sys.stdout.write("%s\n" % msg)
 
 
 def update_metax_timestamp(config, field_name, pathname, file_pid, timestamp):
@@ -243,18 +249,18 @@ def update_metax_timestamp(config, field_name, pathname, file_pid, timestamp):
         response = requests.patch(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
-        sys.stderr.write("Warning: Failed to update %s timestamp in Metax to %s for pathname %s: %d %s\n" % (
+        msg = "Warning: Failed to update %s timestamp in Metax to %s for %s %s: %d" % (
             field_name,
             timestamp,
+            config.PROJECT,
             pathname,
-            response.status_code,
-            response.content.decode(sys.stdout.encoding)
-       ))
+            response.status_code
+        )
+        logging.warning(msg)
     else:
-        msg = "Updated %s timestamp in Metax to %s for pathname %s" % (field_name, timestamp, pathname)
+        msg = "Updated %s timestamp in Metax to %s for %s %s" % (field_name, config.PROJECT, timestamp, pathname)
         logging.info(msg)
-        if config.DEBUG:
-            sys.stderr.write("%s\n" % msg)
+    sys.stdout.write("%s\n" % msg)
 
 
 if __name__ == "__main__":

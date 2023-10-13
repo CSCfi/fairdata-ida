@@ -262,7 +262,12 @@ mv $REPORT_BASE $REPORT
 
 echo "Audit results saved to file $REPORT" 
 
-jq 'del(.invalidNodes, .errors)' --indent 4 < $OUTPUT > $SUMMARY
+if [ "$OK" = "true" ]; then
+    jq 'del(.invalidNodes, .errors, .oldest, .newest)' --indent 4 < $REPORT > $SUMMARY
+else
+    jq 'del(.invalidNodes) | walk(if type == "object" then with_entries(select(.key != "nodes")) else . end)' --indent 4 < $REPORT > $SUMMARY
+fi
+
 if [ $? -ne 0 ]; then
     errorExit "Generation of auditing report summary $REPORT failed"
 fi

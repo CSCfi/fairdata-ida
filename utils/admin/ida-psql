@@ -1,0 +1,80 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+# This script opens a psql shell based on the database configuration in 
+# /var/ida/config/config.sh, using the read-only database credentials by
+# default, unless the parameter 'privileged' is specified, in which case the
+# read-write credentials are used.
+#
+# If a query is specified as a parameter, the query is executed rather than
+# opening an interactive shell.
+#--------------------------------------------------------------------------------
+
+SCRIPT=`basename $0`
+USAGE="Usage: $SCRIPT [ privileged ] [ query ]"
+PROJECT="null"
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+PROG_LOCATION=`/usr/bin/which psql 2>/dev/null`
+
+if [ ! -e "$PROG_LOCATION" ]; then
+    errorExit "Can't find psql in your \$PATH"
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ "$1" = "privileged" ]; then
+    PRIVILEGED="$1"
+    QUERY="$2"
+else
+    QUERY="$1"
+fi
+
+#--------------------------------------------------------------------------------
+
+export PSQL_HISTORY="$ROOT/.psql_history"
+
+if [ "$PRIVILEGED" ]; then
+    USER="$DBUSER"
+    PASSWORD="$DBPASSWORD"
+else
+    USER="$DBROUSER"
+    PASSWORD="$DBROPASSWORD"
+fi
+
+export PGPASSWORD="$PASSWORD"
+
+if [ "$QUERY" ]; then
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBROUSER" -c "$QUERY"
+else
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBROUSER" 
+fi
