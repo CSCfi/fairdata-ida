@@ -119,3 +119,9 @@ def generate_timestamp():
     """
     return normalize_timestamp(datetime.utcnow().replace(microsecond=0))
 
+
+def get_project_pathname(project, pathname):
+    if pathname.startswith('staging/'):
+        return "/%s+/%s" % (project, pathname[8:])
+    else:
+        return "/%s/%s" % (project, pathname[7:])

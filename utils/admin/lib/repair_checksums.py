@@ -74,12 +74,12 @@ def main():
         with open(sys.argv[2]) as f:
            data = json.load(f)
 
-        project = data['project']
+        config.PROJECT = data['project']
         config.CHECKSUMS_CHECKED = data['end']
 
         nodes = data.get('invalidNodes', {})
 
-        logging.info("START %s %s" % (project, generate_timestamp()))
+        logging.info("START %s %s" % (config.PROJECT, generate_timestamp()))
 
         for pathname, node in list(nodes.items()):
 
@@ -120,30 +120,30 @@ def main():
                         sys.stderr.write("ERROR: %s\n" % error)
 
                     if error == 'Node checksum missing for IDA':
-                        update_checksum_in_ida(config, project, pathname, file_pid, checksum)
+                        update_checksum_in_ida(config, pathname, file_pid, checksum)
 
                     elif error == 'Node checksum missing for Metax':
                         update_checksum_in_metax(config, pathname, file_pid, checksum)
 
                     elif error == 'Node checksum different for filesystem and Nextcloud':
-                        update_checksum_in_nextcloud(config, project, pathname, checksum)
+                        update_checksum_in_nextcloud(config, pathname, checksum)
 
                     elif error == 'Node checksum different for filesystem and IDA':
-                        update_checksum_in_ida(config, project, pathname, file_pid, checksum)
+                        update_checksum_in_ida(config, pathname, file_pid, checksum)
 
                     elif error == 'Node checksum different for filesystem and Metax':
                         update_checksum_in_metax(config, pathname, file_pid, checksum)
 
                     elif error == 'Node checksum different for Nextcloud and IDA':
-                        update_checksum_in_nextcloud(config, project, pathname, checksum)
-                        update_checksum_in_ida(config, project, pathname, file_pid, checksum)
+                        update_checksum_in_nextcloud(config, pathname, checksum)
+                        update_checksum_in_ida(config, pathname, file_pid, checksum)
 
                     elif error == 'Node checksum different for Nextcloud and Metax':
-                        update_checksum_in_nextcloud(config, project, pathname, checksum)
+                        update_checksum_in_nextcloud(config, pathname, checksum)
                         update_checksum_in_metax(config, pathname, file_pid, checksum)
 
                     elif error == 'Node checksum different for IDA and Metax':
-                        update_checksum_in_ida(config, project, pathname, file_pid, checksum)
+                        update_checksum_in_ida(config, pathname, file_pid, checksum)
                         update_checksum_in_metax(config, pathname, file_pid, checksum)
 
         logging.info("DONE")
@@ -157,44 +157,44 @@ def main():
         sys.exit(1)
 
 
-def update_checksum_in_nextcloud(config, project, pathname, checksum):
+def update_checksum_in_nextcloud(config, pathname, checksum):
 
     url = "%s/repairCacheChecksum" % config.IDA_API_ROOT_URL
     data = { "pathname": pathname, "checksum": checksum }
-    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, project), config.PROJECT_USER_PASS)
+    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
     response = requests.post(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
         sys.stderr.write("Warning: Failed to update checksum in Nextcloud to %s for pathname %s: %d %s\n" % (
             checksum,
-            pathname,
+            get_project_pathname(config.PROJECT, pathname),
             response.status_code,
             response.content.decode(sys.stdout.encoding)
         ))
     else:
-        msg = "Updated checksum in Nextcloud to %s for pathname %s" % (checksum, pathname)
+        msg = "Updated checksum in Nextcloud to %s for %s" % (checksum, get_project_pathname(config.PROJECT, pathname))
         logging.info(msg)
         sys.stderr.write("%s\n" % msg)
 
 
-def update_checksum_in_ida(config, project, pathname, file_pid, checksum):
+def update_checksum_in_ida(config, pathname, file_pid, checksum):
 
     url = "%s/files/%s" % (config.IDA_API_ROOT_URL, file_pid)
     data = { 'checksum': checksum }
-    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, project), config.PROJECT_USER_PASS)
+    auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
     response = requests.post(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
         sys.stderr.write("Warning: Failed to update checksum in IDA to %s for pathname %s: %d %s\n" % (
             checksum,
-            pathname,
+            get_project_pathname(config.PROJECT, pathname),
             response.status_code,
             response.content.decode(sys.stdout.encoding)
         ))
     else:
-        msg = "Updated checksum in IDA to %s for pathname %s" % (checksum, pathname)
+        msg = "Updated checksum in IDA to %s for %s" % (checksum, get_project_pathname(config.PROJECT, pathname))
         logging.info(msg)
         sys.stderr.write("%s\n" % msg)
 
@@ -213,14 +213,14 @@ def update_checksum_in_metax(config, pathname, file_pid, checksum):
         response = requests.patch(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
-        sys.stderr.write("Warning: Failed to update checksum in Metax to %s for pathname %s: %d %s\n" % (
+        sys.stderr.write("Warning: Failed to update checksum in Metax to %s for %s: %d %s\n" % (
             checksum,
-            pathname,
+            get_project_pathname(config.PROJECT, pathname),
             response.status_code,
             response.content.decode(sys.stdout.encoding)
        ))
     else:
-        msg = "Updated checksum in Metax to %s for pathname %s" % (checksum, pathname)
+        msg = "Updated checksum in Metax to %s for %s" % (checksum, get_project_pathname(config.PROJECT, pathname))
         logging.info(msg)
         sys.stderr.write("%s\n" % msg)
 

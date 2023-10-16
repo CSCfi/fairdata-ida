@@ -200,15 +200,14 @@ def update_nextcloud_modified_timestamp(config, pathname, timestamp):
     response = requests.post(url, auth=auth, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
-        msg = "Warning: Failed to update modified timestamp in Nextcloud to %s for %s %s: %d" % (
+        msg = "Warning: Failed to update modified timestamp in Nextcloud to %s for %s: %d" % (
             timestamp,
-            config.PROJECT,
-            pathname,
+            get_project_pathname(config.PROJECT, pathname),
             response.status_code
         )
         logging.warning(msg)
     else:
-        msg = "Updated modified timestamp in Nextcloud to %s for %s %s" % (timestamp, config.PROJECT, pathname)
+        msg = "Updated modified timestamp in Nextcloud to %s for %s" % (timestamp, get_project_pathname(config.PROJECT, pathname))
         logging.info(msg)
     sys.stdout.write("%s\n" % msg)
 
@@ -222,15 +221,14 @@ def update_ida_modified_timestamp(config, pathname, file_pid, timestamp):
     response = requests.post(url, auth=auth, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
-        msg = "Warning: Failed to update modified timestamp in IDA to %s for %s %s: %d" % (
+        msg = "Warning: Failed to update modified timestamp in IDA to %s for %s: %d" % (
             timestamp,
-            config.PROJECT,
-            pathname,
+            get_project_pathname(config.PROJECT, pathname),
             response.status_code
         )
         logging.warning(msg)
     else:
-        msg = "Updated modified timestamp in IDA to %s for %s %s" % (timestamp, config.PROJECT, pathname)
+        msg = "Updated modified timestamp in IDA to %s for %s" % (timestamp, get_project_pathname(config.PROJECT, pathname))
         logging.info(msg)
     sys.stdout.write("%s\n" % msg)
 
@@ -249,16 +247,15 @@ def update_metax_timestamp(config, field_name, pathname, file_pid, timestamp):
         response = requests.patch(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
-        msg = "Warning: Failed to update %s timestamp in Metax to %s for %s %s: %d" % (
+        msg = "Warning: Failed to update %s timestamp in Metax to %s for %s: %d" % (
             field_name,
             timestamp,
-            config.PROJECT,
-            pathname,
+            get_project_pathname(config.PROJECT, pathname),
             response.status_code
         )
         logging.warning(msg)
     else:
-        msg = "Updated %s timestamp in Metax to %s for %s %s" % (field_name, config.PROJECT, timestamp, pathname)
+        msg = "Updated %s timestamp in Metax to %s for %s" % (field_name, timestamp, get_project_pathname(config.PROJECT, pathname))
         logging.info(msg)
     sys.stdout.write("%s\n" % msg)
 
