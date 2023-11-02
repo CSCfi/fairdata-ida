@@ -158,6 +158,10 @@ if [ "$START" = "" ]; then
     errorExit "The variable START must be defined"
 fi
 
+if [ "$IDA_MODE_HEADER" = "" ]; then
+    errorExit "The IDA_MODE_HEADER variable must be defined"
+fi
+
 PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
 PROJECT_ROOT="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER}"
 PROJECT_STORAGE_OC_DATA_ROOT="${PROJECT_ROOT}/files"

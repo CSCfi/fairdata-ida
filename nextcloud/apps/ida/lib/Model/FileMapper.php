@@ -94,7 +94,7 @@ class FileMapper extends Mapper
             }
             
             if ($projectList != null) {
-                if ($pid == null) {
+                if ($pid === null) {
                     $sql = $sql . ' WHERE';
                 }
                 else {
@@ -139,9 +139,9 @@ class FileMapper extends Mapper
             $sql = $sql . ' WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         }
         
-        if ($includeInactive == false) {
+        if ($includeInactive === false) {
             
-            if ($pid == null) {
+            if ($pid === null) {
                 $sql = $sql . ' WHERE';
             }
             else {
@@ -172,7 +172,7 @@ class FileMapper extends Mapper
             }
             
             if ($projectList != null) {
-                if (($pid == null) && ($includeInactive == true)) {
+                if (($pid === null) && ($includeInactive === true)) {
                     $sql = $sql . ' WHERE';
                 }
                 else {
@@ -199,11 +199,11 @@ class FileMapper extends Mapper
      *
      * @return Entity
      */
-    function findFile($pid, $projects = null, $includeInactive = false) {
+    public function findFile($pid, $projects = null, $includeInactive = false) {
         
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
-        if ($includeInactive == false) {
+        if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
         
@@ -254,11 +254,11 @@ class FileMapper extends Mapper
      *
      * @return Entity
      */
-    function findByNextcloudNodeId($node, $projects = null, $includeInactive = false) {
+    public function findByNextcloudNodeId($node, $projects = null, $includeInactive = false) {
         
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE node = ' . (int)$node;
         
-        if ($includeInactive == false) {
+        if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
         
@@ -317,7 +317,7 @@ class FileMapper extends Mapper
             . '\' AND pathname = \''
             . Access::escapeQueryStringComponent($pathname) . '\'';
         
-        if ($includeInactive == false) {
+        if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
         
@@ -370,7 +370,7 @@ class FileMapper extends Mapper
         
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . Access::escapeQueryStringComponent($project) . '\'';
         
-        if ($includeInactive == false) {
+        if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
         
@@ -427,7 +427,7 @@ class FileMapper extends Mapper
     /**
      * Delete all frozen file records with the specified PID from the database
      */
-    function deleteFile($pid) {
+    public function deleteFile($pid) {
         
         $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
@@ -440,7 +440,7 @@ class FileMapper extends Mapper
     /**
      * Delete all file records in the database for the specified project, or for all projects if 'all' specified
      */
-    function deleteAllFiles($project = null) {
+    public function deleteAllFiles($project = null) {
         
         $sql = 'DELETE FROM *PREFIX*ida_frozen_file';
         

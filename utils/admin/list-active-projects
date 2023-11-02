@@ -89,12 +89,32 @@ if [[ "$SINCE" > "$START" ]]; then
     errorExit "Specified timestamp $SINCE is in the future"
 fi
 
-source $ROOT/venv/bin/activate
-
-python -u $ROOT/utils/admin/lib/list_active_projects.py $ROOT $SINCE
+PROJECTS=`DEBUG=false $ROOT/utils/admin/list-projects`
 
 if [ $? -ne 0 ]; then
-    errorExit "Failed to retrieve listing of active projects"
+    errorExit "Failed to retrieve listing of projects"
 fi
+
+for PROJECT in $PROJECTS; do
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "$CURL_GET $ADMIN_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${IDA_API_ROOT_URL}/dataChanges/${PROJECT}/last\" | jq -r '.timestamp'"
+    fi
+
+    LAST_CHANGE=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${IDA_API_ROOT_URL}/dataChanges/${PROJECT}/last" | jq -r '.timestamp'`
+
+    if [ $? -ne 0 ]; then
+        errorExit "Failed to retrieve last data change for project $PROJECT"
+    fi
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "LAST_CHANGE: $LAST_CHANGE"
+    fi
+
+    if [[ "$LAST_CHANGE" > "$SINCE" ]]; then
+        echo "${PROJECT}"
+    fi
+
+done
 
 addToLog "DONE"

@@ -1,0 +1,353 @@
+#!/usr/bin/env bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script will populate an initial entry for every project based on existing
+# file modification and upload timestamps or action timestamps, defaulting to
+# the IDA migration epoch.
+# --------------------------------------------------------------------------------
+
+DEBUG_ENV="$DEBUG"
+
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+CONSTANTS_FILE="$ROOT/lib/constants.sh"
+
+if [ -e $CONSTANTS_FILE ]
+then
+    . $CONSTANTS_FILE
+else
+    echo "The configuration file $CONSTANTS_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+if [ "$DEBUG_ENV" ]; then
+    DEBUG="$DEBUG_ENV"
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ "$DEBUG" = "true" ]; then
+    echo "DBHOST: $DBHOST"
+    echo "DBPORT: $DBPORT"
+    echo "DBNAME: $DBNAME"
+    echo "DBUSER: $DBUSER"
+fi
+
+export PGPASSWORD="$DBPASSWORD"
+
+if [ "$*" ]; then
+    PROJECTS="$*"
+else
+    PROJECTS=`sudo -u apache $ROOT/utils/admin/list-projects`
+fi
+
+if [ "$IDA_MIGRATION" = "" ]; then
+    echo "Error: Missing IDA_MIGRATION value" >&2
+    exit 1
+fi
+
+for PROJECT in $PROJECTS; do
+
+    echo "$PROJECT"
+
+    CREATED="$IDA_MIGRATION"
+    TIMESTAMP="$CREATED"
+
+    USER=''
+    CHANGE=''
+    PATHNAME=''
+    TARGET=''
+    MODE='unknown'
+
+    # Get storage ID for project
+    QUERY="SELECT numeric_id FROM ${DBTABLEPREFIX}storages WHERE id = 'home::${PROJECT_USER_PREFIX}${PROJECT}' LIMIT 1"
+    OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+    STORAGE_ID="$OUT"
+    if [ "$DEBUG" = "true" ]; then
+        echo "--- STORAGE ID"
+        echo "QUERY:            $QUERY"
+        echo "OUT:              $OUT"
+        echo "STORAGE_ID:       $STORAGE_ID"
+    fi
+
+    if [ "$STORAGE_ID" = "" ]; then
+        echo "Error: Missing STORAGE_ID value" >&2
+        exit 1
+    fi
+
+    # Check if there is already a project init change recorded for project, if so, don't add another one
+    QUERY="SELECT timestamp FROM ${DBTABLEPREFIX}ida_data_change \
+           WHERE project = '${PROJECT}' \
+           AND change = 'init' \
+           LIMIT 1"
+    OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+    if [ "$DEBUG" = "true" ]; then
+        echo "--- EXISTING PROJECT CREATION CHANGE"
+        echo "QUERY:            $QUERY"
+        echo "OUT:              $OUT"
+    fi
+
+    # Record project creation timestamp, if none exists
+    if [ "$OUT" = "" ]; then
+
+        # Get oldest modified timestamp for project
+        QUERY="SELECT GREATEST(cache.mtime, COALESCE(extended.upload_time, 0)) \
+               FROM ${DBTABLEPREFIX}filecache as cache LEFT JOIN ${DBTABLEPREFIX}filecache_extended as extended \
+               ON cache.fileid = extended.fileid \
+               WHERE cache.storage = ${STORAGE_ID} \
+               ORDER BY GREATEST(cache.mtime, COALESCE(extended.upload_time, 0)) ASC \
+               LIMIT 1"
+        OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+
+        if [ "$DEBUG" = "true" ]; then
+            echo "--- OLDEST MODIFICATION"
+            echo "QUERY:            $QUERY"
+            echo "OUT:              $OUT"
+        fi
+
+        CACHE_TS="$OUT"
+        CACHE_TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ" -d "@${CACHE_TS}"`
+        if [ "$DEBUG" = "true" ]; then
+            echo "CACHE_TS:         $CACHE_TS"
+            echo "CACHE_TIMESTAMP:  $CACHE_TIMESTAMP"
+        fi
+
+        if [ "$CACHE_TIMESTAMP" = "" ]; then
+            echo "Error: Missing oldest CACHE_TIMESTAMP value" >&2
+            exit 1
+        fi
+
+        if [[ "$CACHE_TIMESTAMP" > "$IDA_MIGRATION" ]]; then
+            CREATED="$CACHE_TIMESTAMP"
+            TIMESTAMP="$CREATED"
+        fi
+
+        QUERY="INSERT INTO ${DBTABLEPREFIX}ida_data_change \
+               (\"timestamp\", \"project\", \"user\", \"change\", \"pathname\", \"mode\") \
+               VALUES ('${TIMESTAMP}', '${PROJECT}', 'service', 'init', '/', 'system')" 
+
+        OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+
+        if [ "$DEBUG" = "true" ]; then
+            echo "--- RECORDED PROJECT CREATION CHANGE"
+            echo "QUERY:            $QUERY"
+            echo "OUT:              $OUT"
+            echo "TIMESTAMP:        $TIMESTAMP"
+            echo "USER:             service"
+            echo "CHANGE:           init"
+            echo "PATHNAME:         /"
+            echo "MODE:             system"
+        fi
+    fi
+
+    # Get latest modified or upload timestamp for project pertaining to project data
+    QUERY="SELECT cache.path, GREATEST(cache.mtime, COALESCE(extended.upload_time, 0)) \
+           FROM ${DBTABLEPREFIX}filecache as cache LEFT JOIN ${DBTABLEPREFIX}filecache_extended as extended \
+           ON cache.fileid = extended.fileid \
+           WHERE cache.storage = ${STORAGE_ID} \
+           AND cache.path LIKE 'files/${PROJECT}%' \
+           ORDER BY GREATEST(cache.mtime, COALESCE(extended.upload_time, 0)) DESC \
+           LIMIT 1"
+    OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "--- LATEST MODIFICATION"
+        echo "QUERY: $QUERY"
+        echo "OUT: $OUT"
+    fi
+
+    if [ "$OUT" ]; then
+        CACHE_PATHNAME=`echo "$OUT" | awk -F'|' '{print $1}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed -e 's/^files//'`
+        CACHE_TS=`echo "$OUT" | awk -F'|' '{print $2}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+        CACHE_TIMESTAMP=`date -u +"%Y-%m-%dT%H:%M:%SZ" -d "@${CACHE_TS}"`
+        if [ "$DEBUG" = "true" ]; then
+            echo "CACHE_PATHNAME:   $CACHE_PATHNAME" 
+            echo "CACHE_TS:         $CACHE_TS"
+            echo "CACHE_TIMESTAMP:  $CACHE_TIMESTAMP"
+        fi
+
+        if [ "$CACHE_TIMESTAMP" = "" ]; then
+            echo "Error: Missing latest CACHE_TIMESTAMP value" >&2
+            exit 1
+        fi
+
+        if [[ "$CACHE_TIMESTAMP" > "$CREATED" ]]; then
+            TIMESTAMP="$CACHE_TIMESTAMP"
+            USER='unknown'
+            CHANGE='add'
+            PATHNAME="$CACHE_PATHNAME"
+        fi
+    fi
+
+    # Get latest frozen, unfrozen, or deleted timestamp for project from action records
+    # (we ignore all other actions, only user-initiated and batch-initiated actions)
+    QUERY="SELECT pid, \"user\", action, pathname, GREATEST( \
+              COALESCE (storage, '${IDA_MIGRATION}'), \
+              COALESCE (metadata, '${IDA_MIGRATION}'), \
+              COALESCE (completed, '${IDA_MIGRATION}'), \
+              COALESCE (cleared, '${IDA_MIGRATION}') \
+           ) \
+           FROM ${DBTABLEPREFIX}ida_action \
+           WHERE project = '${PROJECT}' \
+           AND action IN ( 'freeze', 'unfreeze', 'delete' ) \
+           ORDER BY GREATEST( \
+              COALESCE (storage, '${IDA_MIGRATION}'), \
+              COALESCE (metadata, '${IDA_MIGRATION}'), \
+              COALESCE (completed, '${IDA_MIGRATION}'), \
+              COALESCE (cleared, '${IDA_MIGRATION}') \
+           ) DESC \
+           LIMIT 1"
+    OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "--- LATEST ACTION"
+        echo "QUERY: $QUERY"
+        echo "OUT: $OUT"
+    fi
+
+    if [ "$OUT" ]; then
+        ACTION_PID=`echo "$OUT" | awk -F'|' '{print $1}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+        ACTION_USER=`echo "$OUT" | awk -F'|' '{print $2}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+        ACTION_ACTION=`echo "$OUT" | awk -F'|' '{print $3}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+        ACTION_PATHNAME=`echo "$OUT" | awk -F'|' '{print $4}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+        ACTION_TIMESTAMP=`echo "$OUT" | awk -F'|' '{print $5}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+        if [ "$DEBUG" = "true" ]; then
+            echo "ACTION_PID:       $ACTION_PID"
+            echo "ACTION_TIMESTAMP: $ACTION_TIMESTAMP"
+            echo "ACTION_USER:      $ACTION_USER" 
+            echo "ACTION_ACTION:    $ACTION_ACTION"
+            echo "ACTION_PATHNAME:  $ACTION_PATHNAME" 
+        fi
+
+        if [ "$ACTION_TIMESTAMP" = "" ]; then
+            echo "Error: Missing ACTION_TIMESTAMP value" >&2
+            exit 1
+        fi
+
+        if [[ "$ACTION_TIMESTAMP" > "$TIMESTAMP" ]]; then
+            TIMESTAMP="$ACTION_TIMESTAMP"
+            USER="$ACTION_USER"
+            if [ "$ACTION_ACTION" = "freeze" ]; then
+                CHANGE='move'
+                PATHNAME="/${PROJECT}${STAGING_FOLDER_SUFFIX}${ACTION_PATHNAME}"
+                TARGET="/${PROJECT}${ACTION_PATHNAME}"
+            elif [ "$ACTION_ACTION" = "unfreeze" ]; then
+                CHANGE='move'
+                PATHNAME="/${PROJECT}${ACTION_PATHNAME}"
+                TARGET="/${PROJECT}${STAGING_FOLDER_SUFFIX}${ACTION_PATHNAME}"
+            else
+                CHANGE='delete'
+                PATHNAME="/${PROJECT}${ACTION_PATHNAME}"
+            fi
+        fi
+    fi
+
+    # Get last recorded change for project (may be a just inserted project init)
+    QUERY="SELECT timestamp FROM ${DBTABLEPREFIX}ida_data_change \
+           WHERE project = '${PROJECT}' \
+           ORDER BY timestamp DESC \
+           LIMIT 1"
+    OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+    LAST_CHANGE_TIMESTAMP="$OUT"
+    if [ "$DEBUG" = "true" ]; then
+        echo "--- LAST RECORDED CHANGE"
+        echo "QUERY:            $QUERY"
+        echo "OUT:              $OUT"
+        echo "CREATED:          $CREATED"
+        echo "LAST_CHANGE:      $LAST_CHANGE_TIMESTAMP"
+    fi
+
+    if [ "$LAST_CHANGE_TIMESTAMP" = "" ]; then
+        echo "Error: Missing LAST_CHANGE_TIMESTAMP value" >&2
+        exit 1
+    fi
+
+    # Record change if newer than the last recorded change
+    if [[ "$TIMESTAMP" > "$LAST_CHANGE_TIMESTAMP" ]]; then
+
+        if [ "$USER" = "" ]; then
+            echo "Error: Missing USER value" >&2
+            exit 1
+        fi
+
+        if [ "$CHANGE" = "" ]; then
+            echo "Error: Missing CHANGE value" >&2
+            exit 1
+        fi
+
+        if [ "$PATHNAME" = "" ]; then
+            echo "Error: Missing PATHNAME value" >&2
+            exit 1
+        fi
+
+        if [ "$MODE" = "" ]; then
+            echo "Error: Missing MODE value" >&2
+            exit 1
+        fi
+
+        EX_PATHNAME=`echo "$PATHNAME" | sed -e "s/'/''/g"`
+        EX_TARGET=`echo "$TARGET" | sed -e "s/'/''/g"`
+
+        if [ "$TARGET" = "" ]; then
+            QUERY="INSERT INTO ${DBTABLEPREFIX}ida_data_change \
+                   (timestamp, project, \"user\", change, pathname, mode) \
+                   VALUES ('${TIMESTAMP}', '${PROJECT}', '${USER}', '${CHANGE}', '${EX_PATHNAME}', '${MODE}')" 
+        else
+            QUERY="INSERT INTO ${DBTABLEPREFIX}ida_data_change \
+                   (timestamp, project, \"user\", change, pathname, target, mode) \
+                   VALUES ('${TIMESTAMP}', '${PROJECT}', '${USER}', '${CHANGE}', '${EX_PATHNAME}', '${EX_TARGET}', '${MODE}')" 
+        fi
+    
+        OUT=`psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'`
+    
+        if [ "$DEBUG" = "true" ]; then
+            echo "--- NEW LATEST RECORDED CHANGE"
+            echo "QUERY:            $QUERY"
+            echo "OUT:              $OUT"
+            echo "TIMESTAMP:        $TIMESTAMP"
+            echo "USER:             $USER"
+            echo "CHANGE:           $CHANGE"
+            echo "PATHNAME:         $PATHNAME"
+            echo "TARGET:           $TARGET"
+            echo "MODE:             $MODE"
+        fi
+    fi
+
+done

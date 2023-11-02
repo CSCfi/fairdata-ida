@@ -83,7 +83,7 @@ class TestIdaUser(unittest.TestCase):
             if (os.path.exists(self.offlineSentinelFile)) :
                 os.remove(self.offlineSentinelFile)
 
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             os.system(cmd)
 
         self.assertTrue(self.success)

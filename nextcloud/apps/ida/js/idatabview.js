@@ -246,6 +246,7 @@
             cache: false,
             url: OC.generateUrl('/apps/ida/api/datasets'),
             type: 'POST',
+            headers: { 'IDA-Mode': 'GUI' },
             contentType: 'application/json',
             data: JSON.stringify({ nextcloudNodeId: nodeId, project: project, pathname: pathname }),
             success: function (data) {
@@ -294,6 +295,7 @@
                 cache: false,
                 url: OC.generateUrl('/apps/ida/api/' + action),
                 type: 'POST',
+                headers: { 'IDA-Mode': 'GUI' },
                 contentType: 'application/json',
                 data: JSON.stringify({ nextcloudNodeId: nodeId, project: project, pathname: pathname }),
                 success: function (data) {
@@ -598,6 +600,7 @@
                             cache: false,
                             url: OC.generateUrl('/apps/ida/api/files/byNextcloudNodeId/' + this.fileInfo.id),
                             type: 'GET',
+                            headers: { 'IDA-Mode': 'GUI' },
                             contentType: 'application/json',
 
                             success: function (fileInfo) {
@@ -615,6 +618,7 @@
                                     cache: false,
                                     url: OC.generateUrl('/apps/ida/api/actions/' + actionPid),
                                     type: 'GET',
+                                    headers: { 'IDA-Mode': 'GUI' },
                                     contentType: 'application/json',
 
                                     success: function (actionInfo) {

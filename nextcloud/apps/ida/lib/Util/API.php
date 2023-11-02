@@ -172,7 +172,7 @@ class API
      */
     public static function verifyRequiredIntegerParameter($name, $value) {
         if ($value === null) {
-            throw new Exception('Required integer parameter "' . $name . '" not specified.');
+            throw new Exception('Required integer parameter "' . $name . '" not specified');
         }
     }
     
@@ -185,8 +185,8 @@ class API
      * @throws Exception
      */
     public static function verifyRequiredStringParameter($name, $value) {
-        if ($value === null || trim($value) == '') {
-            throw new Exception('Required string parameter "' . $name . '" not specified or is empty string.');
+        if ($value === null || trim($value) === '') {
+            throw new Exception('Required string parameter "' . $name . '" not specified or is empty string');
         }
     }
     
@@ -203,7 +203,7 @@ class API
     public static function validateIntegerParameter($name, $value, $nullOK = false) {
         if ($nullOK === true && $value === 'null') { return; }
         if ($value !== null && !is_integer($value)) {
-            throw new Exception('Input integer parameter "' . $name . '" has invalid value "' . $value . '".');
+            throw new Exception('Input integer parameter "' . $name . '" has invalid value "' . $value . '"');
         }
     }
     
@@ -220,7 +220,7 @@ class API
     public static function validateStringParameter($name, $value, $nullOK = false) {
         if ($nullOK === true && $value === 'null') { return; }
         if ($value !== null && trim($value) === '') {
-            throw new Exception('Input string parameter "' . $name . '" is an empty string.');
+            throw new Exception('Input string parameter "' . $name . '" is an empty string');
         }
     }
     
@@ -236,7 +236,7 @@ class API
     public static function validateTimestamp($timestamp, $nullOK = false) {
         if ($nullOK === true && $timestamp === 'null') { return; }
         if ($timestamp !== null && !preg_match(self::TIMESTAMP_PATTERN, $timestamp)) {
-            throw new Exception('Specified timestamp "' . $timestamp . '" is invalid.');
+            throw new Exception('Specified timestamp "' . $timestamp . '" is invalid');
         }
     }
     

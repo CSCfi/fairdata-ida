@@ -21,9 +21,10 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 # Service constants
-DISALLOWED_NAMES="ADMIN SYSTEM"    # whitespace separated list of names in uppercase
-STAGING_FOLDER_SUFFIX="+"          # appended to project name to construct staging share folder name
-PROJECT_USER_PREFIX="PSO_"         # "PSO" = "Project Share Owner"
-USER_QUOTA=0                       # Normal users require no storage allocation
-MAX_FILE_COUNT=5000                # Maximum number of files allowed for a single action
-
+DISALLOWED_NAMES="ADMIN SYSTEM"      # whitespace separated list of names in uppercase
+STAGING_FOLDER_SUFFIX="+"            # appended to project name to construct staging share folder name
+PROJECT_USER_PREFIX="PSO_"           # "PSO" = "Project Share Owner"
+USER_QUOTA=0                         # Normal users require no storage allocation
+MAX_FILE_COUNT=5000                  # Maximum number of files allowed for a single action
+IDA_MIGRATION="2018-11-01T00:00:00Z" # When legacy data migration from old iRODS IDA completed
+IDA_MIGRATION_TS=1541030400          # When legacy data migration from old iRODS IDA completed, in epoch seconds

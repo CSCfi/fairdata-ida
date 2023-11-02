@@ -49,8 +49,21 @@ else
     errorExit "$USAGE"
 fi
 
-PROJECT_GROUP="$3"
+OPERATION="$1"
 USER="$2"
+PROJECT="$3"
+
+if [ "$OCC" = "" ]; then
+    errorExit "The OCC variable must be defined"
+fi
+
+if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
+    errorExit "The STORAGE_OC_DATA_ROOT variable must be defined"
+fi
+
+if [ "$PROJECT_USER_PREFIX" = "" ]; then
+    errorExit "The PROJECT_USER_PREFIX variable must be defined"
+fi
 
 # If not otherwise already defined in the environment, a new user account gets the static
 # password "$TEST_USER_PASS" (defined in config.sh) if in a non-production environment, else
@@ -70,10 +83,10 @@ fi
 
 # execute
 
-if [ "$1" = "ADD" ]; then
+if [ "$OPERATION" = "ADD" ]; then
     # create non existing user
     if [ `php "$OCC" user:info "$USER" | wc -l` -lt "2" ]; then
-        OUT=`php "$OCC" user:add "$USER" -g "$PROJECT_GROUP" --password-from-env 2>&1`
+        OUT=`php "$OCC" user:add "$USER" -g "$PROJECT" --password-from-env 2>&1`
         echo "---"
         echo "$OUT" | tr '\n' ' '
         echo "---"
@@ -99,23 +112,23 @@ if [ "$1" = "ADD" ]; then
 
 fi
 
-if [ "$1" = "REMOVE" ]; then
-    OUT=`php "$OCC" group:removeuser "$PROJECT_GROUP" "$USER" 2>&1`
+if [ "$OPERATION" = "REMOVE" ]; then
+    OUT=`php "$OCC" group:removeuser "$PROJECT" "$USER" 2>&1`
     if [ -n "$OUT" ]; then
         errorExit "$OUT"
     fi
 fi
 
-if [ "$1" = "JOIN" ]; then
-    OUT=`php "$OCC" group:adduser "$PROJECT_GROUP" "$USER" 2>&1`
+if [ "$OPERATION" = "JOIN" ]; then
+    OUT=`php "$OCC" group:adduser "$PROJECT" "$USER" 2>&1`
     if [ -n "$OUT" ]; then
         errorExit "$OUT"
     fi
 fi
 
-if [ "$1" = "DELETE" ]; then
+if [ "$OPERATION" = "DELETE" ]; then
     PROJECT_USER=`echo $USER | egrep -e "^$PROJECT_USER_PREFIX"`
-    if [ "$IDA_ENVIRONMENT" == "PRODUCTION" -a "$PROJECT_USER" != "" ]; then
+    if [ "$IDA_ENVIRONMENT" = "PRODUCTION" -a "$PROJECT_USER" != "" ]; then
         errorExit "Project share owner users can not be deleted in a production environment."
     fi
     OUT=`php "$OCC" user:delete "$USER" 2>&1`
@@ -126,7 +139,7 @@ if [ "$1" = "DELETE" ]; then
     # TODO?: delete actual PSO user folder and symbolic link from filesystem
 fi
 
-if [ "$1" = "DISABLE" ]; then
+if [ "$OPERATION" = "DISABLE" ]; then
     OUT=`php "$OCC" user:disable "$USER" 2>&1`
     HITS=`echo $OUT | grep 'The specified user is disabled' | wc -l`
     if [ "$HITS" -ne 1 ]; then
@@ -134,7 +147,7 @@ if [ "$1" = "DISABLE" ]; then
     fi
 fi
 
-if [ "$1" = "ENABLE" ]; then
+if [ "$OPERATION" = "ENABLE" ]; then
     OUT=`php "$OCC" user:enable "$USER" 2>&1`
     HITS=`echo $OUT | grep 'The specified user is enabled' | wc -l`
     if [ "$HITS" -ne 1 ]; then

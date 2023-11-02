@@ -383,4 +383,95 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             </field>
         </declaration>
     </table>
+    <table>
+        <!--
+            Stores details about data change events.
+        -->
+        <name>*dbprefix*ida_data_change</name>
+        <declaration>
+            <field>
+                <!--
+                    The local Nextcloud identifier for the data change database entity.
+                -->
+                <name>id</name>
+                <type>integer</type>
+                <notnull>true</notnull>
+                <default>0</default>
+                <autoincrement>true</autoincrement>
+            </field>
+            <field>
+                <!--
+                    Timestamp of the change.
+                    Formatted as an ISO standard UTC timestamp YYYY-MM-DDThh:mm:ssZ.
+                -->
+                <name>timestamp</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    The name of the project.
+                -->
+                <name>project</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The username of the user initiating the change.
+                -->
+                <name>user</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    The name of the change.
+                -->
+                <name>change</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>30</length>
+            </field>
+            <field>
+                <!--
+                    The relative pathname of the change, including the staging or frozen root folder.
+                -->
+                <name>pathname</name>
+                <type>text</type>
+                <notnull>true</notnull>
+                <length>1000</length>
+            </field>
+            <field>
+                <!--
+                    The relative pathname of the target, including the staging or frozen root folder, if change is rename, move, or copy.
+                -->
+                <name>target</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>1000</length>
+            </field>
+            <field>
+                <!--
+                    The PID of an action if the change is associated with an IDA action.
+                -->
+                <name>action</name>
+                <type>text</type>
+                <notnull>false</notnull>
+                <length>100</length>
+            </field>
+            <field>
+                <!--
+                    Boolean indicating whether the change is a retry of a failed action.
+                -->
+                <name>retry</name>
+                <type>boolean</type>
+                <notnull>true</notnull>
+                <default>false</default>
+            </field>
+        </declaration>
+    </table>
 </database>

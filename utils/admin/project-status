@@ -44,24 +44,25 @@ fi
 
 DATA=`$ROOT/utils/admin/fetch-project-stats $PROJECT`
 
-QUOTA=`echo "$DATA" | grep "quotaBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+QUOTA=`echo "$DATA" | jq -r '.quotaBytes'`
 QUOTA=`bytesToHR "0${QUOTA}"`
 
-USED=`echo "$DATA" | grep "totalBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+USED=`echo "$DATA" | jq -r '.totalBytes'`
 USED=`bytesToHR "0${USED}"`
 
-STAGED_VOLUME=`echo "$DATA" | grep "stagedBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+STAGED_VOLUME=`echo "$DATA" | jq -r '.stagedBytes'`
 STAGED_VOLUME=`bytesToHR "0${STAGED_VOLUME}"`
 
-FROZEN_VOLUME=`echo "$DATA" | grep "frozenBytes" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+FROZEN_VOLUME=`echo "$DATA" | jq -r '.frozenBytes'`
 FROZEN_VOLUME=`bytesToHR "0${FROZEN_VOLUME}"`
 
-TOTAL_FILES=`echo "$DATA" | grep "totalFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-STAGED_FILES=`echo "$DATA" | grep "stagedFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
-FROZEN_FILES=`echo "$DATA" | grep "frozenFiles" | sed -e 's/^[^0-9]*//' | sed -e 's/[^0-9]*$//'`
+TOTAL_FILES=`echo "$DATA" | jq -r '.totalFiles'`
+STAGED_FILES=`echo "$DATA" | jq -r '.stagedFiles'`
+FROZEN_FILES=`echo "$DATA" | jq -r '.frozenFiles'`
 
-LAST_ACTIVE=`echo "$DATA" | grep "lastActive" | sed -e 's/^[^:]*: \"//' | sed -e 's/[\",]*$//'`
-STORAGE_VOLUME=`echo "$DATA" | grep "storageVolume" | sed -e 's/^[^:]*: \"//' | sed -e 's/[\",]*$//'`
+LAST_DATA_CHANGE=`echo "$DATA" | jq -r '.lastDataChange' | sed -e 's/T.*$//'`
+
+STORAGE_VOLUME=`echo "$DATA" | jq -r '.storageVolume'`
 
 echo "Quota:"
 echo "    ${QUOTA}"
@@ -84,19 +85,20 @@ echo "    ${STAGED_FILES}"
 echo "Frozen files:"
 echo "    ${FROZEN_FILES}"
 
-echo "Last active:"
-echo "    ${LAST_ACTIVE}"
+echo "Last data change:"
+echo "    ${LAST_DATA_CHANGE}"
 
 echo "Storage volume:"
 echo "    ${STORAGE_VOLUME}"
 
 echo "Users: "
 
-$CURL_GET $ADMIN_CREDENTIALS "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" -H "OCS-APIRequest: true" | \
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" | \
     grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
 
 echo "Action status: "
 
-$CURL_GET $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/status" | jq --indent 4 | grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
+$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/status" | jq --indent 4 | \
+    grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
 
 addToLog "DONE"

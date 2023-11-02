@@ -33,10 +33,11 @@ namespace OCA\IDA\Util;
  */
 class Constants
 {
-    const DISALLOWED_NAMES = 'ADMIN SYSTEM';   // whitespace separated list of names in uppercase
-    const STAGING_FOLDER_SUFFIX = '+';         // appended to project name to construct staging share folder name
-    const PROJECT_USER_PREFIX = 'PSO_';        // "PSO" = "Project Share Owner"
-    const USER_QUOTA = 0;                      // Normal users require no storage allocation
-    const MAX_FILE_COUNT = 5000;               // Maximum number of files allowed for a single action
+    const DISALLOWED_NAMES = 'ADMIN SYSTEM';      // whitespace separated list of names in uppercase
+    const STAGING_FOLDER_SUFFIX = '+';            // appended to project name to construct staging share folder name
+    const PROJECT_USER_PREFIX = 'PSO_';           // "PSO" = "Project Share Owner"
+    const USER_QUOTA = 0;                         // Normal users require no storage allocation
+    const MAX_FILE_COUNT = 5000;                  // Maximum number of files allowed for a single action
+    const IDA_MIGRATION = '2018-11-01T00:00:00Z'; // When legacy data migration from old iRODS IDA completed
+    const IDA_MIGRATION_TS = 1541030400;          // When legacy data migration from old iRODS IDA completed, in epoch seconds
 }
-

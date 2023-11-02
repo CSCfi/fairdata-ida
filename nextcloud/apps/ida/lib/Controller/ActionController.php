@@ -67,7 +67,7 @@ class ActionController extends Controller
     ) {
         parent::__construct($appName, $request);
         $this->actionMapper = $actionMapper;
-        $this->userId = strtolower($userId);
+        $this->userId = $userId;
     }
 
     /**
@@ -125,7 +125,7 @@ class ActionController extends Controller
             // If the user is not admin and the intersection with any explicitly speciied projects
             // and user projects is empty, return an empty array.
 
-            if ($this->userId !== 'admin' && ($queryProjects == '')) {
+            if ($this->userId !== 'admin' && ($queryProjects === '')) {
                 return new DataResponse(array());
             }
 
@@ -238,7 +238,7 @@ class ActionController extends Controller
 
                 $userProjects = Access::getUserProjects();
 
-                if ($userProjects == null) {
+                if ($userProjects === null) {
                     return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
@@ -249,7 +249,7 @@ class ActionController extends Controller
 
             $actionEntity = $this->actionMapper->findAction($pid, $projects);
 
-            if ($actionEntity == null) {
+            if ($actionEntity === null) {
                 return API::notFoundErrorResponse('The specified action was not found.');
             }
 
@@ -483,7 +483,7 @@ class ActionController extends Controller
 
                 $userProjects = Access::getUserProjects();
 
-                if ($userProjects == null) {
+                if ($userProjects === null) {
                     return API::forbiddenErrorResponse('Session user does not belong to any projects.');
                 }
 
@@ -494,13 +494,13 @@ class ActionController extends Controller
 
             $actionEntity = $this->actionMapper->findAction($pid, $projects);
 
-            if ($actionEntity == null) {
+            if ($actionEntity === null) {
                 return API::notFoundErrorResponse('The specified action was not found.');
             }
 
             // Restrict to admin and PSO user for the specified project. 
 
-            $psoUser = strtolower(Constants::PROJECT_USER_PREFIX . $actionEntity->getProject());
+            $psoUser = Constants::PROJECT_USER_PREFIX . $actionEntity->getProject();
 
             if ($this->userId != 'admin' && $this->userId != $psoUser) {
                 return API::forbiddenErrorResponse('Session user does not have permission to modify the specified action.');
@@ -581,7 +581,7 @@ class ActionController extends Controller
                 $actionEntity->setCompleted($completed);
             }
             if ($failed != null) {
-                if ($error == null || trim($error) == '') {
+                if ($error === null || trim($error) === '') {
                     return API::badRequestErrorResponse('The error parameter is required when recording a failed timestamp.');
                 }
                 $actionEntity->setFailed($failed);
@@ -652,13 +652,13 @@ class ActionController extends Controller
 
             $actionEntity = $this->actionMapper->findAction($pid);
 
-            if ($actionEntity == null) {
+            if ($actionEntity === null) {
                 return API::notFoundErrorResponse('The specified action was not found.');
             }
 
             // Restrict to admin and PSO user for the specified project. 
 
-            if ($this->userId != 'admin' && $this->userId != strtolower(Constants::PROJECT_USER_PREFIX . $actionEntity->getProject())) {
+            if ($this->userId != 'admin' && $this->userId != Constants::PROJECT_USER_PREFIX . $actionEntity->getProject()) {
                 return API::forbiddenErrorResponse('Session user does not have permission to modify the specified action.');
             }
 
@@ -669,4 +669,5 @@ class ActionController extends Controller
             return API::serverErrorResponse('deleteAction: ' . $e->getMessage());
         }
     }
+
 }

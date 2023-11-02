@@ -39,8 +39,8 @@ DBPORT=5432
 DBTABLEPREFIX="oc_"
 DBUSER="nextcloud"
 DBPASSWORD="****"
-#DBROUSER="inspector"
-#DBROPASSWORD="****"
+DBROUSER="inspector"
+DBROPASSWORD="****"
 
 RABBIT_HOST="localhost"
 RABBIT_PROTOCOL="https"

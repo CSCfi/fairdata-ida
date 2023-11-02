@@ -74,16 +74,16 @@ echo "Checking for dataset intersections for pathname ${PATHNAME} in project ${P
 
 if [ "$DEBUG" = "true" ]; then
     if [ "$SIMULATE_AGENTS" = "true" ]; then
-        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\""
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H \"$IDA_MODE_HEADER\" -H \"X-SIMULATE-AGENTS: true\" \"${REQUEST_URL}\""
     else
-        echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\""
+        echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${REQUEST_URL}\""
     fi
 fi
 
 if [ "$SIMULATE_AGENTS" = "true" ]; then
-    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "X-SIMULATE-AGENTS: true" "${REQUEST_URL}" 2>$ERR`
 else
-    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+    OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${REQUEST_URL}" 2>$ERR`
 fi
 
 if [ -s $ERR ]; then

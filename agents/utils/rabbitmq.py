@@ -49,7 +49,7 @@ RABBITMQ_API_URL = '%s://%s:%d/api' % (
 
 RABBITMQ_AUTH = (uida_conf_vars['RABBIT_ADMIN_USER'], uida_conf_vars['RABBIT_ADMIN_PASS'])
 
-HEADERS = { 'Content-Type': 'application/json'}
+HEADERS = { 'Content-Type': 'application/json', 'IDA-Mode': 'System' }
 
 VHOST_NAME = uida_conf_vars['RABBIT_VHOST']
 EXCHANGES = [

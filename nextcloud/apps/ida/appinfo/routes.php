@@ -293,8 +293,19 @@ return [
         
         [
             // Check for instersection of scope with ongoing action
-            'name' => 'Freezing#checkScope',
+            'name' => 'Freezing#checkScope', // TODO DEPRECATE BEFORE NEXT RELEASE
             'url'  => '/api/checkScope',
+            'verb' => 'POST'
+            // Restricted to project access scope of user
+            // Required parameters:
+            //    project = the name of the project to check
+            //    pathname = the pathname of the scope to check
+        ],
+        
+        [
+            // Check for instersection of scope with ongoing action
+            'name' => 'Freezing#scopeOK',
+            'url'  => '/api/scopeOK',
             'verb' => 'POST'
             // Restricted to project access scope of user
             // Required parameters:
@@ -485,11 +496,62 @@ return [
             // Retrieve project title, if defined
             'name' => 'File#getProjectTitle',
             'url'  => '/api/getProjectTitle',
-            'verb' => 'POST'
+            'verb' => 'GET'
             // Restricted to project access scope of user
             // Required parameters:
             //    project = the name of the project to check
         ],
         
+        // Data Change Events
+
+        [
+            // Retrieve project initialization timestamp
+            'name' => 'DataChange#getInitialization',
+            'url'  => '/api/dataChanges/{project}/init',
+            'verb' => 'GET'
+            // Required parameters:
+            //     project = project name
+        ],
+        [
+            // Retrieve last recorded data change event
+            'name' => 'DataChange#getLastDataChange',
+            'url'  => '/api/dataChanges/{project}/last',
+            'verb' => 'GET'
+            // Required parameters:
+            //     project = project name
+            // Allowed parameters:
+            //     user   = limit changes to a particular user
+            //     change = limit changes to a particular change
+            //     mode   = limit changes to a particular mode
+        ],
+        [
+            // Retrieve one or more recorded data change events, from most to least recent
+            'name' => 'DataChange#getDataChanges',
+            'url'  => '/api/dataChanges/{project}',
+            'verb' => 'GET'
+            // Required parameters:
+            //     project = project name
+            // Allowed parameters:
+            //     user   = limit changes to a particular user
+            //     change = limit changes to a particular change
+            //     mode   = limit changes to a particular mode
+            //     limit  = number of changes to return, default 1 (last)
+        ],
+        [
+            // Record data change event
+            'name' => 'DataChange#recordDataChange',
+            'url'  => '/api/dataChanges',
+            'verb' => 'POST'
+            // Required parameters:
+            //     project   = project name
+            //     user      = the user responsible for the change
+            //     change    = one of 'create', 'modify', 'move', 'copy', 'rename', 'freeze', 'unfreeze', or 'delete'
+            //     pathname  = pathname of root node of the action, including staging or frozen root folder
+            // Allowed parameters:
+            //     target    = pathname of target location, including staging or frozen root folder, required
+            //                 if action is rename, move or copy, error if specified for any other action
+            //     timestamp = an ISO standard UTC timestamp, defaults to current time if unspecified
+            //     mode      = one of 'system', 'gui', 'cli', or 'api' (default)
+        ],
     ]
 ];

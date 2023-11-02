@@ -75,13 +75,15 @@ def main():
 
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
+        config.IDA_MIGRATION = constants.IDA_MIGRATION
+        config.IDA_MIGRATION_TS = constants.IDA_MIGRATION_TS
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PID = os.getpid()
         config.PROJECT = sys.argv[2]
 
         config.START = sys.argv[3]
         config.SINCE = sys.argv[4]
-        config.CHANGED_ONLY = (config.SINCE > IDA_MIGRATION)
+        config.CHANGED_ONLY = (config.SINCE > config.IDA_MIGRATION)
 
         config.FULL_AUDIT = False
         config.AUDIT_STAGING = True
@@ -153,8 +155,8 @@ def main():
             sys.stderr.write("FROZEN:        %s\n" % config.AUDIT_FROZEN)
             sys.stderr.write("TIMESTAMPS:    %s\n" % config.AUDIT_TIMESTAMPS)
             sys.stderr.write("CHECKSUMS:     %s\n" % config.AUDIT_CHECKSUMS)
-            sys.stderr.write("MIGRATION:     %s\n" % IDA_MIGRATION)
-            sys.stderr.write("MIGRATION_TS:  %s\n" % IDA_MIGRATION_TS)
+            sys.stderr.write("MIGRATION:     %s\n" % config.IDA_MIGRATION)
+            sys.stderr.write("MIGRATION_TS:  %s\n" % config.IDA_MIGRATION_TS)
 
         # Convert START ISO timestamp strings to epoch seconds
 
@@ -561,7 +563,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                         # If there is no upload timestamp, use the latest of the modification or migration timestamp
                         if row[5] in [ None, 'None', 'null', '', 0, False ]:
-                            uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], IDA_MIGRATION_TS)))
+                            uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], config.IDA_MIGRATION_TS)))
                         else:
                             uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[5]))
 
@@ -676,7 +678,7 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                 # If there is no upload timestamp, use the latest of the modification or migration timestamp
                 if row[5] in [ None, 'None', 'null', '', 0, False ]:
-                    uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], IDA_MIGRATION_TS)))
+                    uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], config.IDA_MIGRATION_TS)))
                 else:
                     uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[5]))
 

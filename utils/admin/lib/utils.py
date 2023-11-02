@@ -39,8 +39,6 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 LOG_ENTRY_FORMAT = '%(asctime)s %(name)s (%(process)d) %(levelname)s %(message)s'
 TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
-IDA_MIGRATION = '2018-11-01T00:00:00Z'
-IDA_MIGRATION_TS = 1541030400
 
 
 def load_configuration(filesystem_pathname):
@@ -98,7 +96,7 @@ def generate_checksum(filesystem_pathname):
 
 def normalize_timestamp(timestamp):
     """
-    Returns the input timestamp as a normalized ISO 8601 UTC timestamp string YYYY-MM-DDThh:mm:ssZ
+    Returns the input timestamp as a normalized Canonical ISO 8601 UTC timestamp string YYYY-MM-DDThh:mm:ssZ
     """
 
     # Sniff the input timestamp value and convert to a datetime instance as needed

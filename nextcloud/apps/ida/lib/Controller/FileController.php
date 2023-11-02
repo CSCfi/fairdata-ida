@@ -71,7 +71,7 @@ class FileController extends Controller
     ) {
         parent::__construct($appName, $request);
         $this->fileMapper = $fileMapper;
-        $this->userId = strtolower($userId);
+        $this->userId = $userId;
         Filesystem::init($userId, '/');
         $this->fsView = Filesystem::getView();
     }
@@ -147,7 +147,7 @@ class FileController extends Controller
             // If the user is not admin and the intersection with any explicitly speciied projects
             // and user projects is empty, return an empty array.
 
-            if ($this->userId !== 'admin' && ($queryProjects == '')) {
+            if ($this->userId !== 'admin' && ($queryProjects === '')) {
                 return new DataResponse(array());
             }
 
@@ -196,7 +196,7 @@ class FileController extends Controller
                 // Get user projects and verify user belongs to at least one project
                 $userProjects = Access::getUserProjects();
 
-                if ($userProjects == null) {
+                if ($userProjects === null) {
                     return API::forbiddenErrorResponse('The current user does not belong to any projects.');
                 } // Else set the project list to the list of user projects
                 else {
@@ -206,7 +206,7 @@ class FileController extends Controller
 
             $fileEntity = $this->fileMapper->findFile($pid, $projects, $includeInactive);
 
-            if ($fileEntity == null) {
+            if ($fileEntity === null) {
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
@@ -250,7 +250,7 @@ class FileController extends Controller
                 // Get user projects and verify user belongs to at least one project
                 $userProjects = Access::getUserProjects();
 
-                if ($userProjects == null) {
+                if ($userProjects === null) {
                     return API::forbiddenErrorResponse('The current user does not belong to any projects.');
                 } // Else set the project list to the list of user projects
                 else {
@@ -260,7 +260,7 @@ class FileController extends Controller
 
             $fileEntity = $this->fileMapper->findByNextcloudNodeId($node, $projects, $includeInactive);
 
-            if ($fileEntity == null) {
+            if ($fileEntity === null) {
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
@@ -301,7 +301,7 @@ class FileController extends Controller
                 // Get user projects and verify user belongs to at least one project
                 $userProjects = Access::getUserProjects();
 
-                if ($userProjects == null) {
+                if ($userProjects === null) {
                     return API::forbiddenErrorResponse('The current user does not belong to any projects.');
                 } // Else set the project list to the list of user projects
                 else {
@@ -311,7 +311,7 @@ class FileController extends Controller
 
             $fileEntity = $this->fileMapper->findByProjectPathname($project, $pathname, $projects, $includeInactive);
 
-            if ($fileEntity == null) {
+            if ($fileEntity === null) {
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
@@ -477,13 +477,13 @@ class FileController extends Controller
 
             $fileEntity = $this->fileMapper->findFile($pid, null, true);
 
-            if ($fileEntity == null) {
+            if ($fileEntity === null) {
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
             // Restrict to admin and PSO user for the specified project. 
 
-            if ($this->userId != 'admin' && $this->userId != strtolower(Constants::PROJECT_USER_PREFIX . $fileEntity->getProject())) {
+            if ($this->userId != 'admin' && $this->userId != Constants::PROJECT_USER_PREFIX . $fileEntity->getProject()) {
                 return API::forbiddenErrorResponse('Session user does not have permission to modify the specified file.');
             }
 
@@ -581,13 +581,13 @@ class FileController extends Controller
 
             $fileEntity = $this->fileMapper->findFile($pid, null, true);
 
-            if ($fileEntity == null) {
+            if ($fileEntity === null) {
                 return API::notFoundErrorResponse('The specified file was not found.');
             }
 
             // Restrict to admin and PSO user for the specified project. 
 
-            if ($this->userId != 'admin' && $this->userId != strtolower(Constants::PROJECT_USER_PREFIX . $fileEntity->getProject())) {
+            if ($this->userId != 'admin' && $this->userId != Constants::PROJECT_USER_PREFIX . $fileEntity->getProject()) {
                 return API::forbiddenErrorResponse('Session user does not have permission to modify the specified file.');
             }
 
@@ -630,7 +630,7 @@ class FileController extends Controller
                 // Get user projects and verify user belongs to at least one project
                 $userProjects = Access::getUserProjects();
 
-                if ($userProjects == null || !in_array($project, explode(",", $userProjects))) {
+                if ($userProjects === null || !in_array($project, explode(",", $userProjects))) {
                     return API::notFoundErrorResponse('The specified project was not found: ' . $project);
                 }
             }

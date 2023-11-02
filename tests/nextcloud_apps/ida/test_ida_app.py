@@ -160,27 +160,29 @@ class TestIdaApp(unittest.TestCase):
         time.sleep(1)  # In very fast environments, this brief pause is needed for Nextcloud to sync with filesystem
 
         print("Retrieve defined project title")
-        data = {"project": "test_project_a"}
-        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API_ROOT_URL"], "test_project_a"), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["message"], "Test title A")
 
         print("Retrieve default project title")
-        data = {"project": "test_project_b"}
-        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        #data = {"project": "test_project_b"}
+        #response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API_ROOT_URL"], "test_project_b"), auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["message"], "test_project_b")
 
         print("Attempt to retrieve project title with insufficient permissions")
-        data = {"project": "test_project_a"}
-        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        #data = {"project": "test_project_a"}
+        #response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_b, verify=False)
+        response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API_ROOT_URL"], "test_project_a"), auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 404)
 
         print("Attempt to retrieve title of non-existent project")
-        data = {"project": "nonexistentproject"}
-        response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
+        #data = {"project": "nonexistentproject"}
+        #response = requests.post("%s/getProjectTitle" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
+        response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API_ROOT_URL"], "nonexistentproject"), auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 404)
 
         # --------------------------------------------------------------------------------
@@ -204,11 +206,11 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s?format=json" % self.config["URL_BASE_SHARE"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
-        ocs = response_data.get("ocs", None)
+        ocs = response_data.get("ocs")
         self.assertIsNotNone(ocs)
-        share_data = ocs.get("data", None)
+        share_data = ocs.get("data")
         self.assertIsNotNone(share_data)
-        token = share_data.get("token", None)
+        token = share_data.get("token")
         self.assertIsNotNone(token)
         self.assertTrue(token.startswith("NOT_FOR_PUBLICATION_"))
 
@@ -311,7 +313,7 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_x_data = response.json()
-        self.assertEqual(file_x_data.get('size', None), 446)
+        self.assertEqual(file_x_data.get('size'), 446)
 
         print("Attempt to freeze an empty folder")
         data["pathname"] = "/testdata/empty_folder"
@@ -427,7 +429,7 @@ class TestIdaApp(unittest.TestCase):
         file_data = file_set_data[0]
         self.assertEqual(file_data["project"], data["project"])
         self.assertEqual(file_data["action"], action_data["pid"])
-        self.assertIsNotNone(file_data.get("removed", None))
+        self.assertIsNotNone(file_data.get("removed"))
 
         # TODO: check that all mandatory fields are defined with valid values for unfrozen file
 
@@ -463,7 +465,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["action"], "delete")
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
-        self.assertIsNotNone(action_data.get("completed", None))
+        self.assertIsNotNone(action_data.get("completed"))
 
         # --------------------------------------------------------------------------------
 
@@ -814,7 +816,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_set_data), 13)
         action_data = action_set_data[0]
         action_pid = action_data["pid"]
-        self.assertIsNotNone(action_data.get("completed", None))
+        self.assertIsNotNone(action_data.get("completed"))
 
         print("Update action as pending, clearing completed timestamp")
         data = {"completed": "null"}
@@ -822,7 +824,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Retrieve set of pending actions")
         data = {"projects": "test_project_a", "status": "pending"}
@@ -832,7 +834,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_set_data), 1)
         action_data = action_set_data[0]
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Update action as incomplete, clearing storage timestamp")
         data = {"storage": "null"}
@@ -840,8 +842,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNone(action_data.get("storage", None))
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNone(action_data.get("storage"))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Retrieve set of incomplete actions")
         data = {"projects": "test_project_a", "status": "incomplete"}
@@ -851,8 +853,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_set_data), 1)
         action_data = action_set_data[0]
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNone(action_data.get("storage", None))
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNone(action_data.get("storage"))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Update action as failed with error message")
         data = {"error": "test error message", "failed": "2099-01-01T00:00:00Z", "completed": "null"}
@@ -862,8 +864,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["pid"], action_pid)
         self.assertEqual(action_data["error"], data["error"])
         self.assertEqual(action_data["failed"], data["failed"])
-        self.assertIsNone(action_data.get("storage", None))
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNone(action_data.get("storage"))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Retrieve set of failed actions")
         data = {"projects": "test_project_a", "status": "failed"}
@@ -873,17 +875,17 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_set_data), 1)
         action_data = action_set_data[0]
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNotNone(action_data.get("error", None))
-        self.assertIsNotNone(action_data.get("failed", None))
-        self.assertIsNone(action_data.get("storage", None))
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNotNone(action_data.get("error"))
+        self.assertIsNotNone(action_data.get("failed"))
+        self.assertIsNone(action_data.get("storage"))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Clear failed action")
         response = requests.post("%s/clear/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNotNone(action_data.get("cleared", None))
+        self.assertIsNotNone(action_data.get("cleared"))
 
         print("Attempt to retrieve set of actions for project user has no rights to")
         data = {"projects": "test_project_c"}
@@ -965,7 +967,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["pid"], file_pid)
-        self.assertIsNone(file_data.get("removed", None))
+        self.assertIsNone(file_data.get("removed"))
 
         print("Set removed timestamp")
         data = {"removed": "2099-01-01T00:00:00Z"}
@@ -1000,28 +1002,28 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
-        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12\" is invalid.")
+        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12\" is invalid")
 
         print("Attempt to set invalid timestamp: invalid time separator syntax")
         data = {"removed": "2017-11-12 15:48:15Z"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
-        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12 15:48:15Z\" is invalid.")
+        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12 15:48:15Z\" is invalid")
 
         print("Attempt to set invalid timestamp: invalid timezone")
         data = {"removed": "2017-11-12T15:48:15+0000"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
-        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12T15:48:15+0000\" is invalid.")
+        self.assertEqual(response_data['message'], "Specified timestamp \"2017-11-12T15:48:15+0000\" is invalid")
 
         print("Attempt to set invalid timestamp: invalid format")
         data = {"removed": "Tue, Dec 12, 2017 10:03 UTC"}
         response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
-        self.assertEqual(response_data['message'], "Specified timestamp \"Tue, Dec 12, 2017 10:03 UTC\" is invalid.")
+        self.assertEqual(response_data['message'], "Specified timestamp \"Tue, Dec 12, 2017 10:03 UTC\" is invalid")
 
         # --------------------------------------------------------------------------------
 
@@ -1060,10 +1062,10 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["pid"], action_pid)
         self.assertEqual(action_data["error"], data["error"])
         self.assertEqual(action_data["failed"], data["failed"])
-        self.assertIsNone(action_data.get("checksums", None))
-        self.assertIsNone(action_data.get("metadata", None))
-        self.assertIsNone(action_data.get("replication", None))
-        self.assertIsNone(action_data.get("completed", None))
+        self.assertIsNone(action_data.get("checksums"))
+        self.assertIsNone(action_data.get("metadata"))
+        self.assertIsNone(action_data.get("replication"))
+        self.assertIsNone(action_data.get("completed"))
 
         print("Retrieve set of failed actions")
         data = {"projects": "test_project_a", "status": "failed"}
@@ -1073,36 +1075,36 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(action_set_data), 1)
         action_data = action_set_data[0]
         self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNotNone(action_data.get("error", None))
-        self.assertIsNotNone(action_data.get("failed", None))
-        self.assertIsNone(action_data.get("checksums", None))
-        self.assertIsNone(action_data.get("metadata", None))
-        self.assertIsNone(action_data.get("replication", None))
-        self.assertIsNone(action_data.get("completed", None))
-        self.assertIsNone(action_data.get("retry", None))
-        self.assertIsNone(action_data.get("retrying", None))
+        self.assertIsNotNone(action_data.get("error"))
+        self.assertIsNotNone(action_data.get("failed"))
+        self.assertIsNone(action_data.get("checksums"))
+        self.assertIsNone(action_data.get("metadata"))
+        self.assertIsNone(action_data.get("replication"))
+        self.assertIsNone(action_data.get("completed"))
+        self.assertIsNone(action_data.get("retry"))
+        self.assertIsNone(action_data.get("retrying"))
 
         print("Retry failed action")
         response = requests.post("%s/retry/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
-        self.assertEqual(action_data["pid"], action_pid)
-        self.assertIsNone(action_data.get("retrying", None))
-        self.assertIsNotNone(action_data.get("retry", None))
-        self.assertIsNotNone(action_data.get("cleared", None))
-        self.assertIsNotNone(action_data.get("error", None))
-        self.assertIsNotNone(action_data.get("failed", None))
-        retry_action_pid = action_data["retry"]
+        self.assertIsNotNone(action_data["pid"])
+        self.assertEqual(action_data.get("retrying"), action_pid)
+        self.assertIsNone(action_data.get("retry"))
+        self.assertIsNone(action_data.get("cleared"))
+        self.assertIsNone(action_data.get("error"))
+        self.assertIsNone(action_data.get("failed"))
+        retry_action_pid = action_data["pid"]
 
-        print("Retrieve retry action")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], retry_action_pid), auth=test_user_a, verify=False)
+        print("Retrieve updated failed action")
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
-        self.assertEqual(action_data["pid"], retry_action_pid)
-        self.assertEqual(action_data.get("retrying", None), action_pid)
-        self.assertIsNone(action_data.get("retry", None))
-        self.assertIsNone(action_data.get("cleared", None))
-        action_pid = retry_action_pid
+        self.assertEqual(action_data["pid"], action_pid)
+        self.assertEqual(action_data.get("retry"), retry_action_pid)
+        self.assertIsNone(action_data.get("retrying"))
+        self.assertIsNotNone(action_data.get("failed"))
+        self.assertIsNotNone(action_data.get("cleared"))
 
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
@@ -1116,10 +1118,10 @@ class TestIdaApp(unittest.TestCase):
 
         print("Update retry action as failed")
         data = {"error": "test error message", "failed": "2099-01-01T00:00:00Z"}
-        response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], retry_action_pid), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
-        self.assertEqual(action_data["pid"], action_pid)
+        self.assertEqual(action_data["pid"], retry_action_pid)
         self.assertEqual(action_data["error"], data["error"])
         self.assertEqual(action_data["failed"], data["failed"])
 
@@ -1130,7 +1132,7 @@ class TestIdaApp(unittest.TestCase):
         action_set_data = response.json()
         self.assertEqual(len(action_set_data), 1)
         action_data = action_set_data[0]
-        self.assertEqual(action_data["pid"], action_pid)
+        self.assertEqual(action_data["pid"], retry_action_pid)
 
         print("Clear all failed actions for project")
         data = {"projects": "test_project_a", "status": "failed"}
@@ -1303,31 +1305,31 @@ class TestIdaApp(unittest.TestCase):
         print("Verify all scope checks fail while service is locked")
         # All of the following requests as test_user_c should fail with 409 Conflict as service is locked:
         data["pathname"] = "/"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
         data["pathname"] = "/testdata"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
         data["pathname"] = "/testdata/2017-08"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
         data["pathname"] = "/testdata/2017-08/Experiment_1"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
         data["pathname"] = "/testdata/2017-08/Experiment_1/test01.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
         data["pathname"] = "/testdata/2017-08/Contact.txt"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
         data["pathname"] = "/X/Y/Z"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
         self.assertTrue("Service temporarily unavailable. Please try again later." in response.text)
 
@@ -1561,72 +1563,72 @@ class TestIdaApp(unittest.TestCase):
         # All of the following as test_user_c should fail with 409 Conflict:
         data = {"project": "test_project_c"}
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/
         data["pathname"] = "/"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata
         data["pathname"] = "/testdata"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11
         data["pathname"] = "/testdata/2017-11"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6
         data["pathname"] = "/testdata/2017-11/Experiment_6"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/test9999.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/test9999.dat
         data["pathname"] = "/testdata/2017-11/Experiment_6/test9999.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/baseline/testXYZ.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/baseline/testXYZ.dat
         data["pathname"] = "/testdata/2017-11/Experiment_6/baseline/testXYZ.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/.hidden_file.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/.hidden_file.dat
         data["pathname"] = "/testdata/2017-11/Experiment_6/.hidden_file.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
         print("Verify allowed scopes are OK")
         # All of the following as test_user_c should succeed with 200 OK:
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/XYZ
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/XYZ
         data["pathname"] = "/XYZ"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2018-08
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2018-08
         data["pathname"] = "/testdata/2018-08"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2018-08/test05.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2018-08/test05.dat
         data["pathname"] = "/testdata/2018-08/test05.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-10/Experiment_5
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-10/Experiment_5
         data["pathname"] = "/testdata/2017-10/Experiment_5"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/Contact.txt
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/Contact.txt
         data["pathname"] = "/Contact.txt"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-10/Experiment_2/baseline/test03.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-10/Experiment_2/baseline/test03.dat
         data["pathname"] = "/testdata/2017-10/Experiment_2/baseline/test03.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
 
         print("Verify root scope blocks all other scopes")
@@ -1651,69 +1653,69 @@ class TestIdaApp(unittest.TestCase):
         # All of the following as test_user_c should fail with 409 Conflict:
         data = {"project": "test_project_c"}
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/
         data["pathname"] = "/"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata
         data["pathname"] = "/testdata"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11
         data["pathname"] = "/testdata/2017-11"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6
         data["pathname"] = "/testdata/2017-11/Experiment_6"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/test9999.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/test9999.dat
         data["pathname"] = "/testdata/2017-11/Experiment_6/test9999.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/baseline/testXYZ.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/baseline/testXYZ.dat
         data["pathname"] = "/testdata/2017-11/Experiment_6/baseline/testXYZ.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/.hidden_file.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-11/Experiment_6/.hidden_file.dat
         data["pathname"] = "/testdata/2017-11/Experiment_6/.hidden_file.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/XYZ
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/XYZ
         data["pathname"] = "/XYZ"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/2018-08
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/2018-08
         data["pathname"] = "/testdata/2017-08"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/2018-08/test05.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/2018-08/test05.dat
         data["pathname"] = "/testdata/2017-08/test05.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-10/Experiment_5
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-10/Experiment_5
         data["pathname"] = "/testdata/2017-10/Experiment_5"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/Contact.txt
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/Contact.txt
         data["pathname"] = "/Contact.txt"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
-        # POST /app/ida/api/checkScope?project=test_project_c&pathname=/testdata/2017-10/Experiment_2/baseline/test03.dat
+        # POST /app/ida/api/scopeOK?project=test_project_c&pathname=/testdata/2017-10/Experiment_2/baseline/test03.dat
         data["pathname"] = "/testdata/2017-10/Experiment_2/baseline/test03.dat"
-        response = requests.post("%s/checkScope" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/scopeOK" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 409)
 
         # --------------------------------------------------------------------------------
@@ -1745,8 +1747,8 @@ class TestIdaApp(unittest.TestCase):
         # File count for this freeze folder action should always be the same, based on the static test data initialized
         self.assertEqual(len(file_set_data), 13)
         file_data = file_set_data[0]
-        self.assertIsNotNone(file_data.get("frozen", None))
-        self.assertIsNone(file_data.get("cleared", None))
+        self.assertIsNotNone(file_data.get("frozen"))
+        self.assertIsNone(file_data.get("cleared"))
         # Save key values for later checks
         original_action_pid = action_data["pid"]
         original_action_file_count = 13
@@ -1759,7 +1761,7 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
         file_x_data = response.json()
-        self.assertEqual(file_x_data.get('size', None), 446)
+        self.assertEqual(file_x_data.get('size'), 446)
 
         print("Repair project...")
         response = requests.post("%s/repair" % self.config["IDA_API_ROOT_URL"], auth=pso_user_d, verify=False)
@@ -1785,8 +1787,8 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(file_data["pid"], original_first_file_pid)
         self.assertEqual(file_data["pathname"], original_first_file_pathname)
         # New cloned file record should be frozen but not cleared
-        self.assertIsNotNone(file_data.get("frozen", None))
-        self.assertIsNone(file_data.get("cleared", None))
+        self.assertIsNotNone(file_data.get("frozen"))
+        self.assertIsNone(file_data.get("cleared"))
 
         print("Retrieve details of all frozen files associated with original freeze action")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], original_action_pid), auth=test_user_d, verify=False)
@@ -1796,15 +1798,15 @@ class TestIdaApp(unittest.TestCase):
         file_data = file_set_data[0]
         self.assertEqual(file_data["id"], original_first_file_record_id)
         # Original frozen file record should be both frozen and also now cleared
-        self.assertIsNotNone(file_data.get("frozen", None))
-        self.assertIsNotNone(file_data.get("cleared", None))
+        self.assertIsNotNone(file_data.get("frozen"))
+        self.assertIsNotNone(file_data.get("cleared"))
 
         print("Retrieve file details from hidden frozen file")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/.hidden_file"}
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
         file_x_data = response.json()
-        self.assertEqual(file_x_data.get('size', None), 446)
+        self.assertEqual(file_x_data.get('size'), 446)
 
         # NOTE tests for postprocessing results of repair action are handled in /tests/agents/test_agents.py
 

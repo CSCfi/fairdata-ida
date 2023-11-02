@@ -61,6 +61,8 @@ def main():
         else:
             config.VERIFY_SSL=True
 
+        config.HEADERS = { 'IDA-Mode': 'System' }
+
         # Initialize logging using UTC timestamps
 
         if config.DEBUG:
@@ -197,7 +199,7 @@ def update_nextcloud_modified_timestamp(config, pathname, timestamp):
     data = { "pathname": pathname, "modified": timestamp }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, json=data, verify=config.VERIFY_SSL)
+    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
         msg = "Warning: Failed to update modified timestamp in Nextcloud to %s for %s: %d" % (
@@ -218,7 +220,7 @@ def update_ida_modified_timestamp(config, pathname, file_pid, timestamp):
     data = { "modified": timestamp }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, json=data, verify=config.VERIFY_SSL)
+    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
         msg = "Warning: Failed to update modified timestamp in IDA to %s for %s: %d" % (
@@ -244,7 +246,7 @@ def update_metax_timestamp(config, field_name, pathname, file_pid, timestamp):
         url = "%s/files/%s" % (config.METAX_API_ROOT_URL, file_pid)
         data = { field_name: timestamp }
         auth = ( config.METAX_API_USER, config.METAX_API_PASS )
-        response = requests.patch(url, auth=auth, json=data)
+        response = requests.patch(url, auth=auth, headers=config.HEADERS, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
         msg = "Warning: Failed to update %s timestamp in Metax to %s for %s: %d" % (

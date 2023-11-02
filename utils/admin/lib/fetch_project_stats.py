@@ -42,6 +42,7 @@ import sys
 import os
 import time
 import re
+import json
 import logging
 import psycopg2
 from pathlib import Path
@@ -104,8 +105,6 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
-        config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PROJECT = sys.argv[2]
 
@@ -137,7 +136,7 @@ def main():
 
         query = "SELECT configvalue FROM %spreferences \
                  WHERE userid = '%s%s' AND configkey = 'quota' \
-                 LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
+                 LIMIT 1" % (config.DBTABLEPREFIX, constants.PROJECT_USER_PREFIX, config.PROJECT)
 
         if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
@@ -164,7 +163,7 @@ def main():
 
         query = "SELECT numeric_id FROM %sstorages \
                  WHERE id = 'home::%s%s' \
-                 LIMIT 1" % (config.DBTABLEPREFIX, config.PROJECT_USER_PREFIX, config.PROJECT)
+                 LIMIT 1" % (config.DBTABLEPREFIX, constants.PROJECT_USER_PREFIX, config.PROJECT)
 
         if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
@@ -252,10 +251,12 @@ def main():
         if staged_bytes == None:
             staged_bytes = 0
 
-        # Select last modified timestamp of any node
+        # Select last recorded data change
 
-        query = "SELECT MAX(mtime) FROM %sfilecache \
-                 WHERE storage = %d" % (config.DBTABLEPREFIX, storage_id)
+        query = "SELECT timestamp FROM %sida_data_change WHERE project = '%s' ORDER BY timestamp DESC LIMIT 1" % (
+            config.DBTABLEPREFIX,
+            config.PROJECT
+        )
 
         if config.DEBUG:
             sys.stderr.write("QUERY: %s\n" % query)
@@ -263,11 +264,18 @@ def main():
         cur.execute(query)
         rows = cur.fetchall()
 
-        last_active = datetime.utcfromtimestamp(rows[0][0]).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if (len(rows) > 0):
+            last_data_change = rows[0][0]
+        else:
+            last_data_change = constants.IDA_MIGRATION
 
         # Retrieve glusterfs volume where project data resides
 
-        storage_volume = Path("%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)).resolve().parent.parent
+        storage_volume = Path("%s/%s%s" % (
+            config.STORAGE_OC_DATA_ROOT,
+            constants.PROJECT_USER_PREFIX,
+            config.PROJECT)
+        ).resolve().parent.parent
 
         # Close database connection
 
@@ -294,7 +302,7 @@ def main():
             sys.stdout.write("%d\t" % staged_bytes)
             sys.stdout.write("%d\t" % frozen_files)
             sys.stdout.write("%d\t" % frozen_bytes)
-            sys.stdout.write("%s\t" % last_active)
+            sys.stdout.write("%s\t" % last_data_change)
             sys.stdout.write("%s\n" % storage_volume)
         else:
             sys.stdout.write("{\n")
@@ -306,7 +314,7 @@ def main():
             sys.stdout.write("  \"stagedBytes\": %d,\n" % staged_bytes)
             sys.stdout.write("  \"frozenFiles\": %d,\n" % frozen_files)
             sys.stdout.write("  \"frozenBytes\": %d,\n" % frozen_bytes)
-            sys.stdout.write("  \"lastActive\": \"%s\",\n" % last_active)
+            sys.stdout.write("  \"lastDataChange\": \"%s\",\n" % last_data_change)
             sys.stdout.write("  \"storageVolume\": \"%s\"\n" % storage_volume)
             sys.stdout.write("}\n")
 

@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script will create the oc_ida_data_change table and index, if they do not
+# already exist
+# --------------------------------------------------------------------------------
+
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+CONSTANTS_FILE="$ROOT/lib/constants.sh"
+
+if [ -e $CONSTANTS_FILE ]
+then
+    . $CONSTANTS_FILE
+else
+    echo "The configuration file $CONSTANTS_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "DBHOST: $DBHOST"
+echo "DBPORT: $DBPORT"
+echo "DBNAME: $DBNAME"
+echo "DBUSER: $DBUSER"
+
+export PGPASSWORD="$DBPASSWORD"
+
+# Delete existing table if in dev environment
+if [ "$IDA_ENVIRONMENT" = "DEV" ]; then
+    QUERY="DROP TABLE IF EXISTS ${DBTABLEPREFIX}ida_data_change"
+    echo "$QUERY"
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+fi
+
+# Create table if necessary
+QUERY="CREATE TABLE IF NOT EXISTS
+       ${DBTABLEPREFIX}ida_data_change (
+           \"id\" serial PRIMARY KEY,
+           \"timestamp\" VARCHAR(30)   NOT NULL,
+           \"project\"   VARCHAR(100)  NOT NULL,
+           \"user\"      VARCHAR(100)  NOT NULL,
+           \"change\"    VARCHAR(30)   NOT NULL,
+           \"pathname\"  VARCHAR(1000) NOT NULL,
+           \"target\"    VARCHAR(1000),
+           \"mode\"      VARCHAR(30)   DEFAULT 'system'
+       );"
+echo "$QUERY"
+psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+
+# Create index 1 if necessary
+QUERY="CREATE INDEX IF NOT EXISTS
+       ${DBTABLEPREFIX}ida_data_change_last_idx
+       ON ${DBTABLEPREFIX}ida_data_change
+       USING btree (project, timestamp DESC)
+       WITH (fillfactor = 50);"
+echo "$QUERY"
+psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+
+# Create index 2 if necessary
+QUERY="CREATE INDEX IF NOT EXISTS
+       ${DBTABLEPREFIX}ida_data_change_init_idx
+       ON ${DBTABLEPREFIX}ida_data_change
+       USING btree (project, change, timestamp ASC)
+       WITH (fillfactor = 50);"
+echo "$QUERY"
+psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+
+# Ensure read-only user has read access to the new table
+QUERY="GRANT SELECT ON ${DBTABLEPREFIX}ida_data_change TO \"${DBROUSER}\";"
+echo "$QUERY"
+psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"

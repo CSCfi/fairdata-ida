@@ -34,6 +34,8 @@ use OCA\IDA\Model\Action;
 use OCA\IDA\Model\ActionMapper;
 use OCA\IDA\Model\File;
 use OCA\IDA\Model\FileMapper;
+use OCA\IDA\Model\DataChange;
+use OCA\IDA\Model\DataChangeMapper;
 use OCA\IDA\Util\Access;
 use OCA\IDA\Util\API;
 use OCA\IDA\Util\Constants;
@@ -58,7 +60,7 @@ class MaximumAllowedFilesExceeded extends Exception
 {
     public function __construct($message = null)
     {
-        if ($message == null) {
+        if ($message === null) {
             $this->message = 'Maximum allowed file count for a single action was exceeded.';
         } else {
             $this->message = $message;
@@ -75,7 +77,7 @@ class PathConflict extends Exception
 {
     public function __construct($message = null)
     {
-        if ($message == null) {
+        if ($message === null) {
             $this->message = 'A node already exists with the target pathname.';
         } else {
             $this->message = $message;
@@ -84,12 +86,13 @@ class PathConflict extends Exception
 }
 
 /**
- * Frozen State Controller
+ * Frozen File State Controller
  */
 class FreezingController extends Controller
 {
     protected $actionMapper;
     protected $fileMapper;
+    protected $dataChangeMapper;
     protected $userId;
     protected $fsView;
     protected $config;
@@ -97,12 +100,13 @@ class FreezingController extends Controller
     /**
      * Creates the AppFramwork Controller
      *
-     * @param string       $appName      name of the app
-     * @param IRequest     $request      request object
-     * @param ActionMapper $actionMapper action mapper
-     * @param FileMapper   $fileMapper   file mapper
-     * @param string       $userId       current user
-     * @param IConfig      $config       global configuration
+     * @param string             $appName            name of the app
+     * @param IRequest           $request            request object
+     * @param ActionMapper       $actionMapper       action mapper
+     * @param FileMapper         $fileMapper         file mapper
+     * @param DataChangeMapper   $dataChangeMapper   data change event mapper
+     * @param string             $userId             current user
+     * @param IConfig            $config             global configuration
      *
      * @NoAdminRequired
      * @NoCSRFRequired
@@ -112,12 +116,14 @@ class FreezingController extends Controller
         IRequest $request,
         ActionMapper $actionMapper,
         FileMapper $fileMapper,
+        DataChangeMapper $dataChangeMapper,
         $userId,
         IConfig $config
     ) {
         parent::__construct($appName, $request);
         $this->actionMapper = $actionMapper;
         $this->fileMapper = $fileMapper;
+        $this->dataChangeMapper = $dataChangeMapper;
         $this->userId = $userId;
         $this->fsView = null;
         try {
@@ -157,7 +163,7 @@ class FreezingController extends Controller
 
         $uploaded = $nodeInfo->getUploadTime();
 
-        if ($uploaded == 0) {
+        if ($uploaded === 0) {
             $uploaded = $this->config['MIGRATION_TIMESTAMP'];
             $modified = Generate::newTimestamp($nodeInfo->getMTime());
             if (strcmp($modified, $uploaded) > 0) {
@@ -191,6 +197,12 @@ class FreezingController extends Controller
     {
         try {
 
+            // If user is not admin, nor PSO user, verify user belongs to project
+
+            if ($this->userId !== 'admin' && $this->userId !== Constants::PROJECT_USER_PREFIX . $project) {
+                Access::verifyIsAllowedProject($project);
+            }
+
             if ($unpublishedOnly === null) {
                 $unpublishedOnly = 'false';
             }
@@ -218,7 +230,7 @@ class FreezingController extends Controller
                     $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
                     $uploaded = $this->getUploadedTimestamp($nodeInfo);
 
-                    if ($uploadedBefore == null || $uploaded < $uploadedBefore) {
+                    if ($uploadedBefore === null || $uploaded < $uploadedBefore) {
 
                         $fileInfo = array(
                             'size' => $nodeInfo->getSize(),
@@ -246,7 +258,7 @@ class FreezingController extends Controller
                     $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
                     $uploaded = $this->getUploadedTimestamp($nodeInfo);
 
-                    if ($uploadedBefore == null || $uploaded < $uploadedBefore) {
+                    if ($uploadedBefore === null || $uploaded < $uploadedBefore) {
 
                         $datasets = null;
 
@@ -283,21 +295,21 @@ class FreezingController extends Controller
                             $cacheChecksum = $nodeInfo->getChecksum();
                             $checksum = $frozenFile->getChecksum();
 
-                            if ($checksum == null) {
+                            if ($checksum === null) {
                                 $checksum = $nodeInfo->getChecksum();
                             }
 
                             // Ensure the checksum is returned as an sha256: checksum URI
 
                             if ($checksum != null) {
-                                if (substr($checksum, 0, 7) == 'sha256:') {
+                                if (substr($checksum, 0, 7) === 'sha256:') {
                                     $fileInfo['checksum'] = $checksum;
                                 } else {
                                     $fileInfo["checksum"] = 'sha256:' . $checksum;
                                 }
                             }
 
-                            if ($testing == 'true') {
+                            if ($testing === 'true') {
                                 $fileInfo['cacheSize'] = $nodeInfo->getSize();
                                 $fileInfo["cacheChecksum"] = $cacheChecksum;
                                 $fileInfo["cacheModified"] = Generate::newTimestamp($nodeInfo->getMTime());
@@ -331,12 +343,29 @@ class FreezingController extends Controller
                 $frozenFiles = (object) null;
             }
 
+            $lastChange = $this->dataChangeMapper->getLastDataChangeDetails($project);
+
+            if ($lastChange !== null) {
+                $change = array(
+                    'timestamp' => $lastChange->getTimestamp(),
+                    'user' => $lastChange->getUser(),
+                    'change' => $lastChange->getChange(),
+                    'pathname' => $lastChange->getPathname(),
+                    'target' => $lastChange->getTarget(),
+                    'mode' => $lastChange->getMode()
+                );
+                if ($change['target'] === null) {
+                    unset($change['target']);
+                }
+            }
+
             return new DataResponse(array(
                 'project' => $project,
                 'created' => Generate::newTimestamp(),
                 'uploadedBefore' => $uploadedBefore,
                 'unpublishedOnly' => ($unpublishedOnly === 'true'),
                 'totalFiles' => $totalFiles,
+                'lastChange' => $change,
                 'totalStagedFiles' => $totalStagedFiles,
                 'totalFrozenFiles' => $totalFrozenFiles,
                 'staging' => $stagedFiles,
@@ -359,7 +388,6 @@ class FreezingController extends Controller
      */
     public function projectIsLocked($project)
     {
-
         try {
 
             Util::writeLog(
@@ -420,7 +448,6 @@ class FreezingController extends Controller
      */
     public function lockProject($project)
     {
-
         try {
 
             try {
@@ -431,7 +458,7 @@ class FreezingController extends Controller
 
             // Verify that current user is either admin or PSO user
 
-            if ($this->userId !== 'admin' && $this->userId !== (Constants::PROJECT_USER_PREFIX . $project)) {
+            if ($this->userId !== 'admin' && $this->userId !== Constants::PROJECT_USER_PREFIX . $project) {
                 return API::forbiddenErrorResponse();
             }
 
@@ -488,7 +515,6 @@ class FreezingController extends Controller
      */
     public function unlockProject($project)
     {
-
         try {
 
             try {
@@ -499,7 +525,7 @@ class FreezingController extends Controller
 
             // Verify that current user is either admin or PSO user
 
-            if ($this->userId !== 'admin' && $this->userId !== (Constants::PROJECT_USER_PREFIX . $project)) {
+            if ($this->userId !== 'admin' && $this->userId !== Constants::PROJECT_USER_PREFIX . $project) {
                 return API::forbiddenErrorResponse();
             }
 
@@ -562,7 +588,6 @@ class FreezingController extends Controller
      */
     public function freezeFiles($nextcloudNodeId, $project, $pathname, $token = null)
     {
-
         $actionEntity = null;
 
         try {
@@ -624,7 +649,7 @@ class FreezingController extends Controller
 
             // If $token is defined, it means that this is a batch action, and $batch should be true
             if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ($token === $this->config['BATCH_ACTION_TOKEN'])
             ) {
                 $batch = true;
                 Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
@@ -669,9 +694,9 @@ class FreezingController extends Controller
 
                 // If PSO user and batch action token valid, impose no file limit, else use default limit
 
-                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                     ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-                    ($token == $this->config['BATCH_ACTION_TOKEN'])
+                    ($token === $this->config['BATCH_ACTION_TOKEN'])
                 ) {
                     Util::writeLog(
                         'ida',
@@ -745,6 +770,7 @@ class FreezingController extends Controller
                     $this->actionMapper->update($actionEntity);
                 }
             } catch (Exception $e) {
+                Util::writeLog('ida', 'freezeFiles: Failed to mark freeze action as failed: ' . $e->getMessage(), \OCP\Util::ERROR);
             }
 
             // Cleanup and report error
@@ -775,7 +801,6 @@ class FreezingController extends Controller
      */
     public function unfreezeFiles($nextcloudNodeId, $project, $pathname, $token = null)
     {
-
         $actionEntity = null;
 
         try {
@@ -837,7 +862,7 @@ class FreezingController extends Controller
 
             // If $token is defined, it means that this is a batch action, and $batch should be true
             if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ($token === $this->config['BATCH_ACTION_TOKEN'])
             ) {
                 $batch = true;
                 Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
@@ -882,9 +907,9 @@ class FreezingController extends Controller
 
                 // If PSO user and batch action token valid, impose no file limit, else use default limit
 
-                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                     ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-                    ($token == $this->config['BATCH_ACTION_TOKEN'])
+                    ($token === $this->config['BATCH_ACTION_TOKEN'])
                 ) {
                     Util::writeLog(
                         'ida',
@@ -953,6 +978,7 @@ class FreezingController extends Controller
                     $this->actionMapper->update($actionEntity);
                 }
             } catch (Exception $e) {
+                Util::writeLog('ida', 'unfreezeFiles: Failed to mark unfreeze action as failed: ' . $e->getMessage(), \OCP\Util::ERROR);
             }
 
             // Cleanup and report error
@@ -983,7 +1009,6 @@ class FreezingController extends Controller
      */
     public function deleteFiles($nextcloudNodeId, $project, $pathname, $token = null)
     {
-
         $actionEntity = null;
         $isEmptyFolder = false;
 
@@ -1046,7 +1071,7 @@ class FreezingController extends Controller
 
             // If $token is defined, it means that this is a batch action, and $batch should be true
             if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ($token === $this->config['BATCH_ACTION_TOKEN'])
             ) {
                 $batch = true;
                 Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
@@ -1089,9 +1114,9 @@ class FreezingController extends Controller
 
                     // If PSO user and batch action token valid, impose no file limit, else use default limit
 
-                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                         ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-                        ($token == $this->config['BATCH_ACTION_TOKEN'])
+                        ($token === $this->config['BATCH_ACTION_TOKEN'])
                     ) {
                         Util::writeLog(
                             'ida',
@@ -1159,6 +1184,7 @@ class FreezingController extends Controller
                     $this->actionMapper->update($actionEntity);
                 }
             } catch (Exception $e) {
+                Util::writeLog('ida', 'deleteFiles: Failed to mark delete action as failed: ' . $e->getMessage(), \OCP\Util::ERROR);
             }
 
             // Cleanup and report error
@@ -1182,7 +1208,6 @@ class FreezingController extends Controller
      */
     public function retryAction($pid, $token = null)
     {
-
         $retryActionEntity = null;
         $project = null;
 
@@ -1201,7 +1226,7 @@ class FreezingController extends Controller
 
             $failedActionEntity = $this->actionMapper->findAction($pid);
 
-            if ($failedActionEntity == null) {
+            if ($failedActionEntity === null) {
                 return API::notFoundErrorResponse('The specified action does not exist.');
             }
 
@@ -1217,7 +1242,7 @@ class FreezingController extends Controller
 
             // Verify that the action actually is failed action
 
-            if ($failedActionEntity->getFailed() == null) {
+            if ($failedActionEntity->getFailed() === null) {
                 return API::badRequestErrorResponse('Specified action is not a failed action.');
             }
 
@@ -1242,7 +1267,7 @@ class FreezingController extends Controller
 
             // If $token is defined, it means that this is a batch action, and $batch should be true
             if (($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-            ($token == $this->config['BATCH_ACTION_TOKEN'])
+            ($token === $this->config['BATCH_ACTION_TOKEN'])
             ) {
                 $batch = true;
                 Util::writeLog('ida', '$token is set, proceeding with batch action', \OCP\Util::INFO);
@@ -1282,7 +1307,7 @@ class FreezingController extends Controller
 
             // Ensure that PIDs are generated and stored for all nodes
 
-            if ($retryActionEntity->getPids() == null && $retryActionEntity->getAction() == 'freeze') {
+            if ($retryActionEntity->getPids() === null && $retryActionEntity->getAction() === 'freeze') {
 
                 // Collect all nodes within scope of action, signalling error if maximum file count is exceeded
 
@@ -1293,9 +1318,9 @@ class FreezingController extends Controller
 
                     // If PSO user and batch action token valid, impose no file limit, else use default limit
 
-                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                         ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-                        ($token == $this->config['BATCH_ACTION_TOKEN'])
+                        ($token === $this->config['BATCH_ACTION_TOKEN'])
                     ) {
                         Util::writeLog('ida', 'retryAction: Batch Action Execution: action=' . $action . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::INFO);
                         $nextcloudNodes = $this->getNextcloudNodes($action, $project, $pathname, 0);
@@ -1367,14 +1392,14 @@ class FreezingController extends Controller
 
             // Ensure that the Nextcloud storage is correctly updated
 
-            if ($retryActionEntity->getStorage() == null) {
+            if ($retryActionEntity->getStorage() === null) {
 
                 // Determine how storage needs to be modified
 
-                if ($retryActionEntity->getAction() == 'delete') {
+                if ($retryActionEntity->getAction() === 'delete') {
 
                     $this->deleteNextcloudNode($retryActionEntity->getProject(), $retryActionEntity->getPathname());
-                } else { // action == 'freeze' or 'unfreeze'
+                } else { // action === 'freeze' or 'unfreeze'
 
                     // Move node from staging to frozen space, or frozen space to staging, depending on action
 
@@ -1396,7 +1421,8 @@ class FreezingController extends Controller
 
             Access::unlockProject($project);
 
-            return new DataResponse($failedActionEntity);
+            return new DataResponse($retryActionEntity);
+
         } catch (Exception $e) {
             try {
                 if ($retryActionEntity != null) {
@@ -1405,6 +1431,7 @@ class FreezingController extends Controller
                     $this->actionMapper->update($retryActionEntity);
                 }
             } catch (Exception $e) {
+                Util::writeLog('ida', 'retryAction: Failed to mark retry action as failed: ' . $e->getMessage(), \OCP\Util::ERROR);
             }
 
             // Cleanup and report error
@@ -1427,7 +1454,6 @@ class FreezingController extends Controller
      */
     public function clearAction($pid)
     {
-
         Util::writeLog('ida', 'clearAction: pid=' . $pid . ' user=' . $this->userId, \OCP\Util::INFO);
 
         $project = null;
@@ -1536,9 +1562,9 @@ class FreezingController extends Controller
             return API::badRequestErrorResponse($e->getMessage());
         }
 
-        // If the user is the PSO user, record the user as 'service'
+        // If the user is the admin or PSO user, record the user as 'service'
 
-        if ($user == Constants::PROJECT_USER_PREFIX . $project) {
+        if ($user === 'admin' || $user === Constants::PROJECT_USER_PREFIX . $project) {
             $user = 'service';
         }
 
@@ -1635,9 +1661,9 @@ class FreezingController extends Controller
 
                     // If PSO user and batch action token valid, impose no file limit, else use default limit
 
-                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) == 0) &&
+                    if ((strpos($this->userId, Constants::PROJECT_USER_PREFIX) === 0) &&
                         ($token != null) && ($this->config['BATCH_ACTION_TOKEN'] != null) &&
-                        ($token == $this->config['BATCH_ACTION_TOKEN'])
+                        ($token === $this->config['BATCH_ACTION_TOKEN'])
                     ) {
                         Util::writeLog(
                             'ida',
@@ -1754,7 +1780,7 @@ class FreezingController extends Controller
 
         Util::writeLog('ida', 'checkDatasets: datasets_response=' . $response, \OCP\Util::DEBUG);
 
-        if ($httpcode == 200) {
+        if ($httpcode === 200) {
 
             $intersecting_dataset_ids = json_decode($response, true);
 
@@ -1822,7 +1848,7 @@ class FreezingController extends Controller
 
                 curl_close($ch);
 
-                if ($httpcode == 200) {
+                if ($httpcode === 200) {
                     Util::writeLog('ida', 'checkDatasets: id=' . $intersecting_dataset_id, \OCP\Util::DEBUG);
                     $metax_datasets[] = json_decode($response, true);
                 }
@@ -1974,7 +2000,7 @@ class FreezingController extends Controller
 
         Util::writeLog('ida', 'getDatasetFiles: datasets_response=' . $response, \OCP\Util::DEBUG);
 
-        if ($httpcode == 200) {
+        if ($httpcode === 200) {
 
             $datasetFiles = json_decode($response, true);
 
@@ -2023,7 +2049,7 @@ class FreezingController extends Controller
         $fileEntity->setAction($actionPid);
         $fileEntity->setNode($fileInfo->getId());
         $fileEntity->setPid(Generate::newPid('f' . $fileInfo->getId()));
-        if ($action == 'freeze') {
+        if ($action === 'freeze') {
             $fileEntity->setFrozen($timestamp);
         }
         $fileEntity->setProject($project);
@@ -2175,7 +2201,7 @@ class FreezingController extends Controller
 
         try {
 
-            if ($nextcloudNodeId == null || $nextcloudNodeId == 0 || $nextcloudNodeId == '' || $nextcloudNodeId == '0') {
+            if ($nextcloudNodeId === null || $nextcloudNodeId === 0 || $nextcloudNodeId === '' || $nextcloudNodeId === '0') {
 
                 $nextcloudNodeId = 0;
 
@@ -2254,20 +2280,20 @@ class FreezingController extends Controller
                         $newFileEntity->setSize(0 + $fileInfo->getSize());
                         // If the size was unknown, assume the checksum is invalid and purge it (to be repaired by the agent)
                         $checksum = $fileInfo->getChecksum();
-                        if ($checksum == null || $checksum == '') {
+                        if ($checksum === null || $checksum === '') {
                             $newFileEntity->setChecksum(null);
                         }
                         else {
-                            if (substr($checksum, 0, 7) == "sha256:") {
+                            if (substr($checksum, 0, 7) === "sha256:") {
                                 $checksum = substr($checksum, 7);
                             }
                             $newFileEntity->setChecksum($checksum);
                         }
                     }
-                    if ($newFileEntity->getModified() == null) {
+                    if ($newFileEntity->getModified() === null) {
                         $newFileEntity->setModified(Generate::newTimestamp($fileInfo->getMTime()));
                     }
-                    if ($newFileEntity->getFrozen() == null) {
+                    if ($newFileEntity->getFrozen() === null) {
                         $newFileEntity->setFrozen($timestamp);
                     }
 
@@ -2376,7 +2402,7 @@ class FreezingController extends Controller
         // which should have been provided via the action parameter; but in case no incomplete actions exist,
         // simply return false.
 
-        if (count($actionEntities) == 0) {
+        if (count($actionEntities) === 0) {
             return false;
         }
 
@@ -2907,6 +2933,13 @@ class FreezingController extends Controller
             \OCP\Util::DEBUG
         );
 
+        // Initialize IDA change mode from client (e.g. UI) if it was provided in request, else default to 'api'
+        $idaMode = 'api';
+		if (isset($_SERVER['HTTP_IDA_MODE'])) {
+			$values = explode(',', $_SERVER['HTTP_IDA_MODE']);
+			$idaMode = $values[0];
+		}
+
         // If pathname is the root folder '/', move all children within the scope of the root folder.
 
         if ($pathname === '/' || $pathname === '' || $pathname === null) {
@@ -2957,7 +2990,7 @@ class FreezingController extends Controller
 
             // If target node does not exist, no matter whether folder or file, move from source to target and we're done
 
-            if ($targetExists == false) {
+            if ($targetExists === false) {
 
                 // Ensure all ancestor folders in target path exist
 
@@ -2968,7 +3001,11 @@ class FreezingController extends Controller
                 $ch = curl_init($sourceURI);
 
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'MOVE');
-                curl_setopt($ch, CURLOPT_HTTPHEADER, array('Destination: ' . $targetURI));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                    'Destination: ' . $targetURI,
+                    'IDA-Mode: ' . $idaMode,
+                    'IDA-Authenticated-User: ' . $this->userId
+                ));
                 curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
                 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
                 curl_setopt($ch, CURLOPT_UNRESTRICTED_AUTH, true);
@@ -2986,6 +3023,8 @@ class FreezingController extends Controller
                     Util::writeLog('ida', 'moveNextcloudNode: MOVE'
                         . ' sourceURI=' . $sourceURI
                         . ' targetURI=' . $targetURI
+                        . ' user=' . $this->userId
+                        . ' mode=' . $idaMode
                         . ' curl_errno=' . curl_errno($ch)
                         . ' response=' . $response, \OCP\Util::ERROR);
                     curl_close($ch);
@@ -3006,6 +3045,10 @@ class FreezingController extends Controller
                 $ch = curl_init($sourceURI);
 
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                    'IDA-Mode: ' . $idaMode,
+                    'IDA-Authenticated-User: ' . $this->userId
+                ));
                 curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
                 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
                 curl_setopt($ch, CURLOPT_UNRESTRICTED_AUTH, true);
@@ -3022,6 +3065,8 @@ class FreezingController extends Controller
                 if ($response === false) {
                     Util::writeLog('ida', 'moveNextcloudNode: DELETE'
                         . ' sourceURI=' . $sourceURI
+                        . ' user=' . $this->userId
+                        . ' mode=' . $idaMode
                         . ' curl_errno=' . curl_errno($ch)
                         . ' response=' . $response, \OCP\Util::ERROR);
                     curl_close($ch);
@@ -3082,8 +3127,14 @@ class FreezingController extends Controller
      */
     protected function deleteNextcloudNode($project, $pathname)
     {
-
         Util::writeLog('ida', 'deleteNextcloudNode:' . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::INFO);
+
+        // Initialize IDA change mode from client (e.g. UI) if it was provided in request, else default to 'api'
+        $idaMode = 'api';
+		if (isset($_SERVER['HTTP_IDA_MODE'])) {
+			$values = explode(',', $_SERVER['HTTP_IDA_MODE']);
+			$idaMode = $values[0];
+		}
 
         // If pathname is the root folder '/', delete all children within the scope of the root folder.
 
@@ -3120,6 +3171,10 @@ class FreezingController extends Controller
             $ch = curl_init($sourceURI);
 
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'IDA-Mode: ' . $idaMode,
+                'IDA-Authenticated-User: ' . $this->userId
+            ));
             curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
             curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
             curl_setopt($ch, CURLOPT_UNRESTRICTED_AUTH, true);
@@ -3136,6 +3191,8 @@ class FreezingController extends Controller
             if ($response === false) {
                 Util::writeLog('ida', 'deleteNextcloudNode: DELETE'
                     . ' sourceURI=' . $sourceURI
+                    . ' user=' . $this->userId
+                    . ' mode=' . $idaMode
                     . ' curl_errno=' . curl_errno($ch)
                     . ' response=' . $response, \OCP\Util::ERROR);
                 curl_close($ch);
@@ -3161,8 +3218,14 @@ class FreezingController extends Controller
      */
     protected function createNextcloudPathFolders($project, $pathname)
     {
-
         Util::writeLog('ida', 'createNextcloudPathFolders: project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
+
+        // Initialize IDA change mode from client (e.g. UI) if it was provided in request, else default to 'api'
+        $idaMode = 'api';
+		if (isset($_SERVER['HTTP_IDA_MODE'])) {
+			$values = explode(',', $_SERVER['HTTP_IDA_MODE']);
+			$idaMode = $values[0];
+		}
 
         $folderPath = substr($this->getParentPathname($pathname), 1);
 
@@ -3203,6 +3266,10 @@ class FreezingController extends Controller
                     $ch = curl_init($folderURI);
 
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'MKCOL');
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                        'IDA-Mode: ' . $idaMode,
+                        'IDA-Authenticated-User: ' . $this->userId
+                    ));
                     curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
                     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
                     curl_setopt($ch, CURLOPT_UNRESTRICTED_AUTH, true);
@@ -3219,6 +3286,8 @@ class FreezingController extends Controller
                     if ($response === false) {
                         Util::writeLog('ida', 'createNextcloudPathFolders: MKCOL'
                             . ' folderURI=' . $folderURI
+                            . ' user=' . $this->userId
+                            . ' mode=' . $idaMode
                             . ' curl_errno=' . curl_errno($ch)
                             . ' response=' . $response, \OCP\Util::ERROR);
                         curl_close($ch);
@@ -3248,7 +3317,6 @@ class FreezingController extends Controller
      */
     public function clearActions($status = 'failed', $projects)
     {
-
         // TODO Determine whether and how to lock all specified projects during operation
 
         if ($status !== 'failed' && $status !== 'pending') {
@@ -3257,7 +3325,6 @@ class FreezingController extends Controller
 
         if ($this->userId === 'admin') {
             $entities = $this->actionMapper->clearActions($status, $projects);
-
             return new DataResponse($entities);
         } else {
             return API::forbiddenErrorResponse();
@@ -3281,7 +3348,6 @@ class FreezingController extends Controller
      */
     public function dbLoad($flush = 'false', $action = 'delete', $actions = null, $filesPerAction = null)
     {
-
         try {
 
             if ($flush === 'false' && $actions === null) {
@@ -3384,7 +3450,6 @@ class FreezingController extends Controller
      */
     public function dbLoadSummary()
     {
-
         try {
 
             // Allowed for admin
@@ -3432,7 +3497,6 @@ class FreezingController extends Controller
      */
     public function flushDatabase($project)
     {
-
         try {
             API::verifyRequiredStringParameter('project', $project);
         } catch (Exception $e) {
@@ -3447,9 +3511,9 @@ class FreezingController extends Controller
 
         // All projects allowed for admin only
 
-        if ($project == 'all') {
+        if ($project === 'all') {
 
-            if ($this->userId == 'admin') {
+            if ($this->userId === 'admin') {
 
                 $this->actionMapper->deleteAllActions('all');
                 $this->fileMapper->deleteAllFiles('all');
@@ -3471,6 +3535,7 @@ class FreezingController extends Controller
 
             $this->actionMapper->deleteAllActions($project);
             $this->fileMapper->deleteAllFiles($project);
+            $this->dataChangeMapper->deleteAllDataChanges($project);
 
             return new DataResponse('Database flushed for project ' . $project . '.');
         }
@@ -3495,12 +3560,11 @@ class FreezingController extends Controller
      */
     public function bootstrapProject($action = null, $checksums = null)
     {
-
-        if ($action == null) {
+        if ($action === null) {
             return API::badRequestErrorResponse('No action specified.');
         }
 
-        if ($checksums == null) {
+        if ($checksums === null) {
             return API::badRequestErrorResponse('No checksums specified.');
         }
 
@@ -3549,7 +3613,7 @@ class FreezingController extends Controller
             $pathnames = array_keys($checksums);
             $pathnameCount = count($pathnames);
 
-            if ($pathnameCount == 0) {
+            if ($pathnameCount === 0) {
                 Access::unlockProject($project);
 
                 return API::badRequestErrorResponse('No checksums specified.');
@@ -3637,7 +3701,6 @@ class FreezingController extends Controller
      */
     public function repairProject()
     {
-
         Util::writeLog('ida', 'repairProject:' . ' user=' . $this->userId, \OCP\Util::INFO);
 
         $project = null;
@@ -3761,7 +3824,6 @@ class FreezingController extends Controller
      */
     public function repairNodeTimestamp($pathname, $modified)
     {
-
         Util::writeLog('ida', 'repairNodeTimestamp:'
             . ' user=' . $this->userId
             . ' pathname=' . $pathname
@@ -4147,9 +4209,76 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
+    public function scopeOK($project, $pathname)
+    {
+        try {
+
+            Util::writeLog(
+                'ida',
+                'scopeOK:'
+                    . ' project=' . $project
+                    . ' pathname=' . $pathname
+                    . ' user=' . $this->userId,
+                \OCP\Util::DEBUG
+            );
+
+            try {
+                API::verifyRequiredStringParameter('project', $project);
+                API::verifyRequiredStringParameter('pathname', $pathname);
+            } catch (Exception $e) {
+                return API::badRequestErrorResponse($e->getMessage());
+            }
+
+            // If service is locked, always report conflict
+
+            if (Access::projectIsLocked('all')) {
+                return API::conflictErrorResponse('Service temporarily unavailable. Please try again later.');
+            }
+
+            // If project is suspended, always report conflict
+
+            if ($this->actionMapper->isSuspended($project)) {
+                return API::conflictErrorResponse('Project suspended. Action not permitted.');
+            }
+
+            // Verify that current user has rights to the specified project, rejecting request if not...
+
+            try {
+                Access::verifyIsAllowedProject($project);
+            } catch (Exception $e) {
+                return API::forbiddenErrorResponse($e->getMessage());
+            }
+
+            // Check if scope intersects incomplete action of project
+
+            if ($this->scopeIntersectsInitiatingAction($pathname, $project)) {
+                return API::conflictErrorResponse('The specified scope conflicts with an ongoing action in the specified project.');
+            }
+
+            // We only log success responses for scope checks if debug logging is enabled, otherwise, no logging is done. This is to
+            // prevent log files from being filled needlessly with success response messages, since scope checks are done frequently.
+            return API::successResponse('The specified scope does not conflict with any ongoing action in the specified project.', true);
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('scopeOK: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check if the specified pathname intersects the scope of any action for a project which is still being initiated,
+     * such that the storage has not been fully updated. Return 200 OK if no intersection, else return 409 Conflict
+     * if there is an intersection.
+     *
+     * @param string $project  project to check
+     * @param string $pathname pathname corresponding to the scope to check
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
     public function checkScope($project, $pathname)
     {
-
         try {
 
             Util::writeLog(
@@ -4221,14 +4350,13 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function scopeIntersectsInitiatingAction($inputScope, $project)
+    protected function scopeIntersectsInitiatingAction($inputScope, $project)
     {
-
-        if ($inputScope == null) {
+        if ($inputScope === null) {
             throw new Exception('Null input scope.');
         }
 
-        if ($project == null) {
+        if ($project === null) {
             throw new Exception('Null project.');
         }
 
@@ -4250,10 +4378,10 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function scopeIntersectsAction($inputScope, $actionEntities, $action = null)
+    protected function scopeIntersectsAction($inputScope, $actionEntities, $action = null)
     {
 
-        if ($inputScope == null) {
+        if ($inputScope === null) {
             throw new Exception('Null input scope.');
         }
 
@@ -4269,7 +4397,7 @@ class FreezingController extends Controller
 
                 $actionScope = $actionEntity->getPathname();
 
-                if ($actionScope == null) {
+                if ($actionScope === null) {
                     throw new Exception('Null action scope.');
                 }
 

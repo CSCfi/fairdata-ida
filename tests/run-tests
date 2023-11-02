@@ -95,6 +95,13 @@ if [ "$FLUSH_REPLICATED_FILES_BEFORE_TESTS" = "true" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+# Ensure service is not locked or offline (if sentinel files remained due to
+# failed tests)
+
+rm -f $STORAGE_OC_DATA_ROOT/control/LOCK    2>/dev/null
+rm -f $STORAGE_OC_DATA_ROOT/control/OFFLINE 2>/dev/null
+
+#--------------------------------------------------------------------------------
 # Ensure test python environment is properly configured and active
 
 source $ROOT/venv/bin/activate
@@ -143,6 +150,12 @@ else
     fi
 
     python -W ignore -m unittest discover -f -q tests.agents
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    python -W ignore -m unittest discover -f -q tests.changes
 
     if [ $? -ne 0 ]; then
         exit 1

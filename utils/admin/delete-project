@@ -70,7 +70,7 @@ if [ "$2" != "--force" ]; then
 
     echo "Verifying project ${PROJECT} is suspended..."
     
-    SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
+    SUSPENDED=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
                tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend*\"" | grep "\"project\": *\"$PROJECT\"" | \
                sed -e 's/^.*"initiated": *"//' | sed -e 's/".*$//' | sort -u | tail -1`
 
@@ -129,9 +129,9 @@ fi
 
 #--------------------------------------------------------------------------------
 
-echo "Exporting project action and frozen file records from database..."
+echo "Exporting project action, data change, and frozen file records from database..."
 
-$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?projects=${PROJECT}" 2>$ERR | \
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/actions?projects=${PROJECT}" 2>$ERR | \
     jq --indent 4 > "${PROJECT_TRASH_DATA_ROOT}/actions.json"
 
 if [ -s $ERR ]; then
@@ -140,7 +140,16 @@ if [ -s $ERR ]; then
     errorExit "Failed to export action records!"
 fi
 
-$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/files/action/all?projects=${PROJECT}" 2>$ERR | \
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/dataChanges/${PROJECT}" 2>$ERR | \
+    jq --indent 4 > "${PROJECT_TRASH_DATA_ROOT}/data_changes.json"
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
+    errorExit "Failed to export data change records!"
+fi
+
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/files/action/all?projects=${PROJECT}" 2>$ERR | \
     jq --indent 4 > "${PROJECT_TRASH_DATA_ROOT}/files.json"
 
 if [ -s $ERR ]; then
@@ -149,9 +158,9 @@ if [ -s $ERR ]; then
     errorExit "Failed to export file records!"
 fi
 
-echo "Flushing project action and frozen file records from the database..."
+echo "Flushing project action, data change, and frozen file records from the database..."
 
-$CURL_POST $PROJECT_USER_CREDENTIALS "$IDA_API_ROOT_URL/flush?project=${PROJECT}" 2>$ERR >/dev/null
+$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/flush?project=${PROJECT}" 2>$ERR >/dev/null
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
@@ -202,9 +211,9 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
     fi
     
     if [ $METAX_API_VERSION -ge 3 ]; then
-        $CURL_DELETE $METAX_CREDENTIALS "${METAX_API_ROOT_URL}/files?project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR
+        $CURL_DELETE $METAX_CREDENTIALS -H "$IDA_MODE_HEADER" "${METAX_API_ROOT_URL}/files?project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR
     else
-        $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR
+        $CURL_POST $METAX_CREDENTIALS -H "$IDA_MODE_HEADER" "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR
     fi
 
     if [ -s $ERR ]; then

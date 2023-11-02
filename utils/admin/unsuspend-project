@@ -54,7 +54,7 @@ fi
 #--------------------------------------------------------------------------------
 echo "Checking if project ${PROJECT} is suspended..."
 
-PIDS=`$CURL_GET $ADMIN_CREDENTIALS "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
+PIDS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/actions?status=suspend" 2>$ERR | \
       tr "\n" " " | tr "{" "\n" | grep "\"action\": *\"suspend\"" | grep "\"project\": *\"$PROJECT\"" | \
       sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
 
@@ -79,10 +79,10 @@ echo "Clearing suspend action for project ${PROJECT}..."
 for PID in $PIDS; do
 
     if [ "$DEBUG" = "true" ]; then
-         echo "$CURL_POST $ADMIN_CREDENTIALS $DATA \"$IDA_API_ROOT_URL/actions/$PID?cleared=$START\""
+         echo "$CURL_POST $ADMIN_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"$IDA_API_ROOT_URL/actions/$PID?cleared=$START\""
     fi
 
-    OUT=`$CURL_POST $ADMIN_CREDENTIALS $DATA "$IDA_API_ROOT_URL/actions/$PID?cleared=$START"`
+    OUT=`$CURL_POST $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/actions/$PID?cleared=$START"`
 
     SUCCESS=`echo "$OUT" | grep '"cleared":'`
 
@@ -96,10 +96,10 @@ done
 echo "Unlocking project ${PROJECT}..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_DELETE \"$PROJECT_USER_CREDENTIALS\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\""
+    echo "$CURL_DELETE \"$PROJECT_USER_CREDENTIALS\" -H \"$IDA_MODE_HEADER\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\""
 fi
 
-OUT=`$CURL_DELETE "$PROJECT_USER_CREDENTIALS" "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`
+OUT=`$CURL_DELETE "$PROJECT_USER_CREDENTIALS" -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`
 
 if [ -e $PROJECT_LOCK ]; then
     errorExit "Failed to unlock project ${PROJECT}"

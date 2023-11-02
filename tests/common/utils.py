@@ -102,6 +102,8 @@ def load_configuration():
         'METAX_API_ROOT_URL':     server_configuration.METAX_API_ROOT_URL,
         'METAX_API_USER':         server_configuration.METAX_API_USER,
         'METAX_API_PASS':         server_configuration.METAX_API_PASS,
+        'IDA_MIGRATION':          service_constants.IDA_MIGRATION,
+        'IDA_MIGRATION_TS':       service_constants.IDA_MIGRATION_TS,
         'START':                  generate_timestamp()
     }
 

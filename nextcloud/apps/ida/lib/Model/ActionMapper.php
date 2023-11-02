@@ -71,32 +71,32 @@ class ActionMapper extends Mapper
      *
      * @return Entity[]
      */
-    function hasActions($status = null, $projects = null) {
+    public function hasActions($status = null, $projects = null) {
         
         $sql = 'SELECT * FROM *PREFIX*ida_action';
         
         // Add status restriction if defined
         
         if ($status != null) {
-            if ($status == 'pending') {
+            if ($status === 'pending') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'completed') {
+            elseif ($status === 'completed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NOT NULL';
             }
-            elseif ($status == 'failed') {
+            elseif ($status === 'failed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND failed IS NOT NULL';
             }
-            elseif ($status == 'cleared') {
+            elseif ($status === 'cleared') {
                 $sql = $sql . ' WHERE cleared IS NOT NULL';
             }
-            elseif ($status == 'incomplete') {
+            elseif ($status === 'incomplete') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'initiating') {
+            elseif ($status === 'initiating') {
                 $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'suspend') {
+            elseif ($status === 'suspend') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action = \'suspend\'';
             }
             else {
@@ -125,7 +125,7 @@ class ActionMapper extends Mapper
             }
             
             if ($projectList != null) {
-                if ($status == null) {
+                if ($status === null) {
                     $sql = $sql . ' WHERE';
                 }
                 else {
@@ -153,7 +153,7 @@ class ActionMapper extends Mapper
      *
      * @return Entity[]
      */
-    function isSuspended($projects = null) {
+    public function isSuspended($projects = null) {
         
         $sentinelFilePathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida') . '/control/SUSPENDED';
         
@@ -215,32 +215,32 @@ class ActionMapper extends Mapper
      *
      * @return Entity[]
      */
-    function findActions($status = null, $projects = null) {
+    public function findActions($status = null, $projects = null) {
         
         $sql = 'SELECT * FROM *PREFIX*ida_action';
         
         // Add status restriction if defined
         
         if ($status != null) {
-            if ($status == 'pending') {
+            if ($status === 'pending') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'completed') {
+            elseif ($status === 'completed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NOT NULL';
             }
-            elseif ($status == 'failed') {
+            elseif ($status === 'failed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND failed IS NOT NULL';
             }
-            elseif ($status == 'cleared') {
+            elseif ($status === 'cleared') {
                 $sql = $sql . ' WHERE cleared IS NOT NULL';
             }
-            elseif ($status == 'incomplete') {
+            elseif ($status === 'incomplete') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'initiating') {
+            elseif ($status === 'initiating') {
                 $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'suspend') {
+            elseif ($status === 'suspend') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action = \'suspend\'';
             }
             else {
@@ -269,7 +269,7 @@ class ActionMapper extends Mapper
             }
             
             if ($projectList != null) {
-                if ($status == null) {
+                if ($status === null) {
                     $sql = $sql . ' WHERE';
                 }
                 else {
@@ -281,13 +281,13 @@ class ActionMapper extends Mapper
         
         // Sort results according to appropriate timestamp for status
         
-        if ($status == 'completed') {
+        if ($status === 'completed') {
             $sql = $sql . ' ORDER BY completed DESC';
         }
-        elseif ($status == 'failed') {
+        elseif ($status === 'failed') {
             $sql = $sql . ' ORDER BY failed DESC';
         }
-        elseif ($status == 'cleared') {
+        elseif ($status === 'cleared') {
             $sql = $sql . ' ORDER BY cleared DESC';
         }
         else {
@@ -315,32 +315,32 @@ class ActionMapper extends Mapper
      *
      * @return Entity[]
      */
-    function countActions($status = null, $projects = null) {
+    public function countActions($status = null, $projects = null) {
         
         $sql = 'SELECT COUNT(*) FROM *PREFIX*ida_action';
         
         // Add status restriction if defined
         
         if ($status != null) {
-            if ($status == 'pending') {
+            if ($status === 'pending') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND failed IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'completed') {
+            elseif ($status === 'completed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NOT NULL';
             }
-            elseif ($status == 'failed') {
+            elseif ($status === 'failed') {
                 $sql = $sql . ' WHERE cleared IS NULL AND failed IS NOT NULL';
             }
-            elseif ($status == 'cleared') {
+            elseif ($status === 'cleared') {
                 $sql = $sql . ' WHERE cleared IS NOT NULL';
             }
-            elseif ($status == 'incomplete') {
+            elseif ($status === 'incomplete') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'initiating') {
+            elseif ($status === 'initiating') {
                 $sql = $sql . ' WHERE cleared IS NULL AND storage IS NULL AND action != \'suspend\'';
             }
-            elseif ($status == 'suspend') {
+            elseif ($status === 'suspend') {
                 $sql = $sql . ' WHERE cleared IS NULL AND completed IS NULL AND action = \'suspend\'';
             }
             else {
@@ -369,7 +369,7 @@ class ActionMapper extends Mapper
             }
             
             if ($projectList != null) {
-                if ($status == null) {
+                if ($status === null) {
                     $sql = $sql . ' WHERE';
                 }
                 else {
@@ -394,7 +394,7 @@ class ActionMapper extends Mapper
      *
      * @return Entity
      */
-    function findAction($pid, $projects = null) {
+    public function findAction($pid, $projects = null) {
         
         $sql = 'SELECT * FROM *PREFIX*ida_action WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
@@ -441,12 +441,12 @@ class ActionMapper extends Mapper
      * @return Entity
      * @throws Exception
      */
-    function clearAction($pid) {
+    public function clearAction($pid) {
         
         $actionEntity = $this->findAction($pid);
         
         if ($actionEntity) {
-            if ($actionEntity->getFailed() == null) {
+            if ($actionEntity->getFailed() === null) {
                 throw new Exception('The action with PID "' . $pid . '" is not failed. Only failed actions may be cleared.');
             }
             $actionEntity->setCleared(Generate::newTimestamp());
@@ -465,7 +465,7 @@ class ActionMapper extends Mapper
      *
      * @return Entity[]
      */
-    function clearActions($status = 'failed', $projects = null) {
+    public function clearActions($status = 'failed', $projects = null) {
         
         $actionEntities = $this->findActions($status, $projects);
         
@@ -479,7 +479,7 @@ class ActionMapper extends Mapper
     /**
      * Delete a specific action record from the database
      */
-    function deleteAction($pid) {
+    public function deleteAction($pid) {
         
         $sql = 'DELETE FROM *PREFIX*ida_action WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         
@@ -492,7 +492,7 @@ class ActionMapper extends Mapper
     /**
      * Delete all action records in the database for the specified project, or for all projects if 'all' specfied
      */
-    function deleteAllActions($project = null) {
+    public function deleteAllActions($project = null) {
         
         $sql = 'DELETE FROM *PREFIX*ida_action';
         
@@ -505,5 +505,6 @@ class ActionMapper extends Mapper
         $stmt = $this->execute($sql);
         $stmt->closeCursor();
     }
+
 }
 

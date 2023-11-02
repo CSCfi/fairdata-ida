@@ -31,14 +31,6 @@ if [ -e "${STORAGE_OC_DATA_ROOT}/control/OFFLINE" ]; then
     errorExit "The IDA service is in OFFLINE mode. Ignoring request: $SCRIPT $*"
 fi
 
-TEST_NAME=`echo "$2" | tr [:lower:] [:upper:]`
-for DISALLOWED in $DISALLOWED_NAMES
-do
-    if [ "$TEST_NAME" == "$DISALLOWED" ]; then
-        errorExit "Name \"$2\" not allowed"
-    fi
-done
-
 for NEEDS_PROG in curl php
 do
     PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
@@ -48,14 +40,14 @@ do
     fi
 done
 
-if [ "$1" == "ADD" -o "$1" == "MODIFY" -o "$1" == "TITLE" ]; then
+if [ "$1" = "ADD" -o "$1" = "MODIFY" -o "$1" = "TITLE" ]; then
     if [ $# -ne 3 ]; then
         errorExit "$USAGE"
     fi
     if [ -z "$2" -o -z "$3" ]; then
         errorExit "$USAGE"
     fi
-elif [ "$1" == "DISABLE" -o "$1" == "SHARE" -o "$1" == "UNSHARE" ]; then
+elif [ "$1" = "DISABLE" -o "$1" = "SHARE" -o "$1" = "UNSHARE" ]; then
     if [ $# -ne 2 ]; then
         errorExit "$USAGE"
     fi
@@ -66,24 +58,79 @@ else
     errorExit "$USAGE"
 fi
 
-if [ "$STAGING_FOLDER_SUFFIX" == "" ]; then
+if [ "$ROOT" = "" ]; then
+    errorExit "The ROOT variable must be defined"
+fi
+
+if [ "$OCC" = "" ]; then
+    errorExit "The OCC variable must be defined"
+fi
+
+if [ "$CURL_GET" = "" ]; then
+    errorExit "The CURL_GET variable must be defined"
+fi
+
+if [ "$CURL_POST" = "" ]; then
+    errorExit "The CURL_POST variable must be defined"
+fi
+
+if [ "$CURL_MKCOL" = "" ]; then
+    errorExit "The CURL_MKCOL variable must be defined"
+fi
+
+if [ "$CURL_DELETE" = "" ]; then
+    errorExit "The CURL_DELETE variable must be defined"
+fi
+
+if [ "$STORAGE_OC_DATA_ROOT" = "" ]; then
+    errorExit "The STORAGE_OC_DATA_ROOT variable must be defined"
+fi
+
+if [ "$IDA_API_ROOT_URL" = "" ]; then
+    errorExit "The IDA_API_ROOT_URL variable must be defined"
+fi
+
+if [ "$URL_BASE_SHARE" = "" ]; then
+    errorExit "The URL_BASE_SHARE variable must be defined"
+fi
+
+if [ "$PROJECT_USER_PREFIX" = "" ]; then
+    errorExit "The PROJECT_USER_PREFIX variable must be defined"
+fi
+
+if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
     errorExit "The STAGING_FOLDER_SUFFIX variable must be defined"
 fi
 
-PROJECT_STAGING_FOLDER="$2${STAGING_FOLDER_SUFFIX}"
-PROJECT_FROZEN_FOLDER="$2"
+if [ "$IDA_MODE_HEADER" = "" ]; then
+    errorExit "The IDA_MODE_HEADER variable must be defined"
+fi
+
+OPERATION="$1"
+PROJECT="$2"
+PROJECT_QUOTA="$3"
+
+PROJECT_STAGING_FOLDER="${PROJECT}${STAGING_FOLDER_SUFFIX}"
+PROJECT_FROZEN_FOLDER="${PROJECT}"
 PROJECT_STAGING_FOLDER_ENCODED=$(echo $PROJECT_STAGING_FOLDER | sed -f $ROOT/lib/urlencode.sed)
 PROJECT_FROZEN_FOLDER_ENCODED=$(echo $PROJECT_FROZEN_FOLDER | sed -f $ROOT/lib/urlencode.sed)
-PROJECT_GROUP="$2"
-PROJECT_USER="${PROJECT_USER_PREFIX}$2"
-PROJECT_USER_FULL_NAME="$2"
-PROJECT_QUOTA="$3"
+PROJECT_GROUP="${PROJECT}"
+PROJECT_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+PROJECT_USER_FULL_NAME="${PROJECT}"
 
 export OC_PASS="$PROJECT_USER_PASS"
 
 # execute
 
-if [ "$1" == "ADD" ]; then
+TEST_NAME=`echo "$PROJECT" | tr [:lower:] [:upper:]`
+for DISALLOWED in $DISALLOWED_NAMES
+do
+    if [ "$TEST_NAME" = "$DISALLOWED" ]; then
+        errorExit "Name \"$PROJECT\" not allowed"
+    fi
+done
+
+if [ "$OPERATION" = "ADD" ]; then
 
     echoAndLog "Checking for existing share owner folder..."
 
@@ -193,7 +240,7 @@ if [ "$1" == "ADD" ]; then
     echoAndLog "Creating project shared staging folder..."
 
     # create the project read-write staging directory to share under project users home
-    OUT=`$CURL_MKCOL -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_STAGING_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_MKCOL -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_FILE}/${PROJECT_STAGING_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Failed to create staging directory, curl error $CURL_ERROR $OUT"
@@ -209,7 +256,7 @@ if [ "$1" == "ADD" ]; then
 
     # share the project staging directory to the group with read-write privileges
     echoAndLog "Sharing project shared staging folder..."
-    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share staging directory, curl error $CURL_ERROR $OUT"
@@ -222,7 +269,7 @@ if [ "$1" == "ADD" ]; then
     echoAndLog "Creating project shared frozen folder..."
 
     # create the project frozen directory to share under project users home
-    OUT=`$CURL_MKCOL -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_FILE}/${PROJECT_FROZEN_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_MKCOL -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_FILE}/${PROJECT_FROZEN_FOLDER_ENCODED}" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Create frozen directory, curl error $CURL_ERROR $OUT"
@@ -238,7 +285,7 @@ if [ "$1" == "ADD" ]; then
 
     # share the project frozen directory to the group with read-write privileges
     echoAndLog "Sharing project shared frozen folder..."
-    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share frozen directory, curl error $CURL_ERROR $OUT"
@@ -248,12 +295,21 @@ if [ "$1" == "ADD" ]; then
         errorExit "$OUT"
     fi
 
+    # record project initialization in data changes table
+    echoAndLog "Recording project initialization data change event..."
+    DATA="{ \"project\": \"${PROJECT}\", \"user\": \"service\", \"change\": \"init\", \"pathname\": \"/\", \"timestamp\": \"${START}\", \"mode\": \"system\" }"
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" -H "Content-Type: application/json" -d "$DATA" "${IDA_API_ROOT_URL}/dataChanges" 2>&1`
+    CURL_ERROR="$?"
+    if [ "$CURL_ERROR" -ne "0" ]; then
+        errorExit "Project initialization data change, curl error $CURL_ERROR $OUT"
+    fi
+
 fi
 
-if [ "$1" == "SHARE" ]; then
+if [ "$OPERATION" = "SHARE" ]; then
 
     # share the staging directory to the group with read-write privileges
-    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=31&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share staging directory failed, curl error $CURL_ERROR $OUT"
@@ -264,7 +320,7 @@ if [ "$1" == "SHARE" ]; then
     fi
 
     # share the project frozen directory to the group with read-only privileges
-    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_POST -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&shareType=1&shareWith=${PROJECT_GROUP}&permissions=16&publicUpload=false" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Share frozen directory failed, curl error $CURL_ERROR $OUT"
@@ -276,57 +332,63 @@ if [ "$1" == "SHARE" ]; then
 
 fi
 
-if [ "$1" == "UNSHARE" ]; then
+if [ "$OPERATION" = "UNSHARE" ]; then
 
     # get the share id of the project staging directory
-    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get staging directory share ID, curl error $CURL_ERROR $OUT"
     else
-        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
-        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
-            echoAndLog "Warning: Project \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
-        else
-            # unshare project staging directory (delete sharing relationship)
-            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
-            CURL_ERROR="$?"
-            if [ "$CURL_ERROR" -ne "0" ]; then
-                echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
-            fi
-            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
-            if [ "$HITS" -ne 1 ]; then
-                errorExit "$OUT"
+        # delete staging directory if it exists
+        if [ "$SHARE_ID" ]; then
+            NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+            if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+                echoAndLog "Warning: Project folder \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+            else
+                # unshare project staging directory (delete sharing relationship)
+                OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+                CURL_ERROR="$?"
+                if [ "$CURL_ERROR" -ne "0" ]; then
+                    echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
+                fi
+                HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+                if [ "$HITS" -ne 1 ]; then
+                    errorExit "$OUT"
+                fi
             fi
         fi
     fi
 
     # get the share id of the project frozen directory
-    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get frozen directory share ID, curl error $CURL_ERROR $OUT"
     else
-        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
-        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
-            echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
-        else
-            # unshare project frozen directory (delete sharing relationship)
-            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
-            CURL_ERROR="$?"
-            if [ "$CURL_ERROR" -ne "0" ]; then
-                echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
-            fi
-            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
-            if [ "$HITS" -ne 1 ]; then
-                errorExit "$OUT"
+        # delete frozen directory if it exists
+        if [ "$SHARE_ID" ]; then
+            NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+            if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+                echoAndLog "Warning: Project folder \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+            else
+                # unshare project frozen directory (delete sharing relationship)
+                OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+                CURL_ERROR="$?"
+                if [ "$CURL_ERROR" -ne "0" ]; then
+                    echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
+                fi
+                HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+                if [ "$HITS" -ne 1 ]; then
+                    errorExit "$OUT"
+                fi
             fi
         fi
     fi
 
 fi
 
-if [ "$1" == "MODIFY" ]; then
+if [ "$OPERATION" = "MODIFY" ]; then
     # check that quota input is only digits
     NUMS=`echo "$PROJECT_QUOTA" | tr -cd '[:digit:]'`
     if [ "$PROJECT_QUOTA" != "$NUMS" ]; then
@@ -340,7 +402,7 @@ if [ "$1" == "MODIFY" ]; then
     fi
 fi
 
-if [ "$1" == "DISABLE" ]; then
+if [ "$OPERATION" = "DISABLE" ]; then
     OUT=`php "$OCC" user:resetpassword --password-from-env "$PROJECT_USER" 2>&1`
     HITS=`echo $OUT | grep 'Successfully reset password' | wc -l`
     if [ "$HITS" -ne 1 ]; then
@@ -348,47 +410,53 @@ if [ "$1" == "DISABLE" ]; then
     fi
 
     # get the share id of the project staging directory
-    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_STAGING_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get staging directory share ID, curl error $CURL_ERROR $OUT"
     else
-        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
-        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
-            echoAndLog "Warning: Project \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
-        else
-            # unshare project staging directory (delete sharing relationship)
-            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
-            CURL_ERROR="$?"
-            if [ "$CURL_ERROR" -ne "0" ]; then
-                echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
-            fi
-            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
-            if [ "$HITS" -ne 1 ]; then
-                errorExit "$OUT"
+        # unshare staging directory if it exists
+        if [ "$SHARE_ID" ]; then
+            NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+            if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+                echoAndLog "Warning: Project folder \"$PROJECT_STAGING_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+            else
+                # unshare project staging directory (delete sharing relationship)
+                OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+                CURL_ERROR="$?"
+                if [ "$CURL_ERROR" -ne "0" ]; then
+                    echoAndLog "Warning: Failed to unshare staging directory, curl error $CURL_ERROR $OUT"
+                fi
+                HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+                if [ "$HITS" -ne 1 ]; then
+                    errorExit "$OUT"
+                fi
             fi
         fi
     fi
 
     # get the share id of the project frozen directory
-    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
+    SHARE_ID=`$CURL_GET -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}?path=/${PROJECT_FROZEN_FOLDER_ENCODED}&reshares=false&subfiles=false" -H "OCS-APIRequest: true" | grep '^ *<id>' | sed 's/^ *<id>\([0-9]*\)<\/id>/\1/'`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         echoAndLog "Warning: Failed to get frozen directory share ID, curl error $CURL_ERROR $OUT"
     else
-        NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
-        if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
-            echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
-        else
-            # unshare project frozen directory (delete sharing relationship)
-            OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
-            CURL_ERROR="$?"
-            if [ "$CURL_ERROR" -ne "0" ]; then
-                echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
-            fi
-            HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
-            if [ "$HITS" -ne 1 ]; then
-                errorExit "$OUT"
+        # unshare frozen directory if it exists
+        if [ "$SHARE_ID" ]; then
+            NUMS=`echo "$SHARE_ID" | tr -cd '[:digit:]'`
+            if [ -z "$NUMS" -o "$SHARE_ID" != "$NUMS" ]; then
+                echoAndLog "Warning: Project \"$PROJECT_FROZEN_FOLDER\" share ID \"$SHARE_ID\" is not a number"
+            else
+                # unshare project frozen directory (delete sharing relationship)
+                OUT=`$CURL_DELETE -u "${PROJECT_USER}:${OC_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_SHARE}/${SHARE_ID}" -H "OCS-APIRequest: true" 2>&1`
+                CURL_ERROR="$?"
+                if [ "$CURL_ERROR" -ne "0" ]; then
+                    echoAndLog "Warning: Failed to unshare frozen directory, curl error $CURL_ERROR $OUT"
+                fi
+                HITS=`echo $OUT | grep '<status>ok</status>' | wc -l`
+                if [ "$HITS" -ne 1 ]; then
+                    errorExit "$OUT"
+                fi
             fi
         fi
     fi
@@ -401,7 +469,7 @@ if [ "$1" == "DISABLE" ]; then
     fi
 
     # delete group
-    OUT=`$CURL_DELETE -u "${NC_ADMIN_USER}:${NC_ADMIN_PASS}" "${URL_BASE_GROUP}/${PROJECT_GROUP}" -H "OCS-APIRequest: true" 2>&1`
+    OUT=`$CURL_DELETE -u "${NC_ADMIN_USER}:${NC_ADMIN_PASS}" -H "$IDA_MODE_HEADER" "${URL_BASE_GROUP}/${PROJECT_GROUP}" -H "OCS-APIRequest: true" 2>&1`
     CURL_ERROR="$?"
     if [ "$CURL_ERROR" -ne "0" ]; then
         errorExit "Delete group, curl error $CURL_ERROR $OUT"
@@ -415,11 +483,11 @@ if [ "$1" == "DISABLE" ]; then
     echoAndLog "NOTE: Project \"$PROJECT_USER\" data is kept on purpose"
 fi
 
-if [ "$1" == "TITLE" ]; then
+if [ "$OPERATION" = "TITLE" ]; then
     # Set project title
-    echoAndLog "Setting project $2 title to \"$3\""
+    echoAndLog "Setting project $PROJECT title to \"$PROJECT_QUOTA\""
     if [ ! -d "$STORAGE_OC_DATA_ROOT/$PROJECT_USER/files" ]; then
-        errorExit "Project $2 does not exist!"
+        errorExit "Project $PROJECT does not exist!"
     fi
     echo "$3" > "$STORAGE_OC_DATA_ROOT/$PROJECT_USER/files/TITLE"
 fi

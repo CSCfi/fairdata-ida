@@ -135,6 +135,7 @@ def get_files_with_no_checksum(config):
     query = "SELECT fileid, path FROM %sfilecache \
              WHERE storage = %d \
              AND mimetype !=2 \
+             AND path LIKE 'files/%%' \
              AND ( checksum IS NULL OR checksum = '' OR LOWER(checksum) NOT LIKE 'sha256:%%' )" % (
                  config.DBTABLEPREFIX,
                  storage_id
@@ -151,23 +152,6 @@ def get_files_with_no_checksum(config):
     conn.close()
 
     return files
-
-
-def x_load_configuration(pathname):
-    """
-    Load and return as a dict variables from the main ida configuration file
-    """
-    module_name = 'config.variables'
-    try:
-        # python versions >= 3.5
-        module_spec = importlib.util.spec_from_file_location(module_name, pathname)
-        config = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(config)
-    except AttributeError:
-        # python versions < 3.5
-        from importlib.machinery import SourceFileLoader
-        config = SourceFileLoader(module_name, pathname).load_module()
-    return config
 
 
 if __name__ == "__main__":

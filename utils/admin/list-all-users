@@ -24,11 +24,10 @@
 # Initialize script with common definitions
 
 SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT project"
-SCRIPT_DIR=`dirname $0`
-PROJECT="all"
+USAGE="Usage: $SCRIPT"
+PROJECT="null"
 
-INIT_FILE=$SCRIPT_DIR/lib/init_admin_script.sh
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -40,19 +39,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PROJECTS=`$ROOT/utils/admin/list-projects`
-
-for PROJECT in $PROJECTS; do
-
-    USERS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" | \
-        grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | \
-        sed -e 's/<.*$//' | tr "\n" " " | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//' `
-
-    if [ "$USERS" = "" ]; then
-        echo "$PROJECT"
-    fi
-
-done
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
+    grep "<element>" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u 
 
 addToLog "DONE"
-

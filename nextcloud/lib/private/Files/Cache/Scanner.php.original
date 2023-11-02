@@ -43,8 +43,6 @@ use OCP\Files\Cache\IScanner;
 use OCP\Files\ForbiddenException;
 use OCP\ILogger;
 use OCP\Lock\ILockingProvider;
-use OCA\IDA\Controller\DataChangeController;
-use OCP\Util;
 
 /**
  * Class Scanner
@@ -274,11 +272,6 @@ class Scanner extends BasicEmitter implements IScanner {
 		$this->emit('\OC\Files\Cache\Scanner', 'removeFromCache', [$path]);
 		if ($this->cacheActive) {
 			$this->cache->remove($path);
-			try {
-			    //DataChangeController::processNextcloudOperation('delete', $path, null, 'service', 'server');
-		        Util::writeLog('ida', 'Scan: change=delete path=' . $path, \OCP\Util::DEBUG);
-			}
-			catch (Exception $e) { ; }
 		}
 	}
 
@@ -297,20 +290,9 @@ class Scanner extends BasicEmitter implements IScanner {
 		if ($this->cacheActive) {
 			if ($fileId !== -1) {
 				$this->cache->update($fileId, $data);
-				try {
-			        //DataChangeController::processNextcloudOperation('modify', $path, null, 'service', 'server');
-		            Util::writeLog('ida', 'Scan: change=modify path=' . $path, \OCP\Util::DEBUG);
-				}
-				catch (Exception $e) { ; }
 				return $fileId;
 			} else {
-				$result = $this->cache->insert($path, $data);
-				try {
-			        //DataChangeController::processNextcloudOperation('add', $path, null, 'service', 'server');
-		            Util::writeLog('ida', 'Scan: change=add path=' . $path, \OCP\Util::DEBUG);
-				}
-				catch (Exception $e) { ; }
-				return $result;
+				return $this->cache->insert($path, $data);
 			}
 		} else {
 			return -1;
@@ -328,18 +310,8 @@ class Scanner extends BasicEmitter implements IScanner {
 		if ($this->cacheActive) {
 			if ($fileId !== -1) {
 				$this->cache->update($fileId, $data);
-				try {
-			        //DataChangeController::processNextcloudOperation('modify', $path, null, 'service', 'server');
-		            Util::writeLog('ida', 'Scan: change=modify path=' . $path, \OCP\Util::DEBUG);
-				}
-				catch (Exception $e) { ; }
 			} else {
 				$this->cache->put($path, $data);
-				try {
-			        //DataChangeController::processNextcloudOperation('add', $path, null, 'service', 'server');
-		            Util::writeLog('ida', 'Scan: change=add path=' . $path, \OCP\Util::DEBUG);
-				}
-				catch (Exception $e) { ; }
 			}
 		}
 	}

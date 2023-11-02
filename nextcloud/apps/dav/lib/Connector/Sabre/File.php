@@ -71,9 +71,13 @@ use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\Exception\NotImplemented;
 use Sabre\DAV\Exception\ServiceUnavailable;
 use Sabre\DAV\IFile;
+use OCA\IDA\Controller\DataChangeController;
+use OCP\Util;
 
 class File extends Node implements IFile {
 	protected $request;
+	protected $idaUser = null;
+	protected $idaMode = 'API';
 
 	/**
 	 * Sets up the node, expects a full path name
@@ -91,6 +95,16 @@ class File extends Node implements IFile {
 		} else {
 			$this->request = \OC::$server->getRequest();
 		}
+
+		//Util::writeLog('ida', 'File init: server=' . json_encode($_SERVER), \OCP\Util::DEBUG);
+		if (isset($_SERVER['HTTP_IDA_AUTHENTICATED_USER'])) {
+			$this->idaUser = $_SERVER['HTTP_IDA_AUTHENTICATED_USER'];
+		}
+		if (isset($_SERVER['HTTP_IDA_MODE'])) {
+			$values = explode(',', $_SERVER['HTTP_IDA_MODE']);
+			$this->idaMode = $values[0];
+		}
+		Util::writeLog('ida', 'File init: idaUser=' . $this->idaUser . ' idaMode=' . $this->idaMode, \OCP\Util::DEBUG);
 	}
 
 	/**
@@ -206,7 +220,8 @@ class File extends Node implements IFile {
 		// chunked handling
 		if (isset($_SERVER['HTTP_OC_CHUNKED'])) {
 			try {
-				return $this->createFileChunked($data);
+				$result = $this->createFileChunked($data);
+				return $result;
 			} catch (\Exception $e) {
 				$this->convertToSabreException($e);
 			}
@@ -277,7 +292,6 @@ class File extends Node implements IFile {
 				} catch (GenericFileException $e) {
 					$result = false;
 				}
-
 
 				if ($result === false) {
 					$result = $isEOF;
@@ -427,6 +441,8 @@ class File extends Node implements IFile {
 		} catch (StorageNotAvailableException $e) {
 			throw new ServiceUnavailable("Failed to check file size: " . $e->getMessage(), 0, $e);
 		}
+
+        DataChangeController::processNextcloudOperation('add', $this->path, null, $this->idaUser, $this->idaMode);
 
 		return '"' . $this->info->getEtag() . '"';
 	}
@@ -688,6 +704,8 @@ class File extends Node implements IFile {
 				}
 
 				$this->fileView->unlockFile($targetPath, ILockingProvider::LOCK_SHARED);
+
+                DataChangeController::processNextcloudOperation('add', $this->path, null, $this->idaUser, $this->idaMode);
 
 				return $info->getEtag();
 			} catch (\Exception $e) {

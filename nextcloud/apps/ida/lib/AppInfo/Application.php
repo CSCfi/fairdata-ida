@@ -32,8 +32,10 @@ use OCA\IDA\Controller\ViewController;
 use OCA\IDA\Controller\ActionController;
 use OCA\IDA\Controller\FileController;
 use OCA\IDA\Controller\FreezingController;
+use OCA\IDA\Controller\DataChangeController;
 use OCA\IDA\Model\ActionMapper;
 use OCA\IDA\Model\FileMapper;
+use OCA\IDA\Model\DataChangeMapper;
 use OCA\IDA\View\Navigation;
 use OCP\AppFramework\App;
 use OCP\IContainer;
@@ -76,6 +78,15 @@ class Application extends App
         );
         
         $container->registerService(
+            'DataChangeMapper',
+            function () use ($server) {
+                return new DataChangeMapper(
+                    $server->getDatabaseConnection()
+                );
+            }
+        );
+        
+        $container->registerService(
             'ActionController',
             function (IContainer $c) use ($server) {
                 return new ActionController(
@@ -107,6 +118,7 @@ class Application extends App
                     $server->getRequest(),
                     $c->query('ActionMapper'),
                     $c->query('FileMapper'),
+                    $c->query('DataChangeMapper'),
                     $c->query('CurrentUID'),
                     $server->getConfig()
                 );
@@ -128,6 +140,19 @@ class Application extends App
             }
         );
         
+        $container->registerService(
+            'DataChangeController',
+            function (IContainer $c) use ($server) {
+                return new DataChangeController(
+                    $c->query('AppName'),
+                    $server->getRequest(),
+                    $c->query('DataChangeMapper'),
+                    $c->query('CurrentUID'),
+                    $server->getConfig()
+                );
+            }
+        );
+    
         $container->registerService(
             'Navigation',
             function (IContainer $c) {

@@ -63,6 +63,10 @@ if [ "$ROOT" = "" ]; then
     exit 1
 fi
 
+if [ "$IDA_MODE_HEADER" = "" ]; then
+    errorExit "The IDA_MODE_HEADER variable must be defined"
+fi
+
 #--------------------------------------------------------------------------------
 
 PROJECT="$1"
@@ -171,16 +175,16 @@ while [ $MAX_SET_COUNT -gt 0 ]; do
 
     if [ "$DEBUG" = "true" ]; then
         if [ "$SIMULATE_AGENTS" = "true" ]; then
-            echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' \"${REQUEST_URL}\"" >&2
+            echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H \"$IDA_MODE_HEADER\" -H \"X-SIMULATE-AGENTS: true\" \"${REQUEST_URL}\"" >&2
         else
-            echo "$CURL_POST $PROJECT_USER_CREDENTIALS \"${REQUEST_URL}\"" >&2
+            echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${REQUEST_URL}\"" >&2
         fi
     fi
 
     if [ "$SIMULATE_AGENTS" = "true" ]; then
-        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H 'X-SIMULATE-AGENTS: true' "${REQUEST_URL}" 2>$ERR`
+        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "X-SIMULATE-AGENTS: true" "${REQUEST_URL}" 2>$ERR`
     else
-        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS "${REQUEST_URL}" 2>$ERR`
+        OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${REQUEST_URL}" 2>$ERR`
     fi
 
     if [ -s $ERR ]; then

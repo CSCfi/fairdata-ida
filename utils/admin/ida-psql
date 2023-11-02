@@ -74,7 +74,7 @@ fi
 export PGPASSWORD="$PASSWORD"
 
 if [ "$QUERY" ]; then
-    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBROUSER" -c "$QUERY"
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$USER" -c "$QUERY"
 else
-    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBROUSER" 
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$USER" 
 fi

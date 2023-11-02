@@ -67,8 +67,7 @@ use OCP\ILogger;
 use OCP\IUser;
 use OCP\Lock\ILockingProvider;
 use OCP\Lock\LockedException;
-use OCA\IDA\Controller\DataChangeController;
-use OCP\Util;
+use OCA\IDA\Model\DataChangeController;
 
 /**
  * Class to provide access to ownCloud filesystem via a "view", and methods for
@@ -105,9 +104,6 @@ class View {
 	/** @var \OCP\ILogger */
 	private $logger;
 
-	protected $idaUser = null;
-	protected $idaMode = 'API';
-
 	/**
 	 * @param string $root
 	 * @throws \Exception If $root contains an invalid path
@@ -125,16 +121,6 @@ class View {
 		$this->lockingEnabled = !($this->lockingProvider instanceof \OC\Lock\NoopLockingProvider);
 		$this->userManager = \OC::$server->getUserManager();
 		$this->logger = \OC::$server->getLogger();
-
-		//Util::writeLog('ida', 'View init: server=' . json_encode($_SERVER), \OCP\Util::DEBUG);
-		if (isset($_SERVER['HTTP_IDA_AUTHENTICATED_USER'])) {
-			$this->idaUser = $_SERVER['HTTP_IDA_AUTHENTICATED_USER'];
-		}
-		if (isset($_SERVER['HTTP_IDA_MODE'])) {
-			$values = explode(',', $_SERVER['HTTP_IDA_MODE']);
-			$this->idaMode = $values[0];
-		}
-		Util::writeLog('ida', 'View init: idaUser=' . $this->idaUser . ' idaMode=' . $this->idaMode, \OCP\Util::DEBUG);
 	}
 
 	public function getAbsolutePath($path = '/') {
@@ -284,9 +270,7 @@ class View {
 	 * for \OC\Files\Storage\Storage via basicOperation().
 	 */
 	public function mkdir($path) {
-		$result = $this->basicOperation('mkdir', $path, ['create', 'write']);
-        DataChangeController::processNextcloudOperation('add', $path, null, $this->idaUser, $this->idaMode);
-		return $result;
+		return $this->basicOperation('mkdir', $path, ['create', 'write']);
 	}
 
 	/**
@@ -362,9 +346,7 @@ class View {
 		$absolutePath = $this->getAbsolutePath($path);
 		$mount = Filesystem::getMountManager()->find($absolutePath);
 		if ($mount->getInternalPath($absolutePath) === '') {
-			$result = $this->removeMount($mount, $absolutePath);
-            DataChangeController::processNextcloudOperation('delete', $path, null, $this->idaUser, $this->idaMode);
-			return $result;
+			return $this->removeMount($mount, $absolutePath);
 		}
 		if ($this->is_dir($path)) {
 			$result = $this->basicOperation('rmdir', $path, ['delete']);
@@ -377,7 +359,6 @@ class View {
 			$internalPath = $mount->getInternalPath($absolutePath);
 			$storage->getUpdater()->remove($internalPath);
 		}
-        DataChangeController::processNextcloudOperation('delete', $path, null, $this->idaUser, $this->idaMode);
 		return $result;
 	}
 
@@ -714,7 +695,6 @@ class View {
 						$this->emit_file_hooks_post($exists, $path);
 					}
 					$this->unlockFile($path, ILockingProvider::LOCK_SHARED);
-                    DataChangeController::processNextcloudOperation('add', $path, null, $this->idaUser, $this->idaMode);
 					return $result;
 				} else {
 					$this->unlockFile($path, ILockingProvider::LOCK_EXCLUSIVE);
@@ -724,17 +704,8 @@ class View {
 				return false;
 			}
 		} else {
-			if ($this->file_exists($path)) {
-			    $hooks = ['update', 'write'];
-				$dataChange = 'modify';
-			}
-			else {
-			    $hooks = ['create', 'write'];
-				$dataChange = 'add';
-			}
-			$result = $this->basicOperation('file_put_contents', $path, $hooks, $data);
-            DataChangeController::processNextcloudOperation($dataChange, $path, null, $this->idaUser, $this->idaMode);
-			return $result;
+			$hooks = $this->file_exists($path) ? ['update', 'write'] : ['create', 'write'];
+			return $this->basicOperation('file_put_contents', $path, $hooks, $data);
 		}
 	}
 
@@ -751,9 +722,7 @@ class View {
 		$absolutePath = Filesystem::normalizePath($this->getAbsolutePath($path));
 		$mount = Filesystem::getMountManager()->find($absolutePath . $postFix);
 		if ($mount and $mount->getInternalPath($absolutePath) === '') {
-			$result = $this->removeMount($mount, $absolutePath);
-            DataChangeController::processNextcloudOperation('delete', $path, null, $this->idaUser, $this->idaMode);
-			return $result;
+			return $this->removeMount($mount, $absolutePath);
 		}
 		if ($this->is_dir($path)) {
 			$result = $this->basicOperation('rmdir', $path, ['delete']);
@@ -764,10 +733,8 @@ class View {
 			$storage = $mount->getStorage();
 			$internalPath = $mount->getInternalPath($absolutePath);
 			$storage->getUpdater()->remove($internalPath);
-            DataChangeController::processNextcloudOperation('delete', $path, null, $this->idaUser, $this->idaMode);
 			return true;
 		} else {
-            DataChangeController::processNextcloudOperation('delete', $path, null, $this->idaUser, $this->idaMode);
 			return $result;
 		}
 	}
@@ -777,9 +744,7 @@ class View {
 	 * @return bool|mixed
 	 */
 	public function deleteAll($directory) {
-		$result = $this->rmdir($directory);
-        DataChangeController::processNextcloudOperation('delete', $directory, null, $this->idaUser, $this->idaMode);
-		return $result;
+		return $this->rmdir($directory);
 	}
 
 	/**
@@ -908,7 +873,6 @@ class View {
 				$this->unlockFile($path2, ILockingProvider::LOCK_SHARED, true);
 			}
 		}
-        DataChangeController::processNextcloudOperation('rename', $path1, $path2, $this->idaUser, $this->idaMode);
 		return $result;
 	}
 
@@ -1004,7 +968,6 @@ class View {
 			$this->unlockFile($path2, $lockTypePath2);
 			$this->unlockFile($path1, $lockTypePath1);
 		}
-        DataChangeController::processNextcloudOperation('copy', $path1, $path2, $this->idaUser, $this->idaMode);
 		return $result;
 	}
 
@@ -1608,7 +1571,6 @@ class View {
 	 * returns the fileid of the updated file
 	 */
 	public function putFileInfo($path, $data) {
-		$relativePath = $this->getRelativePath(Filesystem::normalizePath($this->getAbsolutePath($path)));
 		$this->assertPathLength($path);
 		if ($data instanceof FileInfo) {
 			$data = $data->getData();
@@ -2247,5 +2209,4 @@ class View {
 
 		return true;
 	}
-
 }

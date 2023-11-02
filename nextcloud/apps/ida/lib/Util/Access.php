@@ -34,6 +34,23 @@ use OCP\Util;
 use OC\User\User;
 
 /**
+ * Class NotProjectUser
+ *
+ * Exception class to signal when the authenticated user does not belong to a specified project
+ */
+class NotProjectUser extends Exception
+{
+    public function __construct($message = null)
+    {
+        if ($message === null) {
+            $this->message = 'Session user does not belong to the specified project.';
+        } else {
+            $this->message = $message;
+        }
+    }
+}
+
+/**
  * Various access management functions
  */
 class Access
@@ -98,7 +115,7 @@ class Access
      *
      * @param string $project the project name
      *
-     * @throws Exception
+     * @throws NotProjectUser
      */
     public static function verifyIsAllowedProject($project) {
         
@@ -111,14 +128,14 @@ class Access
         }
         
         // If user is PSO user for project, return (OK)
-        if ($userId == strtolower(Constants::PROJECT_USER_PREFIX . $project)) {
+        if ($userId === Constants::PROJECT_USER_PREFIX . $project) {
             return;
         }
         
         // Throw exception if user is admin or does not belong to specified project group
         
         if ($userId === 'admin' || !\OC::$server->getGroupManager()->isInGroup($userId, $project)) {
-            throw new Exception('Session user does not belong to the specified project.');
+            throw new NotProjectUser();
         }
     }
     
@@ -135,7 +152,7 @@ class Access
             throw new Exception('Null project');
         }
         Util::writeLog('ida', 'projectIsLocked: project=' . $project . ' lockFilePathname=' . $lockFilePathname, \OCP\Util::DEBUG);
-        if ($lockFilePathname == null) {
+        if ($lockFilePathname === null) {
             $lockFilePathname = self::buildLockFilePathname($project);
         }
         
@@ -228,7 +245,7 @@ class Access
      */
     public static function escapeQueryStringComponent($component) {
         Util::writeLog('ida', 'escapeQueryStringComponent: component=' . $component, \OCP\Util::DEBUG);
-        if ($component == null || $component == '') {
+        if ($component === null || $component === '') {
             $escapedComponent = $component;
         }
         else {

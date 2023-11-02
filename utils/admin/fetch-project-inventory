@@ -121,7 +121,7 @@ if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
     errorExit "The specified project ${PROJECT} does not exist"
 fi
 
-OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS "${URL}" 2>$ERR `
+OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${URL}" 2>$ERR `
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`

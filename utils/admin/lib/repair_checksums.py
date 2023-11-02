@@ -69,6 +69,8 @@ def main():
 
         logging.Formatter.converter = time.gmtime
 
+        config.HEADERS = { 'IDA-Mode': 'System' }
+
         # load report file data
 
         with open(sys.argv[2]) as f:
@@ -163,7 +165,7 @@ def update_checksum_in_nextcloud(config, pathname, checksum):
     data = { "pathname": pathname, "checksum": checksum }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, json=data)
+    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
         sys.stderr.write("Warning: Failed to update checksum in Nextcloud to %s for pathname %s: %d %s\n" % (
@@ -184,7 +186,7 @@ def update_checksum_in_ida(config, pathname, file_pid, checksum):
     data = { 'checksum': checksum }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, json=data)
+    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data)
 
     if response.status_code < 200 or response.status_code > 299:
         sys.stderr.write("Warning: Failed to update checksum in IDA to %s for pathname %s: %d %s\n" % (

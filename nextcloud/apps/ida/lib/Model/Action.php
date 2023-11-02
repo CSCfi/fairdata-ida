@@ -124,12 +124,12 @@ class Action extends Entity implements JsonSerializable
         }
 
         // All actions require successful local storage operations and metadata publication/update to be considered completed.
-        if ($this->storage == null || $this->metadata == null) {
+        if ($this->storage === null || $this->metadata === null) {
             return true;
         }
 
         // In addition, Freeze actions require successful PID and checksum generation and replication to be considered completed.
-        if ($this->action == 'freeze' && ($this->checksums == null || $this->pids == null || $this->replication == null)) {
+        if ($this->action === 'freeze' && ($this->checksums === null || $this->pids === null || $this->replication === null)) {
             return true;
         }
 

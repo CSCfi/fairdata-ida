@@ -130,6 +130,8 @@ CURL_DELETE="curl $CURL_OPS -X DELETE"
 CURL_MKCOL="curl $CURL_OPS -X MKCOL"
 CURL_PATCH="curl $CURL_OPS -X PATCH"
 
+IDA_MODE_HEADER="IDA-Mode: System"
+
 START=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 PROCESSID="$$"

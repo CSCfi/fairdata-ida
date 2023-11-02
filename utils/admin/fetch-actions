@@ -108,7 +108,7 @@ then
     echo "URL:     $URL"
 fi
 
-OUT=`$CURL_GET $ADMIN_CREDENTIALS "${URL}" 2>$ERR `
+OUT=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${URL}" 2>$ERR `
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`

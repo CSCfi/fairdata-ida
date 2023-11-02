@@ -32,7 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
         <?php } ?>
     </ul>
 
-    <?php if($l->getLanguageCode() == 'fi') { ?>
+    <?php if($l->getLanguageCode() === 'fi') { ?>
         <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
             <p>
                 <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;pikaopas</a><br>
