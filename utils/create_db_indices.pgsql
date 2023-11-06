@@ -12,4 +12,5 @@ CREATE INDEX oc_ida_action_completed_idx ON oc_ida_action USING btree (completed
 CREATE INDEX oc_ida_action_failed_idx ON oc_ida_action USING btree (failed) WITH (fillfactor = 50) WHERE failed IS NULL;
 CREATE INDEX oc_ida_action_cleared_idx ON oc_ida_action USING btree (cleared) WITH (fillfactor = 50) WHERE cleared IS NULL;
 CREATE INDEX oc_filecache_missing_checksums_idx ON oc_filecache USING btree (storage, mimetype, checksum) WITH (fillfactor = 50);
-CREATE INDEX oc_ida_data_change_idx ON oc_ida_data_change USING btree (project, timestamp DESC) WITH (fillfactor = 50);
+CREATE INDEX oc_ida_data_change_last_idx ON oc_ida_data_change USING btree (project, timestamp DESC) WITH (fillfactor = 50);
+CREATE INDEX oc_ida_data_change_init_idx ON oc_ida_data_change USING btree (project, change, timestamp ASC) WITH (fillfactor = 50);
