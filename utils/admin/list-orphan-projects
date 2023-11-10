@@ -44,7 +44,7 @@ PROJECTS=`$ROOT/utils/admin/list-projects`
 
 for PROJECT in $PROJECTS; do
 
-    USERS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" | \
+    USERS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "https://localhost/ocs/v1.php/cloud/groups/${PROJECT}" | \
         grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | \
         sed -e 's/<.*$//' | tr "\n" " " | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//' `
 

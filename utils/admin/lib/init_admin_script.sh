@@ -184,12 +184,6 @@ ERR="/tmp/${SCRIPT}.$$.err"
 
 HOSTNAME=`hostname`
 
-if [ "$FORCE_HTTP" = "true" ]; then
-    LOCAL_ROOT_URL="http://${HOSTNAME}"
-else
-    LOCAL_ROOT_URL="https://${HOSTNAME}"
-fi
-
 if [ "$DEBUG" = "true" ]; then
     echo ""
     echo "HOSTNAME                     $HOSTNAME"
@@ -198,7 +192,6 @@ if [ "$DEBUG" = "true" ]; then
     echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT"
     echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT"
     echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT"
-    echo "LOCAL_ROOT_URL               $LOCAL_ROOT_URL"
     echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
     echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
     echo "METAX_API_VERSION            $METAX_API_VERSION"

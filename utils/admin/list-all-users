@@ -39,7 +39,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "https://localhost/ocs/v1.php/cloud/users" -H "OCS-APIRequest: true" | \
     grep "<element>" | sed -e 's/^.*<element>//' | sed -e 's/<.*$//' | sort -u 
 
 addToLog "DONE"

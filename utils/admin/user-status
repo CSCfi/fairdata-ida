@@ -48,7 +48,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-EXISTS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users/${USER}" | grep "<statuscode>100<"`
+EXISTS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "https://localhost/ocs/v1.php/cloud/users/${USER}" | grep "<statuscode>100<"`
 
 if [ "$EXISTS" = "" ]; then
     errorExit "The user '${USER}' does not exist"
@@ -70,12 +70,12 @@ fi
 
 echo "Projects:"
 
-$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users/${USER}/groups" | \
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "https://localhost/ocs/v1.php/cloud/users/${USER}/groups" | \
     grep "<element>" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
 
 echo "Enabled:"
 
-ENABLED=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users/${USER}" |
+ENABLED=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "https://localhost/ocs/v1.php/cloud/users/${USER}" |
     grep "<enabled>" | sed -e 's/^.*<enabled>//' | sed -e 's/<.*$//' `
 
 if [ "$ENABLED" = "1" ]; then

@@ -93,7 +93,7 @@ echo "    ${STORAGE_VOLUME}"
 
 echo "Users: "
 
-$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/groups/${PROJECT}" | \
+$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "https://localhost/ocs/v1.php/cloud/groups/${PROJECT}" | \
     grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
 
 echo "Action status: "

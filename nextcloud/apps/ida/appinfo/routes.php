@@ -293,17 +293,6 @@ return [
         
         [
             // Check for instersection of scope with ongoing action
-            'name' => 'Freezing#checkScope', // TODO DEPRECATE BEFORE NEXT RELEASE
-            'url'  => '/api/checkScope',
-            'verb' => 'POST'
-            // Restricted to project access scope of user
-            // Required parameters:
-            //    project = the name of the project to check
-            //    pathname = the pathname of the scope to check
-        ],
-        
-        [
-            // Check for instersection of scope with ongoing action
             'name' => 'Freezing#scopeOK',
             'url'  => '/api/scopeOK',
             'verb' => 'POST'

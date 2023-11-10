@@ -43,7 +43,7 @@ USERS=`$ROOT/utils/admin/list-all-users`
 
 for USER in $USERS; do 
 
-    ENABLED=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${LOCAL_ROOT_URL}/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" |
+    ENABLED=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "https://localhost/ocs/v1.php/cloud/users/${USER}" -H "OCS-APIRequest: true" |
              grep "<enabled>" | sed -e 's/^.*<enabled>//' | sed -e 's/<.*$//'`
 
     if [ "$ENABLED" != "1" ] && [ "$ENABLED" != "true" ]; then
