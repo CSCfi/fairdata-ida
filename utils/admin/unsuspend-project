@@ -95,17 +95,11 @@ done
 #--------------------------------------------------------------------------------
 echo "Unlocking project ${PROJECT}..."
 
-if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_DELETE \"$PROJECT_USER_CREDENTIALS\" -H \"$IDA_MODE_HEADER\" \"$IDA_API_ROOT_URL/lock/${PROJECT}\""
-fi
-
-OUT=`$CURL_DELETE "$PROJECT_USER_CREDENTIALS" -H "$IDA_MODE_HEADER" "$IDA_API_ROOT_URL/lock/${PROJECT}" 2>&1`
+rm -f $PROJECT_LOCK 2>/dev/null
 
 if [ -e $PROJECT_LOCK ]; then
     errorExit "Failed to unlock project ${PROJECT}"
 fi
-
-rm $ERR 2>/dev/null
 
 #--------------------------------------------------------------------------------
 echo "Removing suspend sentinel file for project ${PROJECT}..."
@@ -130,5 +124,7 @@ fi
 $ROOT/utils/admin/email-project-users $PROJECT \
     "Project ${PROJECT} unsuspended." \
     "The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored."
+
+rm -f $ERR 2>/dev/null
 
 addToLog "DONE"
