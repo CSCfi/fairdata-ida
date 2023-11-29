@@ -376,7 +376,7 @@ class MetadataAgent(GenericAgent):
             file_metadata = {
                 'storage_service': 'ida',
                 'storage_identifier': node['pid'],
-                'project': node['project'],
+                'csc_project': node['project'],
                 'pathname': node['pathname'],
                 'filename': os.path.split(node['pathname'])[1],
                 'size': node['size'],
@@ -446,7 +446,7 @@ class MetadataAgent(GenericAgent):
         # retrieve PIDs of all active files known by metax which are associated with project
 
         if self._metax_api_version >= 3:
-            url_base = "/files?project=%s&storage_service=ida&limit=%d" % (action['project'], chunk_size)
+            url_base = "/files?csc_project=%s&storage_service=ida&limit=%d" % (action['project'], chunk_size)
         else:
             url_base = "/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (action['project'], chunk_size)
 
@@ -756,7 +756,7 @@ class MetadataAgent(GenericAgent):
             if self._metax_api_version >= 3:
                 files = []
                 for pid in chunk:
-                    files.append({ "project": action["project"], "storage_service": "ida", "storage_identifier": pid })
+                    files.append({ "csc_project": action["project"], "storage_service": "ida", "storage_identifier": pid })
                 response = self._metax_api_request('post', '/files/delete-many', data=files)
             else:
                 response = self._metax_api_request('delete', '/files', data=chunk)
@@ -783,11 +783,12 @@ class MetadataAgent(GenericAgent):
     def _metax_api_request(self, method, detail_url, data=None, auth=True):
         if auth:
             if self._metax_api_version >= 3:
-                # TODO: add bearer token header when supported
-                headers = None
+                headers = {
+                    "Authorization": "Token %s" % self._uida_conf_vars['METAX_API_PASS']
+                }
             else:
                 headers = {
-                    'Authorization': make_ba_http_header(self._uida_conf_vars['METAX_API_USER'], self._uida_conf_vars['METAX_API_PASS'])
+                    "Authorization": make_ba_http_header(self._uida_conf_vars['METAX_API_USER'], self._uida_conf_vars['METAX_API_PASS'])
                 }
         else:
             headers = None

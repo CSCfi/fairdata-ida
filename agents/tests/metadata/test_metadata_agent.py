@@ -145,7 +145,7 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
             expected_node_metadata = [{
                 'storage_service': 'ida',
                 'storage_identifier': 'pidveryuniquefilepidhere',
-                'project': 'Project_X',
+                'csc_project': 'Project_X',
                 'pathname': '/Custom_Experiment/test01.dat',
                 'filename': 'test01.dat',
                 'size': 3728,

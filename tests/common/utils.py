@@ -100,7 +100,6 @@ def load_configuration():
         'RABBIT_WORKER_LOG_FILE': server_configuration.RABBIT_WORKER_LOG_FILE,
         'METAX_AVAILABLE':        server_configuration.METAX_AVAILABLE,
         'METAX_API_ROOT_URL':     server_configuration.METAX_API_ROOT_URL,
-        'METAX_API_USER':         server_configuration.METAX_API_USER,
         'METAX_API_PASS':         server_configuration.METAX_API_PASS,
         'IDA_MIGRATION':          service_constants.IDA_MIGRATION,
         'IDA_MIGRATION_TS':       service_constants.IDA_MIGRATION_TS,
@@ -110,6 +109,9 @@ def load_configuration():
     if hasattr(server_configuration, 'DOWNLOAD_SERVICE_ROOT'):
         config['DOWNLOAD_SERVICE_ROOT'] = server_configuration.DOWNLOAD_SERVICE_ROOT
 
+    if hasattr(server_configuration, 'METAX_API_USER'):
+        config['METAX_API_USER'] = server_configuration.METAX_API_USER
+
     if hasattr(server_configuration, 'METAX_API_RPC_URL'):
         config['METAX_API_RPC_URL'] = server_configuration.METAX_API_RPC_URL
 
@@ -117,6 +119,9 @@ def load_configuration():
         config['METAX_API_VERSION'] = 1
     else:
         config['METAX_API_VERSION'] = 3
+
+    if hasattr(server_configuration, 'TEST_PAS_CONTRACT_ID'):
+        config['TEST_PAS_CONTRACT_ID'] = server_configuration.TEST_PAS_CONTRACT_ID
 
     try:
         config['RABBIT_PROTOCOL'] = server_configuration.RABBIT_PROTOCOL

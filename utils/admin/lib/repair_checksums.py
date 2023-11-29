@@ -205,9 +205,9 @@ def update_checksum_in_metax(config, pathname, file_pid, checksum):
 
     if config.METAX_API_VERSION >= 3:
         url = "%s/files/patch-many" % config.METAX_API_ROOT_URL
-        data = [{ "storage_service": "ida", "storage_identifier": file_pid, "checksum": checksum }]
-        # TODO: add bearer token header when supported
-        response = requests.post(url, json=data)
+        data = [{ "storage_service": "ida", "storage_identifier": file_pid, "checksum": "sha256:%s" % checksum }]
+        headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+        response = requests.post(url, headers=headers, json=data)
     else:
         url = "%s/files/%s" % (config.METAX_API_ROOT_URL, file_pid)
         data = { "checksum": { "algorithm": "SHA-256", "value": checksum, "checked": config.CHECKSUMS_CHECKED } }

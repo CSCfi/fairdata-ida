@@ -60,7 +60,7 @@ else
 fi
 
 if [ $METAX_API_VERSION -ge 3 ]; then
-    $CURL_DELETE $METAX_CREDENTIALS "${METAX_API_ROOT_URL}/files?project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR
+    $CURL_DELETE -H "$METAX_AUTH_HEADER" "${METAX_API_ROOT_URL}/files?csc_project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR
 else
     $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}"
 fi

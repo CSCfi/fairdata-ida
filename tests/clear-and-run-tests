@@ -1,5 +1,5 @@
 #!/bin/bash
-# --------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
 # Copyright (C) 2023 Ministry of Education and Culture, Finland
@@ -20,59 +20,45 @@
 # @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
-# --------------------------------------------------------------------------------
-
-SCRIPT=`basename "$(realpath $0)"`
-
-USAGE="
-Usage: $SCRIPT pid
-       $SCRIPT -h
-
-       pid = the pid of the frozen file
-"
-
 #--------------------------------------------------------------------------------
-# Initialize script with common definitions
+# Load service constants and configuration settings
 
-PROJECT="null"
+PARENT_FOLDER=`dirname "$(realpath $0)"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
 
-if [ -e $INIT_FILE ]
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
 then
-    . $INIT_FILE
+    . $CONFIG_FILE
 else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+if [ "$ROOT" = "" ]; then
+    echo "The configuration variable $ROOT has not been defined Aborting." >&2
     exit 1
 fi
 
 #--------------------------------------------------------------------------------
-# Process command line arguments
+# Verify that we are in a non-production environment
 
-if [ "$#" != 1 ]; then
-    echo "$USAGE" >&2
-    errorExit "Invalid number of arguments"
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    echo "This script can not be run in a production environment. Aborting." >&2
+    exit 1
 fi
-
-FILE="$1"
 
 #--------------------------------------------------------------------------------
 
-URL="${METAX_API_ROOT_URL}/files/${FILE}"
+LOGDIR=`dirname "$LOG"`
 
-if [ $METAX_API_VERSION -ge 3 ]; then
-    OUT=`$CURL_GET -H "$METAX_AUTH_HEADER" "${URL}" 2>$ERR`
-else
-    OUT=`$CURL_GET $METAX_CREDENTIALS "${URL}" 2>$ERR`
-fi
-
-if [ -s $ERR ]; then
-    MSG=`cat $ERR`
-    addToLog "$MSG"
-    errorExit "Failed to retrieve file details in Metax"
-fi
-
-echo "$OUT" | jq --indent 4
-
-addToLog "DONE"
+rm $LOGDIR/*.log
+$ROOT/utils/restart
+$ROOT/tests/run-tests $*
 

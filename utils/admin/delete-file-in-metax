@@ -60,7 +60,11 @@ FILE="$1"
 
 URL="${METAX_API_ROOT_URL}/files/${FILE}"
 
-OUT=`$CURL_DELETE $METAX_CREDENTIALS "${URL}" 2>$ERR`
+if [ $METAX_API_VERSION -ge 3 ]; then
+    OUT=`$CURL_DELETE -H "$METAX_AUTH_HEADER" "${URL}" 2>$ERR`
+else
+    OUT=`$CURL_DELETE $METAX_CREDENTIALS "${URL}" 2>$ERR`
+fi
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`

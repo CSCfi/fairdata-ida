@@ -609,7 +609,7 @@ class GenericAgent():
         password = self._uida_conf_vars['PROJECT_USER_PASS']
 
         headers = {
-            'Authorization': make_ba_http_header(username, password)
+            "Authorization": make_ba_http_header(username, password)
         }
 
         res = self._http_request(method, '%s%s' % (self._ida_api_url, detail_url), data=data, headers=headers)
@@ -641,13 +641,15 @@ class GenericAgent():
         for i in range(1, retry_policy['max_retries'] + 1):
             try:
                 self._logger.debug('HTTP %s request to %s...' % (method, url))
+                self._logger.debug('Headers: %s' % json_dumps(_headers))
+                self._logger.debug('Data: %s' % data)
                 self._current_http_request_retry += 1
-                response = getattr(requests, method)(url, data=data, headers=_headers, verify=False)
+                response = getattr(requests, method)(url, data=data, headers=_headers)
 
                 if response.status_code in (401, 403):
                     raise ApiAuthnzError(
-                        'Authentication error on HTTP %s request to %s: %s. This probably requires intervention.'
-                        % (method, url, response.content)
+                        'Authentication error on HTTP %s request to %s: %d %s. This probably requires intervention.'
+                        % (method, url, response.status_code, response.content)
                     )
 
                 return response

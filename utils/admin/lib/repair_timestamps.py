@@ -240,8 +240,8 @@ def update_metax_timestamp(config, field_name, pathname, file_pid, timestamp):
     if config.METAX_API_VERSION >= 3:
         url = "%s/files/patch-many" % config.METAX_API_ROOT_URL
         data = [{ "storage_service": "ida", "storage_identifier": file_pid, field_name: timestamp }]
-        # TODO: add bearer token header when supported
-        response = requests.post(url, json=data)
+        headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+        response = requests.post(url, headers=headers, json=data)
     else:
         url = "%s/files/%s" % (config.METAX_API_ROOT_URL, file_pid)
         data = { field_name: timestamp }

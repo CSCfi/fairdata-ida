@@ -185,6 +185,12 @@ class TestAuditing(unittest.TestCase):
 
         print("(initializing)")
 
+        # If Metax v3 or later, define authentication header
+        if self.config["METAX_API_VERSION"] >= 3:
+            self.metax_headers = { 'Authorization': 'Token %s' % self.config["METAX_API_PASS"] }
+        else:
+            self.metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
+
         # ensure we start with a fresh setup of projects, user accounts, and data
         cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
@@ -230,14 +236,14 @@ class TestAuditing(unittest.TestCase):
     def wait_for_pending_actions(self, project, user):
         print("(waiting for pending actions to fully complete)")
         print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
         max_time = time.time() + self.timeout
         while len(actions) > 0 and time.time() < max_time:
             print(".", end='', flush=True)
             time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
             self.assertEqual(response.status_code, 200)
             actions = response.json()
         print("")
@@ -246,7 +252,7 @@ class TestAuditing(unittest.TestCase):
 
     def check_for_failed_actions(self, project, user, should_be_failed = False):
         print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
         if should_be_failed:
@@ -344,8 +350,6 @@ class TestAuditing(unittest.TestCase):
         test_user_c = ("test_user_c", self.config["TEST_USER_PASS"])
         test_user_d = ("test_user_d", self.config["TEST_USER_PASS"])
 
-        metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
-
         frozen_area_root_a = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root_a = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
 
@@ -383,7 +387,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -440,7 +444,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -478,7 +482,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -553,7 +557,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -568,7 +572,7 @@ class TestAuditing(unittest.TestCase):
         print("(unfreezing file /testdata/2017-08/Experiment_1/baseline/test01.dat only in IDA, simulating postprocessing agents)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
         headers_d = { 'X-SIMULATE-AGENTS': 'true' }
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers_d, json=data, auth=test_user_d, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers_d, json=data, auth=test_user_d)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "unfreeze")
@@ -580,16 +584,15 @@ class TestAuditing(unittest.TestCase):
 
         print("(deleting file /testdata/2017-08/Experiment_1/baseline/test02.dat from Metax)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         pid = file_data["pid"]
         if self.config["METAX_API_VERSION"] >= 3:
             data = [{ "storage_service": "ida", "storage_identifier": pid }]
-            # TODO: add bearer token header when supported
-            response = requests.post("%s/files/delete-many" % self.config["METAX_API_ROOT_URL"], json=data, verify=False)
+            response = requests.post("%s/files/delete-many" % self.config["METAX_API_ROOT_URL"], json=data, headers=self.metax_headers)
         else:
-            response = requests.delete("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+            response = requests.delete("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=self.metax_user)
         self.assertEqual(response.status_code, 200)
 
         pathname = "/testdata/2017-08/Experiment_1/baseline/test03.dat"
@@ -2280,6 +2283,8 @@ class TestAuditing(unittest.TestCase):
 
         report_pathname_d = report_data["reportPathname"]
 
+        print("repair timestamps for test_project_d)")
+
         cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
@@ -2326,7 +2331,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(changing cache checksums of three files in staging in folder /testdata/2017-08/Experiment_2/baseline)")
         data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test01.dat", "checksum": invalid_checksum_uri }
-        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(response_data['project'], 'test_project_a')
@@ -2334,7 +2339,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(response_data['checksum'], invalid_checksum_uri)
         self.assertIsNotNone(response_data['nodeId'])
         data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test02.dat", "checksum": invalid_checksum_uri }
-        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(response_data['project'], 'test_project_a')
@@ -2342,7 +2347,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(response_data['checksum'], invalid_checksum_uri)
         self.assertIsNotNone(response_data['nodeId'])
         data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test03.dat", "checksum": invalid_checksum_uri }
-        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(response_data['project'], 'test_project_a')
@@ -2352,7 +2357,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_2/baseline)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -2377,7 +2382,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying modified state of Project A")
 
         print("(retrieving inventory for Project A)")
-        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2434,7 +2439,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying repaired state of Project A")
 
         print("(retrieving inventory for Project A)")
-        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2461,7 +2466,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_2/baseline)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_2/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b)
         self.assertEqual(response.status_code, 200)
 
         self.wait_for_pending_actions("test_project_b", test_user_b)
@@ -2491,17 +2496,16 @@ class TestAuditing(unittest.TestCase):
 
         print("(changing checksum in Metax of frozen file /testdata/2017-08/Experiment_2/baseline/test03.dat)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_2/baseline/test03.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_b, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_b)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         pid = file_data["pid"]
         if self.config["METAX_API_VERSION"] >= 3:
             data = [{ "storage_service": "ida", "storage_identifier": pid, "checksum": invalid_checksum_uri }]
-            # TODO: add bearer token header when supported
-            response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], json=data, verify=False)
+            response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], headers=self.metax_headers, json=data)
         else:
             data = { "checksum": { "algorithm": "SHA-256", "value": invalid_checksum, "checked": self.config['START'] } }
-            response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, json=data, verify=False)
+            response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=self.metax_user, json=data)
         self.assertEqual(response.status_code, 200)
 
         print("(changing checksum in Nextcloud of staging file /testdata/2017-08/Experiment_2/test04.dat)")
@@ -2528,11 +2532,10 @@ class TestAuditing(unittest.TestCase):
         print("(changing modified timestamp in Metax of frozen file /testdata/2017-08/Experiment_2/baseline/test03.dat)")
         if self.config["METAX_API_VERSION"] >= 3:
             data = [{ "storage_service": "ida", "storage_identifier": pid, "modified": invalid_timestamp }]
-            # TODO: add bearer token header when supported
-            response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], json=data, verify=False)
+            response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], headers=self.metax_headers, json=data)
         else:
             data = { "file_modified": invalid_timestamp }
-            response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, json=data, verify=False)
+            response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=self.metax_user, json=data)
         self.assertEqual(response.status_code, 200)
 
         print("(changing modified timestamp in Nextcloud of staging file /testdata/2017-08/Experiment_2/test04.dat)")
@@ -2546,8 +2549,8 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Verifying modified state of Project B")
 
-        print("(retrieving inventory for Project B)")
-        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b, verify=False)
+        print("(retrieving inventory for Project B from IDA)")
+        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2621,20 +2624,27 @@ class TestAuditing(unittest.TestCase):
         cacheModified = file.get('cacheModified')
         self.assertIsNone(cacheModified)
 
+        print("(retrieving files for Project B from Metax)")
+
         if self.config["METAX_API_VERSION"] >= 3:
-            # TODO: add bearer token header when supported
-            response = requests.get("%s/files?storage_service=ida&storage_identifier=%s" % (self.config["METAX_API_ROOT_URL"], pid), verify=False)
+            url = "%s/files?storage_service=ida&storage_identifier=%s" % (self.config["METAX_API_ROOT_URL"], pid)
+            response = requests.get(url, headers=self.metax_headers)
         else:
-            response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+            response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=self.metax_user)
         self.assertEqual(response.status_code, 200)
-        file = response.json()
-        self.assertIsNotNone(file)
+        data = response.json()
+        self.assertIsNotNone(data)
         if self.config["METAX_API_VERSION"] >= 3:
+            self.assertEqual(data.get('count'), 1)
+            results = data.get('results')
+            self.assertIsNotNone(results)
+            file = results[0]
+            self.assertIsNotNone(file)
             self.assertEqual(file['checksum'], invalid_checksum_uri)
             self.assertEqual(normalize_timestamp(file['modified']), invalid_timestamp)
         else:
-            self.assertEqual(file['checksum']['value'], invalid_checksum)
-            self.assertEqual(normalize_timestamp(file['file_modified']), invalid_timestamp)
+            self.assertEqual(data['checksum']['value'], invalid_checksum, json.dumps(file))
+            self.assertEqual(normalize_timestamp(data['file_modified']), invalid_timestamp, json.dumps(file))
 
         print("--- Auditing project B with neither checksum nor timestamp options and verifying no errors reported")
 
@@ -2743,7 +2753,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying repaired state of Project B")
 
         print("(retrieving inventory for Project B)")
-        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b, verify=False)
+        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2776,19 +2786,23 @@ class TestAuditing(unittest.TestCase):
         self.assertNotEqual(modified, invalid_timestamp)
 
         if self.config["METAX_API_VERSION"] >= 3:
-            # TODO: add bearer token header when supported
-            response = requests.get("%s/files?storage_service=ida&storage_identifier=%s" % (self.config["METAX_API_ROOT_URL"], pid), verify=False)
+            response = requests.get("%s/files?storage_service=ida&storage_identifier=%s" % (self.config["METAX_API_ROOT_URL"], pid), headers=self.metax_headers)
         else:
-            response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=metax_user, verify=False)
+            response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], pid), auth=self.metax_user)
         self.assertEqual(response.status_code, 200)
-        file = response.json()
-        self.assertIsNotNone(file)
+        data = response.json()
+        self.assertIsNotNone(data)
         if self.config["METAX_API_VERSION"] >= 3:
+            self.assertEqual(data.get('count'), 1)
+            results = data.get('results')
+            self.assertIsNotNone(results)
+            file = results[0]
+            self.assertIsNotNone(file)
             self.assertNotEqual(file['checksum'], invalid_checksum_uri)
             self.assertNotEqual(normalize_timestamp(file['modified']), invalid_timestamp)
         else:
-            self.assertNotEqual(file['checksum']['value'], invalid_checksum)
-            self.assertNotEqual(normalize_timestamp(file['file_modified']), invalid_timestamp)
+            self.assertNotEqual(data['checksum']['value'], invalid_checksum)
+            self.assertNotEqual(normalize_timestamp(data['file_modified']), invalid_timestamp)
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

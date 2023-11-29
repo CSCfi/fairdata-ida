@@ -1731,24 +1731,25 @@ class FreezingController extends Controller
         $password = $this->config['METAX_API_PASS'];
         $postbody = json_encode($filePIDs);
 
-        Util::writeLog('ida', 'checkDatasets: queryURL=' . $queryURL
-                       . ' username=' . $username
-                       . ' password=' . $password
-                       . ' postbody=' . $postbody
-                       , \OCP\Util::DEBUG);
-
         $ch = curl_init($queryURL);
+
+        $headers = array(
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($postbody)
+        );
+
+        if ($this->config['METAX_API_VERSION'] >= 3) {
+            $headers[] = 'Authorization: Token ' . $password;
+        }
+        else {
+            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+        }
 
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
         curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER,
-            array(
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($postbody)
-            )
-        );
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
         curl_setopt($ch, CURLOPT_FAILONERROR, false);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
@@ -1756,13 +1757,12 @@ class FreezingController extends Controller
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
 
-        if ($this->config['METAX_API_VERSION'] >= 3) {
-            // TODO add bearer token header when supported
-            ;
-        }
-        else {
-            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
-        }
+        Util::writeLog('ida', 'checkDatasets: queryURL=' . $queryURL
+                       . ' headers=' . json_encode($headers)
+                       . ' username=' . $username
+                       . ' password=' . $password
+                       . ' postbody=' . $postbody
+                       , \OCP\Util::DEBUG);
 
         $response = curl_exec($ch);
 
@@ -1778,7 +1778,7 @@ class FreezingController extends Controller
 
         curl_close($ch);
 
-        Util::writeLog('ida', 'checkDatasets: datasets_response=' . $response, \OCP\Util::DEBUG);
+        Util::writeLog('ida', 'checkDatasets: httpcode' . $httpcode . ' datasets_response=' . $response, \OCP\Util::DEBUG);
 
         if ($httpcode === 200) {
 
@@ -1789,17 +1789,6 @@ class FreezingController extends Controller
                 list($ignore, $body) = explode("\r\n\r\n", $keep, 2);
                 Util::writeLog('ida', 'checkDatasets: body=' . $body, \OCP\Util::DEBUG);
                 $intersecting_dataset_ids = json_decode($body, true);
-            }
-
-            // TEMP WORKAROUND
-            if (($this->config['METAX_API_VERSION'] >= 3) && (Util::isAssociativeArray($intersecting_dataset_ids))) {
-                $dataset_pids = array();
-                foreach (array_keys($intersecting_dataset_ids) as $file) {
-                    foreach ($intersecting_dataset_ids[$file] as $dataset_pid) {
-                        $dataset_pids[$dataset_pid] = true;
-                    }
-                }
-                $intersecting_dataset_ids = array_keys($dataset_pids);
             }
 
             if (! is_array($intersecting_dataset_ids)) {
@@ -1825,8 +1814,7 @@ class FreezingController extends Controller
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
 
                 if ($this->config['METAX_API_VERSION'] >= 3) {
-                    // TODO add bearer token header when supported
-                    ;
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Token ' . $password));
                 }
                 else {
                     curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
@@ -1959,30 +1947,29 @@ class FreezingController extends Controller
 
         $ch = curl_init($queryURL);
 
+        $headers = array(
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($postbody)
+        );
+
+        if ($this->config['METAX_API_VERSION'] >= 3) {
+            $headers[] = 'Authorization: Token ' . $password;
+        }
+        else {
+            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+        }
+
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
         curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER,
-            array(
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($postbody)
-            )
-        );
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
         curl_setopt($ch, CURLOPT_FAILONERROR, false);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
-
-        if ($this->config['METAX_API_VERSION'] >= 3) {
-            // TODO add bearer token header when supported
-            ;
-        }
-        else {
-            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
-        }
 
         $response = curl_exec($ch);
 

@@ -166,10 +166,8 @@ def load_variables_from_uida_conf_files():
         'IDA_ENVIRONMENT': server_conf.IDA_ENVIRONMENT,
         'IDA_API_ROOT_URL': server_conf.IDA_API_ROOT_URL,
         'METAX_API_ROOT_URL': server_conf.METAX_API_ROOT_URL,
-        'METAX_API_USER': server_conf.METAX_API_USER,
         'METAX_API_PASS': server_conf.METAX_API_PASS,
         'METAX_AVAILABLE': server_conf.METAX_AVAILABLE,
-        'METAX_FILE_STORAGE_ID': server_conf.METAX_FILE_STORAGE_ID,
         'NC_ADMIN_USER': server_conf.NC_ADMIN_USER,
         'NC_ADMIN_PASS': server_conf.NC_ADMIN_PASS,
         'STORAGE_OC_DATA_ROOT': server_conf.STORAGE_OC_DATA_ROOT,
@@ -199,6 +197,12 @@ def load_variables_from_uida_conf_files():
         uida_conf_vars['RABBIT_PROTOCOL'] = server_conf.RABBIT_PROTOCOL
     except:
         uida_conf_vars['RABBIT_PROTOCOL'] = 'http'
+
+    if hasattr(server_conf, 'METAX_API_USER'):
+        uida_conf_vars['METAX_API_USER'] = server_conf.METAX_API_USER
+
+    if hasattr(server_conf, 'METAX_FILE_STORAGE_ID'):
+        uida_conf_vars['METAX_FILE_STORAGE_ID'] = server_conf.METAX_FILE_STORAGE_ID
 
     if hasattr(server_conf, 'DMF_SERVER'):
         uida_conf_vars['DMF_SERVER'] = server_conf.DMF_SERVER

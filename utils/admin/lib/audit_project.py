@@ -69,6 +69,8 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
+        #config.DEBUG = True # TEMP HACK
+
         # If in production, ensure we are not running on uida-man.csc.fi
         if config.IDA_ENVIRONMENT == 'PRODUCTION' and socket.gethostname().startswith('uida-man'):
             raise Exception ("Do not run project auditing on uida-man.csc.fi!")
@@ -237,9 +239,9 @@ def add_frozen_files(nodes, counts, config):
     cur = conn.cursor()
 
     # Select all records for actively frozen files which frozen before the START
-    # timestamp (we also grab and record the metadata and replicated timestamps,
-    # to decide whether we should include those files in comparisons with Metax
-    # and the replication)
+    # timestamp and after the SINCE timestamp (we also grab and record the metadata
+    # and replicated timestamps, to decide whether we should include those files in
+    # comparisons with Metax and the replication)
 
     query = "SELECT pathname, size, modified, pid, checksum, frozen, replicated FROM %sida_frozen_file \
              WHERE project = '%s' \
@@ -319,14 +321,13 @@ def add_metax_files(nodes, counts, config):
         sys.stderr.write("--- Adding Metax frozen files...\n")
 
     if config.METAX_API_VERSION >= 3:
-        url_base = "%s/files?project=%s&storage_service=ida&frozen__gt=%s&limit=%d" % (
+        url_base = "%s/files?csc_project=%s&storage_service=ida&frozen__gt=%s&limit=%d" % (
             config.METAX_API_ROOT_URL,
             config.PROJECT,
             config.SINCE,
             config.MAX_FILE_COUNT
         )
     else:
-        # Unfortunately, in v1 of the Metax API we have to retrieve all frozen files and can't filter by SINCE
         url_base = "%s/files?file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (
             config.METAX_API_ROOT_URL,
             config.PROJECT,
@@ -346,10 +347,11 @@ def add_metax_files(nodes, counts, config):
         try:
 
             if config.METAX_API_VERSION >= 3:
-                # TODO: add bearer token header when supported
-                response = requests.get(url)
+                headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+                response = requests.get(url, headers=headers)
             else:
-                response = requests.get(url, auth=(config.METAX_API_USER, config.METAX_API_PASS))
+                auth = (config.METAX_API_USER, config.METAX_API_PASS)
+                response = requests.get(url, auth=auth)
 
             if response.status_code != 200:
                 raise Exception("Failed to retrieve frozen file metadata from Metax for project %s: %d" % (config.PROJECT, response.status_code))
@@ -358,6 +360,8 @@ def add_metax_files(nodes, counts, config):
 
             #if config.DEBUG:
             #    sys.stderr.write("QUERY RESPONSE: %s\n" % json.dumps(response_data))
+            if config.DEBUG:
+                sys.stderr.write("QUERY RESPONSE: %d\n" % response_data.get('count', 0))
 
             files = response_data['results']
 
@@ -375,42 +379,46 @@ def add_metax_files(nodes, counts, config):
 
                 if config.METAX_API_VERSION >= 3:
 
-                    pathname = "frozen%s" % file['pathname']
-                    modified = normalize_timestamp(file['modified'])
                     frozen = normalize_timestamp(file['frozen'])
 
-                    checksum = str(file['checksum'])
-                    if checksum.startswith('sha256:'):
-                        checksum = checksum[7:]
+                    # Only continue for files frozen after SINCE
+                    if config.SINCE < frozen:
 
-                    node_details = {
-                        'type': 'file',
-                        'size': file['size'],
-                        'pid': file['storage_identifier'],
-                        'checksum': checksum,
-                        'modified': modified,
-                        'frozen': frozen
-                    }
+                        pathname = "frozen%s" % file['pathname']
+                        modified = normalize_timestamp(file['modified'])
 
-                    if node_details['size'] in [ None, 'None', 'null', '', False ]:
-                        node_details['size'] = 0
+                        checksum = str(file['checksum'])
+                        if checksum.startswith('sha256:'):
+                            checksum = checksum[7:]
 
-                    for field in [ 'pid', 'checksum', 'modified', 'frozen' ]:
-                        if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
-                            node_details[field] = None
+                        node_details = {
+                            'type': 'file',
+                            'size': file['size'],
+                            'pid': file['storage_identifier'],
+                            'checksum': checksum,
+                            'modified': modified,
+                            'frozen': frozen
+                        }
 
-                    if config.DEBUG:
-                        sys.stderr.write("NODE: %s %s\n" % (pathname, json.dumps(node_details)))
+                        if node_details['size'] in [ None, 'None', 'null', '', False ]:
+                            node_details['size'] = 0
 
-                    try:
-                        node = nodes[pathname]
-                        node['metax'] = node_details
-                    except KeyError:
-                        node = {}
-                        node['metax'] = node_details
-                        nodes[pathname] = node
+                        for field in [ 'pid', 'checksum', 'modified', 'frozen' ]:
+                            if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+                                node_details[field] = None
 
-                    counts['metaxFileCount'] = counts['metaxFileCount'] + 1
+                        if config.DEBUG:
+                            sys.stderr.write("NODE: %s %s\n" % (pathname, json.dumps(node_details)))
+
+                        try:
+                            node = nodes[pathname]
+                            node['metax'] = node_details
+                        except KeyError:
+                            node = {}
+                            node['metax'] = node_details
+                            nodes[pathname] = node
+
+                        counts['metaxFileCount'] = counts['metaxFileCount'] + 1
 
                 else:
 
