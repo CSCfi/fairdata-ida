@@ -48,8 +48,8 @@ class TestIdaUser(unittest.TestCase):
         self.config = load_configuration()
         self.project_name = "test_project_a"
         self.user_name = "test_user_a"
-        self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config["HTTPD_USER"], self.config["ROOT"])
-        self.ida_user = "sudo -u %s %s/admin/ida_user" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        self.ida_project = "sudo -u %s DEBUG=false %s/admin/ida_project" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        self.ida_user = "sudo -u %s DEBUG=false %s/admin/ida_user" % (self.config["HTTPD_USER"], self.config["ROOT"])
         self.offlineSentinelFile = "%s/control/OFFLINE" % self.config.get('STORAGE_OC_DATA_ROOT', '/mnt/storage_vol01/ida')
 
         # clear any residual accounts, if they exist from a prior run
@@ -83,7 +83,7 @@ class TestIdaUser(unittest.TestCase):
             if (os.path.exists(self.offlineSentinelFile)) :
                 os.remove(self.offlineSentinelFile)
 
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+            cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             os.system(cmd)
 
         self.assertTrue(self.success)

@@ -192,12 +192,12 @@ class TestAuditing(unittest.TestCase):
             self.metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
 
         # ensure we start with a fresh setup of projects, user accounts, and data
-        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
         # ensure all cache checksums have been generated for test_project_a (if OK, assume OK for all test projects)
-        cmd = "sudo -u %s %s/utils/admin/list-missing-checksums test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-missing-checksums test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
             self.assertEqual(len(output), 0)
@@ -216,7 +216,7 @@ class TestAuditing(unittest.TestCase):
 
         if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEqual(result, 0)
 
@@ -302,7 +302,7 @@ class TestAuditing(unittest.TestCase):
 
         print ("(auditing project %s%s)" % (project, parameters))
 
-        cmd = "sudo -u %s %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
@@ -694,7 +694,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Checking detection of active projects")
 
         print("(retrieving list of active projects since initialization)")
-        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-active-projects %s" % (
             self.config["HTTPD_USER"],
             self.config["ROOT"],
             self.config["START"]
@@ -720,7 +720,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIn("test_project_e", output)
 
         print("(retrieving list of active projects since initialization)")
-        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-active-projects %s" % (
             self.config["HTTPD_USER"],
             self.config["ROOT"],
             self.config["INITIALIZED"]
@@ -746,7 +746,7 @@ class TestAuditing(unittest.TestCase):
         self.assertNotIn("test_project_e", output)
 
         print("(retrieving list of active projects since modifications)")
-        cmd = "sudo -u %s %s/utils/admin/list-active-projects %s" % (
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-active-projects %s" % (
             self.config["HTTPD_USER"],
             self.config["ROOT"],
             self.config["MODIFIED"]
@@ -2067,7 +2067,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Repairing projects A, B, C, and D for re-auditing")
 
         print("(repairing project A)")
-        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -2077,7 +2077,7 @@ class TestAuditing(unittest.TestCase):
         self.check_for_failed_actions("test_project_a", test_user_a)
 
         print("(repairing project B)")
-        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -2087,7 +2087,7 @@ class TestAuditing(unittest.TestCase):
         self.check_for_failed_actions("test_project_b", test_user_b)
 
         print("(repairing project C)")
-        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -2128,7 +2128,7 @@ class TestAuditing(unittest.TestCase):
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
 
-        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -2285,7 +2285,7 @@ class TestAuditing(unittest.TestCase):
 
         print("repair timestamps for test_project_d)")
 
-        cmd = "sudo -u %s %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -2418,7 +2418,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Repairing project A")
 
-        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:
@@ -2729,7 +2729,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Repairing project B")
 
-        cmd = "sudo -u %s %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
         except subprocess.CalledProcessError as error:

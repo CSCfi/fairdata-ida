@@ -118,7 +118,7 @@ class TestOldData(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        print("=== tests/auditing/test_auditing")
+        print("=== tests/auditing/test_olddata")
 
     def setUp(self):
 
@@ -142,7 +142,7 @@ class TestOldData(unittest.TestCase):
             self.metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
 
         # ensure we start with a fresh setup of projects, user accounts, and data
-        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts %s/tests/utils/double-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts %s/tests/utils/double-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
@@ -153,7 +153,7 @@ class TestOldData(unittest.TestCase):
 
         if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEqual(result, 0)
 
@@ -209,7 +209,7 @@ class TestOldData(unittest.TestCase):
 
         print ("(auditing old data for project %s)" % project)
 
-        cmd = "sudo -u %s %s/utils/admin/audit-old-data %s 0 --json-output" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-old-data %s 0 --json-output" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode(sys.stdout.encoding).strip()
@@ -255,7 +255,7 @@ class TestOldData(unittest.TestCase):
 
         print ("(auditing old data for all projects: %s)" % projects)
 
-        cmd = "sudo -u %s PROJECTS=\"%s\" %s/utils/admin/audit-all-old-data 0 --json-output" % (self.config["HTTPD_USER"], projects, self.config["ROOT"])
+        cmd = "sudo -u %s PROJECTS=\"%s\" DEBUG=false %s/utils/admin/audit-all-old-data 0 --json-output" % (self.config["HTTPD_USER"], projects, self.config["ROOT"])
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode(sys.stdout.encoding).strip()

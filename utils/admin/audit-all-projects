@@ -61,7 +61,7 @@ PROJECTS=`$ROOT/utils/admin/list-projects`
 INTERNAL_PROJECTS=""
 
 if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-    INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects | tr '\n' ' '`
+    INTERNAL_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-internal-projects | tr '\n' ' '`
 fi
 
 if [ "$DEBUG" = "true" ]; then

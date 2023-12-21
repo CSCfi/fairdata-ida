@@ -136,11 +136,11 @@ class TestDatasets(unittest.TestCase):
         self.flushDatasets()
 
         # ensure we start with a fresh setup of projects, user accounts, and data
-        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
@@ -155,7 +155,7 @@ class TestDatasets(unittest.TestCase):
 
             self.flushDatasets()
 
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
+            cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEqual(result, 0)
 
@@ -317,7 +317,7 @@ class TestDatasets(unittest.TestCase):
 
         frozen_area_root = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
-        cmd_base="sudo -u %s SIMULATE_AGENTS=true %s/utils/admin/execute-batch-action" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd_base="sudo -u %s SIMULATE_AGENTS=true DEBUG=false %s/utils/admin/execute-batch-action" % (self.config["HTTPD_USER"], self.config["ROOT"])
 
         print("Batch freezing a folder with more than max allowed files")
         cmd = "%s test_project_a freeze /testdata/MaxFiles >/dev/null" % (cmd_base)

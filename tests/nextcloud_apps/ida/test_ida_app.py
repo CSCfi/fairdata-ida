@@ -56,7 +56,7 @@ class TestIdaApp(unittest.TestCase):
 
         print("(initializing)")
 
-        self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
+        self.ida_project = "sudo -u %s DEBUG=false %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
         self.suspendedSentinelFile = "%s/control/SUSPENDED" % self.config["STORAGE_OC_DATA_ROOT"]
 
         # ensure service is not suspended
@@ -67,19 +67,19 @@ class TestIdaApp(unittest.TestCase):
 
         # ensure we start with a fresh setup of projects, user accounts, and data
 
-        cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-max-files test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        cmd = "sudo -u %s %s/tests/utils/initialize-max-files test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-max-files test_project_b" % (self.config["HTTPD_USER"], self.config["ROOT"])
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        self.ida_project = "sudo -u %s %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
+        self.ida_project = "sudo -u %s DEBUG=false %s/admin/ida_project" % (self.config['HTTPD_USER'], self.config['ROOT'])
 
 
     def tearDown(self):
@@ -95,7 +95,7 @@ class TestIdaApp(unittest.TestCase):
 
         if self.success and self.config.get('NO_FLUSH_AFTER_TESTS', 'false') == 'false':
             print("(cleaning)")
-            cmd = "sudo -u %s %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
+            cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts --flush" % (self.config["HTTPD_USER"], self.config["ROOT"])
             os.system(cmd)
 
         # verify all tests passed
@@ -1810,7 +1810,7 @@ class TestIdaApp(unittest.TestCase):
 
         frozen_area_root = "%s/PSO_test_project_b/files/test_project_b" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root = "%s/PSO_test_project_b/files/test_project_b%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
-        cmd_base="sudo -u %s SIMULATE_AGENTS=true %s/utils/admin/execute-batch-action" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        cmd_base="sudo -u %s SIMULATE_AGENTS=true DEBUG=false %s/utils/admin/execute-batch-action" % (self.config["HTTPD_USER"], self.config["ROOT"])
 
         print("Attempt to freeze a folder with more than max allowed files")
         data = {"project": "test_project_b", "pathname": "/testdata/MaxFiles"}

@@ -125,10 +125,10 @@ OUTPUT_JSON_FINAL="/tmp/$$.final.json"
 SUMMARY="/tmp/$$.summary"
 
 if [ -z "$PROJECTS" ]; then
-    PROJECTS=`$ROOT/utils/admin/list-projects`
+    PROJECTS=`DEBUG=false $ROOT/utils/admin/list-projects`
     INTERNAL_PROJECTS=""
     if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-        INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects`
+        INTERNAL_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-internal-projects | tr '\n' ' '`
     fi
 fi
 
@@ -163,7 +163,7 @@ for PROJECT in $PROJECTS; do
 
         echo "$PROJECT" >&2
 
-        PROJECT_SUMMARY=`$ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output 2>/dev/null`
+        PROJECT_SUMMARY=`DEBUG=false $ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output 2>/dev/null`
 
         if [ -n "$PROJECT_SUMMARY" ]; then
 
