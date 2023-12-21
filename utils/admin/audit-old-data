@@ -1,0 +1,168 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script audits the specified project in the IDA service, and reports if any
+# data is older than the configured or specified age limit.
+#
+# The script directly queries the database tables and filesystems, and it is
+# not necessary for Apache/Nextcloud/IDA to be running in order to execute this
+# script; only the database needs to be running.
+# --------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT project [ max_age_in_days ] [ --json-output ]
+       $SCRIPT -h
+"
+
+# --------------------------------------------------------------------------------
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting."
+    exit 1
+fi
+
+#DEBUG="true" # TEMP HACK
+
+#--------------------------------------------------------------------------------
+
+MAX_AGE=`echo "$2" | sed -e 's/[^0-9]//g'`
+
+if [ -z "$MAX_AGE" ]; then
+    MAX_AGE="$MAX_DATA_AGE_IN_DAYS"
+fi
+
+if [ -z "$MAX_AGE" ]; then
+    MAX_AGE=356
+fi
+
+JSON_OUTPUT=`echo "$2 $3" | grep -- "--json-output"`
+
+#--------------------------------------------------------------------------------
+
+if [ "$DEBUG" = "true" ]; then
+    echo "ROOT:       $ROOT"        >&2
+    echo "PROJECT:    $PROJECT"     >&2
+    echo "START:      $START"       >&2
+    echo "MAX_AGE:    $MAX_AGE"     >&2
+    echo "JSON OUT:   $JSON_OUTPUT" >&2
+fi
+
+#--------------------------------------------------------------------------------
+
+if [ ! -d "$PROJECT_STORAGE_OC_DATA_ROOT" ]; then
+    errorExit "The specified project ${PROJECT} does not exist"
+fi
+
+LOG_ROOT=`dirname "$(realpath $LOG)"`
+YEAR=`date -u +"%Y"`
+MONTH=`date -u +"%m"`
+REPORT_ROOT="${LOG_ROOT}/old_data"
+REPORT="${LOG_ROOT}/old_data/${YEAR}/${MONTH}/${START}_${PROJECT}.json"
+GUIDANCE="${ROOT}/utils/admin/lib/Old_Data_Guidance.txt"
+
+mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
+
+#--------------------------------------------------------------------------------
+
+OUTPUT="/tmp/$$.output"
+SUMMARY="/tmp/$$.summary"
+
+source $ROOT/venv/bin/activate
+
+python -u $ROOT/utils/admin/lib/audit_old_data.py $ROOT $PROJECT $MAX_AGE > $OUTPUT
+
+if [ $? -ne 0 ]; then
+    rm $OUTPUT 2>/dev/null
+    errorExit "Auditing of old data for project $PROJECT failed"
+fi
+
+if [ $(stat -c %s "$OUTPUT") -eq 0 ]; then
+    echo "No old data found in project $PROJECT" >&2
+    exit 0
+fi
+
+jq --arg REPORT "$REPORT" '.reportPathname = $REPORT' --indent 4 < $OUTPUT > $REPORT
+
+if [ $? -ne 0 ]; then
+    rm $OUTPUT 2>/dev/null
+    errorExit "Formatting of old data report for project $PROJECT failed"
+fi
+
+TOTAL_BYTES=`cat "$REPORT"         | jq -r '.totalBytes'`
+TOTAL_FILES=`cat "$REPORT"         | jq -r '.totalFiles'`
+TOTAL_FROZEN_BYTES=`cat "$REPORT"  | jq -r '.totalFrozenBytes'`
+TOTAL_FROZEN_FILES=`cat "$REPORT"  | jq -r '.totalFrozenFiles'`
+TOTAL_STAGING_BYTES=`cat "$REPORT" | jq -r '.totalStagingBytes'`
+TOTAL_STAGING_FILES=`cat "$REPORT" | jq -r '.totalStagingFiles'`
+
+TOTAL_BYTES_HR=$(bytesToHR "$TOTAL_BYTES")
+TOTAL_FROZEN_BYTES_HR=$(bytesToHR "$TOTAL_FROZEN_BYTES")
+TOTAL_STAGING_BYTES_HR=$(bytesToHR "$TOTAL_STAGING_BYTES")
+
+printf "\n" > $SUMMARY
+printf "%-25s%s\n" "Project:"              "${PROJECT}"                >> $SUMMARY
+printf "%-25s%s\n" "Total bytes:"          "${TOTAL_BYTES_HR}"         >> $SUMMARY
+printf "%-25s%s\n" "Total files:"          "${TOTAL_FILES}"            >> $SUMMARY
+printf "%-25s%s\n" "Total frozen bytes:"   "${TOTAL_FROZEN_BYTES_HR}"  >> $SUMMARY
+printf "%-25s%s\n" "Total frozen files:"   "${TOTAL_FROZEN_FILES}"     >> $SUMMARY
+printf "%-25s%s\n" "Total staging bytes:"  "${TOTAL_STAGING_BYTES_HR}" >> $SUMMARY
+printf "%-25s%s\n" "Total staging files:"  "${TOTAL_STAGING_FILES}"    >> $SUMMARY
+printf "\n\n" >> $SUMMARY
+
+# Send email with report summary to project users
+
+#RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT"`
+#RECIPIENTS="patrick.stickler@csc.fi" # TEMP HACK
+
+if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+    # REMOVE WHEN READY TO EMAIL PROJECT USERS
+    GUIDANCE="/dev/null"
+    RECIPIENTS=""
+fi
+
+if [ "$RECIPIENTS" ]; then
+    HOSTNAME=`hostname`
+    SUBJECT="Unpublished data exists in project $PROJECT which is older than the allowed limit"
+    cat "$GUIDANCE" "$SUMMARY" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
+    echo "Report summary emailed to project users" >&2
+fi
+
+if [ "$JSON_OUTPUT" ]; then
+    cat $REPORT | jq 'del(.frozenFiles) | del(.stagingFiles)' --indent 4
+else
+    cat $SUMMARY
+fi
+
+#--
+
+rm $OUTPUT 2>/dev/null
+rm $SUMMARY 2>/dev/null
+
+addToLog "DONE"

@@ -1,0 +1,304 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script audits the all projects in the IDA service, and reports for each
+# project if any data is older than the configured or specified age limit, and
+# summarizes the total files and bytes older than the limit for all projects.
+#
+# If auditing old data for all projects, only one ongoing auditing process will
+# occur at any given time. A sentinel file is created to ensure that auditing of
+# all projects will not be initiated until any previous auditing of all projects
+# has completed. If the sentinel file exceeds a configured limit of time, an error
+# is reported.
+# --------------------------------------------------------------------------------
+
+MAX_SENTINEL_FILE_AGE_IN_DAYS=25
+SENTINEL_FILE="/tmp/AUDIT_ALL_OLD_DATA"
+
+#---------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+
+USAGE="
+Usage: $SCRIPT [ max_age_in_days ] [ --json-output ]
+       $SCRIPT -h
+"
+
+PROJECT="null"
+
+# --------------------------------------------------------------------------------
+# Initialize script with common definitions
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting."
+    exit 1
+fi
+
+#DEBUG="true" # TEMP HACK
+
+# --------------------------------------------------------------------------------
+
+if [[ -e $SENTINEL_FILE ]]; then
+
+    CURRENT_TIME=$(date +"%s")
+
+    SENTINEL_FILE_MTIME=$(date -r $SENTINEL_FILE +"%s")
+
+    TIME_DIFFERENCE=$(( ( CURRENT_TIME - SENTINEL_FILE_MTIME ) / 86400 ))
+
+    if [ "$TIME_DIFFERENCE" -gt $MAX_SENTINEL_FILE_AGE_IN_DAYS ]; then
+        echo "Auditing of old data for all projects has taken longer than $MAX_SENTINEL_FILE_AGE_IN_DAYS days" >&2
+        exit 1
+    fi
+
+    echo "Auditing of old data for all projects is ongoing. Skipping."
+    exit 0
+fi
+
+echo "$$" > $SENTINEL_FILE
+
+#--------------------------------------------------------------------------------
+
+LOG_ROOT=`dirname "$(realpath $LOG)"`
+YEAR=`date -u +"%Y"`
+MONTH=`date -u +"%m"`
+REPORT_ROOT="${LOG_ROOT}/old_data"
+REPORT_CSV="${LOG_ROOT}/old_data/${YEAR}/${MONTH}/${START}_All_Projects.csv"
+REPORT_JSON="${LOG_ROOT}/old_data/${YEAR}/${MONTH}/${START}_All_Projects.json"
+
+mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
+
+#--------------------------------------------------------------------------------
+
+MAX_AGE=`echo "$1" | sed -e 's/[^0-9]//g'`
+
+if [ -z "$MAX_AGE" ]; then
+    MAX_AGE="$MAX_DATA_AGE_IN_DAYS"
+fi
+
+if [ -z "$MAX_AGE" ]; then
+    MAX_AGE=356
+fi
+
+JSON_OUTPUT=`echo "$2 $3" | grep -- "--json-output"`
+
+#--------------------------------------------------------------------------------
+
+if [ "$DEBUG" = "true" ]; then
+    echo "MAX AGE:  $MAX_AGE"     >&2
+    echo "JSON OUT: $JSON_OUTPUT" >&2
+    echo "PROJECTS: $PROJECTS"    >&2
+fi
+
+#--------------------------------------------------------------------------------
+
+OUTPUT_CSV="/tmp/$$.csv"
+OUTPUT_CSV_HR="/tmp/$$.hr.csv"
+OUTPUT_TXT="/tmp/$$.txt"
+OUTPUT_JSON="/tmp/$$.json"
+OUTPUT_JSON_FINAL="/tmp/$$.final.json"
+SUMMARY="/tmp/$$.summary"
+
+if [ -z "$PROJECTS" ]; then
+    PROJECTS=`$ROOT/utils/admin/list-projects`
+    INTERNAL_PROJECTS=""
+    if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
+        INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects`
+    fi
+fi
+
+if [ "$DEBUG" = "true" ]; then
+    echo "PROJECTS: $PROJECTS"          >&2
+    echo "INTERNAL: $INTERNAL_PROJECTS" >&2
+fi
+
+if [ "$DEBUG" = "true" ]; then
+    echo "EXCLUDED: $EXCLUDED_PROJECTS $INTERNAL_PROJECTS" >&2
+fi
+
+PROJECT_COUNT=0
+ALL_BYTES=0
+ALL_FILES=0
+ALL_FROZEN_BYTES=0
+ALL_FROZEN_FILES=0
+ALL_STAGING_BYTES=0
+ALL_STAGING_FILES=0
+
+FIRST_PROJECT="true"
+
+for PROJECT in $PROJECTS; do
+
+    EXCLUDED=""
+
+    if [ "${EXCLUDED_PROJECTS}${INTERNAL_PROJECTS}" ]; then
+        EXCLUDED=`echo " ${EXCLUDED_PROJECTS} ${INTERNAL_PROJECTS} " | grep " $PROJECT "`
+    fi
+
+    if [ -z "$EXCLUDED" ]; then
+
+        echo "$PROJECT" >&2
+
+        PROJECT_SUMMARY=`$ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output 2>/dev/null`
+
+        if [ -n "$PROJECT_SUMMARY" ]; then
+
+            TOTAL_BYTES=`echo "$PROJECT_SUMMARY" | jq -r '.totalBytes'`
+
+            if [ -n "$TOTAL_BYTES" ] && [ "$TOTAL_BYTES" != "0" ]; then
+
+                TOTAL_FILES=`echo "$PROJECT_SUMMARY"         | jq -r '.totalFiles'`
+                TOTAL_FROZEN_BYTES=`echo "$PROJECT_SUMMARY"  | jq -r '.totalFrozenBytes'`
+                TOTAL_FROZEN_FILES=`echo "$PROJECT_SUMMARY"  | jq -r '.totalFrozenFiles'`
+                TOTAL_STAGING_BYTES=`echo "$PROJECT_SUMMARY" | jq -r '.totalStagingBytes'`
+                TOTAL_STAGING_FILES=`echo "$PROJECT_SUMMARY" | jq -r '.totalStagingFiles'`
+
+                echo "${PROJECT},${TOTAL_BYTES},${TOTAL_FILES},${TOTAL_FROZEN_BYTES},${TOTAL_FROZEN_FILES},${TOTAL_STAGING_BYTES},${TOTAL_STAGING_FILES}" >> $OUTPUT_CSV
+
+                if [ "$FIRST_PROJECT" = "true" ]; then
+                    FIRST_PROJECT="false"
+                else
+                    echo "," >> $OUTPUT_JSON
+                fi
+
+                echo "$PROJECT_SUMMARY" | jq 'del(.maxDataAgeInDays)' >> $OUTPUT_JSON
+
+                (( PROJECT_COUNT += 1))
+                (( ALL_FILES += $TOTAL_FILES ))
+                (( ALL_BYTES += $TOTAL_BYTES ))
+                (( ALL_FROZEN_FILES += $TOTAL_FROZEN_FILES ))
+                (( ALL_FROZEN_BYTES += $TOTAL_FROZEN_BYTES ))
+                (( ALL_STAGING_FILES += $TOTAL_STAGING_FILES ))
+                (( ALL_STAGING_BYTES += $TOTAL_STAGING_BYTES ))
+            fi
+        fi
+    fi
+done
+
+if [ $PROJECT_COUNT -eq 0 ]; then
+    echo "No old data found in any project" >&2
+    exit 0
+fi
+
+echo "PROJECT,BYTES,FILES,FROZEN BYTES,FROZEN FILES,STAGING BYTES,STAGING FILES" > $REPORT_CSV
+echo "ALL,${ALL_BYTES},${ALL_FILES},${ALL_FROZEN_BYTES},${ALL_FROZEN_FILES},${ALL_STAGING_BYTES},${ALL_STAGING_FILES}" >> $REPORT_CSV
+cat $OUTPUT_CSV | sort -t',' -k2,2nr >> $REPORT_CSV
+echo "CSV report saved to file $REPORT_CSV" >&2
+
+echo "{" > $OUTPUT_JSON_FINAL
+echo "\"reportPathname\": \"${REPORT_JSON}\"," >> $OUTPUT_JSON_FINAL
+echo "\"projectCount\": ${PROJECT_COUNT}," >> $OUTPUT_JSON_FINAL
+echo "\"maxDataAgeInDays\": ${MAX_AGE}," >> $OUTPUT_JSON_FINAL
+echo "\"totalBytes\": ${ALL_BYTES}," >> $OUTPUT_JSON_FINAL
+echo "\"totalFiles\": ${ALL_FILES}," >> $OUTPUT_JSON_FINAL
+echo "\"totalFrozenBytes\": ${ALL_FROZEN_BYTES}," >> $OUTPUT_JSON_FINAL
+echo "\"totalFrozenFiles\": ${ALL_FROZEN_FILES}," >> $OUTPUT_JSON_FINAL
+echo "\"totalStagingBytes\": ${ALL_STAGING_BYTES}," >> $OUTPUT_JSON_FINAL
+echo "\"totalStagingFiles\": ${ALL_STAGING_FILES}," >> $OUTPUT_JSON_FINAL
+echo "\"projects\": [" >> $OUTPUT_JSON_FINAL
+cat $OUTPUT_JSON >> $OUTPUT_JSON_FINAL
+echo "]}" >> $OUTPUT_JSON_FINAL
+cat $OUTPUT_JSON_FINAL | jq --indent 4 > $REPORT_JSON
+echo "JSON report saved to file $REPORT_JSON" >&2
+
+ALL_BYTES_HR=$(bytesToHR "$ALL_BYTES")
+ALL_FROZEN_BYTES_HR=$(bytesToHR "$ALL_FROZEN_BYTES")
+ALL_STAGING_BYTES_HR=$(bytesToHR "$ALL_STAGING_BYTES")
+
+printf "\n" > $SUMMARY
+printf "%-25s%s\n" "Project count:"        "${PROJECT_COUNT}"        >> $SUMMARY
+printf "%-25s%s\n" "Total bytes:"          "${ALL_BYTES_HR}"         >> $SUMMARY
+printf "%-25s%s\n" "Total files:"          "${ALL_FILES}"            >> $SUMMARY
+printf "%-25s%s\n" "Total frozen bytes:"   "${ALL_FROZEN_BYTES_HR}"  >> $SUMMARY
+printf "%-25s%s\n" "Total frozen files:"   "${ALL_FROZEN_FILES}"     >> $SUMMARY
+printf "%-25s%s\n" "Total staging bytes:"  "${ALL_STAGING_BYTES_HR}" >> $SUMMARY
+printf "%-25s%s\n" "Total staging files:"  "${ALL_STAGING_FILES}"    >> $SUMMARY
+printf "\n\n" >> $SUMMARY
+
+awk 'BEGIN {
+  FS = ",";   # Set the input field separator to comma
+  OFS = ",";  # Set the output field separator to comma
+  split("B KiB MiB GiB TiB PiB", units, " ");
+  for (f = 1; f <= 6; f++) {
+    factor[f] = 1024 ^ (f - 1);
+  }
+}
+
+NR == 1 {
+  print;
+}
+
+NR > 1 {
+  for (i = 2; i <= NF; i = i + 2) {
+    $i = human_readable($i);
+  }
+  print;
+}
+
+function human_readable(bytes) {
+  if (bytes == 0) return "0 B";
+  for (u = 6; u >= 1; u--) {
+    if (bytes >= factor[u]) {
+      x = bytes / factor[u];
+      return sprintf("%i %s", int(x + 0.5), units[u]);
+    }
+  }
+  return bytes " B";
+}' $REPORT_CSV > $OUTPUT_CSV_HR
+
+printf "\n"                             > $OUTPUT_TXT
+column -t -s, -o '   ' $OUTPUT_CSV_HR  >> $OUTPUT_TXT
+printf "\n\n"                          >> $OUTPUT_TXT
+
+# Send email with report summary to internal users (if any configured)
+
+RECIPIENTS="$EMAIL_RECIPIENTS"
+
+if [ "$RECIPIENTS" ]; then
+    HOSTNAME=`hostname`
+    SUBJECT="Unpublished data exists in one or more projects which is older than the allowed limit"
+    cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
+    echo "Report summary emailed to internal users" >&2
+fi
+
+if [ "$JSON_OUTPUT" ]; then
+    cat $REPORT_JSON | jq 'del(.projects)' --indent 4
+else
+    cat $SUMMARY
+fi
+
+#--
+
+rm $OUTPUT_CSV 2>/dev/null
+rm $OUTPUT_CSV_HR 2>/dev/null
+rm $OUTPUT_TXT 2>/dev/null
+rm $OUTPUT_JSON 2>/dev/null
+rm $OUTPUT_JSON_FINAL 2>/dev/null
+rm $SUMMARY 2>/dev/null
+rm $SENTINEL_FILE
+
+addToLog "DONE"

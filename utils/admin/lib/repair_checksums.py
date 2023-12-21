@@ -54,6 +54,13 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
+        if config.IDA_API_ROOT_URL.startswith('https://localhost/'):
+            config.VERIFY_SSL=False
+        else:
+            config.VERIFY_SSL=True
+
+        config.DEBUG = True # TEMP HACK
+
         # Initialize logging using UTC timestamps
 
         if config.DEBUG:
@@ -165,7 +172,7 @@ def update_checksum_in_nextcloud(config, pathname, checksum):
     data = { "pathname": pathname, "checksum": checksum }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data)
+    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
         sys.stderr.write("Warning: Failed to update checksum in Nextcloud to %s for pathname %s: %d %s\n" % (
@@ -186,7 +193,7 @@ def update_checksum_in_ida(config, pathname, file_pid, checksum):
     data = { 'checksum': checksum }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
-    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data)
+    response = requests.post(url, auth=auth, headers=config.HEADERS, json=data, verify=config.VERIFY_SSL)
 
     if response.status_code < 200 or response.status_code > 299:
         sys.stderr.write("Warning: Failed to update checksum in IDA to %s for pathname %s: %d %s\n" % (

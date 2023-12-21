@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script will create indices needed to optimize old data queries, if they do not
+# already exist
+# --------------------------------------------------------------------------------
+
+SCRIPT_PATHNAME="$(realpath $0)"
+PARENT_FOLDER=`dirname "$SCRIPT_PATHNAME"`
+PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+
+while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
+    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
+    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+done
+
+CONFIG_FILE="$PARENT_FOLDER/config/config.sh"
+
+if [ -e $CONFIG_FILE ]
+then
+    . $CONFIG_FILE
+else
+    echo "The configuration file $CONFIG_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+CONSTANTS_FILE="$ROOT/lib/constants.sh"
+
+if [ -e $CONSTANTS_FILE ]
+then
+    . $CONSTANTS_FILE
+else
+    echo "The configuration file $CONSTANTS_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+echo "DBHOST: $DBHOST"
+echo "DBPORT: $DBPORT"
+echo "DBNAME: $DBNAME"
+echo "DBUSER: $DBUSER"
+
+export PGPASSWORD="$DBPASSWORD"
+
+# Delete existing indices if in dev environment
+
+if [ "$IDA_ENVIRONMENT" = "DEV" ]; then
+
+    QUERY="DROP INDEX IF EXISTS ${DBTABLEPREFIX}filecache_old_data_idx;"
+    echo "$QUERY"
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+
+    QUERY="DROP INDEX IF EXISTS ${DBTABLEPREFIX}filecache_extended_old_data_idx;"
+    echo "$QUERY"
+    psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+
+fi
+
+QUERY="CREATE INDEX IF NOT EXISTS
+       ${DBTABLEPREFIX}filecache_old_data_idx
+       ON ${DBTABLEPREFIX}filecache
+       USING btree (storage, mimetype, path, mtime, fileid)
+       WITH (fillfactor = 50);"
+echo "$QUERY"
+psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"
+
+QUERY="CREATE INDEX IF NOT EXISTS
+       ${DBTABLEPREFIX}filecache_extended_old_data_idx
+       ON ${DBTABLEPREFIX}filecache_extended
+       USING btree (fileid, upload_time)
+       WITH (fillfactor = 50);"
+echo "$QUERY"
+psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY"

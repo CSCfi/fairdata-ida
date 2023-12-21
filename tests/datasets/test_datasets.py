@@ -124,9 +124,9 @@ class TestDatasets(unittest.TestCase):
         # timeout when waiting for actions to complete
         self.timeout = 10800 # 3 hours
 
-        self.assertEqual(self.config["METAX_AVAILABLE"], 1)
-
         print("(initializing)")
+
+        self.assertEqual(self.config["METAX_AVAILABLE"], 1)
 
         if self.config["METAX_API_VERSION"] >= 3:
             self.metax_headers = { 'Authorization': 'Token %s' % self.config["METAX_API_PASS"] }
@@ -177,7 +177,7 @@ class TestDatasets(unittest.TestCase):
         pids = []
         test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
         data = { "project": "test_project_a", "pathname": "/testdata" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a)
+        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         if response.status_code == 200:
             datasets = response.json()
             for dataset in datasets:
@@ -188,14 +188,14 @@ class TestDatasets(unittest.TestCase):
     def waitForPendingActions(self, project, user):
         print("(waiting for pending actions to fully complete)")
         print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         actions = response.json()
         max_time = time.time() + self.timeout
         while len(actions) > 0 and time.time() < max_time:
             print(".", end='', flush=True)
             time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
             self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
             actions = response.json()
         print("")
@@ -204,7 +204,7 @@ class TestDatasets(unittest.TestCase):
 
     def checkForFailedActions(self, project, user):
         print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         actions = response.json()
         assert(len(actions) == 0)
@@ -245,7 +245,7 @@ class TestDatasets(unittest.TestCase):
 
         print("Freezing folder /testdata/2017-08/Experiment_1")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1" }
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -256,14 +256,14 @@ class TestDatasets(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_1")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         experiment_1_files = response.json()
         self.assertEqual(len(experiment_1_files), 13)
 
         print("Freezing folder /testdata/2017-08/Experiment_2")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2" }
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -274,14 +274,14 @@ class TestDatasets(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_2")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         experiment_2_files = response.json()
         self.assertEqual(len(experiment_2_files), 13)
 
         print("Freezing folder /testdata/2017-10/Experiment_3")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-10/Experiment_3" }
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -292,14 +292,14 @@ class TestDatasets(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-10/Experiment_3")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         experiment_3_files = response.json()
         self.assertEqual(len(experiment_3_files), 13)
 
         print("Freezing folder /testdata/2017-10/Experiment_4")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-10/Experiment_4" }
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -310,7 +310,7 @@ class TestDatasets(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-10/Experiment_4")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         experiment_4_files = response.json()
         self.assertEqual(len(experiment_4_files), 12)
@@ -334,7 +334,7 @@ class TestDatasets(unittest.TestCase):
 
         print("Attempt to query IDA for datasets intersecting scope which exceeds max file count")
         data = { "project": "test_project_a", "pathname": "/testdata" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a)
+        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
@@ -643,7 +643,7 @@ class TestDatasets(unittest.TestCase):
 
         print("Query IDA for datasets intersecting scope /testdata/2017-08/Experiment_1")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a)
+        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         datasets = response.json()
         self.assertEqual(len(datasets), 1)
@@ -651,7 +651,7 @@ class TestDatasets(unittest.TestCase):
 
         print("Query IDA for datasets intersecting scope /testdata/2017-08")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-08" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a)
+        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         datasets = response.json()
         self.assertEqual(len(datasets), 2)
@@ -660,7 +660,7 @@ class TestDatasets(unittest.TestCase):
 
         print("Query IDA for datasets intersecting scope /testdata/2017-10/Experiment_3")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-10/Experiment_3" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a)
+        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         datasets = response.json()
         self.assertEqual(len(datasets), 1)
@@ -668,7 +668,7 @@ class TestDatasets(unittest.TestCase):
 
         print("Query IDA for datasets intersecting scope /testdata/2017-10")
         data = { "project": "test_project_a", "pathname": "/testdata/2017-10" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a)
+        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         datasets = response.json()
         self.assertEqual(len(datasets), 4)
@@ -684,7 +684,7 @@ class TestDatasets(unittest.TestCase):
                 self.assertTrue(dataset['pas'] == False)
 
         print("Query IDA for file inventory for project test_project_a")
-        response = requests.get("%s/inventory/test_project_a" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
+        response = requests.get("%s/inventory/test_project_a" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         self.assertEqual(inventory.get('project'), 'test_project_a')
@@ -696,7 +696,7 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(inventory.get('totalFrozenFiles', -1), 5052)
 
         print("Query IDA for file inventory for project test_project_a excluding published frozen files")
-        response = requests.get("%s/inventory/test_project_a?unpublishedOnly=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
+        response = requests.get("%s/inventory/test_project_a?unpublishedOnly=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         self.assertEqual(inventory.get('project'), 'test_project_a')
@@ -708,7 +708,7 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(inventory.get('totalFrozenFiles', -1), 5001)
 
         print("Query IDA for file inventory for project test_project_a excluding files uploaded before epoch")
-        response = requests.get("%s/inventory/test_project_a?uploadedBefore=1970-01-01T00:00:00Z" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
+        response = requests.get("%s/inventory/test_project_a?uploadedBefore=1970-01-01T00:00:00Z" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         self.assertEqual(inventory.get('project'), 'test_project_a')

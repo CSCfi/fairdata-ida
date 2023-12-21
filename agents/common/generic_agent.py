@@ -644,7 +644,11 @@ class GenericAgent():
                 self._logger.debug('Headers: %s' % json_dumps(_headers))
                 self._logger.debug('Data: %s' % data)
                 self._current_http_request_retry += 1
-                response = getattr(requests, method)(url, data=data, headers=_headers)
+                if url.startswith("https://localhost/"):
+                    self._logger.debug('Verify: False')
+                    response = getattr(requests, method)(url, data=data, headers=_headers, verify=False)
+                else:
+                    response = getattr(requests, method)(url, data=data, headers=_headers)
 
                 if response.status_code in (401, 403):
                     raise ApiAuthnzError(

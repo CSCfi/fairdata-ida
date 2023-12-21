@@ -408,18 +408,7 @@ class MetadataAgent(GenericAgent):
             if self._metax_api_version >= 3:
                 file_metadata['user'] = user
             else:
-                # the users in metax are normally stored in the Fairdata idm, where user id's include
-                # a suffix telling where the id is from. when a user is authenticated using Fairdata auth
-                # component, the user's id should always be the fairdata id, suffixed with @fairdataid. in
-                # the "linkedIds" section, other linked accounts contain suffixes too. for csc user accounts,
-                # the suffix is @cscuserid. while ida is not using Fairdata auth component, append the
-                # suffix so we know what id is in question.
-                if not user.endswith('@fairdataid'):
-                    # not authenticated using Fairdata auth component. csc-account instead is assumed
-                    if not user.endswith('@cscuserid'):
-                        # probably this check will be unnecessary, but can never be too sure...
-                        user = '%s@cscuserid' % user
-                    file_metadata['user_created'] = user
+                file_metadata['user_created'] = user
 
         if self._metax_api_version < 3:
             file_format = os.path.splitext(node['pathname'])[1][1:]

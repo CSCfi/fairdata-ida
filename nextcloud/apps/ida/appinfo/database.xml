@@ -456,21 +456,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             </field>
             <field>
                 <!--
-                    The PID of an action if the change is associated with an IDA action.
+                    The mode (context) of the change.
                 -->
-                <name>action</name>
+                <name>mode</name>
                 <type>text</type>
-                <notnull>false</notnull>
-                <length>100</length>
-            </field>
-            <field>
-                <!--
-                    Boolean indicating whether the change is a retry of a failed action.
-                -->
-                <name>retry</name>
-                <type>boolean</type>
                 <notnull>true</notnull>
-                <default>false</default>
+                <default>system</default>
+                <length>30</length>
             </field>
         </declaration>
     </table>

@@ -59,20 +59,31 @@ def load_configuration(filesystem_pathname):
         config = SourceFileLoader(module_name, filesystem_pathname).load_module()
 
     # Define Metax version if Metax URL defined
+
     if config.METAX_API_ROOT_URL:
         if '/rest/' in config.METAX_API_ROOT_URL:
             config.METAX_API_VERSION = 1
         else:
             config.METAX_API_VERSION = 3
 
-    # Allow environment setting to override configuration for debug output
+    # Allow environment setting to override configuration or defaults for debug output
+
     if os.environ.get('DEBUG'):
         config.DEBUG = os.environ['DEBUG']
+    if os.environ.get('DEBUG_VERBOSE'):
+        config.DEBUG_VERBOSE = os.environ['DEBUG_VERBOSE']
 
-    if config.DEBUG and config.DEBUG.lower() == 'true':
+    # Normalize string values to booleans and set defaults if not defined
+
+    if hasattr(config, 'DEBUG') and isinstance(config.DEBUG, str) and config.DEBUG.lower() == 'true':
         config.DEBUG = True
     else:
         config.DEBUG = False
+
+    if hasattr(config, 'DEBUG_VERBOSE') and isinstance(config.DEBUG_VERBOSE, str) and config.DEBUG_VERBOSE.lower() == 'true':
+        config.DEBUG_VERBOSE = True
+    else:
+        config.DEBUG_VERBOSE = False
 
     return config
 

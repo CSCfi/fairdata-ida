@@ -135,10 +135,11 @@ def get_files_with_no_checksum(config):
     query = "SELECT fileid, path FROM %sfilecache \
              WHERE storage = %d \
              AND mimetype !=2 \
-             AND path LIKE 'files/%%' \
+             AND path LIKE 'files/%s%%' \
              AND ( checksum IS NULL OR checksum = '' OR LOWER(checksum) NOT LIKE 'sha256:%%' )" % (
                  config.DBTABLEPREFIX,
-                 storage_id
+                 storage_id,
+                 config.PROJECT
             )
 
     cur.execute(query)

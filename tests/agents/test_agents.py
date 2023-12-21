@@ -86,14 +86,14 @@ class TestAgents(unittest.TestCase):
     def waitForPendingActions(self, project, user):
         print("(waiting for pending actions to fully complete)")
         print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
         max_time = time.time() + self.timeout
         while len(actions) > 0 and time.time() < max_time:
             print(".", end='', flush=True)
             time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
             self.assertEqual(response.status_code, 200)
             actions = response.json()
         print("")
@@ -102,7 +102,7 @@ class TestAgents(unittest.TestCase):
 
     def checkForFailedActions(self, project, user):
         print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
         assert(len(actions) == 0)
@@ -133,7 +133,7 @@ class TestAgents(unittest.TestCase):
 
         print("Freeze a folder")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -149,7 +149,7 @@ class TestAgents(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve completed freeze action details")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a)
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertIsNotNone(action_data.get("metadata", None))
@@ -157,7 +157,7 @@ class TestAgents(unittest.TestCase):
         self.assertIsNotNone(action_data.get("completed", None))
 
         print("Retrieve frozen file details")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertTrue(len(file_set_data) > 0)
@@ -208,7 +208,7 @@ class TestAgents(unittest.TestCase):
 
         print("Unfreeze single frozen file")
         data["pathname"] = "/testdata/2017-08/Experiment_1/test01.dat"
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -224,14 +224,14 @@ class TestAgents(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve completed unfreeze action details")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a)
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertIsNotNone(action_data.get("metadata", None))
         self.assertIsNotNone(action_data.get("completed", None))
 
         print("Retrieve unfrozen file details")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertTrue(len(file_set_data) > 0)
@@ -257,7 +257,7 @@ class TestAgents(unittest.TestCase):
 
         print("Delete single frozen file")
         data["pathname"] = "/testdata/2017-08/Experiment_1/test02.dat"
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a)
+        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -271,14 +271,14 @@ class TestAgents(unittest.TestCase):
         self.checkForFailedActions("test_project_a", test_user_a)
 
         print("Retrieve completed delete action details")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a)
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertIsNotNone(action_data.get("metadata", None))
         self.assertIsNotNone(action_data.get("completed", None))
 
         print("Retrieve deleted file details")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertTrue(len(file_set_data) > 0)
@@ -320,26 +320,26 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 1")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_1_data = response.json()
 
         print("Update frozen file 1 record to remove replicated timestamp")
         data = {"replicated": "null"}
-        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_1_data["pid"]), json=data, auth=pso_user_a)
+        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_1_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertIsNone(file_data.get("replicated", None))
 
         print("Retrieve file details from already frozen file 2")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_2_data = response.json()
 
         print("Update frozen file 2 record to set both size and checksum to null in IDA")
         data = {"size": "null", "checksum": "null"}
-        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_2_data["pid"]), json=data, auth=pso_user_a)
+        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_2_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_2_data = response.json()
         # Undefined file size should result in default value of 0
@@ -348,13 +348,13 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 3")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test03.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_3_data = response.json()
 
         print("Update frozen file 3 record to set size to 999 and checksum to 'sha256:abcdef' in IDA")
         data = {"size": 999, "checksum": "sha256:abcdef"}
-        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=pso_user_a)
+        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_3_data = response.json()
         self.assertEqual(file_3_data["size"], 999)
@@ -402,7 +402,7 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 4")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test04.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_4_data = response.json()
 
@@ -413,7 +413,7 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 5")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test05.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_5_data = response.json()
         self.assertEqual(file_5_data.get('size', None), 3728)
@@ -437,21 +437,21 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(result, 0)
 
         print("Repair project")
-        response = requests.post("%s/repair?project=test_project_a" % (self.config["IDA_API_ROOT_URL"]), headers=ida_headers, auth=pso_user_a)
+        response = requests.post("%s/repair?project=test_project_a" % (self.config["IDA_API_ROOT_URL"]), headers=ida_headers, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
 
         self.waitForPendingActions("test_project_a", test_user_a)
         self.checkForFailedActions("test_project_a", test_user_a)
 
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertEqual(len(file_set_data), 23)
 
         print("Verify file details from post-repair frozen file 1 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 446)
@@ -463,7 +463,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from post-repair frozen file 2 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 1531)
@@ -472,7 +472,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from post-repair frozen file 3 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test03.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 2263)
@@ -505,7 +505,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from post-repair file manually moved to frozen space are defined in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2/baseline/test01.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 446)
@@ -515,7 +515,7 @@ class TestAgents(unittest.TestCase):
 
         print("Attempt to retrieve file details from post-repair file manually removed from frozen space")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test04.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s?includeInactive=true" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s?includeInactive=true" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertIsNotNone(file_data.get("cleared", None))
@@ -543,7 +543,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from already frozen file 5 remain unchanged")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test05.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_5_data['pathname'], file_data['pathname'])

@@ -221,7 +221,7 @@ class TestAuditing(unittest.TestCase):
             self.assertEqual(result, 0)
 
             # delete all test project related audit reports, so they don't build up
-            cmd = "rm -f %s/audits/*_test_project_[a-e].*" % self.config["LOG_ROOT"]
+            cmd = "rm -f %s/audits/*/*/*_test_project_[a-e].*" % self.config["LOG_ROOT"]
             result = os.system(cmd)
             self.assertEqual(result, 0)
 
@@ -236,14 +236,14 @@ class TestAuditing(unittest.TestCase):
     def wait_for_pending_actions(self, project, user):
         print("(waiting for pending actions to fully complete)")
         print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
         max_time = time.time() + self.timeout
         while len(actions) > 0 and time.time() < max_time:
             print(".", end='', flush=True)
             time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
             self.assertEqual(response.status_code, 200)
             actions = response.json()
         print("")
@@ -252,7 +252,7 @@ class TestAuditing(unittest.TestCase):
 
     def check_for_failed_actions(self, project, user, should_be_failed = False):
         print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user)
+        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
         if should_be_failed:
@@ -387,7 +387,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -444,7 +444,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -482,7 +482,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_c, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -557,7 +557,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -572,7 +572,7 @@ class TestAuditing(unittest.TestCase):
         print("(unfreezing file /testdata/2017-08/Experiment_1/baseline/test01.dat only in IDA, simulating postprocessing agents)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
         headers_d = { 'X-SIMULATE-AGENTS': 'true' }
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers_d, json=data, auth=test_user_d)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=headers_d, json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "unfreeze")
@@ -584,7 +584,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(deleting file /testdata/2017-08/Experiment_1/baseline/test02.dat from Metax)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_d, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         pid = file_data["pid"]
@@ -2331,7 +2331,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(changing cache checksums of three files in staging in folder /testdata/2017-08/Experiment_2/baseline)")
         data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test01.dat", "checksum": invalid_checksum_uri }
-        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a)
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(response_data['project'], 'test_project_a')
@@ -2339,7 +2339,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(response_data['checksum'], invalid_checksum_uri)
         self.assertIsNotNone(response_data['nodeId'])
         data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test02.dat", "checksum": invalid_checksum_uri }
-        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a)
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(response_data['project'], 'test_project_a')
@@ -2347,7 +2347,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(response_data['checksum'], invalid_checksum_uri)
         self.assertIsNotNone(response_data['nodeId'])
         data = { "pathname": "staging/testdata/2017-08/Experiment_2/baseline/test03.dat", "checksum": invalid_checksum_uri }
-        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a)
+        response = requests.post("%s/repairCacheChecksum" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(response_data['project'], 'test_project_a')
@@ -2357,7 +2357,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_2/baseline)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -2382,7 +2382,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying modified state of Project A")
 
         print("(retrieving inventory for Project A)")
-        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
+        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2439,7 +2439,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying repaired state of Project A")
 
         print("(retrieving inventory for Project A)")
-        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a)
+        response = requests.get("%s/inventory/test_project_a?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2466,7 +2466,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_2/baseline)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_2/baseline"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b)
+        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
 
         self.wait_for_pending_actions("test_project_b", test_user_b)
@@ -2496,7 +2496,7 @@ class TestAuditing(unittest.TestCase):
 
         print("(changing checksum in Metax of frozen file /testdata/2017-08/Experiment_2/baseline/test03.dat)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_2/baseline/test03.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_b)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         pid = file_data["pid"]
@@ -2550,7 +2550,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying modified state of Project B")
 
         print("(retrieving inventory for Project B from IDA)")
-        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b)
+        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')
@@ -2753,7 +2753,7 @@ class TestAuditing(unittest.TestCase):
         print("--- Verifying repaired state of Project B")
 
         print("(retrieving inventory for Project B)")
-        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b)
+        response = requests.get("%s/inventory/test_project_b?testing=true" % self.config["IDA_API_ROOT_URL"], auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         frozen = inventory.get('frozen')

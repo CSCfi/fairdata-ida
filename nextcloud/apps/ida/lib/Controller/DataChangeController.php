@@ -391,195 +391,205 @@ class DataChangeController extends Controller
 
     public static function processNextcloudOperation($change, $pathname, $target = null, $idaUser = null, $idaMode = null) {
 
-        Util::writeLog('ida', 'processNextcloudOperation:'
-            . ' change=' . $change
-            . ' pathname=' . $pathname
-            . ' target=' . $target
-            . ' idaUser=' . $idaUser
-            . ' idaMode=' . $idaMode
-            , \OCP\Util::DEBUG);
-
-        if ($pathname === null) {
-            throw new Exception('processNextcloudOperation: pathname parameter cannot be null');
-        }
-
-        // Ignore appdata changes
-        if (strpos($pathname, '/appdata') === 0 || strpos($pathname, 'appdata') === 0) {
-            Util::writeLog('ida', 'processNextcloudOperation: ignoring appdata change', \OCP\Util::DEBUG);
-            return;
-        }
-
-        // Ignore PSO account changes
-        if (strpos($pathname, '/' . Constants::PROJECT_USER_PREFIX) === 0 || strpos($pathname, Constants::PROJECT_USER_PREFIX) === 0) {
-            Util::writeLog('ida', 'processNextcloudOperation: ignoring PSO account change', \OCP\Util::DEBUG);
-            return;
-        }
-
-        // Ignore internal operations not bound to an authenticated user session
         try {
-            $currentUser = User::getUser();
-        }
-        catch (Exception $e) {
-            throw new Exception('ida', 'processNextcloudOperation: failed to retrieve current user');
-        }
-        if ($currentUser === null || trim($currentUser) === '') {
-            // Allow backend changes to be processes, e.g. from occ files:scan
-            if ($idaUser === 'service' && $idaMode === 'system') {
-                $currentUser = 'service';
-            } else {
-                Util::writeLog('ida', 'processNextcloudOperation: ignoring non-authenticated user change', \OCP\Util::DEBUG);
+
+            Util::writeLog('ida', 'processNextcloudOperation:'
+                . ' change=' . $change
+                . ' pathname=' . $pathname
+                . ' target=' . $target
+                . ' idaUser=' . $idaUser
+                . ' idaMode=' . $idaMode
+                , \OCP\Util::DEBUG);
+
+            if ($pathname === null) {
+                throw new Exception('processNextcloudOperation: pathname parameter cannot be null');
+            }
+
+            // Ignore appdata changes
+            if (strpos($pathname, '/appdata') === 0 || strpos($pathname, 'appdata') === 0) {
+                Util::writeLog('ida', 'processNextcloudOperation: ignoring appdata change', \OCP\Util::DEBUG);
                 return;
             }
-        }
 
-        if ($change === null) {
-            throw new Exception('processNextcloudOperation: change parameter cannot be null');
-        }
+            // Ignore PSO account changes
+            if (strpos($pathname, '/' . Constants::PROJECT_USER_PREFIX) === 0 || strpos($pathname, Constants::PROJECT_USER_PREFIX) === 0) {
+                Util::writeLog('ida', 'processNextcloudOperation: ignoring PSO account change', \OCP\Util::DEBUG);
+                return;
+            }
 
-        if (! in_array($change, \OCA\IDA\Model\DataChange::CHANGES)) {
-            throw new Exception('processNextcloudOperation: unsupported change: ' . $change);
-        }
+            // Ignore internal operations not bound to an authenticated user session
+            try {
+                $currentUser = User::getUser();
+            }
+            catch (Exception $e) {
+                throw new Exception('ida', 'processNextcloudOperation: failed to retrieve current user');
+            }
+            if ($currentUser === null || trim($currentUser) === '') {
+                // Allow backend changes to be processes, e.g. from occ files:scan
+                if ($idaUser === 'service' && $idaMode === 'system') {
+                    $currentUser = 'service';
+                } else {
+                    Util::writeLog('ida', 'processNextcloudOperation: ignoring non-authenticated user change', \OCP\Util::DEBUG);
+                    return;
+                }
+            }
 
-		if ($change === 'rename' && $target && dirname($pathname) != dirname($target)) {
-			$change = 'move';
-		}
+            if ($change === null) {
+                throw new Exception('processNextcloudOperation: change parameter cannot be null');
+            }
 
-        if (strpos($pathname, '//') === 0) {
-            $pathname = '/' . ltrim($pathname, '/');
-        }
+            if (! in_array($change, \OCA\IDA\Model\DataChange::CHANGES)) {
+                throw new Exception('processNextcloudOperation: unsupported change: ' . $change);
+            }
 
-        try {
-            $project = rtrim(explode('/', ltrim($pathname, '/'))[0], '+');
-        } catch (Exception $e) {
-            throw new Exception('processNextcloudOperation: Failed to extract project name from pathname ' . $pathname . ': ' . $e->getMessage());
-        }
+		    if ($change === 'rename' && $target && dirname($pathname) != dirname($target)) {
+			    $change = 'move';
+		    }
 
-        if ($project === null || $project === '') {
-            throw new Exception('processNextcloudOperation: project name cannot be null');
-        }
+            if (strpos($pathname, '//') === 0) {
+                $pathname = '/' . ltrim($pathname, '/');
+            }
 
-        Util::writeLog('ida', 'processNextcloudOperation:'
-            . ' project=' . $project
-            . ' change=' . $change
-            . ' pathname=' . $pathname
-            . ' target=' . $target
-            . ' idaUser=' . $idaUser
-            . ' currentUser=' . $currentUser
-            , \OCP\Util::DEBUG);
+            try {
+                $project = rtrim(explode('/', ltrim($pathname, '/'))[0], '+');
+            } catch (Exception $e) {
+                throw new Exception('processNextcloudOperation: Failed to extract project name from pathname ' . $pathname . ': ' . $e->getMessage());
+            }
 
-        $config = \OC::$server->getConfig();
-        Util::writeLog('ida', 'processNextcloudOperation: config=' . json_encode($config), \OCP\Util::DEBUG);
+            if ($project === null || $project === '') {
+                throw new Exception('processNextcloudOperation: project name cannot be null');
+            }
 
-        $idaconfig = $config->getSystemValue('ida');
-        Util::writeLog('ida', 'processNextcloudOperation: idaconfig=' . json_encode($idaconfig), \OCP\Util::DEBUG);
-        if ($idaconfig === null) {
-            throw new Exception('processNextcloudOperation: Failed to get IDA configuration');
-        }
+            Util::writeLog('ida', 'processNextcloudOperation:'
+                . ' project=' . $project
+                . ' change=' . $change
+                . ' pathname=' . $pathname
+                . ' target=' . $target
+                . ' idaUser=' . $idaUser
+                . ' currentUser=' . $currentUser
+                , \OCP\Util::DEBUG);
 
-        $datadir = $config->getSystemValue('datadirectory');
-        Util::writeLog('ida', 'processNextcloudOperation: datadir=' . $datadir, \OCP\Util::DEBUG);
-        if ($datadir === null) {
-            throw new Exception('processNextcloudOperation: Failed to get data storage root pathname');
-        }
+            $config = \OC::$server->getConfig();
+            if ($config === null) {
+                throw new Exception('processNextcloudOperation: Failed to get Nextcloud configuration');
+            }
+            Util::writeLog('ida', 'processNextcloudOperation: config=' . json_encode($config), \OCP\Util::DEBUG);
 
-        $idahome = $config->getSystemValue('IDA_HOME');
-        Util::writeLog('ida', 'processNextcloudOperation: idahome=' . $idahome, \OCP\Util::DEBUG);
-        if ($datadir === null) {
-            throw new Exception('processNextcloudOperation: Failed to get data storage root pathname');
-        }
+            $idaconfig = $config->getSystemValue('ida');
+            if ($idaconfig === null || !is_array($idaconfig)) {
+                throw new Exception('processNextcloudOperation: Failed to get IDA configuration');
+            }
+            Util::writeLog('ida', 'processNextcloudOperation: idaconfig=' . json_encode($idaconfig), \OCP\Util::DEBUG);
 
-        if (array_key_exists('PROJECT_USER_PASS', $idaconfig)) {
-            $psopass = $idaconfig['PROJECT_USER_PASS'];
-            Util::writeLog('ida', 'processNextcloudOperation: psopass=' . $psopass, \OCP\Util::DEBUG);
-        } else {
-            throw new Exception('processNextcloudOperation: Failed to get data PSO password');
-        }
+            $datadir = $config->getSystemValue('datadirectory');
+            if ($datadir === null) {
+                throw new Exception('processNextcloudOperation: Failed to get data storage root pathname');
+            }
+            Util::writeLog('ida', 'processNextcloudOperation: datadir=' . $datadir, \OCP\Util::DEBUG);
 
-        // If the parsing of the project name from the path does not derive to a valid project, tested by constructing
-        // the PSO user root directory pathname, ignore the request, as the pathname does not start with either a staging
-        // or frozen folder and does not pertain to a project data change but some other internal operation
+            $idahome = $config->getSystemValue('IDA_HOME');
+            if ($datadir === null) {
+                throw new Exception('processNextcloudOperation: Failed to get data storage root pathname');
+            }
+            Util::writeLog('ida', 'processNextcloudOperation: idahome=' . $idahome, \OCP\Util::DEBUG);
 
-        $projectRoot = $datadir . '/' . Constants::PROJECT_USER_PREFIX . $project . '/';
-        Util::writeLog('ida', 'processNextcloudOperation: projectRoot=' . $projectRoot, \OCP\Util::DEBUG);
+            if (array_key_exists('PROJECT_USER_PASS', $idaconfig)) {
+                $psopass = $idaconfig['PROJECT_USER_PASS'];
+                Util::writeLog('ida', 'processNextcloudOperation: psopass=' . $psopass, \OCP\Util::DEBUG);
+            } else {
+                throw new Exception('processNextcloudOperation: Failed to get data PSO password');
+            }
 
-        if (! is_dir($projectRoot)) {
-            Util::writeLog('ida', 'processNextcloudOperation: ignoring non-project data change - no PSO root found', \OCP\Util::DEBUG);
-            return;
-        }
+            // If the parsing of the project name from the path does not derive to a valid project, tested by constructing
+            // the PSO user root directory pathname, ignore the request, as the pathname does not start with either a staging
+            // or frozen folder and does not pertain to a project data change but some other internal operation
+    
+            $projectRoot = $datadir . '/' . Constants::PROJECT_USER_PREFIX . $project . '/';
+            Util::writeLog('ida', 'processNextcloudOperation: projectRoot=' . $projectRoot, \OCP\Util::DEBUG);
+    
+            if (! is_dir($projectRoot)) {
+                Util::writeLog('ida', 'processNextcloudOperation: ignoring non-project data change - no PSO root found', \OCP\Util::DEBUG);
+                return;
+            }
+    
+            // If the pathname is not within either the staging or frozen folder, ignore the change
+            if (! (  strpos($pathname, '/' . $project . '/') === 0
+                  || strpos($pathname, '/' . $project . Constants::STAGING_FOLDER_SUFFIX . '/') === 0)) {
+                Util::writeLog('ida', 'processNextcloudOperation: ignoring non-project data change - pathname not within staging or frozen root folder', \OCP\Util::DEBUG);
+                return;
+            }
 
-        // If the pathname is not within either the staging or frozen folder, ignore the change
-        if (! (  strpos($pathname, '/' . $project . '/') === 0
-              || strpos($pathname, '/' . $project . Constants::STAGING_FOLDER_SUFFIX . '/') === 0)) {
-            Util::writeLog('ida', 'processNextcloudOperation: ignoring non-project data change - pathname not within staging or frozen root folder', \OCP\Util::DEBUG);
-            return;
-        }
+            if ($idaUser !== null) {
+                $user = $idaUser;
+            } else {
+                $user = $currentUser;
+            }
 
-        if ($idaUser !== null) {
-            $user = $idaUser;
-        } else {
-            $user = $currentUser;
-        }
+            if ($idaMode !== null) {
+                $mode = strtolower($idaMode);
+            } else {
+                $mode = 'api';
+            }
 
-        if ($idaMode !== null) {
-            $mode = strtolower($idaMode);
-        } else {
-            $mode = 'api';
-        }
+            $username = Constants::PROJECT_USER_PREFIX . $project;
+            $password =  $psopass;
+            $requestURL = $idahome . '/apps/ida/api/dataChanges';
+            $postbody = json_encode(
+                array(
+                    'project'  => $project,
+                    'user'     => $user,
+                    'change'   => $change,
+                    'pathname' => $pathname,
+                    'target'   => $target,
+                    'mode'     => $mode
+                )
+            );
 
-        $username = Constants::PROJECT_USER_PREFIX . $project;
-        $password =  $psopass;
-        $requestURL = $idahome . '/apps/ida/api/dataChanges';
-        $postbody = json_encode(
-            array(
-                'project'  => $project,
-                'user'     => $user,
-                'change'   => $change,
-                'pathname' => $pathname,
-                'target'   => $target,
-                'mode'     => $mode
-            )
-        );
+            Util::writeLog('ida', 'processNextcloudOperation:'
+                . ' username=' . $username
+                . ' password=' . $password
+                . ' requestURL=' . $requestURL
+                . ' postbody=' . $postbody
+                , \OCP\Util::DEBUG);
 
-        Util::writeLog('ida', 'processNextcloudOperation:'
-            . ' username=' . $username
-            . ' password=' . $password
-            . ' requestURL=' . $requestURL
-            . ' postbody=' . $postbody
-            , \OCP\Util::DEBUG);
+            $ch = curl_init($requestURL);
 
-        $ch = curl_init($requestURL);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
+            curl_setopt($ch, CURLOPT_HEADER, false);
+            curl_setopt($ch, CURLOPT_HTTPHEADER,
+                array(
+                    'Accept: application/json',
+                    'Content-Type: application/json',
+                    'Content-Length: ' . strlen($postbody)
+                )
+            );
+            curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+            curl_setopt($ch, CURLOPT_FAILONERROR, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
 
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_USERPWD, "$username:$password");
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $postbody);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER,
-            array(
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($postbody)
-            )
-        );
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
-        curl_setopt($ch, CURLOPT_FAILONERROR, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+            Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode($ch), \OCP\Util::ERROR);
+    
+            $response = curl_exec($ch);
 
-        Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode($ch), \OCP\Util::ERROR);
+            Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode(curl_getinfo($ch)), \OCP\Util::ERROR);
 
-        $response = curl_exec($ch);
+            if ($response === false) {
+                Util::writeLog('ida', 'processNextcloudOperation: '
+                    . ' curl_errno=' . curl_errno($ch)
+                    . ' response=' . $response, \OCP\Util::ERROR);
+                curl_close($ch);
+                throw new Exception('Failed to record data change from Nextcloud operation');
+            }
 
-        Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode(curl_getinfo($ch)), \OCP\Util::ERROR);
-
-        if ($response === false) {
-            Util::writeLog('ida', 'processNextcloudOperation: '
-                . ' curl_errno=' . curl_errno($ch)
-                . ' response=' . $response, \OCP\Util::ERROR);
             curl_close($ch);
-            throw new Exception('Failed to record data change from Nextcloud operation');
         }
-
-        curl_close($ch);
+        catch (Exception $e) {
+            // Log any errors but don't prevent Nextcloud from otherwise working
+            Util::writeLog('core', 'Error encountered trying to record data change: ' . $e->getMessage(), \OCP\Util::ERROR);
+        }
     }
 }

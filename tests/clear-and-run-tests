@@ -58,7 +58,8 @@ fi
 
 LOGDIR=`dirname "$LOG"`
 
-rm $LOGDIR/*.log
+rm -f $LOGDIR/*.log 2>/dev/null
+rm -f $LOGDIR/old_data/*.log 2>/dev/null
 $ROOT/utils/restart
 $ROOT/tests/run-tests $*
 

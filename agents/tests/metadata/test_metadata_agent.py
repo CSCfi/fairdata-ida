@@ -168,7 +168,7 @@ class MetadataAgentUnitTests(MetadataAgentTestsCommon):
                     'value': self.TEST_FREEZE_NODE_CHECKSUM,
                     'algorithm': 'SHA-256'
                 },
-                'user_created': 'TestUser@cscuserid',
+                'user_created': 'TestUser',
                 'file_uploaded': 'time_of_upload',
                 'file_modified': '2017-10-16T12:45:08Z',
                 'file_frozen': '2017-10-26T07:48:45Z',

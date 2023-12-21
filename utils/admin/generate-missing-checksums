@@ -1,5 +1,5 @@
 #!/bin/bash
-# --------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
 #
 # Copyright (C) 2023 Ministry of Education and Culture, Finland
@@ -20,14 +20,25 @@
 # @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
-# --------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
 # This script ensures that all files stored in Nextcloud have an SHA-256 checksum
 # defined in the Nextcloud cache, generating checksums as needed
 #
 # Missing checksums can be generated either for a specific project or for all
 # projects if no project is specified; and if done for all projects, generation
 # is done project by project to keep database queries and memory usage reasonable
-# --------------------------------------------------------------------------------
+#
+# If generating for all projects, only one ongoing generation process will occur
+# at any given time. A sentinel file is created to ensure that generation for all
+# projects will not be initiated until any previous generation for all projects
+# has completed. If the sentinel file exceeds a configured limit of time, an error
+# is reported.
+#---------------------------------------------------------------------------------
+
+MAX_SENTINEL_FILE_AGE_IN_HOURS=72
+SENTINEL_FILE="/tmp/GENERATE_MISSING_CHECKSUMS"
+
+#---------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 PROJECT="null"
@@ -51,16 +62,41 @@ fi
 
 #--------------------------------------------------------------------------------
 
-PROJECTS="$1"
-
-if [ -z "$PROJECTS" ]; then
-    PROJECTS=`$ROOT/utils/admin/list-projects`
-fi
-
 source $ROOT/venv/bin/activate
 
-for PROJECT in $PROJECTS; do
-    python -u $ROOT/utils/admin/lib/generate_missing_checksums.py "$ROOT" "$PROJECT"
-done
+if [ -z "$1" ]; then
+
+    if [[ -e $SENTINEL_FILE ]]; then
+
+        CURRENT_TIME=$(date +"%s")
+
+        SENTINEL_FILE_MTIME=$(date -r $SENTINEL_FILE +"%s")
+
+        TIME_DIFFERENCE=$(( ( CURRENT_TIME - SENTINEL_FILE_MTIME ) / 3600 ))
+
+        if [ "$TIME_DIFFERENCE" -gt $MAX_SENTINEL_FILE_AGE_IN_HOURS ]; then
+            echo "Generation of missing checksums for all projects has taken longer than $MAX_SENTINEL_FILE_AGE_IN_HOURS hours" >&2
+            exit 1
+        fi
+
+        echo "Generation of missing checksums for all projects is ongoing. Skipping."
+        exit 0
+    fi
+
+    echo "$$" > $SENTINEL_FILE
+
+    PROJECTS=`$ROOT/utils/admin/list-projects`
+
+    for PROJECT in $PROJECTS; do
+        python -u $ROOT/utils/admin/lib/generate_missing_checksums.py "$ROOT" "$PROJECT"
+    done
+
+    rm $SENTINEL_FILE
+
+else
+
+    python -u $ROOT/utils/admin/lib/generate_missing_checksums.py "$ROOT" "$1"
+
+fi
 
 addToLog "DONE"

@@ -23,7 +23,7 @@
 
 # Verify needed utilities are available
 
-for NEEDS_PROG in jq
+for NEEDS_PROG in jq column
 do
     PROG_LOCATION=`/usr/bin/which $NEEDS_PROG 2>/dev/null`
     if [ ! -e "$PROG_LOCATION" ]; then
