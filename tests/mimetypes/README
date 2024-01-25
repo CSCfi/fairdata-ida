@@ -1,0 +1,4 @@
+These tests are not normally run as part of the usual automated testing, but
+are available for testing changes to the Apache mod_secure configuration to
+ensure that file uploads are not being blocked for any particular filename
+suffix or MIME type.

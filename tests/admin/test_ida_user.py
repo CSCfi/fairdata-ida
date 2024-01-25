@@ -33,7 +33,7 @@ import unittest
 import subprocess
 import os
 import sys
-from tests.common.utils import load_configuration
+from tests.common.utils import *
 
 
 class TestIdaUser(unittest.TestCase):
@@ -141,14 +141,14 @@ class TestIdaUser(unittest.TestCase):
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "User does not exist")
 
+        self.assertTrue(make_ida_offline(self))
+
         print("Attempt to create new user while service in OFFLINE mode")
-        with open(self.offlineSentinelFile, 'a') as sentinelFile:
-            sentinelFile.write("TEST")
-            sentinelFile.close()
         cmd = "%s ADD user_2_%s %s 2>&1" % (self.ida_user, self.project_name, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 1, "Sentinel file ignored")
-        os.remove(self.offlineSentinelFile)
+
+        self.assertTrue(make_ida_online(self))
 
         self.success = True
 

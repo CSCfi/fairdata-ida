@@ -71,6 +71,7 @@ INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
 
 if [ -e $INIT_FILE ]
 then
+    sleep 1 # ensure a unique START timestamp for each audit
     . $INIT_FILE
 else
     echo "The initialization file $INIT_FILE cannot be found. Aborting."

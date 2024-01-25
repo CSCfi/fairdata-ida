@@ -182,6 +182,7 @@ class Access
         }
         $lockFilePathname = self::buildLockFilePathname($project);
         if (self::projectIsLocked($project, $lockFilePathname)) {
+            // TODO: Should return true if project is already locked
             return false;
         }
         if (!touch($lockFilePathname)) {
@@ -233,6 +234,44 @@ class Access
         Util::writeLog('ida', 'buildLockFilePathname: lockFilePathname=' . $lockFilePathname, \OCP\Util::DEBUG);
         
         return ($lockFilePathname);
+    }
+    
+    /**
+     * Puts the service into offline mode by creating the OFFLINE sentinel file.
+     *
+     * Returns true on success, else returns false. Always succeeds if the service is already in offline mode.
+     *
+     * @return bool
+     */
+    public static function setOfflineMode() {
+        Util::writeLog('ida', 'setOfflineMode', \OCP\Util::DEBUG);
+        $dataRootPathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida');
+        $sentinelFile = $dataRootPathname . '/control/OFFLINE';
+        if (!file_exists($sentinelFile)) {
+            if (!file_put_contents($sentinelFile, 'Service put into offline mode by explicit admin request')) {
+                throw new Exception('Failed to create offline sentinel file');
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Puts the service into online mode by removing any OFFLINE sentinel file.
+     *
+     * Returns true on success, else returns false. Always succeeds if the service is already in online mode.
+     *
+     * @return bool
+     */
+    public static function setOnlineMode() {
+        Util::writeLog('ida', 'setOnlineMode', \OCP\Util::DEBUG);
+        $dataRootPathname = \OC::$server->getConfig()->getSystemValue('datadirectory', '/mnt/storage_vol01/ida');
+        $sentinelFile = $dataRootPathname . '/control/OFFLINE';
+        if (file_exists($sentinelFile)) {
+            if (!unlink($sentinelFile)) {
+                throw new Exception('Failed to delete offline sentinel file');
+            }
+        }
+        return true;
     }
     
     /**

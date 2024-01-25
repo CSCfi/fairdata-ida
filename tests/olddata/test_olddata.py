@@ -39,86 +39,16 @@ import sys
 import shutil
 import json
 from pathlib import Path
-from tests.common.utils import load_configuration, normalize_timestamp, generate_timestamp
-
-DATASET_TEMPLATE_V3 = {
-    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
-    "metadata_owner": {
-        "user": "test_user_a",
-        "organization": "Test Organization A"
-    },
-    "access_rights": {
-        "access_type": {
-            "url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
-        }
-    },
-    "creator": [
-        {
-            "@type": "Person",
-            "member_of": {
-                "@type": "Organization",
-                "name": {
-                    "en": "Test Organization A"
-                }
-            },
-            "name": "Test User A"
-        }
-    ],
-    "description": {
-        "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-    },
-    "title": {
-        "en": "Test Dataset"
-    },
-    "state": "published"
-}
-
-DATASET_TEMPLATE_V1 = {
-    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
-    "metadata_provider_user": "test_user_a",
-    "metadata_provider_org": "test_organization_a",
-    "research_dataset": {
-        "access_rights": {
-            "access_type": {
-                "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
-            }
-        },
-        "creator": [
-            {
-                "@type": "Person",
-                "member_of": {
-                    "@type": "Organization",
-                    "name": {
-                        "en": "Test Organization A"
-                    }
-                },
-                "name": "Test User A"
-            }
-        ],
-        "description": {
-            "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        },
-        "title": {
-            "en": "Test Dataset"
-        }
-    }
-}
-
-DATASET_TITLES = [
-    { "en": "Lake Chl-a products from Finland (MERIS, FRESHMON)" },
-    { "fi": "MERIVEDEN LÄMPÖTILA POHJALLA (VELMU)" },
-    { "sv": "Svenska ortnamn i Finland" },
-    { "en": "The Finnish Subcorpus of Topling - Paths in Second Language Acquisition" },
-    { "en": "SMEAR data preservation 2019" },
-    { "en": "Finnish Opinions on Security Policy and National Defence 2001: Autumn" }
-]
+from tests.common.utils import *
 
 
 class TestOldData(unittest.TestCase):
 
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/auditing/test_olddata")
+
 
     def setUp(self):
 
@@ -161,48 +91,6 @@ class TestOldData(unittest.TestCase):
             cmd = "rm -f %s/old_data/*/*/*_test_project_[a-e].json" % self.config["LOG_ROOT"]
             result = os.system(cmd)
             self.assertEqual(result, 0)
-
-
-    def wait_for_pending_actions(self, project, user):
-        print("(waiting for pending actions to fully complete)")
-        print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200)
-        actions = response.json()
-        max_time = time.time() + self.timeout
-        while len(actions) > 0 and time.time() < max_time:
-            print(".", end='', flush=True)
-            time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-            self.assertEqual(response.status_code, 200)
-            actions = response.json()
-        print("")
-        self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
-
-
-    def check_for_failed_actions(self, project, user, should_be_failed = False):
-        print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200)
-        actions = response.json()
-        if should_be_failed:
-            assert(len(actions) > 0)
-        else:
-            assert(len(actions) == 0)
-        return actions
-
-
-    def build_dataset_files(self, action_files):
-        dataset_files = []
-        for action_file in action_files:
-            dataset_file = {
-                "title": action_file['pathname'],
-                "identifier": action_file['pid'],
-                "description": "test data file",
-                "use_category": { "identifier": "http://uri.suomi.fi/codelist/fairdata/use_category/code/source" }
-            }
-            dataset_files.append(dataset_file)
-        return dataset_files
 
 
     def audit_old_data(self, project):
@@ -323,8 +211,8 @@ class TestOldData(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_a", test_user_a)
-        self.check_for_failed_actions("test_project_a", test_user_a)
+        self.wait_for_pending_actions(self, "test_project_a", test_user_a)
+        self.check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Creating Dataset containing all files in scope /testdata/2017-08/Experiment_1")
         if self.config["METAX_API_VERSION"] >= 3:
@@ -345,7 +233,7 @@ class TestOldData(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_1_files)
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_1 = response.json()

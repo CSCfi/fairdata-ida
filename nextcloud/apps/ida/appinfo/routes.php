@@ -70,7 +70,7 @@ return [
             //     pid = the PID of the action
         ],
         
-        // Locking Operations
+        // Locking / Offline Operations
         
         [
             // Check if project is locked. Returns 200 OK if lock exists for project, else returns 404 Not found
@@ -83,7 +83,7 @@ return [
         ],
         
         [
-            // Lock a project. Returns 200 OK on success, else returns 409 Conflict
+            // Lock a project. Returns 200 OK on success, or if already locked, else returns 409 Conflict
             'name' => 'Freezing#lockProject',
             'url'  => '/api/lock/{project}',
             'verb' => 'POST'
@@ -93,13 +93,29 @@ return [
         ],
         
         [
-            // Unlock a project. Returns 200 OK on success, else returns 409 Conflict
+            // Unlock a project. Returns 200 OK on success, or if already unlocked, else returns 409 Conflict
             'name' => 'Freezing#unlockProject',
             'url'  => '/api/lock/{project}',
             'verb' => 'DELETE'
             // Restricted to PSO user of specified project, or admin if 'all' is specified
             // Required parameters:
             //     project = the name of the project ('all' = service lock)
+        ],
+        
+        [
+            // Put the service in offline mode. Returns 200 OK on success, or if already offline, else returns 409 Conflict
+            'name' => 'Freezing#serviceOffline',
+            'url'  => '/api/offline',
+            'verb' => 'POST'
+            // Restricted to admin
+        ],
+        
+        [
+            // Put the service in online mode. Returns 200 OK on success, or if already online, else returns 409 Conflict
+            'name' => 'Freezing#serviceOnline',
+            'url'  => '/api/offline',
+            'verb' => 'DELETE'
+            // Restricted to admin
         ],
         
         // Freezing Operations

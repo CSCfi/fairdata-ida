@@ -22,7 +22,7 @@
 # @link     https://research.csc.fi/
 #--------------------------------------------------------------------------------
 # Note: This script assumes that it is being executed at the root of the fairdata-ida
-# repository and that the fairdata-secrets repository is cloned as a sibling directory
+# repository and that the fairdata-docker repository is cloned as a sibling directory
 # of the fairdata-ida repository, as specified in the instructions in Docker_Setup.md.
 #--------------------------------------------------------------------------------
 
@@ -30,12 +30,12 @@ SCRIPT_ROOT=`dirname "$(realpath $0)"`
 
 cd $SCRIPT_ROOT
 
-if [ ! -e ../fairdata-secrets/ida/config/config.dev.sh ]; then
+if [ ! -e ../fairdata-docker/ida/config/config.dev.sh ]; then
     echo "Error: Could not find the IDA configuration file. Aborting." >&2
     exit 1
 fi
 
-. ../fairdata-secrets/ida/config/config.dev.sh
+. ../fairdata-docker/ida/config/config.dev.sh
 
 if [ "$ROOT" = "" ]; then
     echo "Error: Failed to properly initialize script. Aborting." >&2
@@ -70,16 +70,20 @@ else
     mkdir ./nextcloud/config 
 fi
 
+echo "Installing IDA config.sh..."
+docker cp ../fairdata-docker/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/config
+
+echo "Installing Download Service settings.cfg..."
+docker cp ../fairdata-docker/download/config/download-settings.idadev.cfg $(docker ps -q -f name=ida-nextcloud):/usr/local/fd/fairdata-download/dev_config/settings.cfg
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R root:root /usr/local/fd/fairdata-download/dev_config/settings.cfg
+
 echo "Starting FPM..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) mkdir /run/php-fpm
 docker exec -it $(docker ps -q -f name=ida-nextcloud) php-fpm
 
 echo "Starting Apache..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /sbin/httpd -k start
-
-echo "Installing IDA config.sh..."
-docker cp ../fairdata-secrets/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh
-docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/config
 
 echo "Installing Nextcloud..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
@@ -88,8 +92,11 @@ docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) php /var/id
 docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) mv /tmp/.htaccess /var/ida/nextcloud/.htaccess
 
 echo "Installing Nextcloud config.php..."
-docker cp ../fairdata-secrets/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php
+docker cp ../fairdata-docker/ida/config/config.dev.php $(docker ps -q -f name=ida-nextcloud):/var/ida/nextcloud/config/config.php
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/nextcloud/config
+
+echo "Fixing IDA file permissions..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/fix-permissions
 
 echo "Re-starting Apache..."
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /sbin/httpd -k stop
@@ -114,23 +121,19 @@ echo "Adding optimization indices to database..."
 docker cp ./utils/create_db_indices.pgsql $(docker ps -q -f name=ida-db):/tmp/create_db_indices.pgsql
 docker exec -it $(docker ps -q -f name=ida-db) psql -U $DBUSER -f /tmp/create_db_indices.pgsql $DBNAME > /dev/null
 
-echo "Creating basic local project test_project and user account test_user..."
-docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_project ADD test_project 1 #> /dev/null
-docker exec -u $HTTPD_USER -it $(docker ps -q -f name=ida-nextcloud) /var/ida/admin/ida_user ADD test_user test_project #> /dev/null
-
 echo "Initializing python3 virtual environments..."
-echo "- IDA postprocessing agents ..."
+echo "- IDA postprocessing agents"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida/utils/initialize_venv > /dev/null
-echo "- IDA command line tools ..."
+echo "- IDA command line tools"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /var/ida-tools/tests/utils/initialize-venv > /dev/null
-echo "- IDA statdb reports ..."
+echo "- IDA statdb reports"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/utils/initialize-venv > /dev/null
-echo "- IDA admin portal ..."
+echo "- IDA admin portal"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-admin-portal/utils/initialize-venv > /dev/null
-echo "- IDA healthcheck service ..."
+echo "- IDA healthcheck service"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/utils/initialize-venv > /dev/null
-echo "- Fairdata download service ..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-venv > /dev/null
+echo "- Fairdata download service"
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/fairdata-download/utils/initialize-venv > /dev/null
 
 echo "Initializing rabbitmq..."
 APP_ROOT=/var/ida
@@ -144,7 +147,7 @@ docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl set_permissions
 docker exec -it $(docker ps -q -f name=ida-rabbitmq) rabbitmqctl set_user_tags download management
 
 echo "Initializing download service..."
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/initialize-docker > /dev/null
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/fairdata-download/utils/initialize-docker > /dev/null
 
 echo "Starting IDA postprocessing agents..."
 docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.metadata.metadata_agent
@@ -160,6 +163,10 @@ APP_ROOT=/opt/fairdata/ida-admin-portal
 docker exec --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/ida-admin-portal.sh
 
 echo "Starting download service..."
-APP_ROOT=/opt/fairdata/fairdata-download-service
-docker exec -u download --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/dev_config/fairdata-download-server.sh
+APP_ROOT=/usr/local/fd/fairdata-download
+docker exec -u download --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/dev_config/fairdata-download.sh
 docker exec -u download --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/dev_config/fairdata-download-generator.docker.sh
+
+echo "Initializing test accounts..."
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-test-accounts/initialize-test-accounts fd_test_ida_project
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-test-accounts/initialize-test-accounts fd_test_download_project

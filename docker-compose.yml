@@ -7,32 +7,27 @@ services:
     hostname: ida.fd-dev.csc.fi
     volumes:
       - .:/var/ida
-      - ../ida-command-line-tools:/var/ida-tools
+      - ../ida-command-line-tools:/opt/fairdata/ida-tools
       - ../ida-service-internals/report:/opt/fairdata/ida-report
-      - ../ida-service-internals/ida-admin-portal:/opt/fairdata/ida-admin-portal
+      - ../ida-admin-portal:/opt/fairdata/ida-admin-portal
       - ../fairdata-ida-healthcheck:/opt/fairdata/ida-healthcheck
-      - ../fairdata-download-service:/opt/fairdata/fairdata-download-service
+      - ../fairdata-test-accounts:/opt/fairdata/fairdata-test-accounts
+      - ../fairdata-download:/usr/local/fd/fairdata-download
     configs:
       - source: ida-httpd-config
         target: '/etc/httpd/conf/httpd.conf'
       - source: ida-httpd-ssl-config
         target: '/etc/httpd/conf.d/ssl.conf'
       - source: ida-httpd-modsecurity-config
-        target: '/etc/httpd/modsecurity.d/local_rules/modsecurity_localrules.conf'
+        target: '/etc/httpd/conf.d/mod_security.conf'
+      - source: ida-httpd-modsecurity-crs-config
+        target: '/etc/httpd/modsecurity.d/crs-setup.conf'
+      - source: ida-httpd-modsecurity-nextcloud-config
+        target: '/etc/httpd/modsecurity.d/activated_rules/REQUEST-903.9003-NEXTCLOUD-EXCLUSION-RULES.conf'
       - source: fairdata-ssl-certificate
         target: '/etc/pki/tls/certs/ssl.crt.pem'
       - source: fairdata-ssl-certificate-key
         target: '/etc/pki/tls/private/ssl.key.pem'
-      - source: fairdata-test-accounts-projects
-        target: '/var/fairdata-test-accounts/config/projects.json'
-      - source: fairdata-test-accounts-users
-        target: '/var/fairdata-test-accounts/config/users.json'
-      - source: fairdata-test-accounts-credentials
-        target: '/var/fairdata-test-accounts/config/credentials.json'
-      - source: fairdata-test-accounts-initialize
-        target: '/var/fairdata-test-accounts/initialize-ida-accounts'
-      - source: download-settings
-        target: '/opt/fairdata/fairdata-download-service/dev_config/settings.cfg'
     networks:
       default:
         aliases:
@@ -76,19 +71,13 @@ configs:
     external: True
   ida-httpd-modsecurity-config:
     external: True
+  ida-httpd-modsecurity-crs-config:
+    external: True
+  ida-httpd-modsecurity-nextcloud-config:
+    external: True
   ida-rabbitmq-config:
     external: True
   fairdata-ssl-certificate:
     external: True
   fairdata-ssl-certificate-key:
-    external: True
-  fairdata-test-accounts-projects:
-    external: True
-  fairdata-test-accounts-users:
-    external: True
-  fairdata-test-accounts-credentials:
-    external: True
-  fairdata-test-accounts-initialize:
-    external: True
-  download-settings:
     external: True

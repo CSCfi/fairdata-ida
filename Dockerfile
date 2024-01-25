@@ -2,7 +2,7 @@ FROM almalinux:9
 
 # Update OS and install required and useful packages
 RUN dnf update -y
-RUN dnf install -y sudo procps man bc jq wget git vim zsh zip
+RUN dnf install -y sudo procps man bc jq wget git vim zsh zip rsync
 
 # Install required development tools and libraries
 RUN dnf groupinstall -y "Development Tools"
@@ -37,7 +37,7 @@ RUN chmod go+rX /etc/php.ini /etc/php.d/10-opcache.ini
 # Install Apache
 RUN dnf install -y httpd
 RUN dnf install -y mod_ssl mod_php
-#RUN dnf install -y mod_security mod_security_crs
+RUN dnf install -y mod_security mod_security_crs
 
 # Build and install Python3
 RUN cd /tmp \

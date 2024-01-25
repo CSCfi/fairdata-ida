@@ -64,10 +64,10 @@ REQUEST_URL="https://localhost/apps/ida/api/actions/${ACTION}?project=${PROJECT}
 echo "Marking action ${ACTION} in project ${PROJECT} as cleared..."
 
 if [ "$DEBUG" = "true" ]; then
-    echo "$CURL_POST $PROJECT_USER_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${REQUEST_URL}\""
+    echo "$CURL_POST $ADMIN_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${REQUEST_URL}\""
 fi
 
-OUT=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${REQUEST_URL}" 2>$ERR`
+OUT=`$CURL_POST $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${REQUEST_URL}" 2>$ERR`
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`

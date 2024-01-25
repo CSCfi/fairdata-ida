@@ -33,12 +33,16 @@ import unittest
 import time
 import os
 import sys
-from tests.common.utils import load_configuration, generate_timestamp
+from tests.common.utils import *
+
 
 class TestChanges(unittest.TestCase):
+
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/changes/test_changes")
+
 
     def setUp(self):
 
@@ -74,44 +78,6 @@ class TestChanges(unittest.TestCase):
             self.assertEqual(result, 0)
 
         self.assertTrue(self.success)
-
-
-    def waitForPendingActions(self, project, user):
-        print("(waiting for pending actions to fully complete)")
-        print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        actions = response.json()
-        max_time = time.time() + self.timeout
-        while len(actions) > 0 and time.time() < max_time:
-            print(".", end='', flush=True)
-            time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-            self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-            actions = response.json()
-        print("")
-        self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
-
-
-    def checkForFailedActions(self, project, user):
-        print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        actions = response.json()
-        assert(len(actions) == 0)
-
-
-    def build_dataset_files(self, action_files):
-        dataset_files = []
-        for action_file in action_files:
-            dataset_file = {
-                "title": action_file['pathname'],
-                "identifier": action_file['pid'],
-                "description": "test data file",
-                "use_category": { "identifier": "http://uri.suomi.fi/codelist/fairdata/use_category/code/source" }
-            }
-            dataset_files.append(dataset_file)
-        return dataset_files
 
 
     def test_changes(self):
@@ -361,15 +327,15 @@ class TestChanges(unittest.TestCase):
         print("Query IDA for last data change details")
         response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertIsNotNone(changeDetails)
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertIsNotNone(changeDetails.get('timestamp'))
-        self.assertNotEqual(changeDetails.get('timestamp'), self.config["IDA_MIGRATION"])
-        self.assertIsNotNone(changeDetails.get('user'))
-        self.assertIsNotNone(changeDetails.get('change'))
-        self.assertIsNotNone(changeDetails.get('pathname'))
-        self.assertIsNotNone(changeDetails.get('mode'))
+        change_details = response.json()
+        self.assertIsNotNone(change_details)
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertIsNotNone(change_details.get('timestamp'))
+        self.assertNotEqual(change_details.get('timestamp'), self.config["IDA_MIGRATION"])
+        self.assertIsNotNone(change_details.get('user'))
+        self.assertIsNotNone(change_details.get('change'))
+        self.assertIsNotNone(change_details.get('pathname'))
+        self.assertIsNotNone(change_details.get('mode'))
 
         print("Query IDA for file inventory for project test_project_a and verify last change reported in inventory")
         response = requests.get("%s/inventory/test_project_a" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
@@ -377,71 +343,71 @@ class TestChanges(unittest.TestCase):
         inventory = response.json()
         self.assertEqual(inventory.get('project'), 'test_project_a')
         self.assertIsNotNone(inventory.get('created'))
-        changeDetails = inventory.get('lastChange')
-        self.assertIsNotNone(changeDetails)
-        self.assertIsNone(changeDetails.get('project'))
-        self.assertIsNotNone(changeDetails.get('timestamp'))
-        self.assertNotEqual(changeDetails.get('timestamp'), self.config["IDA_MIGRATION"])
-        self.assertIsNotNone(changeDetails.get('user'))
-        self.assertIsNotNone(changeDetails.get('change'))
-        self.assertIsNotNone(changeDetails.get('pathname'))
-        self.assertIsNotNone(changeDetails.get('mode'))
+        change_details = inventory.get('lastChange')
+        self.assertIsNotNone(change_details)
+        self.assertIsNone(change_details.get('project'))
+        self.assertIsNotNone(change_details.get('timestamp'))
+        self.assertNotEqual(change_details.get('timestamp'), self.config["IDA_MIGRATION"])
+        self.assertIsNotNone(change_details.get('user'))
+        self.assertIsNotNone(change_details.get('change'))
+        self.assertIsNotNone(change_details.get('pathname'))
+        self.assertIsNotNone(change_details.get('mode'))
 
         print("Report change with both timestamp and mode")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname", "mode": "cli"}
         response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertIsNotNone(changeDetails)
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertEqual(changeDetails.get('timestamp'), self.config['START'])
-        self.assertEqual(changeDetails.get('change'), 'move')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a/old/pathname')
-        self.assertEqual(changeDetails.get('target'), '/test_project_a/new/pathname')
-        self.assertEqual(changeDetails.get('mode'), 'cli')
+        change_details = response.json()
+        self.assertIsNotNone(change_details)
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertEqual(change_details.get('timestamp'), self.config['START'])
+        self.assertEqual(change_details.get('change'), 'move')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a/old/pathname')
+        self.assertEqual(change_details.get('target'), '/test_project_a/new/pathname')
+        self.assertEqual(change_details.get('mode'), 'cli')
 
         print("Query IDA for last recorded data change and verify last change matches just reported change")
         response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertIsNotNone(changeDetails)
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertEqual(changeDetails.get('timestamp'), self.config['START'])
-        self.assertEqual(changeDetails.get('change'), 'move')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a/old/pathname')
-        self.assertEqual(changeDetails.get('target'), '/test_project_a/new/pathname')
-        self.assertEqual(changeDetails.get('mode'), 'cli')
+        change_details = response.json()
+        self.assertIsNotNone(change_details)
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertEqual(change_details.get('timestamp'), self.config['START'])
+        self.assertEqual(change_details.get('change'), 'move')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a/old/pathname')
+        self.assertEqual(change_details.get('target'), '/test_project_a/new/pathname')
+        self.assertEqual(change_details.get('mode'), 'cli')
 
         print("Report change without either timestamp or mode")
         data = {"project": "test_project_a", "user": "test_user_a", "change": "copy", "pathname": "/test_project_a+/old/pathname", "target": "/test_project_a+/new/pathname"}
         response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertIsNotNone(changeDetails)
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertIsNotNone(changeDetails.get('timestamp'))
-        self.assertTrue(changeDetails.get('timestamp') > self.config['START'])
-        self.assertEqual(changeDetails.get('change'), 'copy')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a+/old/pathname')
-        self.assertEqual(changeDetails.get('target'), '/test_project_a+/new/pathname')
-        self.assertEqual(changeDetails.get('mode'), 'api')
+        change_details = response.json()
+        self.assertIsNotNone(change_details)
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertIsNotNone(change_details.get('timestamp'))
+        self.assertTrue(change_details.get('timestamp') > self.config['START'])
+        self.assertEqual(change_details.get('change'), 'copy')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a+/old/pathname')
+        self.assertEqual(change_details.get('target'), '/test_project_a+/new/pathname')
+        self.assertEqual(change_details.get('mode'), 'api')
 
         print("Query IDA for last recorded data change and verify last change matches just reported change")
         response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertIsNotNone(changeDetails)
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertIsNotNone(changeDetails.get('timestamp'))
-        self.assertTrue(changeDetails.get('timestamp') > self.config['START'])
-        self.assertEqual(changeDetails.get('change'), 'copy')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a+/old/pathname')
-        self.assertEqual(changeDetails.get('target'), '/test_project_a+/new/pathname')
-        self.assertEqual(changeDetails.get('mode'), 'api')
+        change_details = response.json()
+        self.assertIsNotNone(change_details)
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertIsNotNone(change_details.get('timestamp'))
+        self.assertTrue(change_details.get('timestamp') > self.config['START'])
+        self.assertEqual(change_details.get('change'), 'copy')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a+/old/pathname')
+        self.assertEqual(change_details.get('target'), '/test_project_a+/new/pathname')
+        self.assertEqual(change_details.get('mode'), 'api')
 
         # --------------------------------------------------------------------------------
 
@@ -454,20 +420,20 @@ class TestChanges(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Query IDA for last recorded data change and verify last change matches freeze action")
         response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertEqual(changeDetails.get('change'), 'move')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a+/testdata/2017-08/Experiment_1')
-        self.assertEqual(changeDetails.get('target'), '/test_project_a/testdata/2017-08/Experiment_1')
-        self.assertEqual(changeDetails.get('mode'), 'api')
-        self.assertEqual(changeDetails.get('timestamp'), action_data.get('storage'))
+        change_details = response.json()
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertEqual(change_details.get('change'), 'move')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a+/testdata/2017-08/Experiment_1')
+        self.assertEqual(change_details.get('target'), '/test_project_a/testdata/2017-08/Experiment_1')
+        self.assertEqual(change_details.get('mode'), 'api')
+        self.assertTrue(change_details.get('timestamp') >= action_data.get('initiated'), "%s\n%s" % (json.dumps(change_details), json.dumps(action_data)))
 
         print("Unfreezing frozen file /testdata/2017-08/Experiment_1/test01.dat")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test01.dat"}
@@ -478,20 +444,20 @@ class TestChanges(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Query IDA for last recorded data change and verify last change matches unfreeze action")
         response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertEqual(changeDetails.get('change'), 'move')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a/testdata/2017-08/Experiment_1/test01.dat')
-        self.assertEqual(changeDetails.get('target'), '/test_project_a+/testdata/2017-08/Experiment_1/test01.dat')
-        self.assertEqual(changeDetails.get('mode'), 'api')
-        self.assertEqual(changeDetails.get('timestamp'), action_data.get('storage'))
+        change_details = response.json()
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertEqual(change_details.get('change'), 'move')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a/testdata/2017-08/Experiment_1/test01.dat')
+        self.assertEqual(change_details.get('target'), '/test_project_a+/testdata/2017-08/Experiment_1/test01.dat')
+        self.assertEqual(change_details.get('mode'), 'api')
+        self.assertTrue(change_details.get('timestamp') >= action_data.get('initiated'), "%s\n%s" % (json.dumps(change_details), json.dumps(action_data)))
 
         print("Deleting frozen file /testdata/2017-08/Experiment_1/test02.dat")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test02.dat"}
@@ -502,20 +468,20 @@ class TestChanges(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Query IDA for last recorded data change and verify last change matches delete action")
         response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
-        changeDetails = response.json()
-        self.assertEqual(changeDetails.get('project'), 'test_project_a')
-        self.assertEqual(changeDetails.get('user'), 'test_user_a')
-        self.assertEqual(changeDetails.get('change'), 'delete')
-        self.assertEqual(changeDetails.get('pathname'), '/test_project_a/testdata/2017-08/Experiment_1/test02.dat')
-        self.assertIsNone(changeDetails.get('target'))
-        self.assertEqual(changeDetails.get('mode'), 'api')
-        self.assertEqual(changeDetails.get('timestamp'), action_data.get('storage'))
+        change_details = response.json()
+        self.assertEqual(change_details.get('project'), 'test_project_a')
+        self.assertEqual(change_details.get('user'), 'test_user_a')
+        self.assertEqual(change_details.get('change'), 'delete')
+        self.assertEqual(change_details.get('pathname'), '/test_project_a/testdata/2017-08/Experiment_1/test02.dat')
+        self.assertIsNone(change_details.get('target'))
+        self.assertEqual(change_details.get('mode'), 'api')
+        self.assertTrue(change_details.get('timestamp') >= action_data.get('initiated'), "%s\n%s" % (json.dumps(change_details), json.dumps(action_data)))
 
         # --------------------------------------------------------------------------------
         # NOTE: Comprehensive add/copy/move/rename/delete changes are covered by the 

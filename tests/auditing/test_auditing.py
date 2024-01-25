@@ -160,14 +160,16 @@ import sys
 import shutil
 import json
 from pathlib import Path
-from tests.common.utils import load_configuration, normalize_timestamp, generate_timestamp
+from tests.common.utils import *
 
 
 class TestAuditing(unittest.TestCase):
 
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/auditing/test_auditing")
+
 
     def setUp(self):
 
@@ -204,10 +206,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        time.sleep(1)
         self.config['INITIALIZED'] = generate_timestamp()
         print("INITIALIZED: %s" % self.config['INITIALIZED'])
-        time.sleep(1)
 
 
     def tearDown(self):
@@ -394,8 +394,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_a", test_user_a)
-        self.check_for_failed_actions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("(deleting folder /testdata/2017-08/Experiment_1/baseline from frozen area of filesystem)")
         pathname = "%s/testdata/2017-08/Experiment_1/baseline" % frozen_area_root_a
@@ -451,8 +451,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_b", test_user_b)
-        self.check_for_failed_actions("test_project_b", test_user_b)
+        wait_for_pending_actions(self, "test_project_b", test_user_b)
+        check_for_failed_actions(self, "test_project_b", test_user_b)
 
         # retrieve PSO storage id for test_project_b
         cur.execute("SELECT numeric_id from %sstorages WHERE id = 'home::%stest_project_b' LIMIT 1"
@@ -489,8 +489,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_c", test_user_c)
-        self.check_for_failed_actions("test_project_c", test_user_c)
+        wait_for_pending_actions(self, "test_project_c", test_user_c)
+        check_for_failed_actions(self, "test_project_c", test_user_c)
 
         # After repair the frozen file record in IDA and Metax will be purged as it no longer
         # corresponds to a frozen file on disk, and the node type in Nextcloud will be changed
@@ -564,8 +564,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_d", test_user_d)
-        self.check_for_failed_actions("test_project_d", test_user_d)
+        wait_for_pending_actions(self, "test_project_d", test_user_d)
+        check_for_failed_actions(self, "test_project_d", test_user_d)
 
         # After repair there will be one additional node (folder) due to the existence of the 'baseline' directory
         # in both frozen area and staging compared to before freezing the 'baseline' folder and unfreezing test01.dat
@@ -579,8 +579,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_d", test_user_d)
-        self.check_for_failed_actions("test_project_d", test_user_d)
+        wait_for_pending_actions(self, "test_project_d", test_user_d)
+        check_for_failed_actions(self, "test_project_d", test_user_d)
 
         print("(deleting file /testdata/2017-08/Experiment_1/baseline/test02.dat from Metax)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
@@ -676,18 +676,8 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
-        # --------------------------------------------------------------------------------
-
-        # Ensure auditing tests start at least one second after file modifications
-        # (sometimes on very fast hardware, the auditing begins in less than one
-        # second after the modifications to the projects, resulting in those final
-        # file and folder modifications from being excluded from the audit due
-        # to the START timestamp cutoff)
-
-        time.sleep(1)
         self.config['MODIFIED'] = generate_timestamp()
         print("MODIFIED: %s" % self.config['MODIFIED'])
-        time.sleep(1)
 
         # --------------------------------------------------------------------------------
 
@@ -2073,8 +2063,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.wait_for_pending_actions("test_project_a", test_user_a)
-        self.check_for_failed_actions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("(repairing project B)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
@@ -2083,8 +2073,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.wait_for_pending_actions("test_project_b", test_user_b)
-        self.check_for_failed_actions("test_project_b", test_user_b)
+        wait_for_pending_actions(self, "test_project_b", test_user_b)
+        check_for_failed_actions(self, "test_project_b", test_user_b)
 
         print("(repairing project C)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
@@ -2093,8 +2083,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.wait_for_pending_actions("test_project_c", test_user_c)
-        self.check_for_failed_actions("test_project_c", test_user_c)
+        wait_for_pending_actions(self, "test_project_c", test_user_c)
+        check_for_failed_actions(self, "test_project_c", test_user_c)
 
         print("(repairing project D)")
 
@@ -2134,8 +2124,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.wait_for_pending_actions("test_project_d", test_user_d)
-        self.check_for_failed_actions("test_project_d", test_user_d)
+        wait_for_pending_actions(self, "test_project_d", test_user_d)
+        check_for_failed_actions(self, "test_project_d", test_user_d)
 
         self.remove_report(report_pathname_a)
         self.remove_report(report_pathname_b)
@@ -2364,7 +2354,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
 
         print("--- Verifying freeze action failed due to checksum mismatch")
 
@@ -2424,8 +2414,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.wait_for_pending_actions("test_project_a", test_user_a)
-        self.check_for_failed_actions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("--- Auditing project A and verifying no errors are reported")
 
@@ -2469,8 +2459,8 @@ class TestAuditing(unittest.TestCase):
         response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=headers, json=data, auth=test_user_b, verify=False)
         self.assertEqual(response.status_code, 200)
 
-        self.wait_for_pending_actions("test_project_b", test_user_b)
-        self.check_for_failed_actions("test_project_b", test_user_b)
+        wait_for_pending_actions(self, "test_project_b", test_user_b)
+        check_for_failed_actions(self, "test_project_b", test_user_b)
 
         # retrieve PSO storage id for test_project_b
         cur.execute("SELECT numeric_id from %sstorages WHERE id = 'home::%stest_project_b' LIMIT 1"
@@ -2545,7 +2535,7 @@ class TestAuditing(unittest.TestCase):
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
 
-        time.sleep(5)
+        #time.sleep(5)
 
         print("--- Verifying modified state of Project B")
 
@@ -2735,8 +2725,8 @@ class TestAuditing(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
-        self.wait_for_pending_actions("test_project_b", test_user_b)
-        self.check_for_failed_actions("test_project_b", test_user_b)
+        wait_for_pending_actions(self, "test_project_b", test_user_b)
+        check_for_failed_actions(self, "test_project_b", test_user_b)
 
         print("--- Auditing project with --full parameter and verifying no errors are reported")
 

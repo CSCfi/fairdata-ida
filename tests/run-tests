@@ -36,7 +36,7 @@
 #
 # run-tests                           (run all behavioral tests)
 # run-tests tests.admin               (run admin behavioral tests)
-# run-tests tests.nextcloud_apps.ida  (run IDA app behavioral tests)
+# run-tests tests.nextcloud           (run Nextcloud behavioral tests)
 # run-tests tests.agents.metadata     (run metadata agent behavioral tests)
 # run-tests agents                    (run agent unit tests)
 
@@ -143,7 +143,7 @@ else
         exit 1
     fi
 
-    python -W ignore -m unittest discover -f -q tests.nextcloud_apps.ida
+    python -W ignore -m unittest discover -f -q tests.nextcloud
 
     if [ $? -ne 0 ]; then
         exit 1

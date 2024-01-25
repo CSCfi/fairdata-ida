@@ -35,13 +35,16 @@ import unittest
 import time
 import os
 import shutil
-from tests.common.utils import load_configuration
+from tests.common.utils import *
 
 
 class TestAgents(unittest.TestCase):
+
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/agents/test_agents")
+
 
     def setUp(self):
         # load service configuration variables
@@ -83,31 +86,6 @@ class TestAgents(unittest.TestCase):
         self.assertTrue(self.success)
 
 
-    def waitForPendingActions(self, project, user):
-        print("(waiting for pending actions to fully complete)")
-        print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200)
-        actions = response.json()
-        max_time = time.time() + self.timeout
-        while len(actions) > 0 and time.time() < max_time:
-            print(".", end='', flush=True)
-            time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-            self.assertEqual(response.status_code, 200)
-            actions = response.json()
-        print("")
-        self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
-
-
-    def checkForFailedActions(self, project, user):
-        print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200)
-        actions = response.json()
-        assert(len(actions) == 0)
-
-
     def test_agents(self):
 
         admin_user = (self.config["NC_ADMIN_USER"], self.config["NC_ADMIN_PASS"])
@@ -145,8 +123,8 @@ class TestAgents(unittest.TestCase):
         self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_1" % (staging_area_root)))
         self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_1" % (frozen_area_root)))
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve completed freeze action details")
         response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
@@ -220,8 +198,8 @@ class TestAgents(unittest.TestCase):
         self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (frozen_area_root)))
         self.assertTrue(os.path.exists("%s/testdata/2017-08/Experiment_1/test01.dat" % (staging_area_root)))
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve completed unfreeze action details")
         response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
@@ -267,8 +245,8 @@ class TestAgents(unittest.TestCase):
         print("Verify file was physically removed from frozen area")
         self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_1/test02.dat" % (frozen_area_root)))
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve completed delete action details")
         response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
@@ -304,8 +282,8 @@ class TestAgents(unittest.TestCase):
 
         # TODO Include more files in repair actions, more than 10 files total and 2-3 min new and deleted files...
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         if self.config["METAX_AVAILABLE"] == 1:
             if self.config["METAX_API_VERSION"] >= 3:
@@ -441,8 +419,8 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)

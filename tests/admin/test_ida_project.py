@@ -34,14 +34,16 @@ import unittest
 import subprocess
 import os
 import sys
-from tests.common.utils import load_configuration
+from tests.common.utils import *
 
 
 class TestIdaProject(unittest.TestCase):
 
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/admin/test_ida_project")
+
 
     def setUp(self):
         self.config = load_configuration()
@@ -125,13 +127,13 @@ class TestIdaProject(unittest.TestCase):
         self.assertTrue(os.path.exists(titleFilePath))
         self.assertEqual("Test title 234\n", open(titleFilePath).read())
 
+        self.assertTrue(make_ida_offline(self))
+
         print("Attempt to create new project while service in OFFLINE mode")
-        with open(self.offlineSentinelFile, 'a') as sentinelFile:
-            sentinelFile.write("TEST")
-            sentinelFile.close()
         cmd = "%s ADD %s 1 2>&1" % (self.ida_project, self.project_name)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 1, "Sentinel file ignored")
-        os.remove(self.offlineSentinelFile)
+
+        self.assertTrue(make_ida_online(self))
 
         self.success = True

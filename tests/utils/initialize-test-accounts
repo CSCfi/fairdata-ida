@@ -497,3 +497,10 @@ if [ "$FOUND" ]; then
     echo "Creating failed action in test_project_f..."
     $CURL_POST $IDA_CREDENTIALS -H "$IDA_MODE_HEADER" "${IDA_API_ROOT_URL}/actions?project=test_project_f&pathname=/&action=freeze&error=Boom%21&failed=${START}" >/dev/null
 fi
+
+#--------------------------------------------------------------------------------
+
+echo "Running Nextcloud housekeeping..."
+
+php $ROOT/nextcloud/cron.php
+sleep 5

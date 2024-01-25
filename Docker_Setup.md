@@ -17,7 +17,7 @@ development and testing:
 
 Before starting, you need to have Docker installed. See instructions for Mac and Linux here: https://docs.docker.com/get-docker/
 
-For Mac, the recommended version is Docker Desktop `4.3.0`
+For Mac, the recommended version is Docker Desktop `4.3.0` or later
 
 ### 1.2 Configure DNS
 
@@ -41,23 +41,27 @@ Option 1: Internal users
 ```
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida.git
 git clone https://gitlab.ci.csc.fi/fairdata/ida-command-line-tools.git
+git clone https://gitlab.ci.csc.fi/fairdata/ida-admin-portal.git
 git clone https://gitlab.ci.csc.fi/fairdata/ida-service-internals.git
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-healthcheck.git
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-download-service.git
-git clone https://gitlab.ci.csc.fi/fairdata/fairdata-secrets.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-download.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-docker.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-test-accounts.git
 ```
 
 Option 2: External users
 ```
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida.git
 git clone https://ci.fd-staging.csc.fi/fairdata/ida-command-line-tools.git
+git clone https://ci.fd-staging.csc.fi/fairdata/ida-admin-portal.git
 git clone https://ci.fd-staging.csc.fi/fairdata/ida-service-internals.git
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-healthcheck.git
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-download-service.git
-git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-secrets.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-download.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-docker.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-test-accounts.git
 ```
 
-If you do not have access to the encrypted configuration files in `fairdata-secrets`, see that repository's `README.md` file for how to gain access.
+If you do not have access to the encrypted configuration files in `fairdata-docker`, see that repository's `README.md` file for how to gain access.
 
 ### 1.4 Start Docker
 
@@ -65,12 +69,12 @@ Make sure your local Docker instance or engine is running.
 
 If you are using Mac and Docker desktop, make sure you have started Docker desktop.
 
-## 2. Set up fairdata-secrets (config) repository
+## 2. Set up fairdata-docker (config) repository
 
-Decrypt and unpack the configuration files in the fairdata-secrets repository:
+Decrypt and unpack the configuration files in the fairdata-docker repository:
 
 ```
-cd ~/dev/fairdata-secrets
+cd ~/dev/fairdata-docker
 git fetch
 git checkout master
 git pull
@@ -112,17 +116,15 @@ A `docker swarm` must be running in order to proceed with
 docker swarm init
 ```
 
-### 4.2. Deploy required configurations from fairdata-secrets
+### 4.2. Deploy required configurations from fairdata-docker
 
-Once `fairdata-secrets` is cloned, configurations can be deployed with stacks included in Fairdata-Secrets repository by running the following commands at the `fairdata-secrets` repository root.
+Once `fairdata-docker` is cloned, configurations can be deployed with stacks included in Fairdata-docker repository by running the following commands at the `fairdata-docker` repository root.
 
 ```
-cd ~/dev/fairdata-secrets
+cd ~/dev/fairdata-docker
 chmod -R g+rwX,o+rX .
-docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
-docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
-docker stack deploy -c download/docker-compose.idadev.yml fairdata-conf
+docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 ```
 
 ## 5. Deploy the IDA dev stack
@@ -158,7 +160,7 @@ The Nextcloud application can be initialized using a utility script included in 
 
 ## 7. Login to https://ida.fd-dev.csc.fi
 
-You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `$NC_ADMIN_USER` with password `$NC_ADMIN_PASS` or as `test_user` with pasword `$TEST_USER_PASS`, as defined in `/var/ida/config/config.sh`, or if you optionally generated the Fairdata test accounts (see below) you should be able to log in with SSO login using any of the Fairdata test accounts and credentials in `fairdata-secrets/fairdata-test-accounts/config/credentials.json`
+You should now be able to login to `https://ida.fd-dev.csc.fi`, either with local login on the left side of the home page as `$NC_ADMIN_USER` with password `$NC_ADMIN_PASS` or as `test_user` with pasword `$TEST_USER_PASS`, as defined in `/var/ida/config/config.sh`, or if you optionally generated the Fairdata test accounts (see below) you should be able to log in with SSO login using any of the Fairdata test accounts and credentials in `/opt/fairdata/fairdata-test-accounts/credentials.json`
 
 ## 8. Run automated tests
 
@@ -201,7 +203,7 @@ docker exec -w /opt/fairdata/ida-report -it $(docker ps -q -f name=ida-nextcloud
 The automated tests for the Fairdata download service can be run with the following command:
 
 ```
-docker exec -w /opt/fairdata/fairdata-download-service -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/fairdata-download-service/dev_config/utils/run-tests
+docker exec -w /usr/local/fd/fairdata-download -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/fairdata-download/tests/run-tests
 ```
 
 ### 8.6 IDA admin portal manual tests
@@ -213,7 +215,7 @@ The IDA admin portal can be manually tested using your local browser at https://
 If needed, initialize the Fairdata test accounts, to be used with SSO login by CSC account, by running the following command:
 
 ```
-docker exec -it $(docker ps -q -f name=ida-nextcloud) python3 /var/fairdata-test-accounts/initialize-ida-accounts 
+docker exec -it $(docker ps -q -f name=ida-nextcloud) python3 /opt/fairdata/fairdata-test-accounts/initialize-test-accounts 
 ```
 
 # After setup
@@ -227,24 +229,26 @@ restarting docker after shutting it down properly the swarm should resume execut
 go amiss an the environment needs to be redepoloyed cleanly.
 
 First shut down and discard all running containers and remove all existing volumes, then reinitialize the swarm, initialize
-secrets, and redeploy the stack:
+docker secrets, and redeploy the stack:
 
 ```
 docker swarm leave --force
 docker volume rm $(docker volume ls -q)
 docker swarm init
-cd ~/dev/fairdata-secrets
+cd ~/dev/fairdata-docker
 chmod -R g+rwX,o+rX .
-docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 docker stack deploy -c tls/docker-compose.dev.yml fairdata-conf
-docker stack deploy -c fairdata-test-accounts/docker-compose.dev.yml fairdata-conf
-docker stack deploy -c download/docker-compose.idadev.yml fairdata-conf
+docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 cd ~/dev/fairdata-ida
 chmod -R g+rwX,o+rX .
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
+sleep 3
+docker service ls
 ```
 
-Repeatedly check with `docker service ls` until all containers are running. Then initialize the IDA container:
+If needed, repeatedly check with `docker service ls` until all containers are running, indicated by showing "1/1" in the REPLICAS column (if any containers persistently show "1/0", then there may be a bug in the Docker configuration for that container).
+
+Finally, when all containers are running, initialize the IDA container:
 
 ```
 ./docker_init_dev.sh

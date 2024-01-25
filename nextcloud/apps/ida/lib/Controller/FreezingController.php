@@ -569,6 +569,78 @@ class FreezingController extends Controller
     }
 
     /**
+     * Put the service into offline mode
+     *
+     * Restricted to admin
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function serviceOffline()
+    {
+        try {
+
+            // Verify that current user is admin
+
+            if ($this->userId !== 'admin') {
+                return API::forbiddenErrorResponse();
+            }
+
+            // Create the offline sentinel file
+
+            if (Access::setOfflineMode()) {
+
+                Util::writeLog('ida', 'serviceOffline', \OCP\Util::INFO);
+
+                return API::successResponse('The service is offline.');
+            }
+
+            return API::conflictErrorResponse('Unable to put the service into offline mode.');
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('serviceOffline: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Put the service into online mode
+     *
+     * Restricted to admin
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function serviceOnline()
+    {
+        try {
+
+            // Verify that current user is admin
+
+            if ($this->userId !== 'admin') {
+                return API::forbiddenErrorResponse();
+            }
+
+            // Remove the offline sentinel file
+
+            if (Access::setOnlineMode()) {
+
+                Util::writeLog('ida', 'serviceOnline', \OCP\Util::INFO);
+
+                return API::successResponse('The service is online.');
+            }
+
+            return API::conflictErrorResponse('Unable to put the service into online mode.');
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('serviceOnline: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Freeze staged files within the scope of a particular node
      *
      * If the user is the PSO user, and a specified token parameter matches the batch action token

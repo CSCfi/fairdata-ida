@@ -23,7 +23,10 @@
 
 import importlib.util
 import os
+import sys
 import time
+import json
+import requests
 import subprocess
 import dateutil.parser
 from datetime import datetime, timezone
@@ -33,6 +36,79 @@ os.environ["TZ"] = "UTC"
 time.tzset()
 
 TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ' # ISO 8601 UTC
+
+DATASET_TEMPLATE_V3 = {
+    "pid_type": "URN",
+    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
+    "metadata_owner": {
+        "user": "test_user_a",
+        "organization": "Test Organization A"
+    },
+    "access_rights": {
+        "access_type": {
+            "url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
+        }
+    },
+    "creator": [
+        {
+            "@type": "Person",
+            "member_of": {
+                "@type": "Organization",
+                "name": {
+                    "en": "Test Organization A"
+                }
+            },
+            "name": "Test User A"
+        }
+    ],
+    "description": {
+        "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    },
+    "title": {
+        "en": "Test Dataset"
+    },
+    "state": "published"
+}
+
+DATASET_TEMPLATE_V1 = {
+    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
+    "metadata_provider_user": "test_user_a",
+    "metadata_provider_org": "test_organization_a",
+    "research_dataset": {
+        "access_rights": {
+            "access_type": {
+                "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
+            }
+        },
+        "creator": [
+            {
+                "@type": "Person",
+                "member_of": {
+                    "@type": "Organization",
+                    "name": {
+                        "en": "Test Organization A"
+                    }
+                },
+                "name": "Test User A"
+            }
+        ],
+        "description": {
+            "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+        },
+        "title": {
+            "en": "Test Dataset"
+        }
+    }
+}
+
+DATASET_TITLES = [
+    { "en": "Lake Chl-a products from Finland (MERIS, FRESHMON)" },
+    { "fi": "MERIVEDEN LÄMPÖTILA POHJALLA (VELMU)" },
+    { "sv": "Svenska ortnamn i Finland" },
+    { "en": "The Finnish Subcorpus of Topling - Paths in Second Language Acquisition" },
+    { "en": "SMEAR data preservation 2019" },
+    { "en": "Finnish Opinions on Security Policy and National Defence 2001: Autumn" }
+]
 
 
 def _load_module_from_file(module_name, file_path):
@@ -197,5 +273,99 @@ def generate_timestamp():
     """
     Get current time as normalized ISO 8601 UTC timestamp string
     """
+    time.sleep(1) # ensure a unique timestamp
     return normalize_timestamp(datetime.utcnow().replace(microsecond=0))
+
+
+def make_ida_offline(self):
+    print("(putting IDA service into offline mode)")
+    ida_admin_auth = (self.config['NC_ADMIN_USER'], self.config['NC_ADMIN_PASS'])
+    offline_sentinel_file = "%s/control/OFFLINE" % self.config["STORAGE_OC_DATA_ROOT"]
+    if os.path.exists(offline_sentinel_file):
+        print("(service already in offline mode)")
+        return True
+    url = "%s/offline" % self.config['IDA_API_ROOT_URL']
+    response = requests.post(url, auth=ida_admin_auth, verify=False)
+    if response.status_code == 200:
+        return True
+    return False
+
+
+def make_ida_online(self):
+    print("(putting IDA service into online mode)")
+    ida_admin_auth = (self.config['NC_ADMIN_USER'], self.config['NC_ADMIN_PASS'])
+    offline_sentinel_file = "%s/control/OFFLINE" % self.config["STORAGE_OC_DATA_ROOT"]
+    if not os.path.exists(offline_sentinel_file):
+        print("(service already in online mode)")
+        return True
+    url = "%s/offline" % self.config['IDA_API_ROOT_URL']
+    response = requests.delete(url, auth=ida_admin_auth, verify=False)
+    if response.status_code == 200:
+        return True
+    return False
+
+
+def wait_for_pending_actions(self, project, user):
+    print("(waiting for pending actions to fully complete)")
+    print(".", end='', flush=True)
+    response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+    self.assertEqual(response.status_code, 200)
+    actions = response.json()
+    max_time = time.time() + self.timeout
+    while len(actions) > 0 and time.time() < max_time:
+        print(".", end='', flush=True)
+        time.sleep(1)
+        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+        self.assertEqual(response.status_code, 200)
+        actions = response.json()
+    print("")
+    self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
+
+
+def check_for_failed_actions(self, project, user, should_be_failed = False):
+    print("(verifying no failed actions)")
+    response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+    self.assertEqual(response.status_code, 200)
+    actions = response.json()
+    if should_be_failed:
+        assert(len(actions) > 0)
+    else:
+        assert(len(actions) == 0)
+    return actions
+
+
+def build_dataset_files(self, action_files):
+    dataset_files = []
+    for action_file in action_files:
+        dataset_file = {
+            "title": action_file['pathname'],
+            "identifier": action_file['pid'],
+            "description": "test data file",
+            "use_category": { "identifier": "http://uri.suomi.fi/codelist/fairdata/use_category/code/source" }
+        }
+        dataset_files.append(dataset_file)
+    return dataset_files
+
+
+def flush_datasets(self):
+    print ("Flushing test datasets from METAX...")
+    dataset_pids = get_dataset_pids(self)
+    for pid in dataset_pids:
+        print ("   %s" % pid)
+        if self.config["METAX_API_VERSION"] >= 3:
+            requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), headers=self.metax_headers)
+        else:
+            requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=self.metax_user)
+
+
+def get_dataset_pids(self):
+    pids = []
+    test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
+    data = { "project": "test_project_a", "pathname": "/testdata" }
+    response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
+    if response.status_code == 200:
+        datasets = response.json()
+        for dataset in datasets:
+            pids.append(dataset['pid'])
+    return pids
 

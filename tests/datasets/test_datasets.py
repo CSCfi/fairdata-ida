@@ -34,84 +34,16 @@ import time
 import os
 import sys
 import json
-from tests.common.utils import load_configuration
+from tests.common.utils import *
 
-DATASET_TEMPLATE_V3 = {
-    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
-    "metadata_owner": {
-        "user": "test_user_a",
-        "organization": "Test Organization A"
-    },
-    "access_rights": {
-        "access_type": {
-            "url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
-        }
-    },
-    "creator": [
-        {
-            "@type": "Person",
-            "member_of": {
-                "@type": "Organization",
-                "name": {
-                    "en": "Test Organization A"
-                }
-            },
-            "name": "Test User A"
-        }
-    ],
-    "description": {
-        "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-    },
-    "title": {
-        "en": "Test Dataset"
-    },
-    "state": "published"
-}
-
-DATASET_TEMPLATE_V1 = {
-    "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
-    "metadata_provider_user": "test_user_a",
-    "metadata_provider_org": "test_organization_a",
-    "research_dataset": {
-        "access_rights": {
-            "access_type": {
-                "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
-            }
-        },
-        "creator": [
-            {
-                "@type": "Person",
-                "member_of": {
-                    "@type": "Organization",
-                    "name": {
-                        "en": "Test Organization A"
-                    }
-                },
-                "name": "Test User A"
-            }
-        ],
-        "description": {
-            "en": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        },
-        "title": {
-            "en": "Test Dataset"
-        }
-    }
-}
-
-DATASET_TITLES = [
-    { "en": "Lake Chl-a products from Finland (MERIS, FRESHMON)" },
-    { "fi": "MERIVEDEN LÄMPÖTILA POHJALLA (VELMU)" },
-    { "sv": "Svenska ortnamn i Finland" },
-    { "en": "The Finnish Subcorpus of Topling - Paths in Second Language Acquisition" },
-    { "en": "SMEAR data preservation 2019" },
-    { "en": "Finnish Opinions on Security Policy and National Defence 2001: Autumn" }
-]
 
 class TestDatasets(unittest.TestCase):
+
+
     @classmethod
     def setUpClass(cls):
         print("=== tests/datasets/test_datasets")
+
 
     def setUp(self):
 
@@ -133,7 +65,7 @@ class TestDatasets(unittest.TestCase):
         else:
             self.metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
 
-        self.flushDatasets()
+        flush_datasets(self)
 
         # ensure we start with a fresh setup of projects, user accounts, and data
         cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
@@ -153,74 +85,13 @@ class TestDatasets(unittest.TestCase):
 
             print("(cleaning)")
 
-            self.flushDatasets()
+            flush_datasets(self)
 
             cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts --flush %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
             result = os.system(cmd)
             self.assertEqual(result, 0)
 
         self.assertTrue(self.success)
-
-
-    def flushDatasets(self):
-        print ("Flushing test datasets from METAX...")
-        dataset_pids = self.getDatasetPids()
-        for pid in dataset_pids:
-            print ("   %s" % pid)
-            if self.config["METAX_API_VERSION"] >= 3:
-                requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), headers=self.metax_headers)
-            else:
-                requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=self.metax_user)
-
-
-    def getDatasetPids(self):
-        pids = []
-        test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
-        data = { "project": "test_project_a", "pathname": "/testdata" }
-        response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
-        if response.status_code == 200:
-            datasets = response.json()
-            for dataset in datasets:
-                pids.append(dataset['pid'])
-        return pids
-
-
-    def waitForPendingActions(self, project, user):
-        print("(waiting for pending actions to fully complete)")
-        print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        actions = response.json()
-        max_time = time.time() + self.timeout
-        while len(actions) > 0 and time.time() < max_time:
-            print(".", end='', flush=True)
-            time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-            self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-            actions = response.json()
-        print("")
-        self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
-
-
-    def checkForFailedActions(self, project, user):
-        print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
-        actions = response.json()
-        assert(len(actions) == 0)
-
-
-    def build_dataset_files(self, action_files):
-        dataset_files = []
-        for action_file in action_files:
-            dataset_file = {
-                "title": action_file['pathname'],
-                "identifier": action_file['pid'],
-                "description": "test data file",
-                "use_category": { "identifier": "http://uri.suomi.fi/codelist/fairdata/use_category/code/source" }
-            }
-            dataset_files.append(dataset_file)
-        return dataset_files
 
 
     def test_datasets(self):
@@ -252,8 +123,8 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_1")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
@@ -270,8 +141,8 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_2")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
@@ -288,8 +159,8 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-10/Experiment_3")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
@@ -306,8 +177,8 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-10/Experiment_4")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
@@ -324,8 +195,8 @@ class TestDatasets(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        self.waitForPendingActions("test_project_a", test_user_a)
-        self.checkForFailedActions("test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Verify data was physically moved from staging to frozen area")
         self.assertFalse(os.path.exists("%s/testdata/MaxFiles/%s_files/500_files_1/100_files_1/10_files_1/test_file_1.dat" % (staging_area_root, self.config["MAX_FILE_COUNT"])))
@@ -358,7 +229,7 @@ class TestDatasets(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_1_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_1_files)
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_1 = response.json()
@@ -388,7 +259,7 @@ class TestDatasets(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[1]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_2_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_2_files)
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_2 = response.json()
@@ -418,7 +289,7 @@ class TestDatasets(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[2]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_3_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_3_files)
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
         dataset_3 = response.json()
@@ -543,7 +414,7 @@ class TestDatasets(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[3]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_4_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_4_files)
             dataset_data['preservation_state'] = 10
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
@@ -581,7 +452,7 @@ class TestDatasets(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[4]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_4_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_4_files)
             dataset_data['preservation_state'] = 10
             dataset_data['preservation_dataset_origin_version'] = {
                 "deprecated": False,
@@ -625,7 +496,7 @@ class TestDatasets(unittest.TestCase):
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[5]
-            dataset_data['research_dataset']['files'] = self.build_dataset_files(experiment_4_files)
+            dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_4_files)
             dataset_data['preservation_state'] = 120
             dataset_data['preservation_dataset_origin_version'] = {
                 "deprecated": False,
