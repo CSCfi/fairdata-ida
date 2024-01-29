@@ -211,13 +211,12 @@ class TestOldData(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
-        self.wait_for_pending_actions(self, "test_project_a", test_user_a)
-        self.check_for_failed_actions(self, "test_project_a", test_user_a)
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Creating Dataset containing all files in scope /testdata/2017-08/Experiment_1")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_1"
             dataset_data['title'] = DATASET_TITLES[0]
             dataset_data['fileset'] = {
                 "storage_service": "ida",
@@ -236,13 +235,6 @@ class TestOldData(unittest.TestCase):
             dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_1_files)
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
-        dataset_1 = response.json()
-        if self.config["METAX_API_VERSION"] >= 3:
-            dataset_1_pid = dataset_1['id']
-            dataset_1_urn = dataset_1['persistent_identifier']
-        else:
-            dataset_1_pid = dataset_1['identifier']
-            dataset_1_urn = dataset_1['research_dataset']['preferred_identifier']
 
         print("--- Auditing old data in project A and checking results")
 

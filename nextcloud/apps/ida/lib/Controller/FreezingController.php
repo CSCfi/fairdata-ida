@@ -1794,7 +1794,7 @@ class FreezingController extends Controller
         }
 
         if ($this->config['METAX_API_VERSION'] >= 3) {
-            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?storage_service=ida&file_id_type=storage_identifier';
+            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?storage_service=ida';
         }
         else {
             $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets';

@@ -213,7 +213,6 @@ class TestDatasets(unittest.TestCase):
         print("Creating Dataset 1 containing all files in scope /testdata/2017-08/Experiment_1")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_1"
             dataset_data['title'] = DATASET_TITLES[0]
             dataset_data['fileset'] = {
                 "storage_service": "ida",
@@ -243,7 +242,6 @@ class TestDatasets(unittest.TestCase):
         print("Creating Dataset 2 containing all files in scope /testdata/2017-08/Experiment_2")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_2"
             dataset_data['title'] = DATASET_TITLES[1]
             dataset_data['fileset'] = {
                 "storage_service": "ida",
@@ -273,7 +271,6 @@ class TestDatasets(unittest.TestCase):
         print("Creating Dataset 3 containing all files in scope /testdata/2017-10/Experiment_3")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_3"
             dataset_data['title'] = DATASET_TITLES[2]
             dataset_data['fileset'] = {
                 "storage_service": "ida",
@@ -303,7 +300,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Dataset 1")
         data = [ experiment_1_files[1]['pid'], experiment_1_files[7]['pid'], experiment_1_files[11]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=data)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=data)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=data, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -314,7 +311,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Dataset 2")
         files = [ experiment_2_files[2]['pid'], experiment_2_files[8]['pid'], experiment_2_files[12]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -324,7 +321,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Dataset 3")
         files = [ experiment_3_files[0]['pid'], experiment_3_files[6]['pid'], experiment_3_files[10]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -335,7 +332,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Datasets 1 and 2")
         files = [ experiment_1_files[1]['pid'], experiment_2_files[8]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -347,7 +344,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Datasets 2 and 3")
         files = [ experiment_2_files[2]['pid'], experiment_3_files[0]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -359,7 +356,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Datasets 1 and 3")
         files = [ experiment_1_files[1]['pid'], experiment_3_files[0]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -371,7 +368,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with selected files from Datasets 1, 2 and 3")
         files = [ experiment_1_files[1]['pid'], experiment_2_files[8]['pid'], experiment_3_files[10]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -384,7 +381,7 @@ class TestDatasets(unittest.TestCase):
         print("Query Metax with no files from Datasets 1, 2, or 3")
         files = [ experiment_4_files[3]['pid'], experiment_4_files[4]['pid'], experiment_4_files[5]['pid'] ]
         if self.config["METAX_API_VERSION"] >= 3:
-            response = requests.post("%s/files/datasets?storage_service=ida&file_id_type=storage_identifier" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
+            response = requests.post("%s/files/datasets?storage_service=ida" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=files)
         else:
             response = requests.post("%s/files/datasets" % self.config['METAX_API_ROOT_URL'], json=files, auth=self.metax_user)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
@@ -394,7 +391,6 @@ class TestDatasets(unittest.TestCase):
         print("Creating submitted PAS Dataset 4 containing all files in scope /testdata/2017-10/Experiment_4")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_4"
             dataset_data['title'] = DATASET_TITLES[3]
             dataset_data['preservation'] = {
                 "state": 10,
@@ -427,7 +423,6 @@ class TestDatasets(unittest.TestCase):
         print("Creating pending PAS Dataset 5 containing all files in scope /testdata/2017-10/Experiment_4")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_5"
             dataset_data['title'] = DATASET_TITLES[4]
             dataset_data['preservation'] = {
                 "state": 10,
@@ -435,7 +430,7 @@ class TestDatasets(unittest.TestCase):
                 "dataset_origin_version": {
                     "deprecated": False,
                     "id": "e4b9bdae-f7ba-48ad-b3c0-222bf0eac8a0",
-                    "persistent_identifier": "urn:nbn:fi:att:f8c3b322-8a52-424a-b27e-d2a2a48d4b35"
+                    "persistent_identifier": dataset_4_pid
                 }
             }
             dataset_data['fileset'] = {
@@ -458,7 +453,7 @@ class TestDatasets(unittest.TestCase):
                 "deprecated": False,
                 "id": 54321,
                 "identifier": "e4b9bdae-f7ba-48ad-b3c0-222bf0eac8a0",
-                "preferred_identifier": "urn:nbn:fi:att:f8c3b322-8a52-424a-b27e-d2a2a48d4b35"
+                "preferred_identifier": dataset_4_pid
             }
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
@@ -471,7 +466,6 @@ class TestDatasets(unittest.TestCase):
         print("Creating completed PAS Dataset 6 containing all files in scope /testdata/2017-10/Experiment_4")
         if self.config["METAX_API_VERSION"] >= 3:
             dataset_data = DATASET_TEMPLATE_V3
-            dataset_data['persistent_identifier'] = "test_project_a_test_dataset_6"
             dataset_data['title'] = DATASET_TITLES[5]
             dataset_data['preservation'] = {
                 "state": 120,
@@ -479,7 +473,7 @@ class TestDatasets(unittest.TestCase):
                 "dataset_origin_version": {
                     "deprecated": False,
                     "id": "a4b9bdae-f7ba-48ad-b3c0-222bf0eac8a0",
-                    "persistent_identifier": "urn:nbn:fi:att:a8c3b322-8a52-424a-b27e-d2a2a48d4b35"
+                    "persistent_identifier": dataset_5_pid
                 }
             }
             dataset_data['fileset'] = {
@@ -502,7 +496,7 @@ class TestDatasets(unittest.TestCase):
                 "deprecated": False,
                 "id": 65432,
                 "identifier": "a4b9bdae-f7ba-48ad-b3c0-222bf0eac8a0",
-                "preferred_identifier": "urn:nbn:fi:att:a8c3b322-8a52-424a-b27e-d2a2a48d4b35"
+                "preferred_identifier": dataset_5_pid
             }
             response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
