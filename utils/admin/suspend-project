@@ -129,7 +129,7 @@ if [ "$2" = "--silent" ]; then
 fi
 
 if [ "$2" = "--delete" ]; then
-    SUBJECT="Project ${PROJECT} will be removed from the IDA service."
+    SUBJECT="Project ${PROJECT} will be removed from the IDA service"
     MESSAGE="You are a member of the CSC project ${PROJECT}, which has had rights to use the IDA service.
 
 The project will be REMOVED from the IDA service in accordance with the official CSC Data Deletion Policy (https://docs.csc.fi/accounts/how-to-manage-your-project/#project-closure).
@@ -140,11 +140,15 @@ The removal is either due to having no active users in the service, or due to an
 
 If the project has any data in IDA, that data will be deleted during the final removal step as agreed with the project manager and/or organization's IDA contact person.
 
-You will receive a notification when the project has been removed from the service."
+You will receive a notification when the project has been removed from the service. If you have any questions, please contact the CSC Service Desk (servicedesk@csc."
 else
     SUBJECT="Project ${PROJECT} suspended."
-    MESSAGE="The project ${PROJECT} has been SUSPENDED in the IDA service. Access to the project space is now READ-ONLY."
+    MESSAGE="The project ${PROJECT} has been SUSPENDED in the IDA service. Access to the project space is now READ-ONLY. If you have any questions, please contact the CSC Service Desk (servicedesk@csc."
 fi
+
+export ROOT
+export EMAIL_SENDER
+export EMAIL_RECIPIENTS
 
 $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
 

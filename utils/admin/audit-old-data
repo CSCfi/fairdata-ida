@@ -55,11 +55,7 @@ fi
 MAX_AGE=`echo "$2" | sed -e 's/[^0-9]//g'`
 
 if [ -z "$MAX_AGE" ]; then
-    MAX_AGE="$MAX_DATA_AGE_IN_DAYS"
-fi
-
-if [ -z "$MAX_AGE" ]; then
-    MAX_AGE=356
+    MAX_AGE=365
 fi
 
 JSON_OUTPUT=`echo "$2 $3" | grep -- "--json-output"`
@@ -85,9 +81,53 @@ YEAR=`date -u +"%Y"`
 MONTH=`date -u +"%m"`
 REPORT_ROOT="${LOG_ROOT}/old_data"
 REPORT="${LOG_ROOT}/old_data/${YEAR}/${MONTH}/${START}_${PROJECT}.json"
-GUIDANCE="${ROOT}/utils/admin/lib/Old_Data_Guidance.txt"
 
 mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
+
+#--------------------------------------------------------------------------------
+
+MESSAGE="Project ${PROJECT} has files which have been stored in IDA for longer than ${MAX_AGE} days and which haven't yet been included in any dataset.
+
+IDA's Terms of Use specify that files stored in IDA are intended to be included in one or more published dataset descriptions, even if the data itself is not openly public.
+
+You have two options:
+
+1. Include the data in one or more datasets using the Fairdata services: https://www.fairdata.fi/en/fairdata-quick-guide/
+
+2. Arrange for a special extension: If, for some reason, you cannot yet include your data as part of any published dataset, please inform us. With a legitimate reason, we can grant you more time to prepare your data for publication.
+
+We ask you to please use IDA according to its intended purpose. Disregarding IDA's Terms of Use can lead to termination of your use rights.
+
+If you have no need or intention to publish your data as part of one or more datasets, we ask you to move the data to an alternative storage solution such as Allas (https://research.csc.fi/-/allas) or a service provided by your home organization.
+
+If you have any questions, or require assistance with the data publication process, our support team is here to help. Please contact servicedesk@csc.fi
+
+Best regards,
+
+The IDA team
+
+**
+
+Projektillasi ${PROJECT} on tiedostoja, jotka ovat olleet tallennettuina IDA-palveluun yli ${MAX_AGE} päivää eikä niitä ole vielä kuvailtu ja julkaistu.
+
+IDAan tallennettu data tulee jäädyttää, kuvailla ja julkaista osana tutkimusaineistoa Etsimeen, vaikka itse data ei olisikaan julkisesti saatavilla.
+
+Sinulla on kaksi vaihtoehtoa:
+
+1. Julkaise datasi osana yhtä tai useampaa tutkimusaineistoa: [https://www.fairdata.fi/en/fairdata-quick-guide/]
+
+2. Mikäli jostain syystä et voi vielä julkaista dataasi, ilmoita meille siitä. Voimme perustellusta syystä antaa sinulle lisää aikaa valmistella dataasi julkaisua varten.
+
+Pyydämme käyttämään IDAa sen käyttöehtojen ja tarkoituksen mukaisesti. IDAn käyttöehtojen laiminlyönti voi johtaa käyttöoikeuksien päättämiseen.
+
+Jos sinulla ei ole tarvetta tai aikomusta kuvailla ja julkaista dataasi, pyydämme sinua siirtämään tiedostosi vaihtoehtoiseen tallennusratkaisuun, kuten Altaaseen ([https://research.csc.fi/-/allas]) tai tiedustelemaan eri vaihtoehdoista kotiorganisaatioltasi.
+
+Jos sinulla on kysyttävää tai tarvitset apua datan julkaisuprosessissa, ota yhteyttä osoitteeseen servicedesk@csc.fi.
+
+Ystävällisin terveisin,
+
+IDA-tiimi
+"
 
 #--------------------------------------------------------------------------------
 
@@ -99,19 +139,12 @@ source $ROOT/venv/bin/activate
 python -u $ROOT/utils/admin/lib/audit_old_data.py $ROOT $PROJECT $MAX_AGE > $OUTPUT
 
 if [ $? -ne 0 ]; then
-    rm $OUTPUT 2>/dev/null
     errorExit "Auditing of old data for project $PROJECT failed"
-fi
-
-if [ $(stat -c %s "$OUTPUT") -eq 0 ]; then
-    echo "No old data found in project $PROJECT" >&2
-    exit 0
 fi
 
 jq --arg REPORT "$REPORT" '.reportPathname = $REPORT' --indent 4 < $OUTPUT > $REPORT
 
 if [ $? -ne 0 ]; then
-    rm $OUTPUT 2>/dev/null
     errorExit "Formatting of old data report for project $PROJECT failed"
 fi
 
@@ -136,33 +169,41 @@ printf "%-25s%s\n" "Total staging bytes:"  "${TOTAL_STAGING_BYTES_HR}" >> $SUMMA
 printf "%-25s%s\n" "Total staging files:"  "${TOTAL_STAGING_FILES}"    >> $SUMMARY
 printf "\n\n" >> $SUMMARY
 
-# Send email with report summary to project users
+# If there is old data, send email to project users
 
-#RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT"`
-#RECIPIENTS="patrick.stickler@csc.fi" # TEMP HACK
+if [ $TOTAL_BYTES -gt 0 ]; then
 
-if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-    # REMOVE WHEN READY TO EMAIL PROJECT USERS
-    GUIDANCE="/dev/null"
-    RECIPIENTS=""
+    # Normally, we don't send project-specific notices to internal recipients, only in dev environment
+    if [ "$IDA_ENVIRONMENT" != "DEV" ]; then
+        EMAIL_RECIPIENTS="" # clear any internal recipients defined in service configuration
+    fi
+
+    export ROOT
+    export EMAIL_SENDER
+    export EMAIL_RECIPIENTS
+
+    SUBJECT="Notice: Project $PROJECT has files in IDA which haven't been included in any dataset"
+
+    $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
+
+    echo "Notice emailed to project users" >&2
 fi
 
-if [ "$RECIPIENTS" ]; then
-    HOSTNAME=`hostname`
-    SUBJECT="Unpublished data exists in project $PROJECT which is older than the allowed limit"
-    cat "$GUIDANCE" "$SUMMARY" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
-    echo "Report summary emailed to project users" >&2
-fi
-
+# Output results
+    
 if [ "$JSON_OUTPUT" ]; then
     cat $REPORT | jq 'del(.frozenFiles) | del(.stagingFiles)' --indent 4
 else
-    cat $SUMMARY
+    if [ $TOTAL_BYTES -gt 0 ]; then
+        cat $SUMMARY
+    else
+        echo "No old data found in project $PROJECT" >&2
+    fi
 fi
 
 #--
 
-rm $OUTPUT 2>/dev/null
-rm $SUMMARY 2>/dev/null
+rm -f $OUTPUT 2>/dev/null
+rm -f $SUMMARY 2>/dev/null
 
 addToLog "DONE"

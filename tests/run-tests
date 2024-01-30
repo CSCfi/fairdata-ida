@@ -173,6 +173,12 @@ else
         exit 1
     fi
 
+    python -W ignore -m unittest discover -f -q tests.olddata
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     echo ""
     echo "======================================"
     echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="

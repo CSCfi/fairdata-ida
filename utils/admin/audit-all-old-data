@@ -98,11 +98,7 @@ mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
 MAX_AGE=`echo "$1" | sed -e 's/[^0-9]//g'`
 
 if [ -z "$MAX_AGE" ]; then
-    MAX_AGE="$MAX_DATA_AGE_IN_DAYS"
-fi
-
-if [ -z "$MAX_AGE" ]; then
-    MAX_AGE=356
+    MAX_AGE=365
 fi
 
 JSON_OUTPUT=`echo "$2 $3" | grep -- "--json-output"`
@@ -133,12 +129,9 @@ if [ -z "$PROJECTS" ]; then
 fi
 
 if [ "$DEBUG" = "true" ]; then
-    echo "PROJECTS: $PROJECTS"          >&2
-    echo "INTERNAL: $INTERNAL_PROJECTS" >&2
-fi
-
-if [ "$DEBUG" = "true" ]; then
-    echo "EXCLUDED: $EXCLUDED_PROJECTS $INTERNAL_PROJECTS" >&2
+    echo "PROJECTS: $PROJECTS"                   >&2
+    echo "INTERNAL: $INTERNAL_PROJECTS"          >&2
+    echo "EXCLUDED: $OLD_DATA_EXCLUDED_PROJECTS" >&2
 fi
 
 PROJECT_COUNT=0
@@ -155,8 +148,8 @@ for PROJECT in $PROJECTS; do
 
     EXCLUDED=""
 
-    if [ "${EXCLUDED_PROJECTS}${INTERNAL_PROJECTS}" ]; then
-        EXCLUDED=`echo " ${EXCLUDED_PROJECTS} ${INTERNAL_PROJECTS} " | grep " $PROJECT "`
+    if [ "${OLD_DATA_EXCLUDED_PROJECTS}${INTERNAL_PROJECTS}" ]; then
+        EXCLUDED=`echo " ${OLD_DATA_EXCLUDED_PROJECTS} ${INTERNAL_PROJECTS} " | grep " $PROJECT "`
     fi
 
     if [ -z "$EXCLUDED" ]; then
@@ -280,7 +273,7 @@ RECIPIENTS="$EMAIL_RECIPIENTS"
 
 if [ "$RECIPIENTS" ]; then
     HOSTNAME=`hostname`
-    SUBJECT="Unpublished data exists in one or more projects which is older than the allowed limit"
+    SUBJECT="[IDA Service] OLD DATA REPORT"
     cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
     echo "Report summary emailed to internal users" >&2
 fi

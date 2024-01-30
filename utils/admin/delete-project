@@ -211,9 +211,9 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
     fi
     
     if [ $METAX_API_VERSION -ge 3 ]; then
-        $CURL_DELETE -H "$METAX_AUTH_HEADER" "${METAX_API_ROOT_URL}/files?csc_project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR
+        $CURL_DELETE -H "$METAX_AUTH_HEADER" "${METAX_API_ROOT_URL}/files?csc_project=${PROJECT}&storage_service=ida&flush=${FLUSH_RECORDS}" 2>$ERR >/dev/null
     else
-        $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR
+        $CURL_POST $METAX_CREDENTIALS "${METAX_API_RPC_URL}/files/${METAX_ENDPOINT}?project_identifier=${PROJECT}" 2>$ERR >/dev/null
     fi
 
     if [ -s $ERR ]; then
@@ -254,9 +254,14 @@ fi
 
 echo "Sending email to project users..."
 
-$ROOT/utils/admin/email-project-users $PROJECT \
-    "Project ${PROJECT} removed." \
-    "The project ${PROJECT} has been REMOVED from the IDA service and is no longer accessible. If the project had any data in IDA, that data has now been DELETED as agreed with the project manager and/or organization's IDA contact person."
+SUBJECT="Project ${PROJECT} removed" 
+MESSAGE="The project ${PROJECT} has been REMOVED from the IDA service and is no longer accessible. If the project had any data in IDA, that data has now been DELETED as agreed with the project manager and/or organization's IDA contact person. If you have any questions, please contact the CSC Service Desk (servicedesk@csc.fi)."
+
+export ROOT
+export EMAIL_SENDER
+export EMAIL_RECIPIENTS
+
+$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
 
 #--------------------------------------------------------------------------------
 

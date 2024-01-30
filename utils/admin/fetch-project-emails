@@ -46,6 +46,7 @@ export LDAP_BIND_USER
 export LDAP_PASSWORD
 export LDAP_SEARCH_BASE
 
-$ROOT/utils/admin/lib/fetch_project_emails.pl $PROJECT | tr '\n' ',' | sed -e 's/,$//'
+$ROOT/utils/admin/lib/fetch_project_emails.pl $PROJECT \
+    | tr '\n' ',' | sed -e 's/[[:space:]]*//g' | sed -e 's/,,*/,/g' | sed -e 's/^,//' | sed -e 's/,$//'
 
 addToLog "DONE"

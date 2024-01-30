@@ -93,11 +93,11 @@ class TestOldData(unittest.TestCase):
             self.assertEqual(result, 0)
 
 
-    def audit_old_data(self, project):
+    def audit_old_data(self, project, max_days=0):
 
-        print ("(auditing old data for project %s)" % project)
+        print ("(auditing old data for project %s max_days %d)" % (project, max_days))
 
-        cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-old-data %s 0 --json-output" % (self.config["HTTPD_USER"], self.config["ROOT"], project)
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-old-data %s %d --json-output" % (self.config["HTTPD_USER"], self.config["ROOT"], project, max_days)
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode(sys.stdout.encoding).strip()
@@ -186,6 +186,17 @@ class TestOldData(unittest.TestCase):
     def test_olddata(self):
 
         test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
+
+        print("--- Auditing old data in project A and checking results")
+
+        report_data = self.audit_old_data("test_project_a", 9999)
+        self.assertEqual(report_data.get('maxDataAgeInDays'), 9999)
+        self.assertEqual(report_data.get('totalBytes'), 0)
+        self.assertEqual(report_data.get('totalFiles'), 0)
+        self.assertEqual(report_data.get('totalFrozenBytes'), 0)
+        self.assertEqual(report_data.get('totalFrozenFiles'), 0)
+        self.assertEqual(report_data.get('totalStagingBytes'), 0)
+        self.assertEqual(report_data.get('totalStagingFiles'), 0)
 
         print("(freezing folder /testdata/2017-08/Experiment_1)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1"}

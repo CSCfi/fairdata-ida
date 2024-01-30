@@ -121,9 +121,14 @@ if [ "$2" = "--silent" ]; then
     exit
 fi
 
-$ROOT/utils/admin/email-project-users $PROJECT \
-    "Project ${PROJECT} unsuspended." \
-    "The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored."
+SUBJECT="Project ${PROJECT} unsuspended" 
+MESSAGE="The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored. If you have any questions, please contact the CSC Service Desk (servicedesk@csc."
+
+export ROOT
+export EMAIL_SENDER
+export EMAIL_RECIPIENTS
+
+$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
 
 rm -f $ERR 2>/dev/null
 

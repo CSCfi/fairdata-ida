@@ -29,71 +29,92 @@ Usage: $SCRIPT project subject message
        $SCRIPT -h
 "
 
+ERR="/tmp/${SCRIPT}_$$.err"
+
 #--------------------------------------------------------------------------------
-# Initialize script with common definitions
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+# If there is no email sender configured in the environment, we do nothing
 
-if [ -e $INIT_FILE ]
-then
-    . $INIT_FILE
-else
-    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
-    exit 1
+if [ "$EMAIL_SENDER" = "" ]; then
+    echo "Warning: No email sender configured. Exiting." >&2
+    exit
 fi
 
 #--------------------------------------------------------------------------------
 
+PROJECT="$1"
+
+if [ "$PROJECT" = "" ]; then
+    echo "No project specified" >&2
+    exit 1
+fi
+
 SUBJECT="$2"
 
 if [ "$SUBJECT" = "" ]; then
-    errorExit "No email subject specified"
+    echo "No email subject specified" >&2
+    exit 1
 fi
 
 MESSAGE="$3"
 
 if [ "$MESSAGE" = "" ]; then
-    errorExit "No email message specified"
+    echo "No email message specified" >&2
+    exit 1
 fi
 
 #--------------------------------------------------------------------------------
 
-if [ "$EMAIL_SENDER" != "" ]; then
+SUBJECT=`echo "$2" | tr '\n' ' '`
+SUBJECT="[IDA Service] ${SUBJECT}"
 
-    RECIPIENTS=""
-
-    if [ "$LDAP_HOST_URL" != "" ]; then
-        RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails $PROJECT`
-
-        if [ "$RECIPIENTS" = "" ]; then
-            echo "Warning: The project ${PROJECT} has no users!"
-        fi
-    fi
-
-    MESSAGE="${MESSAGE}
-
-If you have any questions, please contact the CSC Service Desk (servicedesk@csc.fi).
+MESSAGE="${MESSAGE}
 
 [This is an automated IDA service message regarding project ${PROJECT} sent to all project users]
 "
 
-echo "From:    ${EMAIL_SENDER}"
-echo "To:      ${RECIPIENTS}"
-echo "BCC:     ${EMAIL_RECIPIENTS}"
-echo "Project: ${PROJECT}"
-echo "Subject: ${SUBJECT}"
-echo "Message: ${MESSAGE}"
+#--------------------------------------------------------------------------------
 
-    sendEmail "${SUBJECT}" "${MESSAGE}" "${RECIPIENTS}" 2>$ERR
+RECIPIENTS=`$ROOT/utils/admin/fetch-project-emails "$PROJECT" 2>/dev/null`
 
-    if [ -s $ERR ]; then
-        MSG=`cat $ERR`
-        addToLog "$MSG"
-        errorExit "Failed to send email to project users!"
-    fi
-
-    echo "Email sent to all project ${PROJECT} users and default internal recipients."
-
+if [ "$DEBUG" = "true" ]; then
+    echo "From:    ${EMAIL_SENDER}"     >&2
+    echo "To:      ${RECIPIENTS}"       >&2
+    echo "BCC:     ${EMAIL_RECIPIENTS}" >&2
+    echo "Project: ${PROJECT}"          >&2
+    echo "Subject: ${SUBJECT}"          >&2
+    echo "Message: ${MESSAGE}"          >&2
 fi
 
-addToLog "DONE"
+# If neither project nor internal recipients are defined, we do nothing
+
+if [ "${RECIPIENTS}${EMAIL_RECIPIENTS}" = "" ]; then
+    echo "No project nor internal recipients. Exiting." >&2
+    exit
+fi
+
+if [ "$RECIPIENTS" = "" ]; then
+    echo "Warning: The project ${PROJECT} has no users!" >&2
+fi
+
+# If internal recipients are defined in configuration, add internal recipients 
+
+if [ "$EMAIL_RECIPIENTS" != "" ]; then
+    if [ "$RECIPIENTS" = "" ]; then
+        RECIPIENTS="$EMAIL_RECIPIENTS"
+    else
+        RECIPIENTS="-b $EMAIL_RECIPIENTS $RECIPIENTS"
+    fi
+fi
+
+echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER -S "replyto=$EMAIL_SENDER" $RECIPIENTS 2>$ERR
+
+if [ -s $ERR ]; then
+    cat $ERR >&2
+    echo "Failed to send email to project users!" >&2
+    exit 1
+fi
+
+echo "Email sent to all project ${PROJECT} users and/or default internal recipients." >&2
+
+rm -f $ERR 2>/dev/null

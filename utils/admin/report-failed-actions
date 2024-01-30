@@ -39,7 +39,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-SUBJECT="Failed Actions Report"
+SUBJECT="[IDA Service] Failed Actions Report"
 
 MESSAGE=`$ROOT/utils/admin/fetch-actions failed`
 
@@ -47,12 +47,15 @@ COUNT=`echo "$MESSAGE" | wc -l`
 
 if [ "$COUNT" -gt 1 ]; then
 
-    sendEmail "${SUBJECT}" "${MESSAGE}" "${EMAIL_RECIPIENTS}" 2>$ERR
+    if [ "$EMAIL_RECIPIENTS" ]; then
 
-    if [ -s $ERR ]; then
-        MSG=`cat $ERR`
-        addToLog "$MSG"
-        errorExit "Failed to send failed action report email"
+        echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER -S "replyto=$EMAIL_SENDER" $EMAIL_RECIPIENTS 2>$ERR
+
+        if [ -s $ERR ]; then
+            MSG=`cat $ERR`
+            addToLog "$MSG"
+            errorExit "Failed to send failed action report email"
+        fi
     fi
 
 fi

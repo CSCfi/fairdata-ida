@@ -125,7 +125,7 @@ def main():
             logging.debug("%s AGE_LIMIT_SECONDS: %s" % (config.PROJECT, config.AGE_LIMIT_SECONDS))
             logging.debug("%s AGE_LIMIT_TIMESTAMP: %s" % (config.PROJECT, config.AGE_LIMIT_TIMESTAMP))
 
-        # Audit the project data, detecting any old data, and output a report
+        # Audit the project data, detecting any old data, and output a report if there is old data
 
         report = audit_old_data(config)
 
@@ -135,7 +135,6 @@ def main():
         logging.info("%s TOTAL_FROZEN_FILES: %d" % (config.PROJECT, report.get('totalFrozenFiles', 0)))
         logging.info("%s TOTAL_STAGING_BYTES: %d" % (config.PROJECT, report.get('totalStagingBytes', 0)))
         logging.info("%s TOTAL_STAGING_FILES: %d" % (config.PROJECT, report.get('totalStagingFiles', 0)))
-
         output_report(config, report)
 
         logging.info("%s DONE" % config.PROJECT)
