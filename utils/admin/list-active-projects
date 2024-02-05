@@ -98,10 +98,10 @@ fi
 for PROJECT in $PROJECTS; do
 
     if [ "$DEBUG" = "true" ]; then
-        echo "$CURL_GET $ADMIN_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${IDA_API_ROOT_URL}/dataChanges/${PROJECT}/last\" | jq -r '.timestamp'"
+        echo "$CURL_GET $ADMIN_CREDENTIALS -H \"$IDA_MODE_HEADER\" \"${IDA_API}/dataChanges/${PROJECT}/last\" | jq -r '.timestamp'"
     fi
 
-    LAST_CHANGE=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${IDA_API_ROOT_URL}/dataChanges/${PROJECT}/last" | jq -r '.timestamp'`
+    LAST_CHANGE=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "${IDA_API}/dataChanges/${PROJECT}/last" | jq -r '.timestamp'`
 
     if [ $? -ne 0 ]; then
         errorExit "Failed to retrieve last data change for project $PROJECT"

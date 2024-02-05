@@ -72,14 +72,6 @@ if [ "$PROJECT" = "" ]; then
 fi
 
 #--------------------------------------------------------------------------------
-# For admin scripts, we want API requests to be directed to localhost, not via
-# the load balancer, which may not be avaialable during maintenance breaks.
-
-if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-    IDA_API_ROOT_URL="https://localhost/apps/ida/api"
-fi
-
-#--------------------------------------------------------------------------------
 # Verify required variables are defined
 
 if [ "$NC_ADMIN_USER" = "" ]; then
@@ -106,8 +98,8 @@ if [ "$STAGING_FOLDER_SUFFIX" = "" ]; then
     errorExit "The variable PROJECT_USER_PREFIX must be defined"
 fi
 
-if [ "$METAX_API_ROOT_URL" = "" ]; then
-    errorExit "The variable METAX_API_ROOT_URL must be defined"
+if [ "$METAX_API" = "" ]; then
+    errorExit "The variable METAX_API must be defined"
 fi
 
 if [ "$METAX_API_VERSION" = "" ]; then
@@ -115,17 +107,17 @@ if [ "$METAX_API_VERSION" = "" ]; then
 fi
 
 if [ $METAX_API_VERSION -lt 3 ]; then
-    if [ "$METAX_API_USER" = "" ]; then
-        errorExit "The variable METAX_API_USER must be defined"
+    if [ "$METAX_USER" = "" ]; then
+        errorExit "The variable METAX_USER must be defined"
     fi
 fi
 
-if [ "$METAX_API_PASS" = "" ]; then
-    errorExit "The variable METAX_API_PASS must be defined"
+if [ "$METAX_PASS" = "" ]; then
+    errorExit "The variable METAX_PASS must be defined"
 fi
 
-if [ "$IDA_API_ROOT_URL" = "" ]; then
-    errorExit "The variable IDA_API_ROOT_URL must be defined"
+if [ "$IDA_API" = "" ]; then
+    errorExit "The variable IDA_API must be defined"
 fi
 
 if [ "$ROOT" = "" ]; then
@@ -175,9 +167,9 @@ PROJECT_USER_CREDENTIALS="-u ${PROJECT_USER}:${PROJECT_USER_PASS}"
 ADMIN_CREDENTIALS="-u ${NC_ADMIN_USER}:${NC_ADMIN_PASS}"
 
 if [ $METAX_API_VERSION -ge 3 ]; then
-    METAX_AUTH_HEADER="Authorization: Token ${METAX_API_PASS}"
+    METAX_AUTH_HEADER="Authorization: Token ${METAX_PASS}"
 else
-    METAX_CREDENTIALS="-u ${METAX_API_USER}:${METAX_API_PASS}"
+    METAX_CREDENTIALS="-u ${METAX_USER}:${METAX_PASS}"
 fi
 
 ERR="/tmp/${SCRIPT}.$$.err"
@@ -192,14 +184,14 @@ if [ "$DEBUG" = "true" ]; then
     echo "DATA_REPLICATION_ROOT        $DATA_REPLICATION_ROOT"
     echo "PROJECT_REPLICATION_ROOT     $PROJECT_REPLICATION_ROOT"
     echo "PROJECT_TRASH_DATA_ROOT      $PROJECT_TRASH_DATA_ROOT"
-    echo "IDA_API_ROOT_URL             $IDA_API_ROOT_URL"
-    echo "METAX_API_ROOT_URL           $METAX_API_ROOT_URL"
+    echo "IDA_API             $IDA_API"
+    echo "METAX_API           $METAX_API"
     echo "METAX_API_VERSION            $METAX_API_VERSION"
     echo "HTTPD_USER                   $HTTPD_USER"
     echo "NC_ADMIN_USER                $NC_ADMIN_USER"
     echo "NC_ADMIN_PASS                $NC_ADMIN_PASS"
-    echo "METAX_API_USER               $METAX_API_USER"
-    echo "METAX_API_PASS               $METAX_API_PASS"
+    echo "METAX_USER               $METAX_USER"
+    echo "METAX_PASS               $METAX_PASS"
     echo "BATCH_ACTION_TOKEN           $BATCH_ACTION_TOKEN"
     echo "OCC                          $OCC"
     echo "EMAIL_SENDER                 $EMAIL_SENDER"

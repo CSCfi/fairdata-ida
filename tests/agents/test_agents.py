@@ -103,15 +103,15 @@ class TestAgents(unittest.TestCase):
 
         # If Metax v3 or later, define authentication header
         if self.config["METAX_API_VERSION"] >= 3:
-            metax_headers = { "Authorization": "Token %s" % self.config["METAX_API_PASS"] }
+            metax_headers = { "Authorization": "Token %s" % self.config["METAX_PASS"] }
         else:
-            metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
+            metax_user = (self.config["METAX_USER"], self.config["METAX_PASS"])
 
         print("--- Freeze Action Postprocessing")
 
         print("Freeze a folder")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -127,7 +127,7 @@ class TestAgents(unittest.TestCase):
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve completed freeze action details")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertIsNotNone(action_data.get("metadata", None))
@@ -135,7 +135,7 @@ class TestAgents(unittest.TestCase):
         self.assertIsNotNone(action_data.get("completed", None))
 
         print("Retrieve frozen file details")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertTrue(len(file_set_data) > 0)
@@ -151,10 +151,10 @@ class TestAgents(unittest.TestCase):
         if self.config["METAX_AVAILABLE"] == 1:
             print("Verify frozen file details accessible from METAX")
             if self.config["METAX_API_VERSION"] >= 3:
-                url = "%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API_ROOT_URL"], file_pid)
+                url = "%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API"], file_pid)
                 response = requests.get(url, headers=metax_headers)
             else:
-                response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_pid), auth=metax_user)
+                response = requests.get("%s/files/%s" % (self.config["METAX_API"], file_pid), auth=metax_user)
             self.assertEqual(response.status_code, 200)
             if self.config["METAX_API_VERSION"] >= 3:
                 metax_file_data = response.json()[0]
@@ -186,7 +186,7 @@ class TestAgents(unittest.TestCase):
 
         print("Unfreeze single frozen file")
         data["pathname"] = "/testdata/2017-08/Experiment_1/test01.dat"
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -202,14 +202,14 @@ class TestAgents(unittest.TestCase):
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve completed unfreeze action details")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertIsNotNone(action_data.get("metadata", None))
         self.assertIsNotNone(action_data.get("completed", None))
 
         print("Retrieve unfrozen file details")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertTrue(len(file_set_data) > 0)
@@ -222,11 +222,11 @@ class TestAgents(unittest.TestCase):
         if self.config["METAX_AVAILABLE"] == 1:
             print("Verify unfrozen file marked as removed in METAX")
             if self.config["METAX_API_VERSION"] >= 3:
-                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API_ROOT_URL"], file_pid), headers=metax_headers)
+                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API"], file_pid), headers=metax_headers)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(len(response.json()), 0)
             else:
-                response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_pid), auth=metax_user)
+                response = requests.get("%s/files/%s" % (self.config["METAX_API"], file_pid), auth=metax_user)
                 self.assertEqual(response.status_code, 404)
 
         # --------------------------------------------------------------------------------
@@ -235,7 +235,7 @@ class TestAgents(unittest.TestCase):
 
         print("Delete single frozen file")
         data["pathname"] = "/testdata/2017-08/Experiment_1/test02.dat"
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API"], headers=ida_headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         action_pid = action_data["pid"]
@@ -249,14 +249,14 @@ class TestAgents(unittest.TestCase):
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Retrieve completed delete action details")
-        response = requests.get("%s/actions/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
+        response = requests.get("%s/actions/%s" % (self.config["IDA_API"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertIsNotNone(action_data.get("metadata", None))
         self.assertIsNotNone(action_data.get("completed", None))
 
         print("Retrieve deleted file details")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_pid), auth=test_user_a, verify=False)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_pid), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertTrue(len(file_set_data) > 0)
@@ -269,11 +269,11 @@ class TestAgents(unittest.TestCase):
         if self.config["METAX_AVAILABLE"] == 1:
             print("Verify deleted file marked as removed in METAX")
             if self.config["METAX_API_VERSION"] >= 3:
-                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API_ROOT_URL"], file_pid), headers=metax_headers)
+                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API"], file_pid), headers=metax_headers)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(len(response.json()), 0)
             else:
-                response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_pid), auth=metax_user)
+                response = requests.get("%s/files/%s" % (self.config["METAX_API"], file_pid), auth=metax_user)
                 self.assertEqual(response.status_code, 404)
 
         # --------------------------------------------------------------------------------
@@ -287,10 +287,10 @@ class TestAgents(unittest.TestCase):
 
         if self.config["METAX_AVAILABLE"] == 1:
             if self.config["METAX_API_VERSION"] >= 3:
-                url = "%s/files?csc_project=test_project_a&storage_service=ida&limit=100" % self.config["METAX_API_ROOT_URL"]
+                url = "%s/files?csc_project=test_project_a&storage_service=ida&limit=100" % self.config["METAX_API"]
                 response = requests.get(url, headers=metax_headers)
             else:
-                url = "%s/files?fields=identifier&storage_service=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=test_project_a&limit=100" % self.config["METAX_API_ROOT_URL"]
+                url = "%s/files?fields=identifier&storage_service=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=test_project_a&limit=100" % self.config["METAX_API"]
                 response = requests.get(url, auth=metax_user)
             self.assertEqual(response.status_code, 200)
             file_data = response.json()
@@ -298,26 +298,26 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 1")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_1_data = response.json()
 
         print("Update frozen file 1 record to remove replicated timestamp")
         data = {"replicated": "null"}
-        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_1_data["pid"]), json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/files/%s" % (self.config["IDA_API"], file_1_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertIsNone(file_data.get("replicated", None))
 
         print("Retrieve file details from already frozen file 2")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_2_data = response.json()
 
         print("Update frozen file 2 record to set both size and checksum to null in IDA")
         data = {"size": "null", "checksum": "null"}
-        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_2_data["pid"]), json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/files/%s" % (self.config["IDA_API"], file_2_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_2_data = response.json()
         # Undefined file size should result in default value of 0
@@ -326,13 +326,13 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 3")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test03.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_3_data = response.json()
 
         print("Update frozen file 3 record to set size to 999 and checksum to 'sha256:abcdef' in IDA")
         data = {"size": 999, "checksum": "sha256:abcdef"}
-        response = requests.post("%s/files/%s" % (self.config["IDA_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/files/%s" % (self.config["IDA_API"], file_3_data["pid"]), json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_3_data = response.json()
         self.assertEqual(file_3_data["size"], 999)
@@ -349,10 +349,10 @@ class TestAgents(unittest.TestCase):
                     "size": 999,
                     "checksum": "sha256:abcdef"
                 }]
-                response = requests.post("%s/files/patch-many" % self.config["METAX_API_ROOT_URL"], headers=metax_headers, json=data)
+                response = requests.post("%s/files/patch-many" % self.config["METAX_API"], headers=metax_headers, json=data)
             else:
                 data = {"byte_size": 999, "checksum": { "algorithm": "SHA-256", "value": "abcdef"} }
-                response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=metax_user)
+                response = requests.patch("%s/files/%s" % (self.config["METAX_API"], file_3_data["pid"]), json=data, auth=metax_user)
             self.assertEqual(response.status_code, 200)
             #print(str(response.content))
             if self.config["METAX_API_VERSION"] >= 3:
@@ -368,7 +368,7 @@ class TestAgents(unittest.TestCase):
             if self.config["METAX_API_VERSION"] < 3:
                 print("Update frozen file 3 record to simulate legacy metadata stored in METAX")
                 data = { "file_characteristics_extension": { "foo": "bar" } }
-                response = requests.patch("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_3_data["pid"]), json=data, auth=metax_user)
+                response = requests.patch("%s/files/%s" % (self.config["METAX_API"], file_3_data["pid"]), json=data, auth=metax_user)
                 self.assertEqual(response.status_code, 200)
                 metax_file_data = response.json()
                 self.assertEqual(metax_file_data["file_characteristics_extension"]["foo"], "bar")
@@ -380,7 +380,7 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 4")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test04.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_4_data = response.json()
 
@@ -391,7 +391,7 @@ class TestAgents(unittest.TestCase):
 
         print("Retrieve file details from already frozen file 5")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test05.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_5_data = response.json()
         self.assertEqual(file_5_data.get('size', None), 3728)
@@ -415,21 +415,21 @@ class TestAgents(unittest.TestCase):
         self.assertEqual(result, 0)
 
         print("Repair project")
-        response = requests.post("%s/repair?project=test_project_a" % (self.config["IDA_API_ROOT_URL"]), headers=ida_headers, auth=pso_user_a, verify=False)
+        response = requests.post("%s/repair?project=test_project_a" % (self.config["IDA_API"]), headers=ida_headers, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
 
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_set_data = response.json()
         self.assertEqual(len(file_set_data), 23)
 
         print("Verify file details from post-repair frozen file 1 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 446)
@@ -441,7 +441,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from post-repair frozen file 2 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 1531)
@@ -450,7 +450,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from post-repair frozen file 3 are repaired in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test03.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 2263)
@@ -463,9 +463,9 @@ class TestAgents(unittest.TestCase):
 
             print("Verify file details from post-repair frozen file 3 are repaired in METAX")
             if self.config["METAX_API_VERSION"] >= 3:
-                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API_ROOT_URL"], file_data["pid"]), headers=metax_headers)
+                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API"], file_data["pid"]), headers=metax_headers)
             else:
-                response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_data["pid"]), auth=metax_user)
+                response = requests.get("%s/files/%s" % (self.config["METAX_API"], file_data["pid"]), auth=metax_user)
             self.assertEqual(response.status_code, 200)
             if self.config["METAX_API_VERSION"] >= 3:
                 metax_file_data = response.json()[0]
@@ -483,7 +483,7 @@ class TestAgents(unittest.TestCase):
 
         print("Verify file details from post-repair file manually moved to frozen space are defined in IDA")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2/baseline/test01.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_data["size"], 446)
@@ -493,7 +493,7 @@ class TestAgents(unittest.TestCase):
 
         print("Attempt to retrieve file details from post-repair file manually removed from frozen space")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test04.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s?includeInactive=true" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s?includeInactive=true" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertIsNotNone(file_data.get("cleared", None))
@@ -502,7 +502,7 @@ class TestAgents(unittest.TestCase):
 
             print("Verify correct number of frozen files active in METAX")
             if self.config["METAX_API_VERSION"] >= 3:
-                url = "%s/files?csc_project=test_project_a&storage_service=ida&limit=100" % self.config["METAX_API_ROOT_URL"]
+                url = "%s/files?csc_project=test_project_a&storage_service=ida&limit=100" % self.config["METAX_API"]
                 response = requests.get(url, headers=metax_headers)
             else:
                 response = requests.get(url, auth=metax_user)
@@ -512,16 +512,16 @@ class TestAgents(unittest.TestCase):
 
             print("Verify manually removed frozen file marked as removed in METAX")
             if self.config["METAX_API_VERSION"] >= 3:
-                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API_ROOT_URL"], file_4_data["pid"]), headers=metax_headers)
+                response = requests.get("%s/files?storage_service=ida&storage_identifier=%s&pagination=false" % (self.config["METAX_API"], file_4_data["pid"]), headers=metax_headers)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(len(response.json()), 0)
             else:
-                response = requests.get("%s/files/%s" % (self.config["METAX_API_ROOT_URL"], file_4_data["pid"]), auth=metax_user)
+                response = requests.get("%s/files/%s" % (self.config["METAX_API"], file_4_data["pid"]), auth=metax_user)
                 self.assertEqual(response.status_code, 404)
 
         print("Verify file details from already frozen file 5 remain unchanged")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test05.dat"}
-        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API_ROOT_URL"], data["project"]), json=data, auth=test_user_a, verify=False)
+        response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         file_data = response.json()
         self.assertEqual(file_5_data['pathname'], file_data['pathname'])

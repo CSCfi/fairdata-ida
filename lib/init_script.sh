@@ -112,7 +112,7 @@ umask 007
 #--------------------------------------------------------------------------------
 # Determine the version of Metax being used
 
-METAX_API_VERSION=$(echo "$METAX_API_ROOT_URL" | grep '/rest/')
+METAX_API_VERSION=$(echo "$METAX_API" | grep '/rest/')
 
 if [ -n "$METAX_API_VERSION" ]; then
     METAX_API_VERSION=1

@@ -73,9 +73,9 @@ find $PROJECT_ROOT_FOLDER -exec touch {} \;
 
 echo "Updating frozen timestamps in IDA for all frozen files in project $PROJECT"
 
-PIDS=`$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${IDA_API_ROOT_URL}/inventory/${PROJECT}" \
+PIDS=`$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${IDA_API}/inventory/${PROJECT}" \
     | tr '\n' ' ' | tr ',' '\n' | grep '"pid":' | sed -e 's/^.*\"pid\": *\"//' | sed -e 's/\".*$//' | tr '\n' ' '`
 
 for PID in $PIDS; do
-    $CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "Content-Type: application/json" -d "{ \"frozen\": \"${START}\" }" "${IDA_API_ROOT_URL}/files/${PID}" > /dev/null
+    $CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "Content-Type: application/json" -d "{ \"frozen\": \"${START}\" }" "${IDA_API}/files/${PID}" > /dev/null
 done

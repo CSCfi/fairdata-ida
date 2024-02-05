@@ -119,200 +119,200 @@ class TestChanges(unittest.TestCase):
         # --------------------------------------------------------------------------------
 
         print("Attempt to retrieve initialization timestamp for non-existent project")
-        response = requests.get("%s/dataChanges/not_a_project/init" % self.config["IDA_API_ROOT_URL"], auth=admin_user, verify=False)
+        response = requests.get("%s/dataChanges/not_a_project/init" % self.config["IDA_API"], auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 404)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Unknown project: not_a_project")
 
         print("Attempt to retrieve last change timestamp for non-existent project")
-        response = requests.get("%s/dataChanges/not_a_project/last" % self.config["IDA_API_ROOT_URL"], auth=admin_user, verify=False)
+        response = requests.get("%s/dataChanges/not_a_project/last" % self.config["IDA_API"], auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 404)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Unknown project: not_a_project")
 
         print("Attempt to retrieve initialization timestamp for project with invalid credentials")
-        response = requests.get("%s/dataChanges/test_project_a/init" % self.config["IDA_API_ROOT_URL"], auth=not_a_user, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/init" % self.config["IDA_API"], auth=not_a_user, verify=False)
         self.assertEqual(response.status_code, 401)
 
         print("Attempt to retrieve last change timestamp for project with invalid credentials")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=not_a_user, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=not_a_user, verify=False)
         self.assertEqual(response.status_code, 401)
 
         print("Attempt to report change with missing project parameter")
         data = {"user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"project\" not specified or is empty string")
 
         print("Attempt to report change with null project parameter")
         data = {"project": None, "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"project\" not specified or is empty string")
 
         print("Attempt to report change with empty string project parameter")
         data = {"project": "", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"project\" not specified or is empty string")
 
         print("Attempt to report change with non-existent project")
         data = {"project": "not_a_project", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=admin_user, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=admin_user, verify=False)
         self.assertEqual(response.status_code, 404)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Unknown project: not_a_project")
 
         print("Attempt to report change with missing user parameter")
         data = {"project": "test_project_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"user\" not specified or is empty string")
 
         print("Attempt to report change with null user parameter")
         data = {"project": "test_project_a", "user": None, "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"user\" not specified or is empty string")
 
         print("Attempt to report change with empty string user parameter")
         data = {"project": "test_project_a", "user": "", "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"user\" not specified or is empty string")
 
         print("Attempt to report change with empty string timestamp parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": "", "change": "add", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Input string parameter \"timestamp\" is an empty string")
 
         print("Attempt to report change with invalid timestamp parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": "2023-01-01T01:01:01+03:00", "change": "add", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Specified timestamp \"2023-01-01T01:01:01+03:00\" is invalid")
 
         print("Attempt to report change with missing change parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"change\" not specified or is empty string")
 
         print("Attempt to report change with null change parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": None, "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"change\" not specified or is empty string")
 
         print("Attempt to report change with empty string change parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"change\" not specified or is empty string")
 
         print("Attempt to report change with invalid change parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "invalid", "pathname": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Invalid change: invalid")
 
         print("Attempt to report change with missing pathname parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "target": "/test_project_a/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"pathname\" not specified or is empty string")
 
         print("Attempt to report change with null pathname parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": None}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"pathname\" not specified or is empty string")
 
         print("Attempt to report change with empty string pathname parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": ""}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Required string parameter \"pathname\" not specified or is empty string")
 
         print("Attempt to report change with invalid pathname parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": "/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Pathname must begin with staging or frozen root folder")
 
         print("Attempt to report change with missing target parameter for move change")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a+/old/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Target must be specified for move change")
 
         print("Attempt to report change with null target parameter for copy change")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "copy", "pathname": "/test_project_a+/old/pathname", "target": None}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Target must be specified for copy change")
 
         print("Attempt to report change with empty string target parameter for rename change")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "rename", "pathname": "/test_project_a+/old/pathname", "target": ""}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Target must be specified for rename change")
 
         print("Attempt to report change with invalid target parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a/old/pathname", "target": "/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Target must begin with staging or frozen root folder")
 
         print("Attempt to report change with empty string mode parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a+/new/pathname", "mode": ""}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Input string parameter \"mode\" is an empty string")
 
         print("Attempt to report change with invalid mode parameter")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "add", "pathname": "/test_project_a+/new/pathname", "mode": "invalid"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Invalid mode: invalid")
 
         print("Attempt to report change with invalid credentials")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname", "mode": "cli"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=not_a_user, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=not_a_user, verify=False)
         self.assertEqual(response.status_code, 401)
 
         print("Attempt to report change with insufficient credentials")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname", "mode": "cli"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 403)
 
         # --------------------------------------------------------------------------------
 
         print("Query IDA for project initialization details")
-        response = requests.get("%s/dataChanges/test_project_a/init" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/init" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         initDetails = response.json()
         self.assertIsNotNone(initDetails)
@@ -325,7 +325,7 @@ class TestChanges(unittest.TestCase):
         self.assertEqual(initDetails.get('mode'), 'system')
 
         print("Query IDA for last data change details")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertIsNotNone(change_details)
@@ -338,7 +338,7 @@ class TestChanges(unittest.TestCase):
         self.assertIsNotNone(change_details.get('mode'))
 
         print("Query IDA for file inventory for project test_project_a and verify last change reported in inventory")
-        response = requests.get("%s/inventory/test_project_a" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/inventory/test_project_a" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
         self.assertEqual(inventory.get('project'), 'test_project_a')
@@ -355,7 +355,7 @@ class TestChanges(unittest.TestCase):
 
         print("Report change with both timestamp and mode")
         data = {"project": "test_project_a", "user": "test_user_a", "timestamp": self.config['START'], "change": "move", "pathname": "/test_project_a/old/pathname", "target": "/test_project_a/new/pathname", "mode": "cli"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertIsNotNone(change_details)
@@ -368,7 +368,7 @@ class TestChanges(unittest.TestCase):
         self.assertEqual(change_details.get('mode'), 'cli')
 
         print("Query IDA for last recorded data change and verify last change matches just reported change")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertIsNotNone(change_details)
@@ -382,7 +382,7 @@ class TestChanges(unittest.TestCase):
 
         print("Report change without either timestamp or mode")
         data = {"project": "test_project_a", "user": "test_user_a", "change": "copy", "pathname": "/test_project_a+/old/pathname", "target": "/test_project_a+/new/pathname"}
-        response = requests.post("%s/dataChanges" % self.config["IDA_API_ROOT_URL"], json=data, auth=pso_user_a, verify=False)
+        response = requests.post("%s/dataChanges" % self.config["IDA_API"], json=data, auth=pso_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertIsNotNone(change_details)
@@ -396,7 +396,7 @@ class TestChanges(unittest.TestCase):
         self.assertEqual(change_details.get('mode'), 'api')
 
         print("Query IDA for last recorded data change and verify last change matches just reported change")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertIsNotNone(change_details)
@@ -413,7 +413,7 @@ class TestChanges(unittest.TestCase):
 
         print("Freezing folder /testdata/2017-08/Experiment_1")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -424,7 +424,7 @@ class TestChanges(unittest.TestCase):
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Query IDA for last recorded data change and verify last change matches freeze action")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertEqual(change_details.get('project'), 'test_project_a')
@@ -437,7 +437,7 @@ class TestChanges(unittest.TestCase):
 
         print("Unfreezing frozen file /testdata/2017-08/Experiment_1/test01.dat")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test01.dat"}
-        response = requests.post("%s/unfreeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/unfreeze" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "unfreeze")
@@ -448,7 +448,7 @@ class TestChanges(unittest.TestCase):
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Query IDA for last recorded data change and verify last change matches unfreeze action")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertEqual(change_details.get('project'), 'test_project_a')
@@ -461,7 +461,7 @@ class TestChanges(unittest.TestCase):
 
         print("Deleting frozen file /testdata/2017-08/Experiment_1/test02.dat")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/test02.dat"}
-        response = requests.post("%s/delete" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/delete" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         action_data = response.json()
         self.assertEqual(action_data["action"], "delete")
@@ -472,7 +472,7 @@ class TestChanges(unittest.TestCase):
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Query IDA for last recorded data change and verify last change matches delete action")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API_ROOT_URL"], auth=test_user_a, verify=False)
+        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertEqual(change_details.get('project'), 'test_project_a')

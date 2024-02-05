@@ -64,7 +64,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-URL="$IDA_API_ROOT_URL/dataChanges/${PROJECT}?limit=$LIMIT"
+URL="$IDA_API/dataChanges/${PROJECT}?limit=$LIMIT"
 
 if [ "$DEBUG" = "true" ]
 then

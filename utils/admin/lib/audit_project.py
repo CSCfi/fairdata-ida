@@ -131,7 +131,7 @@ def main():
         else:
             config.LOG_LEVEL = logging.INFO
 
-        if '/rest/' in config.METAX_API_ROOT_URL:
+        if '/rest/' in config.METAX_API:
             config.METAX_API_VERSION = 1
         else:
             config.METAX_API_VERSION = 3
@@ -147,7 +147,7 @@ def main():
             sys.stderr.write("DBHOST:        %s\n" % config.DBHOST)
             sys.stderr.write("DBROUSER:      %s\n" % config.DBROUSER)
             sys.stderr.write("DBNAME:        %s\n" % config.DBNAME)
-            sys.stderr.write("METAX_API:     %s\n" % config.METAX_API_ROOT_URL)
+            sys.stderr.write("METAX_API:     %s\n" % config.METAX_API)
             sys.stderr.write("METAX_VERSION: %s\n" % str(config.METAX_API_VERSION))
             sys.stderr.write("ARGS#:         %d\n" % argc)
             sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
@@ -322,14 +322,14 @@ def add_metax_files(nodes, counts, config):
 
     if config.METAX_API_VERSION >= 3:
         url_base = "%s/files?csc_project=%s&storage_service=ida&frozen__gt=%s&limit=%d" % (
-            config.METAX_API_ROOT_URL,
+            config.METAX_API,
             config.PROJECT,
             config.SINCE,
             config.MAX_FILE_COUNT
         )
     else:
         url_base = "%s/files?file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (
-            config.METAX_API_ROOT_URL,
+            config.METAX_API,
             config.PROJECT,
             config.MAX_FILE_COUNT
         )
@@ -347,10 +347,10 @@ def add_metax_files(nodes, counts, config):
         try:
 
             if config.METAX_API_VERSION >= 3:
-                headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+                headers = { "Authorization": "Token %s" % config.METAX_PASS }
                 response = requests.get(url, headers=headers)
             else:
-                auth = (config.METAX_API_USER, config.METAX_API_PASS)
+                auth = (config.METAX_USER, config.METAX_PASS)
                 response = requests.get(url, auth=auth)
 
             if response.status_code != 200:

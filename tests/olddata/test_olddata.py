@@ -67,9 +67,9 @@ class TestOldData(unittest.TestCase):
 
         # If Metax v3 or later, define authentication header
         if self.config["METAX_API_VERSION"] >= 3:
-            self.metax_headers = { 'Authorization': 'Token %s' % self.config["METAX_API_PASS"] }
+            self.metax_headers = { 'Authorization': 'Token %s' % self.config["METAX_PASS"] }
         else:
-            self.metax_user = (self.config["METAX_API_USER"], self.config["METAX_API_PASS"])
+            self.metax_user = (self.config["METAX_USER"], self.config["METAX_PASS"])
 
         # ensure we start with a fresh setup of projects, user accounts, and data
         cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts %s/tests/utils/double-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
@@ -200,7 +200,7 @@ class TestOldData(unittest.TestCase):
 
         print("(freezing folder /testdata/2017-08/Experiment_1)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -208,14 +208,14 @@ class TestOldData(unittest.TestCase):
         self.assertEqual(action_data["pathname"], data["pathname"])
 
         print("Retrieve frozen file details for all files associated with freeze action of folder /2017-08/Experiment_1")
-        response = requests.get("%s/files/action/%s" % (self.config["IDA_API_ROOT_URL"], action_data["pid"]), auth=test_user_a, verify=False)
+        response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200, response.content.decode(sys.stdout.encoding))
         experiment_1_files = response.json()
         self.assertEqual(len(experiment_1_files), 13)
 
         print("(freezing folder /testdata/2017-08/Experiment_2)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_2"}
-        response = requests.post("%s/freeze" % self.config["IDA_API_ROOT_URL"], json=data, auth=test_user_a, verify=False)
+        response = requests.post("%s/freeze" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "freeze")
@@ -239,12 +239,12 @@ class TestOldData(unittest.TestCase):
                     }
                 ]
             }
-            response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], headers=self.metax_headers, json=dataset_data)
+            response = requests.post("%s/datasets" % self.config['METAX_API'], headers=self.metax_headers, json=dataset_data)
         else:
             dataset_data = DATASET_TEMPLATE_V1
             dataset_data['research_dataset']['title'] = DATASET_TITLES[0]
             dataset_data['research_dataset']['files'] = build_dataset_files(self, experiment_1_files)
-            response = requests.post("%s/datasets" % self.config['METAX_API_ROOT_URL'], json=dataset_data, auth=self.metax_user)
+            response = requests.post("%s/datasets" % self.config['METAX_API'], json=dataset_data, auth=self.metax_user)
         self.assertEqual(response.status_code, 201, response.content.decode(sys.stdout.encoding))
 
         print("--- Auditing old data in project A and checking results")

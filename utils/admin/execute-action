@@ -83,7 +83,7 @@ esac
 
 ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
 
-REQUEST_URL="https://localhost/apps/ida/api/${ACTION}?project=${PROJECT}&pathname=${ENCODED_PATHNAME}"
+REQUEST_URL="${IDA_API}/${ACTION}?project=${PROJECT}&pathname=${ENCODED_PATHNAME}"
 
 echo "Executing ${ACTION} action for pathname ${PATHNAME} in project ${PROJECT}..."
 

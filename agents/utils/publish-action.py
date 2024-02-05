@@ -123,7 +123,7 @@ def _rabbitmq_api_call(method, resource_url, data=None, error_msg=None, success_
 
 def _get_action_from_ida(pid):
     response = requests.get(
-        '%s/actions/%s' % (uida_conf_vars['IDA_API_ROOT_URL'], pid),
+        '%s/actions/%s' % (uida_conf_vars['IDA_API'], pid),
         headers=HEADERS,
         auth=(uida_conf_vars['NC_ADMIN_USER'], uida_conf_vars['NC_ADMIN_PASS'])
     )

@@ -81,8 +81,6 @@ git pull
 ./reveal_configs.sh
 ```
 
-Answer 'Y' to all prompts.
-
 ## 3 Pull and build the docker images
 
 Ensure you are in the master branch of the fairdata-ida cloned repository and that it is fully up-to-date, and permissions are open:
@@ -242,7 +240,7 @@ docker stack deploy -c ida/docker-compose.dev.yml fairdata-conf
 cd ~/dev/fairdata-ida
 chmod -R g+rwX,o+rX .
 docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.yml fairdata-dev
-sleep 3
+sleep 5
 docker service ls
 ```
 

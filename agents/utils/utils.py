@@ -164,9 +164,9 @@ def load_variables_from_uida_conf_files():
         'OCC': server_conf.OCC,
         'DEBUG': server_conf.DEBUG,
         'IDA_ENVIRONMENT': server_conf.IDA_ENVIRONMENT,
-        'IDA_API_ROOT_URL': server_conf.IDA_API_ROOT_URL,
-        'METAX_API_ROOT_URL': server_conf.METAX_API_ROOT_URL,
-        'METAX_API_PASS': server_conf.METAX_API_PASS,
+        'IDA_API': server_conf.IDA_API,
+        'METAX_API': server_conf.METAX_API,
+        'METAX_PASS': server_conf.METAX_PASS,
         'METAX_AVAILABLE': server_conf.METAX_AVAILABLE,
         'NC_ADMIN_USER': server_conf.NC_ADMIN_USER,
         'NC_ADMIN_PASS': server_conf.NC_ADMIN_PASS,
@@ -188,7 +188,7 @@ def load_variables_from_uida_conf_files():
         'MAX_FILE_COUNT':  service_constants.MAX_FILE_COUNT
     }
 
-    if '/rest/' in server_conf.METAX_API_ROOT_URL:
+    if '/rest/' in server_conf.METAX_API:
         uida_conf_vars['METAX_API_VERSION'] = 1
     else:
         uida_conf_vars['METAX_API_VERSION'] = 3
@@ -198,8 +198,8 @@ def load_variables_from_uida_conf_files():
     except:
         uida_conf_vars['RABBIT_PROTOCOL'] = 'http'
 
-    if hasattr(server_conf, 'METAX_API_USER'):
-        uida_conf_vars['METAX_API_USER'] = server_conf.METAX_API_USER
+    if hasattr(server_conf, 'METAX_USER'):
+        uida_conf_vars['METAX_USER'] = server_conf.METAX_USER
 
     if hasattr(server_conf, 'METAX_FILE_STORAGE_ID'):
         uida_conf_vars['METAX_FILE_STORAGE_ID'] = server_conf.METAX_FILE_STORAGE_ID

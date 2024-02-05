@@ -86,7 +86,7 @@ def main():
         else:
             config.LOG_LEVEL = logging.INFO
 
-        if '/rest/' in config.METAX_API_ROOT_URL:
+        if '/rest/' in config.METAX_API:
             config.METAX_API_VERSION = 1
         else:
             config.METAX_API_VERSION = 3
@@ -116,7 +116,7 @@ def main():
             logging.debug("%s DBPORT: %s" % (config.PROJECT, config.DBPORT))
             logging.debug("%s DBROUSER: %s" % (config.PROJECT, config.DBROUSER))
             logging.debug("%s DBNAME: %s" % (config.PROJECT, config.DBNAME))
-            logging.debug("%s METAX_API: %s" % (config.PROJECT, config.METAX_API_ROOT_URL))
+            logging.debug("%s METAX_API: %s" % (config.PROJECT, config.METAX_API))
             logging.debug("%s METAX_VERSION: %s" % (config.PROJECT, str(config.METAX_API_VERSION)))
             logging.debug("%s ARGS#: %d" % (config.PROJECT, argc))
             logging.debug("%s ARGS: %s" % (config.PROJECT, str(sys.argv)))
@@ -359,18 +359,18 @@ def get_metax_published_file_pathnames(config):
 
     if config.METAX_API_VERSION >= 3:
         url_base = "%s/files?csc_project=%s&storage_service=ida&limit=%d" % (
-            config.METAX_API_ROOT_URL,
+            config.METAX_API,
             config.PROJECT,
             config.MAX_FILE_COUNT
         )
-        headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+        headers = { "Authorization": "Token %s" % config.METAX_PASS }
     else:
         url_base = "%s/files?file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (
-            config.METAX_API_ROOT_URL,
+            config.METAX_API,
             config.PROJECT,
             config.MAX_FILE_COUNT
         )
-        metax_user = (config.METAX_API_USER, config.METAX_API_PASS)
+        metax_user = (config.METAX_USER, config.METAX_PASS)
 
     offset = 0
     done = False # we are done when Metax returns less than the specified limit of files
@@ -428,12 +428,12 @@ def get_metax_published_file_pathnames(config):
         try:
 
             if config.METAX_API_VERSION >= 3:
-                url = '%s/files/datasets?storage_service=ida&relations=true' % config.METAX_API_ROOT_URL
+                url = '%s/files/datasets?storage_service=ida&relations=true' % config.METAX_API
                 if config.DEBUG_VERBOSE:
                     logging.debug("%s QUERY URL: %s" % (config.PROJECT, url))
                 response = requests.post(url, headers=headers, json=metax_project_file_identifiers)
             else:
-                url = '%s/files/datasets?keys=files' % config.METAX_API_ROOT_URL
+                url = '%s/files/datasets?keys=files' % config.METAX_API
                 if config.DEBUG_VERBOSE:
                     logging.debug("%s QUERY URL: %s" % (config.PROJECT, url))
                 response = requests.post(url, auth=metax_user, json=metax_project_file_identifiers)

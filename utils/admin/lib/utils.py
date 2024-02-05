@@ -60,8 +60,8 @@ def load_configuration(filesystem_pathname):
 
     # Define Metax version if Metax URL defined
 
-    if config.METAX_API_ROOT_URL:
-        if '/rest/' in config.METAX_API_ROOT_URL:
+    if config.METAX_API:
+        if '/rest/' in config.METAX_API:
             config.METAX_API_VERSION = 1
         else:
             config.METAX_API_VERSION = 3

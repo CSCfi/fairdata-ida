@@ -59,7 +59,7 @@ ACTION="$2"
 
 ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
 
-REQUEST_URL="$IDA_API_ROOT_URL/clear/${ACTION}?token=${BATCH_ACTION_TOKEN}"
+REQUEST_URL="$IDA_API/clear/${ACTION}?token=${BATCH_ACTION_TOKEN}"
 
 echo "Clearing action ${ACTION} in project ${PROJECT}..."
 

@@ -58,7 +58,7 @@ FILE="$1"
 
 #--------------------------------------------------------------------------------
 
-URL="${METAX_API_ROOT_URL}/files/${FILE}"
+URL="${METAX_API}/files/${FILE}"
 
 if [ $METAX_API_VERSION -ge 3 ]; then
     OUT=`$CURL_DELETE -H "$METAX_AUTH_HEADER" "${URL}" 2>$ERR`

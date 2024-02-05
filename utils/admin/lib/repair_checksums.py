@@ -48,18 +48,14 @@ def main():
         if argc != 3:
             raise Exception('Invalid number of arguments')
     
-        # Load service configuration and constants, and add command arguments
+        # Load service configuration, and add command arguments
         # and global values needed for auditing
 
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        if config.IDA_API_ROOT_URL.startswith('https://localhost/'):
-            config.VERIFY_SSL=False
-        else:
-            config.VERIFY_SSL=True
-
-        config.DEBUG = True # TEMP HACK
+        config.VERIFY_SSL = True
+        config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
 
         # Initialize logging using UTC timestamps
 
@@ -168,7 +164,7 @@ def main():
 
 def update_checksum_in_nextcloud(config, pathname, checksum):
 
-    url = "%s/repairCacheChecksum" % config.IDA_API_ROOT_URL
+    url = "%s/repairCacheChecksum" % config.IDA_API
     data = { "pathname": pathname, "checksum": checksum }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
@@ -189,7 +185,7 @@ def update_checksum_in_nextcloud(config, pathname, checksum):
 
 def update_checksum_in_ida(config, pathname, file_pid, checksum):
 
-    url = "%s/files/%s" % (config.IDA_API_ROOT_URL, file_pid)
+    url = "%s/files/%s" % (config.IDA_API, file_pid)
     data = { 'checksum': checksum }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
@@ -211,14 +207,14 @@ def update_checksum_in_ida(config, pathname, file_pid, checksum):
 def update_checksum_in_metax(config, pathname, file_pid, checksum):
 
     if config.METAX_API_VERSION >= 3:
-        url = "%s/files/patch-many" % config.METAX_API_ROOT_URL
+        url = "%s/files/patch-many" % config.METAX_API
         data = [{ "storage_service": "ida", "storage_identifier": file_pid, "checksum": "sha256:%s" % checksum }]
-        headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+        headers = { "Authorization": "Token %s" % config.METAX_PASS }
         response = requests.post(url, headers=headers, json=data)
     else:
-        url = "%s/files/%s" % (config.METAX_API_ROOT_URL, file_pid)
+        url = "%s/files/%s" % (config.METAX_API, file_pid)
         data = { "checksum": { "algorithm": "SHA-256", "value": checksum, "checked": config.CHECKSUMS_CHECKED } }
-        auth = ( config.METAX_API_USER, config.METAX_API_PASS )
+        auth = ( config.METAX_USER, config.METAX_PASS )
         response = requests.patch(url, auth=auth, json=data)
 
     if response.status_code < 200 or response.status_code > 299:

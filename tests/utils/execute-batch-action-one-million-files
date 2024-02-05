@@ -168,7 +168,7 @@ MAX_SET_COUNT=`echo "$ONE_MILLION_FILE_COUNT / 5000" | bc`
 while [ $MAX_SET_COUNT -gt 0 ]; do
     echo -n "."
 
-    REQUEST_URL="$IDA_API_ROOT_URL/${ACTION}?project=${PROJECT}&pathname=/testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT}&token=${BATCH_ACTION_TOKEN}"
+    REQUEST_URL="$IDA_API/${ACTION}?project=${PROJECT}&pathname=/testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT}&token=${BATCH_ACTION_TOKEN}"
     echo "Executing ${ACTION} action for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project ${PROJECT}..."
 
     # NOTE: The X-SIMULATE-AGENTS header is only used by automated testing, to skip

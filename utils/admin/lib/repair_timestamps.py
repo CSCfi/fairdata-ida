@@ -55,11 +55,7 @@ def main():
 
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
-
-        if config.IDA_API_ROOT_URL.startswith('https://localhost/'):
-            config.VERIFY_SSL=False
-        else:
-            config.VERIFY_SSL=True
+        config.VERIFY_SSL = True
 
         config.HEADERS = { 'IDA-Mode': 'System' }
 
@@ -195,7 +191,7 @@ def get_frozen_file_pid(config, node):
 
 def update_nextcloud_modified_timestamp(config, pathname, timestamp):
 
-    url = "%s/repairNodeTimestamp" % config.IDA_API_ROOT_URL
+    url = "%s/repairNodeTimestamp" % config.IDA_API
     data = { "pathname": pathname, "modified": timestamp }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
@@ -216,7 +212,7 @@ def update_nextcloud_modified_timestamp(config, pathname, timestamp):
 
 def update_ida_modified_timestamp(config, pathname, file_pid, timestamp):
 
-    url = "%s/files/%s" % (config.IDA_API_ROOT_URL, file_pid)
+    url = "%s/files/%s" % (config.IDA_API, file_pid)
     data = { "modified": timestamp }
     auth = ("%s%s" % (config.PROJECT_USER_PREFIX, config.PROJECT), config.PROJECT_USER_PASS)
 
@@ -238,14 +234,14 @@ def update_ida_modified_timestamp(config, pathname, file_pid, timestamp):
 def update_metax_timestamp(config, field_name, pathname, file_pid, timestamp):
 
     if config.METAX_API_VERSION >= 3:
-        url = "%s/files/patch-many" % config.METAX_API_ROOT_URL
+        url = "%s/files/patch-many" % config.METAX_API
         data = [{ "storage_service": "ida", "storage_identifier": file_pid, field_name: timestamp }]
-        headers = { "Authorization": "Token %s" % config.METAX_API_PASS }
+        headers = { "Authorization": "Token %s" % config.METAX_PASS }
         response = requests.post(url, headers=headers, json=data)
     else:
-        url = "%s/files/%s" % (config.METAX_API_ROOT_URL, file_pid)
+        url = "%s/files/%s" % (config.METAX_API, file_pid)
         data = { field_name: timestamp }
-        auth = ( config.METAX_API_USER, config.METAX_API_PASS )
+        auth = ( config.METAX_USER, config.METAX_PASS )
         response = requests.patch(url, auth=auth, headers=config.HEADERS, json=data)
 
     if response.status_code < 200 or response.status_code > 299:

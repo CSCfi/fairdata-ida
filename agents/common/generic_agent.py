@@ -46,7 +46,7 @@ class GenericAgent():
         self._channel = None
         self._uida_conf_vars = load_variables_from_uida_conf_files()
         self._settings = get_settings(self._uida_conf_vars)
-        self._ida_api_url = self._uida_conf_vars['IDA_API_ROOT_URL']
+        self._ida_api_url = self._uida_conf_vars['IDA_API']
 
         self._hostname = socket.gethostname()
         self._machine_name = self._hostname.split('.')[0]
@@ -644,11 +644,8 @@ class GenericAgent():
                 self._logger.debug('Headers: %s' % json_dumps(_headers))
                 self._logger.debug('Data: %s' % data)
                 self._current_http_request_retry += 1
-                if url.startswith("https://localhost/"):
-                    self._logger.debug('Verify: False')
-                    response = getattr(requests, method)(url, data=data, headers=_headers, verify=False)
-                else:
-                    response = getattr(requests, method)(url, data=data, headers=_headers)
+
+                response = getattr(requests, method)(url, data=data, headers=_headers, verify=True)
 
                 self._logger.debug('Response: %d %s' % (response.status_code, response.content))
                 if response.status_code in (401, 403):

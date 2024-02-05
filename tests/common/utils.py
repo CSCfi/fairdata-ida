@@ -142,9 +142,10 @@ def load_configuration():
     config = {
         'ROOT':                   server_configuration.ROOT,
         'OCC':                    server_configuration.OCC,
-        'IDA_API_ROOT_URL':       server_configuration.IDA_API_ROOT_URL,
-        'URL_BASE_SHARE':         server_configuration.URL_BASE_SHARE,
-        'URL_BASE_FILE':          server_configuration.URL_BASE_FILE,
+        'IDA_API':       server_configuration.IDA_API,
+        'FILE_API':      server_configuration.FILE_API,
+        'SHARE_API':     server_configuration.SHARE_API,
+        'GROUP_API':     server_configuration.GROUP_API,
         'NC_ADMIN_USER':          server_configuration.NC_ADMIN_USER,
         'NC_ADMIN_PASS':          server_configuration.NC_ADMIN_PASS,
         'PROJECT_USER_PASS':      server_configuration.PROJECT_USER_PASS,
@@ -176,8 +177,8 @@ def load_configuration():
         'RABBIT_WORKER_PASS':     server_configuration.RABBIT_WORKER_PASS,
         'RABBIT_WORKER_LOG_FILE': server_configuration.RABBIT_WORKER_LOG_FILE,
         'METAX_AVAILABLE':        server_configuration.METAX_AVAILABLE,
-        'METAX_API_ROOT_URL':     server_configuration.METAX_API_ROOT_URL,
-        'METAX_API_PASS':         server_configuration.METAX_API_PASS,
+        'METAX_API':     server_configuration.METAX_API,
+        'METAX_PASS':         server_configuration.METAX_PASS,
         'IDA_MIGRATION':          service_constants.IDA_MIGRATION,
         'IDA_MIGRATION_TS':       service_constants.IDA_MIGRATION_TS,
         'START':                  generate_timestamp()
@@ -186,13 +187,13 @@ def load_configuration():
     if hasattr(server_configuration, 'DOWNLOAD_SERVICE_ROOT'):
         config['DOWNLOAD_SERVICE_ROOT'] = server_configuration.DOWNLOAD_SERVICE_ROOT
 
-    if hasattr(server_configuration, 'METAX_API_USER'):
-        config['METAX_API_USER'] = server_configuration.METAX_API_USER
+    if hasattr(server_configuration, 'METAX_USER'):
+        config['METAX_USER'] = server_configuration.METAX_USER
 
-    if hasattr(server_configuration, 'METAX_API_RPC_URL'):
-        config['METAX_API_RPC_URL'] = server_configuration.METAX_API_RPC_URL
+    if hasattr(server_configuration, 'METAX_RPC'):
+        config['METAX_RPC'] = server_configuration.METAX_RPC
 
-    if '/rest/' in server_configuration.METAX_API_ROOT_URL:
+    if '/rest/' in server_configuration.METAX_API:
         config['METAX_API_VERSION'] = 1
     else:
         config['METAX_API_VERSION'] = 3
@@ -285,7 +286,7 @@ def make_ida_offline(self):
     if os.path.exists(offline_sentinel_file):
         print("(service already in offline mode)")
         return True
-    url = "%s/offline" % self.config['IDA_API_ROOT_URL']
+    url = "%s/offline" % self.config['IDA_API']
     response = requests.post(url, auth=ida_admin_auth, verify=False)
     if response.status_code == 200:
         return True
@@ -299,7 +300,7 @@ def make_ida_online(self):
     if not os.path.exists(offline_sentinel_file):
         print("(service already in online mode)")
         return True
-    url = "%s/offline" % self.config['IDA_API_ROOT_URL']
+    url = "%s/offline" % self.config['IDA_API']
     response = requests.delete(url, auth=ida_admin_auth, verify=False)
     if response.status_code == 200:
         return True
@@ -309,14 +310,14 @@ def make_ida_online(self):
 def wait_for_pending_actions(self, project, user):
     print("(waiting for pending actions to fully complete)")
     print(".", end='', flush=True)
-    response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+    response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API"], project), auth=user, verify=False)
     self.assertEqual(response.status_code, 200)
     actions = response.json()
     max_time = time.time() + self.timeout
     while len(actions) > 0 and time.time() < max_time:
         print(".", end='', flush=True)
         time.sleep(1)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API"], project), auth=user, verify=False)
         self.assertEqual(response.status_code, 200)
         actions = response.json()
     print("")
@@ -325,7 +326,7 @@ def wait_for_pending_actions(self, project, user):
 
 def check_for_failed_actions(self, project, user, should_be_failed = False):
     print("(verifying no failed actions)")
-    response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API_ROOT_URL"], project), auth=user, verify=False)
+    response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API"], project), auth=user, verify=False)
     self.assertEqual(response.status_code, 200)
     actions = response.json()
     if should_be_failed:
@@ -354,16 +355,16 @@ def flush_datasets(self):
     for pid in dataset_pids:
         print ("   %s" % pid)
         if self.config["METAX_API_VERSION"] >= 3:
-            requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), headers=self.metax_headers)
+            requests.delete("%s/datasets/%s" % (self.config['METAX_API'], pid), headers=self.metax_headers)
         else:
-            requests.delete("%s/datasets/%s" % (self.config['METAX_API_ROOT_URL'], pid), auth=self.metax_user)
+            requests.delete("%s/datasets/%s" % (self.config['METAX_API'], pid), auth=self.metax_user)
 
 
 def get_dataset_pids(self):
     pids = []
     test_user_a = ("test_user_a", self.config["TEST_USER_PASS"])
     data = { "project": "test_project_a", "pathname": "/testdata" }
-    response = requests.post("%s/datasets" % self.config["IDA_API_ROOT_URL"], data=data, auth=test_user_a, verify=False)
+    response = requests.post("%s/datasets" % self.config["IDA_API"], data=data, auth=test_user_a, verify=False)
     if response.status_code == 200:
         datasets = response.json()
         for dataset in datasets:

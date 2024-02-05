@@ -1,4 +1,3 @@
-[root@uida-man] /var/ida/utils/admin > cat check-datasets 
 #!/bin/bash
 #--------------------------------------------------------------------------------
 # This file is part of the IDA research data storage service
@@ -64,7 +63,7 @@ PATHNAME="$3"
 
 ENCODED_PATHNAME=$(urlEncode "${PATHNAME}")
 
-REQUEST_URL="https://ida.fairdata.fi/apps/ida/api/datasets?project=${PROJECT}&nextcloudNodeId=${NODEID}&pathname=${ENCODED_PATHNAME}&token=${BATCH_ACTION_TOKEN}"
+REQUEST_URL="${IDA_API}/datasets?project=${PROJECT}&nextcloudNodeId=${NODEID}&pathname=${ENCODED_PATHNAME}&token=${BATCH_ACTION_TOKEN}"
 
 echo "Checking for dataset intersections for pathname ${PATHNAME} in project ${PROJECT}..."
 

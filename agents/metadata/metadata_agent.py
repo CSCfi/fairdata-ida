@@ -41,7 +41,7 @@ class MetadataAgent(GenericAgent):
         self.main_batch_queue_name = 'batch-metadata'
         self.failed_batch_queue_name = 'batch-metadata-failed'
 
-        self._metax_api_url = self._uida_conf_vars['METAX_API_ROOT_URL']
+        self._metax_api_url = self._uida_conf_vars['METAX_API']
         self._metax_api_version = int(self._uida_conf_vars['METAX_API_VERSION'])
         if self._metax_api_version < 3:
             self._file_storage = self._uida_conf_vars['METAX_FILE_STORAGE_ID']
@@ -773,11 +773,11 @@ class MetadataAgent(GenericAgent):
         if auth:
             if self._metax_api_version >= 3:
                 headers = {
-                    "Authorization": "Token %s" % self._uida_conf_vars['METAX_API_PASS']
+                    "Authorization": "Token %s" % self._uida_conf_vars['METAX_PASS']
                 }
             else:
                 headers = {
-                    "Authorization": make_ba_http_header(self._uida_conf_vars['METAX_API_USER'], self._uida_conf_vars['METAX_API_PASS'])
+                    "Authorization": make_ba_http_header(self._uida_conf_vars['METAX_USER'], self._uida_conf_vars['METAX_PASS'])
                 }
         else:
             headers = None

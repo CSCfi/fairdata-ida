@@ -22,6 +22,7 @@
 #--------------------------------------------------------------------------------
 
 IDA_ENVIRONMENT="TEST"
+
 DEBUG="false"
 
 HTTPD_USER="apache"
@@ -34,7 +35,7 @@ BATCH_ACTION_TOKEN="****"
 
 DBTYPE="pgsql"
 DBNAME="nextcloud"
-DBHOST="localhost"
+DBHOST="ida.fairdata.fi"
 DBPORT=5432
 DBTABLEPREFIX="oc_"
 DBUSER="nextcloud"
@@ -42,7 +43,7 @@ DBPASSWORD="****"
 DBROUSER="inspector"
 DBROPASSWORD="****"
 
-RABBIT_HOST="localhost"
+RABBIT_HOST="ida.fairdata.fi"
 RABBIT_PROTOCOL="https"
 RABBIT_PORT=5672
 RABBIT_WEB_API_PORT=15672
@@ -58,26 +59,24 @@ RABBIT_MONITOR_PASS="****"
 RABBIT_MONITORING_DIR="/mnt/storage_vol01/log/rabbitmq_monitoring"
 
 METAX_AVAILABLE=1
-METAX_API_ROOT_URL="https://metax.fairdata.fi/rest/v1"
-METAX_API_RPC_URL="https://metax.fairdata.fi/rpc/v1"        # no longer used with Metax v3+
+METAX_API="https://metax.fairdata.fi/rest/v1"
+METAX_RPC="https://metax.fairdata.fi/rpc/v1"        # no longer used with Metax v3+
 METAX_FILE_STORAGE_ID="urn:nbn:fi:att:file-storage-ida"     # no longer used with Metax v3+
-METAX_API_USER="ida"                                        # no longer used with Metax v3+
-METAX_API_PASS="****"
+METAX_USER="ida"                                        # no longer used with Metax v3+
+METAX_PASS="****"
 
 ROOT="/var/ida"
 OCC="$ROOT/nextcloud/occ"
 LOG="/mnt/storage_vol01/log/ida-test.log"
 
-IDA_API_ROOT_URL="https://localhost/apps/ida/api"
-
 IDA_CLI_ROOT="/var/ida-tools" # only required for automated tests, not for service run-time
 
-URL_BASE_SHARE='https://localhost/ocs/v1.php/apps/files_sharing/api/v1/shares'
-URL_BASE_FILE='https://localhost/remote.php/webdav'
-URL_BASE_GROUP='https://localhost/ocs/v1.php/cloud/groups'
-URL_BASE_IDA="https://localhost/apps/ida"
+IDA_API="https://ida.fairdata.fi/apps/ida/api"
+FILE_API='https://ida.fairdata.fi/remote.php/webdav'
+SHARE_API='https://ida.fairdata.fi/ocs/v1.php/apps/files_sharing/api/v1/shares'
+GROUP_API='https://ida.fairdata.fi/ocs/v1.php/cloud/groups'
 
-LDAP_HOST_URL="ldaps://localhost"
+LDAP_HOST_URL="ldaps://ida.fairdata.fi"
 LDAP_BIND_USER="uid=irodsbind,ou=Special Users,dc=csc,dc=fi"
 LDAP_PASSWORD="****"
 LDAP_SEARCH_BASE="ou=idm,dc=csc,dc=fi"
@@ -97,5 +96,5 @@ TRASH_DATA_ROOT="/mnt/storage_vol02/ida_trash"
 QUARANTINE_PERIOD="2592000"
 # 2592000 seconds = 30 days
 
-EMAIL_SENDER="root@localhost"
-EMAIL_RECIPIENTS="root@localhost"
+EMAIL_SENDER="root@ida.fairdata.fi"
+EMAIL_RECIPIENTS="root@ida.fairdata.fi"

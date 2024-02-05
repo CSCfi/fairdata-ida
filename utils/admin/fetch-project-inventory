@@ -94,7 +94,7 @@ fi
 
 #--------------------------------------------------------------------------------
 
-URL="${IDA_API_ROOT_URL}/inventory/${PROJECT}"
+URL="${IDA_API}/inventory/${PROJECT}"
 
 if [ "$UPLOADED_BEFORE" = "true" ]; then
     URL="${URL}?uploadedBefore=$TIMESTAMP"

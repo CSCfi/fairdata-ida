@@ -109,9 +109,9 @@ class BaseAgentTestCase(TestCase):
         the ida-api and metax-api would be expected to return.
         """
         if service == 'ida':
-            root_url = self._uida_conf_vars['IDA_API_ROOT_URL']
+            root_url = self._uida_conf_vars['IDA_API']
         elif service == 'metax':
-            root_url = self._uida_conf_vars['METAX_API_ROOT_URL']
+            root_url = self._uida_conf_vars['METAX_API']
         else:
             raise Exception('oops! check your settings')
 

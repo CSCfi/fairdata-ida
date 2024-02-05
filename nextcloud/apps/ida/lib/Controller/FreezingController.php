@@ -132,7 +132,7 @@ class FreezingController extends Controller
         } catch (\Exception $e) {
         }
         $this->config = $config->getSystemValue('ida');
-        if (strpos($this->config['METAX_API_ROOT_URL'], '/rest/') !== false) {
+        if (strpos($this->config['METAX_API'], '/rest/') !== false) {
             $this->config['METAX_API_VERSION'] = 1;
         }
         else {
@@ -1794,13 +1794,13 @@ class FreezingController extends Controller
         }
 
         if ($this->config['METAX_API_VERSION'] >= 3) {
-            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?storage_service=ida';
+            $queryURL = $this->config['METAX_API'] . '/files/datasets?storage_service=ida';
         }
         else {
-            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets';
+            $queryURL = $this->config['METAX_API'] . '/files/datasets';
         }
-        $username = $this->config['METAX_API_USER'];
-        $password = $this->config['METAX_API_PASS'];
+        $username = $this->config['METAX_USER'];
+        $password = $this->config['METAX_PASS'];
         $postbody = json_encode($filePIDs);
 
         $ch = curl_init($queryURL);
@@ -1873,7 +1873,7 @@ class FreezingController extends Controller
 
                 // Query Metax for dataset details, first try as id, then as preferred identifier
 
-                $queryURL = $this->config['METAX_API_ROOT_URL'] . '/datasets/' . $intersecting_dataset_id;
+                $queryURL = $this->config['METAX_API'] . '/datasets/' . $intersecting_dataset_id;
 
                 $ch = curl_init($queryURL);
 
@@ -2002,13 +2002,13 @@ class FreezingController extends Controller
         }
 
         if ($this->config['METAX_API_VERSION'] >= 3) {
-            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?storage_service=ida&relations=true';
+            $queryURL = $this->config['METAX_API'] . '/files/datasets?storage_service=ida&relations=true';
         }
         else {
-            $queryURL = $this->config['METAX_API_ROOT_URL'] . '/files/datasets?keys=files';
+            $queryURL = $this->config['METAX_API'] . '/files/datasets?keys=files';
         }
-        $username = $this->config['METAX_API_USER'];
-        $password = $this->config['METAX_API_PASS'];
+        $username = $this->config['METAX_USER'];
+        $password = $this->config['METAX_PASS'];
         $postbody = json_encode($filePIDs);
 
         Util::writeLog('ida', 'getDatasetFiles: queryURL=' . $queryURL
@@ -3041,7 +3041,7 @@ class FreezingController extends Controller
 
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password = $this->config['PROJECT_USER_PASS'];
-            $baseURI = $this->config['URL_BASE_FILE'];
+            $baseURI = $this->config['FILE_API'];
             $sourceURI = $baseURI . API::urlEncodePathname($sourcePathname);
             $targetURI = $baseURI . API::urlEncodePathname($targetPathname);
 
@@ -3215,7 +3215,7 @@ class FreezingController extends Controller
 
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password = $this->config['PROJECT_USER_PASS'];
-            $baseURI = $this->config['URL_BASE_FILE'];
+            $baseURI = $this->config['FILE_API'];
             $sourceURI = $baseURI . API::urlEncodePathname($sourcePathname);
 
             Util::writeLog(
@@ -3296,7 +3296,7 @@ class FreezingController extends Controller
 
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password = $this->config['PROJECT_USER_PASS'];
-            $baseURI = $this->config['URL_BASE_FILE'];
+            $baseURI = $this->config['FILE_API'];
             $rootPathname = '';
 
             foreach ($folders as $folder) {

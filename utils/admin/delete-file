@@ -58,7 +58,7 @@ FILE="$2"
 
 #--------------------------------------------------------------------------------
 
-URL="${IDA_API_ROOT_URL}/files/${FILE}"
+URL="${IDA_API}/files/${FILE}"
 
 OUT=`$CURL_DELETE $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${URL}" 2>$ERR`
 
