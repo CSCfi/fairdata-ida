@@ -7,9 +7,9 @@ services:
     hostname: ida.fd-dev.csc.fi
     volumes:
       - .:/var/ida
-      - ../ida-command-line-tools:/opt/fairdata/ida-tools
+      - ../ida2-command-line-tools:/var/ida-tools
       - ../ida-service-internals/report:/opt/fairdata/ida-report
-      - ../ida-admin-portal:/opt/fairdata/ida-admin-portal
+      - ../fairdata-ida-admin-portal:/opt/fairdata/ida-admin-portal
       - ../fairdata-ida-healthcheck:/opt/fairdata/ida-healthcheck
       - ../fairdata-test-accounts:/opt/fairdata/fairdata-test-accounts
       - ../fairdata-download:/usr/local/fd/fairdata-download

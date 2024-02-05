@@ -40,9 +40,9 @@ cd ~/dev
 Option 1: Internal users
 ```
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida.git
-git clone https://gitlab.ci.csc.fi/fairdata/ida-command-line-tools.git
-git clone https://gitlab.ci.csc.fi/fairdata/ida-admin-portal.git
 git clone https://gitlab.ci.csc.fi/fairdata/ida-service-internals.git
+git clone https://gitlab.ci.csc.fi/fairdata/ida2-command-line-tools.git
+git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-admin-portal.git
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-ida-healthcheck.git
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-download.git
 git clone https://gitlab.ci.csc.fi/fairdata/fairdata-docker.git
@@ -52,9 +52,9 @@ git clone https://gitlab.ci.csc.fi/fairdata/fairdata-test-accounts.git
 Option 2: External users
 ```
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida.git
-git clone https://ci.fd-staging.csc.fi/fairdata/ida-command-line-tools.git
-git clone https://ci.fd-staging.csc.fi/fairdata/ida-admin-portal.git
 git clone https://ci.fd-staging.csc.fi/fairdata/ida-service-internals.git
+git clone https://ci.fd-staging.csc.fi/fairdata/ida2-command-line-tools.git
+git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-admin-portal.git
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-ida-healthcheck.git
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-download.git
 git clone https://ci.fd-staging.csc.fi/fairdata/fairdata-docker.git

@@ -141,7 +141,8 @@ Run all automated tests:
 
 ```
 docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests
-docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-tools/tests/run-tests
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida-tools/tests/run-tests
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/tests/run-tests
 docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/fairdata-download/tests/run-tests
 ```
 
