@@ -1,0 +1,67 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2024 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+#!/bin/sh
+
+# Initialize script with common definitions
+
+INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+# Check if the age parameter was passed and that it is a positive number
+if [ -z "$1" ] || ! echo "$1" | grep -q '^[0-9][0-9]*$'; then
+    echo "Usage: $0 <days>" >&2
+    exit 1
+fi
+
+# Set trash root
+TRASH_DATA_ROOT="/mnt/storage_vol01/ida_trash"
+
+# Set the age
+DAYS="$1"
+
+# Set the log file path
+LOG_FILE="/mnt/storage_vol01/log/ida_trash.log"
+
+# Find files and directories older than the specified age
+DELETED_ITEMS=$(find $TRASH_DATA_ROOT/* -daystart -mtime "+$DAYS" -delete -print)
+
+# Check if any items were deleted
+if [ -n "$DELETED_ITEMS" ]; then
+    # Add timestamp to log file
+    echo "Items deleted on $(date +%F\ %T):" >> "$LOG_FILE"
+    # Add deleted items to log file
+    echo "$DELETED_ITEMS" | tee -a "$LOG_FILE"
+else
+    # Add timestamp to log file
+    echo "No items deleted on $(date +%F\ %T)." >> "$LOG_FILE"
+fi
