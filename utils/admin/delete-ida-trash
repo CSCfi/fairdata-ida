@@ -21,7 +21,27 @@
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
-#!/bin/sh
+
+SCRIPT=`basename "$(realpath $0)"`
+PROJECT="null"
+
+USAGE="
+Usage: $SCRIPT [days]
+       $SCRIPT -h
+"
+
+#--------------------------------------------------------------------------------
+
+# Check if the days parameter was passed and that it is a positive number
+
+DAYS=${1//[^0-9]/}
+
+if [ -z "$DAYS" ]; then
+    echo "$USAGE" >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
 
 # Initialize script with common definitions
 
@@ -37,31 +57,29 @@ fi
 
 #--------------------------------------------------------------------------------
 
-# Check if the age parameter was passed and that it is a positive number
-if [ -z "$1" ] || ! echo "$1" | grep -q '^[0-9][0-9]*$'; then
-    echo "Usage: $0 <days>" >&2
-    exit 1
-fi
+echoAndLog "Deleting project trash folders older than ${DAYS} days old"
 
-# Set trash root
-TRASH_DATA_ROOT="/mnt/storage_vol01/ida_trash"
-
-# Set the age
-DAYS="$1"
-
-# Set the log file path
-LOG_FILE="/mnt/storage_vol01/log/ida_trash.log"
-
-# Find files and directories older than the specified age
-DELETED_ITEMS=$(find $TRASH_DATA_ROOT/* -daystart -mtime "+$DAYS" -delete -print)
-
-# Check if any items were deleted
-if [ -n "$DELETED_ITEMS" ]; then
-    # Add timestamp to log file
-    echo "Items deleted on $(date +%F\ %T):" >> "$LOG_FILE"
-    # Add deleted items to log file
-    echo "$DELETED_ITEMS" | tee -a "$LOG_FILE"
+if [ "$DAYS" = "0" ]; then
+    EXPIRED_FOLDERS=$(find "$TRASH_DATA_ROOT" -maxdepth 1 -mindepth 1 -type d -print)
 else
-    # Add timestamp to log file
-    echo "No items deleted on $(date +%F\ %T)." >> "$LOG_FILE"
+    EXPIRED_FOLDERS=$(find "$TRASH_DATA_ROOT" -maxdepth 1 -mindepth 1 -type d -daystart -mtime +$DAYS -print)
 fi
+
+if [ -n "$EXPIRED_FOLDERS" ]; then
+    for EXPIRED_FOLDER in $EXPIRED_FOLDERS; do
+        echoAndLog "Deleting project trash folder: ${EXPIRED_FOLDER}"
+        rm -fr "$EXPIRED_FOLDER" 2>$ERR
+        if [ -s $ERR ]; then
+            cat $ERR >&2
+            errorExit "Failed to delete project trash folder: ${EXPIRED_FOLDER}"
+        fi
+    done
+else
+    echoAndLog "No project trash folders to be deleted"
+fi
+
+#--------------------------------------------------------------------------------
+
+rm $ERR 2>/dev/null
+
+addToLog "DONE"
