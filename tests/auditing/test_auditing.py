@@ -302,7 +302,7 @@ class TestAuditing(unittest.TestCase):
 
         print ("(auditing project %s%s)" % (project, parameters))
 
-        cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
+        cmd = "sudo -u %s DEBUG=false AUDIT_START_OFFSET=0 %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()

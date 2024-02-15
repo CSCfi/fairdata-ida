@@ -131,58 +131,57 @@ def main():
         else:
             config.LOG_LEVEL = logging.INFO
 
-        if '/rest/' in config.METAX_API:
-            config.METAX_API_VERSION = 1
-        else:
-            config.METAX_API_VERSION = 3
+        # Allow environment variable override of audit start offset (used by tests)
+        audit_start_offset = os.environ.get('AUDIT_START_OFFSET')
+        if audit_start_offset:
+            config.AUDIT_START_OFFSET = audit_start_offset
 
-        if config.DEBUG:
-            sys.stderr.write("--- %s ---\n" % config.SCRIPT)
-            sys.stderr.write("HOSTNAME:      %s\n" % socket.gethostname())
-            sys.stderr.write("ROOT:          %s\n" % config.ROOT)
-            sys.stderr.write("PROJECT:       %s\n" % config.PROJECT)
-            sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)
-            sys.stderr.write("LOG:           %s\n" % config.LOG)
-            sys.stderr.write("LOG_LEVEL:     %s\n" % config.LOG_LEVEL)
-            sys.stderr.write("DBHOST:        %s\n" % config.DBHOST)
-            sys.stderr.write("DBROUSER:      %s\n" % config.DBROUSER)
-            sys.stderr.write("DBNAME:        %s\n" % config.DBNAME)
-            sys.stderr.write("METAX_API:     %s\n" % config.METAX_API)
-            sys.stderr.write("METAX_VERSION: %s\n" % str(config.METAX_API_VERSION))
-            sys.stderr.write("ARGS#:         %d\n" % argc)
-            sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
-            sys.stderr.write("PID:           %s\n" % config.PID)
-            sys.stderr.write("CHANGED_ONLY   %s\n" % config.CHANGED_ONLY)
-            sys.stderr.write("STAGING:       %s\n" % config.AUDIT_STAGING)
-            sys.stderr.write("FROZEN:        %s\n" % config.AUDIT_FROZEN)
-            sys.stderr.write("TIMESTAMPS:    %s\n" % config.AUDIT_TIMESTAMPS)
-            sys.stderr.write("CHECKSUMS:     %s\n" % config.AUDIT_CHECKSUMS)
-            sys.stderr.write("MIGRATION:     %s\n" % config.IDA_MIGRATION)
-            sys.stderr.write("MIGRATION_TS:  %s\n" % config.IDA_MIGRATION_TS)
+        # If offset not defined either in environment or configuration, use default
+        if not hasattr(config, 'AUDIT_START_OFFSET'):
+            config.AUDIT_START_OFFSET = 15
 
-        # Convert START ISO timestamp strings to epoch seconds
+        # Convert START ISO timestamp strings to epoch seconds and calculate audit start offset
 
         start_datetime = dateutil.parser.isoparse(config.START)
         config.START_TS = start_datetime.replace(tzinfo=timezone.utc).timestamp()
-
-        if config.DEBUG:
-            sys.stderr.write("START:         %s\n" % config.START)
-            sys.stderr.write("START_DT:      %s\n" % normalize_timestamp(start_datetime))
-            sys.stderr.write("START_TS:      %d\n" % config.START_TS)
-            start_datetime_check = normalize_timestamp(datetime.utcfromtimestamp(config.START_TS))
-            sys.stderr.write("START_TS_CHK:  %s\n" % start_datetime_check)
-
-        # Convert SINCE ISO timestamp strings to epoch seconds
+        config.START_OFFSET_TS = config.START_TS - (int(config.AUDIT_START_OFFSET) * 60)
 
         since_datetime = dateutil.parser.isoparse(config.SINCE)
         config.SINCE_TS = since_datetime.replace(tzinfo=timezone.utc).timestamp()
 
         if config.DEBUG:
-            sys.stderr.write("SINCE:         %s\n" % config.SINCE)
-            sys.stderr.write("SINCE_DT:      %s\n" % normalize_timestamp(since_datetime))
-            sys.stderr.write("SINCE_TS:      %d\n" % config.SINCE_TS)
-            since_datetime_check = normalize_timestamp(datetime.utcfromtimestamp(config.SINCE_TS))
-            sys.stderr.write("SINCE_TS_CHK:  %s\n" % since_datetime_check)
+            sys.stderr.write("--- %s ---\n" % config.SCRIPT)
+            sys.stderr.write("HOSTNAME:        %s\n" % socket.gethostname())
+            sys.stderr.write("ROOT:            %s\n" % config.ROOT)
+            sys.stderr.write("PROJECT:         %s\n" % config.PROJECT)
+            sys.stderr.write("DATA_ROOT:       %s\n" % config.STORAGE_OC_DATA_ROOT)
+            sys.stderr.write("LOG:             %s\n" % config.LOG)
+            sys.stderr.write("LOG_LEVEL:       %s\n" % config.LOG_LEVEL)
+            sys.stderr.write("DBHOST:          %s\n" % config.DBHOST)
+            sys.stderr.write("DBROUSER:        %s\n" % config.DBROUSER)
+            sys.stderr.write("DBNAME:          %s\n" % config.DBNAME)
+            sys.stderr.write("METAX_API:       %s\n" % config.METAX_API)
+            sys.stderr.write("METAX_VERSION:   %s\n" % str(config.METAX_API_VERSION))
+            sys.stderr.write("ARGS#:           %d\n" % argc)
+            sys.stderr.write("ARGS:            %s\n" % str(sys.argv))
+            sys.stderr.write("PID:             %s\n" % config.PID)
+            sys.stderr.write("CHANGED_ONLY     %s\n" % config.CHANGED_ONLY)
+            sys.stderr.write("STAGING:         %s\n" % config.AUDIT_STAGING)
+            sys.stderr.write("FROZEN:          %s\n" % config.AUDIT_FROZEN)
+            sys.stderr.write("TIMESTAMPS:      %s\n" % config.AUDIT_TIMESTAMPS)
+            sys.stderr.write("CHECKSUMS:       %s\n" % config.AUDIT_CHECKSUMS)
+            sys.stderr.write("MIGRATION:       %s\n" % config.IDA_MIGRATION)
+            sys.stderr.write("MIGRATION_TS:    %s\n" % config.IDA_MIGRATION_TS)
+            sys.stderr.write("START:           %s\n" % config.START)
+            sys.stderr.write("START_DT:        %s\n" % normalize_timestamp(start_datetime))
+            sys.stderr.write("START_TS:        %d\n" % config.START_TS)
+            sys.stderr.write("START_TS_CHK:    %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.START_TS)))
+            sys.stderr.write("START_OFFSET     %s\n" % config.AUDIT_START_OFFSET)
+            sys.stderr.write("START_OFFSET_TS: %d\n" % config.START_OFFSET_TS)
+            sys.stderr.write("SINCE:           %s\n" % config.SINCE)
+            sys.stderr.write("SINCE_DT:        %s\n" % normalize_timestamp(since_datetime))
+            sys.stderr.write("SINCE_TS:        %d\n" % config.SINCE_TS)
+            sys.stderr.write("SINCE_TS_CHK:    %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.SINCE_TS)))
 
         # Initialize logging using UTC timestamps
 
@@ -604,7 +603,7 @@ def add_nextcloud_nodes(nodes, counts, config):
         path_pattern = "^files/%s\+?/" % config.PROJECT  # select file pathnames in both staging and frozen areas
 
     # If CHANGED_ONLY is true, limit query to nodes with either modified or upload timestamp later than
-    # SINCE_TS, else limit query to nodes with either no upload timestamp or upload earlier than START_TS
+    # SINCE_TS, else limit query to nodes with either no upload timestamp or upload earlier than START_OFFSET_TS
 
     if config.CHANGED_ONLY:
         query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
@@ -622,9 +621,9 @@ def add_nextcloud_nodes(nodes, counts, config):
                      storage_id,
                      path_pattern,
                      config.SINCE_TS,
-                     config.START_TS,
+                     config.START_OFFSET_TS,
                      config.SINCE_TS,
-                     config.START_TS
+                     config.START_OFFSET_TS
                 )
     else:
         query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
@@ -638,8 +637,8 @@ def add_nextcloud_nodes(nodes, counts, config):
                      config.DBTABLEPREFIX,
                      storage_id,
                      path_pattern,
-                     config.START_TS,
-                     config.START_TS
+                     config.START_OFFSET_TS,
+                     config.START_OFFSET_TS
                 )
 
     if config.DEBUG:
@@ -843,7 +842,7 @@ def add_filesystem_nodes(nodes, counts, config):
                         node_stats = path.stat()
                         modified = node_stats.st_mtime
 
-                        if modified < config.START_TS:
+                        if modified < config.START_OFFSET_TS:
 
                             node_type = 'file'
                             modified = normalize_timestamp(datetime.utcfromtimestamp(modified))
@@ -909,7 +908,7 @@ def add_filesystem_nodes(nodes, counts, config):
             pathname = str(values['pathname'])
             filesystem_pathname = "%s%s" % (pso_root, pathname)
 
-            if modified < config.START_TS:
+            if modified < config.START_OFFSET_TS:
 
                 pathname = pathname[5:]
                 project_name_len = len(config.PROJECT)

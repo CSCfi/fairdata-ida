@@ -37,7 +37,7 @@ time.tzset()
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-LOG_ENTRY_FORMAT = '%(asctime)s %(name)s (%(process)d) %(levelname)s %(message)s'
+LOG_ENTRY_FORMAT = '%(asctime)s %(filename)s (%(process)d) %(levelname)s %(message)s'
 TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
 
