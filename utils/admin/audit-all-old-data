@@ -40,11 +40,11 @@ SENTINEL_FILE="/tmp/AUDIT_ALL_OLD_DATA"
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ max_age_in_days ] [ --json-output ]
+Usage: $SCRIPT [ max_age_in_days ] [ --json-output ] [ --force-audit ]
        $SCRIPT -h
 "
 
-PROJECT="null"
+PROJECT="null" # not used
 
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
@@ -101,7 +101,8 @@ if [ -z "$MAX_AGE" ]; then
     MAX_AGE=365
 fi
 
-JSON_OUTPUT=`echo "$2 $3" | grep -- "--json-output"`
+JSON_OUTPUT=`echo "$*" | grep -- "--json-output"`
+FORCE_AUDIT=`echo "$*" | grep -- "--force-audit"`
 
 #--------------------------------------------------------------------------------
 
@@ -120,18 +121,28 @@ OUTPUT_JSON="/tmp/$$.json"
 OUTPUT_JSON_FINAL="/tmp/$$.final.json"
 SUMMARY="/tmp/$$.summary"
 
+# If the parameter --force-audit is specified, all projects will be audited,
+# disregarding whether they are explicitly excluded in the configuration, internal,
+# suspended, or closed; otherwise, all projects will be audited except those excluded
+# in the configuration, internal, suspended, or closed.
+
 if [ -z "$PROJECTS" ]; then
-    PROJECTS=`DEBUG=false $ROOT/utils/admin/list-projects`
-    INTERNAL_PROJECTS=""
-    if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-        INTERNAL_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-internal-projects | tr '\n' ' '`
-    fi
+    PROJECTS=`DEBUG=false $ROOT/utils/admin/list-projects 2>/dev/null`
+fi
+
+if [ "$FORCE_AUDIT" ]; then
+    EXCLUDED_PROJECTS=""
+else
+    INTERNAL_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-internal-projects 2>/dev/null | tr '\n' ' '`
+    SUSPENDED_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-suspended-projects 2>/dev/null | tr '\n' ' '`
+    GRACE_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-grace-projects 2>/dev/null | tr '\n' ' '`
+    DELETEDATA_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-deletedata-projects 2>/dev/null | tr '\n' ' '`
+    EXCLUDED_PROJECTS=" ${OLD_DATA_EXCLUDED_PROJECTS} ${INTERNAL_PROJECTS} ${SUSPENDED_PROJECTS} ${GRACE_PROJECTS} ${DELETEDATA_PROJECTS} "
 fi
 
 if [ "$DEBUG" = "true" ]; then
-    echo "PROJECTS: $PROJECTS"                   >&2
-    echo "INTERNAL: $INTERNAL_PROJECTS"          >&2
-    echo "EXCLUDED: $OLD_DATA_EXCLUDED_PROJECTS" >&2
+    echo "PROJECTS: $PROJECTS"          >&2
+    echo "EXCLUDED: $EXCLUDED_PROJECTS" >&2
 fi
 
 PROJECT_COUNT=0
@@ -146,11 +157,7 @@ FIRST_PROJECT="true"
 
 for PROJECT in $PROJECTS; do
 
-    EXCLUDED=""
-
-    if [ "${OLD_DATA_EXCLUDED_PROJECTS}${INTERNAL_PROJECTS}" ]; then
-        EXCLUDED=`echo " ${OLD_DATA_EXCLUDED_PROJECTS} ${INTERNAL_PROJECTS} " | grep " $PROJECT "`
-    fi
+    EXCLUDED=`echo " ${EXCLUDED_PROJECTS} " | grep " $PROJECT "`
 
     if [ -z "$EXCLUDED" ]; then
 
@@ -271,8 +278,7 @@ printf "\n\n"                          >> $OUTPUT_TXT
 
 RECIPIENTS="$EMAIL_RECIPIENTS"
 
-if [ "$RECIPIENTS" ]; then
-    HOSTNAME=`hostname`
+if [ "${EMAIL_SENDER}${RECIPIENTS}" ]; then
     SUBJECT="[IDA Service] OLD DATA REPORT"
     cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
     echo "Report summary emailed to internal users" >&2

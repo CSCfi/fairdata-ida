@@ -93,11 +93,14 @@ class TestOldData(unittest.TestCase):
             self.assertEqual(result, 0)
 
 
-    def audit_old_data(self, project, max_days=0):
+    def audit_old_data(self, project, max_days=0, force_audit=False):
 
-        print ("(auditing old data for project %s max_days %d)" % (project, max_days))
+        print ("(auditing old data for project %s max_days %d force_audit %s)" % (project, max_days, force_audit))
 
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-old-data %s %d --json-output" % (self.config["HTTPD_USER"], self.config["ROOT"], project, max_days)
+
+        if force_audit:
+            cmd = "%s --force-audit" % cmd
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode(sys.stdout.encoding).strip()
@@ -139,11 +142,14 @@ class TestOldData(unittest.TestCase):
         return report_data
 
 
-    def audit_all_old_data(self, projects):
+    def audit_all_old_data(self, projects, max_days=0, force_audit=False):
 
-        print ("(auditing old data for all projects: %s)" % projects)
+        print ("(auditing old data for all projects %s max_days %d force_audit %s)" % (projects, max_days, force_audit))
 
-        cmd = "sudo -u %s PROJECTS=\"%s\" DEBUG=false %s/utils/admin/audit-all-old-data 0 --json-output" % (self.config["HTTPD_USER"], projects, self.config["ROOT"])
+        cmd = "sudo -u %s PROJECTS=\"%s\" DEBUG=false %s/utils/admin/audit-all-old-data %d --json-output" % (self.config["HTTPD_USER"], projects, self.config["ROOT"], max_days)
+
+        if force_audit:
+            cmd = "%s --force-audit" % cmd
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode(sys.stdout.encoding).strip()
@@ -189,7 +195,7 @@ class TestOldData(unittest.TestCase):
 
         print("--- Auditing old data in project A and checking results")
 
-        report_data = self.audit_old_data("test_project_a", 9999)
+        report_data = self.audit_old_data("test_project_a", max_days=9999)
         self.assertEqual(report_data.get('maxDataAgeInDays'), 9999)
         self.assertEqual(report_data.get('totalBytes'), 0)
         self.assertEqual(report_data.get('totalFiles'), 0)
@@ -333,6 +339,42 @@ class TestOldData(unittest.TestCase):
         self.assertEqual(lines[1].rstrip('\n'), 'ALL,261534,153,23040,13,238494,140')
         self.assertEqual(lines[2].rstrip('\n'), 'test_project_b,142287,83,0,0,142287,83')
         self.assertEqual(lines[3].rstrip('\n'), 'test_project_a,119247,70,23040,13,96207,57')
+
+        print("(suspending test_project_b)")
+
+        cmd = "sudo -u %s %s/utils/admin/suspend-project test_project_b --silent" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        result = os.system(cmd)
+        self.assertEqual(result, 0)
+
+        print("--- Auditing old data for all projects and checking results")
+
+        report_data = self.audit_all_old_data("test_project_a test_project_b")
+        report_pathname = report_data["reportPathname"]
+
+        print("--- Checking JSON report details")
+
+        self.assertEqual(report_data.get('projectCount'), 1)
+        projects = report_data.get('projects')
+        self.assertIsNotNone(projects)
+        self.assertEqual(len(projects), 1)
+        project_data = projects[0]
+        self.assertEqual(project_data.get('project'), 'test_project_a')
+
+        print("--- Auditing old data for all projects with --force-audit and checking results")
+
+        report_data = self.audit_all_old_data("test_project_a test_project_b", force_audit=True)
+        report_pathname = report_data["reportPathname"]
+
+        print("--- Checking JSON report details")
+
+        self.assertEqual(report_data.get('projectCount'), 2)
+        projects = report_data.get('projects')
+        self.assertIsNotNone(projects)
+        self.assertEqual(len(projects), 2)
+        project_data = projects[0]
+        self.assertEqual(project_data.get('project'), 'test_project_a')
+        project_data = projects[1]
+        self.assertEqual(project_data.get('project'), 'test_project_b')
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done
