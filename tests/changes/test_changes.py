@@ -423,8 +423,8 @@ class TestChanges(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
-        print("Query IDA for last recorded data change and verify last change matches freeze action")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
+        print("Query IDA for last recorded data change and verify last recorded move change matches freeze action")
+        response = requests.get("%s/dataChanges/test_project_a/last?change=move" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertEqual(change_details.get('project'), 'test_project_a')
@@ -447,8 +447,8 @@ class TestChanges(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
-        print("Query IDA for last recorded data change and verify last change matches unfreeze action")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
+        print("Query IDA for last recorded data change and verify last recorded move change matches unfreeze action")
+        response = requests.get("%s/dataChanges/test_project_a/last?change=move" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertEqual(change_details.get('project'), 'test_project_a')
@@ -471,8 +471,8 @@ class TestChanges(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
-        print("Query IDA for last recorded data change and verify last change matches delete action")
-        response = requests.get("%s/dataChanges/test_project_a/last" % self.config["IDA_API"], auth=test_user_a, verify=False)
+        print("Query IDA for last recorded data change and verify last recorded delete change matches delete action")
+        response = requests.get("%s/dataChanges/test_project_a/last?change=delete" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         change_details = response.json()
         self.assertEqual(change_details.get('project'), 'test_project_a')
