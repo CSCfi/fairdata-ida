@@ -2535,8 +2535,6 @@ class TestAuditing(unittest.TestCase):
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
 
-        #time.sleep(5)
-
         print("--- Verifying modified state of Project B")
 
         print("(retrieving inventory for Project B from IDA)")

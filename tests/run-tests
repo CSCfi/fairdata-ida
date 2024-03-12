@@ -167,13 +167,13 @@ else
         exit 1
     fi
 
-    python -W ignore -m unittest discover -f -q tests.auditing
+    python -W ignore -m unittest discover -f -q tests.olddata
 
     if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    python -W ignore -m unittest discover -f -q tests.olddata
+    python -W ignore -m unittest discover -f -q tests.auditing
 
     if [ $? -ne 0 ]; then
         exit 1

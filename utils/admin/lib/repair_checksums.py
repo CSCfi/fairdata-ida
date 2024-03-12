@@ -54,7 +54,11 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        config.VERIFY_SSL = True
+        if config.IDA_API.startswith("https://localhost/"):
+            config.VERIFY_SSL = False
+        else:
+            config.VERIFY_SSL = True
+
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
 
         # Initialize logging using UTC timestamps

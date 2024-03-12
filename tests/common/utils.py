@@ -275,8 +275,10 @@ def generate_timestamp():
     """
     Get current time as normalized ISO 8601 UTC timestamp string
     """
-    time.sleep(1) # ensure a unique timestamp
-    return normalize_timestamp(datetime.utcnow().replace(microsecond=0))
+    time.sleep(1) # ensure a unique timestamp, as timestamps have single-second resolution
+    timestamp = normalize_timestamp(datetime.utcnow().replace(microsecond=0))
+    time.sleep(1) # ensure all subsequent actions happen after the newly generated timestamp 
+    return timestamp
 
 
 def make_ida_offline(self):

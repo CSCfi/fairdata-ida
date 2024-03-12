@@ -571,11 +571,11 @@ class DataChangeController extends Controller
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
 
-            Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode($ch), \OCP\Util::ERROR);
+            Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode($ch), \OCP\Util::DEBUG);
     
             $response = curl_exec($ch);
 
-            Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode(curl_getinfo($ch)), \OCP\Util::ERROR);
+            Util::writeLog('ida', 'processNextcloudOperation: curlinfo=' . json_encode(curl_getinfo($ch)), \OCP\Util::DEBUG);
 
             if ($response === false) {
                 Util::writeLog('ida', 'processNextcloudOperation: '

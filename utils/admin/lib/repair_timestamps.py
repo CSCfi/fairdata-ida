@@ -55,7 +55,11 @@ def main():
 
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
-        config.VERIFY_SSL = True
+
+        if config.IDA_API.startswith("https://localhost/"):
+            config.VERIFY_SSL = False
+        else:
+            config.VERIFY_SSL = True
 
         config.HEADERS = { 'IDA-Mode': 'System' }
 
