@@ -1938,7 +1938,7 @@ class FreezingController extends Controller
                 // preservation state greater than zero but less than 120
                 if (array_key_exists('preservation', $metax_dataset)) {
                     $preservation = $metax_dataset['preservation'];
-                    if (array_key_exists('state', $preservation)
+                    if ($preservation != null && array_key_exists('state', $preservation)
                             &&
                             $preservation['state'] > 0
                             &&
