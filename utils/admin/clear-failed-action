@@ -82,8 +82,6 @@ if [ "$PID" = "" ]; then
     errorExit "Clearing of action $ACTION failed in project $PROJECT"
 fi
 
-rm $ERR 2>/dev/null
-
 echoAndLog "Cleared action $ACTION successfully in project $PROJECT."
 
 addToLog "DONE"

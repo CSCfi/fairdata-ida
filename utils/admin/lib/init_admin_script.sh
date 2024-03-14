@@ -172,9 +172,19 @@ else
     METAX_CREDENTIALS="-u ${METAX_USER}:${METAX_PASS}"
 fi
 
-ERR="/tmp/${SCRIPT}.$$.err"
-
 HOSTNAME=`hostname`
+
+#--------------------------------------------------------------------------------
+
+ERR="/tmp/ida_${SCRIPT}_$$.err"
+
+cleanup() {
+    rm -f $ERR 2>/dev/null
+}
+
+trap cleanup EXIT
+
+#--------------------------------------------------------------------------------
 
 if [ "$DEBUG" = "true" ]; then
     echo ""

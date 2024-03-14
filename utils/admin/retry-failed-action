@@ -82,8 +82,6 @@ if [ "$PID" = "" ]; then
     errorExit "Retry of action $ACTION failed in project $PROJECT"
 fi
 
-rm $ERR 2>/dev/null
-
 echoAndLog "Initiated retry of action $ACTION successfully in project $PROJECT. Postprocessing ongoing..."
 
 addToLog "DONE"

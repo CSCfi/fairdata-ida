@@ -202,8 +202,6 @@ while [ $MAX_SET_COUNT -gt 0 ]; do
         errorExit "$ACTION action failed for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project $PROJECT"
     fi
 
-    rm $ERR 2>/dev/null
-
     echoAndLog "Initiated $ACTION action successfully for pathname /testdata/OneMillionFiles/1000000_files/5000_files_${MAX_SET_COUNT} in project $PROJECT. Postprocessing ongoing..."
 
     addToLog "DONE"

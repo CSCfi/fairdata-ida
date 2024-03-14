@@ -100,8 +100,6 @@ if [ "$SUCCESS" = "" ]; then
     errorExit "Failed to create suspend action for project ${PROJECT}"
 fi
 
-rm $ERR 2>/dev/null
-
 #--------------------------------------------------------------------------------
 # The SUSPEND sentinel file in the project /files/ directory is redundant with
 # the suspend action which is the primary means of tracking whether a project
@@ -150,6 +148,12 @@ export ROOT
 export EMAIL_SENDER
 export EMAIL_RECIPIENTS
 
-$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
+$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE" 2>$ERR
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
+    errorExit "Error: Failed to email project users!"
+fi
 
 addToLog "DONE"

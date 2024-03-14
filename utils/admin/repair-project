@@ -149,8 +149,6 @@ fi
 
 #--------------------------------------------------------------------------------
 
-rm $ERR 2>/dev/null
-
 echoAndLog "Initiated repair of project $PROJECT successfully. Postprocessing ongoing..."
 
 addToLog "DONE"

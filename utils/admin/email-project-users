@@ -20,7 +20,10 @@
 # @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
 # @license  GNU Affero General Public License, version 3
 # @link     https://research.csc.fi/
-# --------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
+# NOTE: Unlike most admin scripts, this particular script does not load any
+# common configuration or initialization script but is fully stand-alone.
+#--------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 
@@ -29,7 +32,15 @@ Usage: $SCRIPT project subject message
        $SCRIPT -h
 "
 
-ERR="/tmp/${SCRIPT}_$$.err"
+#--------------------------------------------------------------------------------
+
+ERR="/tmp/ida_${SCRIPT}_$$.err"
+
+cleanup() {
+    rm -f $ERR 2>/dev/null
+}
+
+trap cleanup EXIT
 
 #--------------------------------------------------------------------------------
 
@@ -115,6 +126,4 @@ if [ -s $ERR ]; then
     exit 1
 fi
 
-echo "Email sent to all project ${PROJECT} users and/or default internal recipients." >&2
-
-rm -f $ERR 2>/dev/null
+echo "Email sent to all project ${PROJECT} users and/or default internal recipients."

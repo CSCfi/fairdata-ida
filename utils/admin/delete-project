@@ -261,12 +261,16 @@ export ROOT
 export EMAIL_SENDER
 export EMAIL_RECIPIENTS
 
-$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
+$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE" 2>$ERR
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
+    errorExit "Error: Failed to email project users!"
+fi
 
 #--------------------------------------------------------------------------------
 
 echoAndLog "Project ${PROJECT} removed. Project data copied to trash subfolder ${PROJECT_TRASH_DATA_ROOT}"
-
-rm $ERR 2>/dev/null
 
 addToLog "DONE"

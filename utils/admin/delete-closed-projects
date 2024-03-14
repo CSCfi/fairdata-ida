@@ -52,7 +52,8 @@ echo "Retrieving list of projects with a CSC data deletion process substate 'gra
 GRACE_PROJECTS=`$ROOT/utils/admin/list-grace-projects 2>$ERR`
 
 if [ -s $ERR ]; then
-    cat $ERR >&2
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
     errorExit "Failed to retrieve grace projects"
 fi
 
@@ -61,7 +62,8 @@ echo "Retrieving list of projects with a CSC data deletion process substate 'del
 DELETEDATA_PROJECTS=`$ROOT/utils/admin/list-deletedata-projects 2>$ERR`
 
 if [ -s $ERR ]; then
-    cat $ERR >&2
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
     errorExit "Failed to retrieve deletedata projects"
 fi
 
@@ -70,7 +72,8 @@ echo "Retrieving list of projects which are already suspended..."
 SUSPENDED_PROJECTS=`$ROOT/utils/admin/list-suspended-projects 2>$ERR`
 
 if [ -s $ERR ]; then
-    cat $ERR >&2
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
     errorExit "Failed to retrieve suspended projects"
 fi
 
@@ -79,7 +82,8 @@ echo "Retrieving list of projects which are internal..."
 INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects 2>$ERR`
 
 if [ -s $ERR ]; then
-    cat $ERR >&2
+    MSG=`cat $ERR | tr "\n" " " `
+    addToLog "$MSG"
     errorExit "Failed to retrieve internal projects"
 fi
 
@@ -114,7 +118,8 @@ for PROJECT in $GRACE_PROJECTS; do
     $ROOT/utils/admin/suspend-project $PROJECT --delete 2>$ERR
 
     if [ -s $ERR ]; then
-        cat $ERR >&2
+        MSG=`cat $ERR | tr "\n" " " `
+        addToLog "$MSG"
         errorExit "Failed to suspend project ${PROJECT}"
     fi
 
@@ -144,7 +149,8 @@ for PROJECT in $DELETEDATA_PROJECTS; do
     $ROOT/utils/admin/delete-project $PROJECT 2>$ERR
 
     if [ -s $ERR ]; then
-        cat $ERR >&2
+        MSG=`cat $ERR | tr "\n" " " `
+        addToLog "$MSG"
         errorExit "Failed to delete project ${PROJECT}"
     fi
 
@@ -153,7 +159,5 @@ for PROJECT in $DELETEDATA_PROJECTS; do
 done
 
 #--------------------------------------------------------------------------------
-
-rm $ERR 2>/dev/null
 
 addToLog "DONE"

@@ -118,8 +118,6 @@ if [ "$PID" = "" ]; then
     errorExit "$ACTION action failed for pathname $PATHNAME in project $PROJECT"
 fi
 
-rm $ERR 2>/dev/null
-
 echoAndLog "Initiated $ACTION action successfully for pathname $PATHNAME in project $PROJECT. Postprocessing ongoing..."
 
 addToLog "DONE"

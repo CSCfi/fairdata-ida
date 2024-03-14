@@ -91,8 +91,6 @@ if [ -s $ERR ]; then
     errorExit "Dataset intersection check failed for pathname $PATHNAME in project $PROJECT"
 fi
 
-rm $ERR 2>/dev/null
-
 echo "$OUT"
 
 addToLog "DONE"
