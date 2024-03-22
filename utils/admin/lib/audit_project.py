@@ -37,7 +37,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from sortedcontainers import SortedList, SortedDict
 from subprocess import Popen, PIPE
 from stat import *
-from utils import *
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration, normalize_timestamp, generate_timestamp, generate_checksum
 
 # Use UTC
 os.environ['TZ'] = 'UTC'
@@ -1615,6 +1615,7 @@ def output_invalid_nodes(report):
                     sys.stdout.write(',\n"size": %d' % node_details.get('size', 0))
                     sys.stdout.write(',\n"checksum": %s' % json.dumps(node_details.get('checksum')))
                 sys.stdout.write(',\n"modified": %s' % json.dumps(node_details.get('modified')))
+                sys.stdout.write(',\n"uploaded": %s' % json.dumps(node_details.get('uploaded')))
                 sys.stdout.write('\n}')
 
             node_details = node.get('ida')

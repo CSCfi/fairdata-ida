@@ -27,7 +27,7 @@ import json
 import logging
 from hashlib import sha256
 from sortedcontainers import SortedDict
-from utils import *
+from utils import generate_checksum
 
 DEBUG = False
 

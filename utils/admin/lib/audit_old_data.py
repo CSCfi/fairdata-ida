@@ -37,7 +37,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from sortedcontainers import SortedDict
 from subprocess import Popen, PIPE
 from stat import *
-from utils import *
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration, normalize_timestamp
 
 # Use UTC
 os.environ['TZ'] = 'UTC'

@@ -26,13 +26,13 @@
 # process which produced the report.
 # --------------------------------------------------------------------------------
 
-import os
 import sys
+import time
 import json
 import logging
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from utils import *
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration, generate_timestamp, get_project_pathname
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 

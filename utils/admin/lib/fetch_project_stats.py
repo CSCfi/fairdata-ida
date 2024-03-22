@@ -37,18 +37,14 @@
 # delmited; otherwise, the output will be encoded as a JSON object
 # --------------------------------------------------------------------------------
 
-import importlib.util
 import sys
 import os
 import time
 import re
-import json
 import logging
 import psycopg2
 from pathlib import Path
-from datetime import datetime, timezone
-from time import strftime
-from utils import *
+from utils import load_configuration
 
 # Use UTC
 os.environ["TZ"] = "UTC"

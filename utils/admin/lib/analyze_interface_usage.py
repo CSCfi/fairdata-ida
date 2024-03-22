@@ -31,7 +31,7 @@ import psycopg2
 from collections import OrderedDict
 from sortedcontainers import SortedDict
 from datetime import datetime, timedelta
-from utils import *
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration
 
 # Use UTC
 os.environ['TZ'] = 'UTC'

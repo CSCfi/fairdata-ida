@@ -24,18 +24,15 @@
 # defined in the Nextcloud cache
 # --------------------------------------------------------------------------------
 
-import importlib.util
 import sys
 import os
 import time
 import requests
 import logging
 import psycopg2
-from hashlib import sha256
-from pathlib import Path
 from sortedcontainers import SortedDict
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from utils import *
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration
 
 # Use UTC
 os.environ['TZ'] = 'UTC'

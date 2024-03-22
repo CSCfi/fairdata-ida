@@ -1076,6 +1076,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(nextcloud)
         self.assertEqual(nextcloud.get("type"), "file")
         self.assertEqual(nextcloud.get("size"), 123)
+        self.assertIsNotNone(nextcloud.get("uploaded"))
 
         print("Verify correct error report of Nextcloud modification timestamp conflict with filesystem")
         node = nodes.get("frozen/testdata/2017-08/Experiment_1/baseline/test04.dat")
@@ -1087,6 +1088,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(nextcloud)
         self.assertEqual(nextcloud.get("type"), "file")
         self.assertEqual(nextcloud.get("modified"), invalid_timestamp)
+        self.assertIsNotNone(nextcloud.get("uploaded"))
 
         print("--- Auditing staging area of project B and checking results")
 
@@ -1326,6 +1328,7 @@ class TestAuditing(unittest.TestCase):
         nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
         self.assertEqual(nextcloud.get("type"), "file")
+        self.assertIsNotNone(nextcloud.get("uploaded"))
         filesystem = node.get("filesystem")
         self.assertIsNotNone(filesystem)
         self.assertEqual(filesystem.get("type"), "folder")
@@ -1338,6 +1341,7 @@ class TestAuditing(unittest.TestCase):
         nextcloud = node.get("nextcloud")
         self.assertIsNotNone(nextcloud)
         self.assertEqual(nextcloud.get("type"), "file")
+        self.assertIsNotNone(nextcloud.get("uploaded"))
         filesystem = node.get("filesystem")
         self.assertIsNotNone(filesystem)
         self.assertEqual(filesystem.get("type"), "folder")
