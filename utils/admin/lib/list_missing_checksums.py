@@ -129,7 +129,7 @@ def get_files_with_no_checksum(config):
 
     # Retrieve files with no SHA-256 checksum
 
-    query = "SELECT fileid, path FROM %sfilecache \
+    query = "SELECT fileid, path, size FROM %sfilecache \
              WHERE storage = %d \
              AND mimetype !=2 \
              AND path LIKE 'files/%s%%' \
@@ -143,7 +143,7 @@ def get_files_with_no_checksum(config):
     rows = cur.fetchall()
 
     for row in rows:
-        files[row[1]] = { 'id': row[0] }
+        files[row[1]] = { 'id': row[0], 'size': row[2] }
 
     # Close database connection
     cur.close()

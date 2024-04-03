@@ -112,19 +112,31 @@ def generate_missing_checksums(config):
 
     for pathname, file in list(files.items()):
 
-        sys.stdout.write("Generating checksum for %s\n" % pathname[5:])
+        # Compare the recorded file size with the file size on disk, and if the sizes differ, log and report a warning and
+        # skip the file. If the file sizes differ, the file is likely still being moved from the upload cache to glusterfs,
+        # so we don't yet want to generate a checksum or else it will be invalid, based on an incomplete file. The missing
+        # checksum will be detected in subsequent runs of this script and generated once the move is complete.
 
-        checksum = generate_checksum("%s/%s%s/%s" % (
-            config.STORAGE_OC_DATA_ROOT,
-            config.PROJECT_USER_PREFIX,
-            config.PROJECT,
-            pathname
-        ))
+        system_pathname = "%s/%s%s/%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT, pathname)
+        recorded_size = file.get('size', -1)
+        size_on_disk = os.path.getsize(system_pathname)
 
-        if checksum:
-            if not checksum.startswith('sha256:'):
-                checksum = "sha256:%s" % checksum
-            file['checksum'] = checksum
+        if recorded_size != size_on_disk:
+ 
+            msg = "Warning: Recorded size %d does not match size on disk %d for %s %s (skipped)" % (recorded_size, size_on_disk, config.PROJECT, pathname[5:])
+            logging.warning(msg)
+            sys.stderr.write("%s\n" % msg)
+
+        else:
+
+            sys.stdout.write("Generating checksum for %s\n" % pathname[5:])
+    
+            checksum = generate_checksum(system_pathname)
+    
+            if checksum:
+                if not checksum.startswith('sha256:'):
+                    checksum = "sha256:%s" % checksum
+                file['checksum'] = checksum
 
     store_checksums_in_cache(config, files)
 
@@ -169,75 +181,19 @@ def store_checksums_in_cache(config, files):
                     sys.stdout.write("%s\n" % msg)
                 else:
                     conn.rollback()
-                    sys.stdout.write("Warning: Failed to record checksum for %s %s\n" % (config.PROJECT, pathname[5:]))
+                    msg = "Warning: Failed to record checksum for %s %s" % (config.PROJECT, pathname[5:])
+                    logging.warning(msg)
+                    sys.stderr.write("%s\n" % msg)
 
         except Exception as e:
             conn.rollback()
-            sys.stdout.write("Warning: Failed to record checksum for %s %s: %s\n" % (config.PROJECT, pathname[5:], str(e).strip()))
+            msg = "Warning: Failed to record checksum for %s %s: %s" % (config.PROJECT, pathname[5:], str(e).strip())
+            logging.warning(msg)
+            sys.stderr.write("%s\n" % msg)
 
     # Close database connection
     cur.close()
     conn.close()
-
-
-def get_cache_file_details(config):
-    """
-    Query the Nextcloud database and return a dictionary for all cache files which have no SHA-256
-    checksum where the key is the pathname and the value is an object containing the file id (to
-    which a generated checksum will be later added)
-    """
-
-    files = SortedDict([])
-
-    # Open database connection
-
-    conn = psycopg2.connect(database=config.DBNAME,
-                            user=config.DBUSER,
-                            password=config.DBPASSWORD,
-                            host=config.DBHOST,
-                            port=config.DBPORT)
-
-    cur = conn.cursor()
-
-    # Retrieve PSO storage id for project
-
-    query = "SELECT numeric_id FROM %sstorages \
-             WHERE id = 'home::%s%s' \
-             LIMIT 1" % (
-                config.DBTABLEPREFIX,
-                config.PROJECT_USER_PREFIX,
-                config.PROJECT
-            )
-
-    cur.execute(query)
-    rows = cur.fetchall()
-
-    if len(rows) != 1:
-        raise Exception("Failed to retrieve storage id for project %s" % config.PROJECT)
-
-    storage_id = rows[0][0]
-
-    # Retrieve files with no SHA-256 checksum
-
-    query = "SELECT fileid, path FROM %sfilecache \
-             WHERE storage = %d \
-             AND mimetype !=2 \
-             AND ( checksum IS NULL OR checksum = '' OR LOWER(checksum) NOT LIKE 'sha256:%%' )" % (
-                 config.DBTABLEPREFIX,
-                 storage_id
-            )
-
-    cur.execute(query)
-    rows = cur.fetchall()
-
-    for row in rows:
-        files[row[1]] = { 'id': row[0] }
-
-    # Close database connection
-    cur.close()
-    conn.close()
-
-    return files
 
 
 if __name__ == "__main__":

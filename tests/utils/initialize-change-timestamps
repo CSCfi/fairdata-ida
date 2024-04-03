@@ -88,14 +88,14 @@ QUERY="SELECT numeric_id FROM ${DBTABLEPREFIX}storages WHERE id = 'home::${PSO_U
 OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
 
 if [ "$?" -ne 0 ]; then
-    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER: $OUT"
+    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER: $OUT" >&2
     exit 1
 fi
 
 STORAGE=$(echo "$OUT" | sed -e 's/[^0-9]//g')
 
 if [ -z "$STORAGE" ]; then
-    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER"
+    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER" >&2
     exit 1
 fi
 
@@ -104,7 +104,7 @@ QUERY="SELECT path FROM ${DBTABLEPREFIX}filecache WHERE storage = $STORAGE AND m
 OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
 
 if [ "$?" -ne 0 ]; then
-    echo "Error: Failed to retrieve Nextcloud file paths for $PSO_USER: $OUT"
+    echo "Error: Failed to retrieve Nextcloud file paths for $PSO_USER: $OUT" >&2
     exit 1
 fi
 
@@ -112,7 +112,7 @@ fi
 PATHNAMES=$(echo "$OUT" | sed -e 's/^ *//' | sed -e 's/^files\/[^\/]*//' | sort -u)
 
 if [ -z "$PATHNAMES" ]; then
-    echo "Error: Failed to retrieve Nextcloud file pathnames for $PSO_USER"
+    echo "Error: Failed to retrieve Nextcloud file pathnames for $PSO_USER" >&2
     exit 1
 fi
 
@@ -129,7 +129,7 @@ printf '%s\n' "$PATHNAMES" | while IFS= read -r PATHNAME; do
     OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" 2>&1)
 
     if [ "$?" -ne 0 ]; then
-        echo "Error: Failed to update change timestamp for file $PATHNAME: $OUT"
+        echo "Error: Failed to update change timestamp for file $PATHNAME: $OUT" >&2
         exit 1
     fi
 done

@@ -155,6 +155,12 @@ else
         exit 1
     fi
 
+    python -W ignore -m unittest discover -f -q tests.checksums
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     python -W ignore -m unittest discover -f -q tests.changes
 
     if [ $? -ne 0 ]; then

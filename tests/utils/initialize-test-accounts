@@ -405,9 +405,9 @@ for PROJECT in $PROJECTS; do
         success
     fi
 
-    # Update uploaded timestamps to current datetime
+    # Update uploaded ('add' change) timestamps to current datetime
 
-    STEP="   Initializing upload ('add' change) timestamps for ${PROJECT}"
+    STEP="   Initializing upload timestamps for ${PROJECT}"
     printf "%${PADDING}s" "$STEP"
 
     OUT=`$ROOT/tests/utils/initialize-change-timestamps $PROJECT 2>&1`
@@ -431,6 +431,7 @@ for PROJECT in $PROJECTS; do
         exit 1
     else
         success
+        echo "$OUT" | grep 'Warning:'
     fi
 
 done
