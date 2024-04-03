@@ -1,0 +1,135 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script initializes 'add' change timestamps for all files in the test project.
+#
+# This script should NOT be run in production!
+#
+#--------------------------------------------------------------------------------
+
+. `dirname $0`/../../lib/init_script.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify that we are not in production
+
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    errorExit "Error: This script can not be run in a production environment. Aborting."
+fi
+
+PROG_LOCATION=`/usr/bin/which psql 2>/dev/null`
+
+if [ ! -e "$PROG_LOCATION" ]; then
+    errorExit "Can't find psql in your \$PATH"
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT="$1"
+
+if [ "$PROJECT" = "" ]; then
+    errorExit "Error: The project name must be specified as the first argument to the script"
+fi
+
+if [ "$DBHOST" = "" ]; then
+    errorExit "Error: The DBHOST configuration variable must be defined"
+fi
+
+if [ "$DBPORT" = "" ]; then
+    errorExit "Error: The DBPORT configuration variable must be defined"
+fi
+
+if [ "$DBNAME" = "" ]; then
+    errorExit "Error: The DBNAME configuration variable must be defined"
+fi
+
+if [ "$DBUSER" = "" ]; then
+    errorExit "Error: The DBUSER configuration variable must be defined"
+fi
+
+if [ "$DBPASSWORD" = "" ]; then
+    errorExit "Error: The DBPASSWORD configuration variable must be defined"
+fi
+
+#--------------------------------------------------------------------------------
+
+PGPASSWORD="$DBPASSWORD"
+export PGPASSWORD
+
+PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+
+QUERY="SELECT numeric_id FROM ${DBTABLEPREFIX}storages WHERE id = 'home::${PSO_USER}' ORDER BY numeric_id DESC LIMIT 1"
+
+OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+
+if [ "$?" -ne 0 ]; then
+    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER: $OUT"
+    exit 1
+fi
+
+STORAGE=$(echo "$OUT" | sed -e 's/[^0-9]//g')
+
+if [ -z "$STORAGE" ]; then
+    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER"
+    exit 1
+fi
+
+QUERY="SELECT path FROM ${DBTABLEPREFIX}filecache WHERE storage = $STORAGE AND mimetype != 2 AND path ~ '^files/'"
+
+OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+
+if [ "$?" -ne 0 ]; then
+    echo "Error: Failed to retrieve Nextcloud file paths for $PSO_USER: $OUT"
+    exit 1
+fi
+
+# Get a unique list of relative pathnames
+PATHNAMES=$(echo "$OUT" | sed -e 's/^ *//' | sed -e 's/^files\/[^\/]*//' | sort -u)
+
+if [ -z "$PATHNAMES" ]; then
+    echo "Error: Failed to retrieve Nextcloud file pathnames for $PSO_USER"
+    exit 1
+fi
+
+printf '%s\n' "$PATHNAMES" | while IFS= read -r PATHNAME; do
+
+    PATHNAME=$(echo "/${PROJECT}${STAGING_FOLDER_SUFFIX}${PATHNAME}" | sed "s/'/''/g")
+
+    echo "$PATHNAME"
+
+    QUERY="INSERT INTO ${DBTABLEPREFIX}ida_data_change \
+           (timestamp, project, \"user\", change, pathname, mode) \
+           VALUES ('${START}', '${PROJECT}', '${PSO_USER}', 'add', '${PATHNAME}', 'test')" 
+
+    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" 2>&1)
+
+    if [ "$?" -ne 0 ]; then
+        echo "Error: Failed to update change timestamp for file $PATHNAME: $OUT"
+        exit 1
+    fi
+done

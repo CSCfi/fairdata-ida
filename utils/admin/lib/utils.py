@@ -26,6 +26,8 @@ import sys
 import os
 import time
 import requests
+import logging
+import psycopg2
 import dateutil.parser
 from datetime import datetime
 from hashlib import sha256
@@ -39,6 +41,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 LOG_ENTRY_FORMAT = '%(asctime)s %(filename)s (%(process)d) %(levelname)s %(message)s'
 TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+NULL_VALUES      = [ None, 0, '', False, 'None', 'null', 'false' ]
 
 
 def load_configuration(filesystem_pathname):
@@ -134,3 +137,45 @@ def get_project_pathname(project, pathname):
         return "/%s+/%s" % (project, pathname[8:])
     else:
         return "/%s/%s" % (project, pathname[7:])
+
+
+def get_last_add_change_timestamp(config, pathname):
+    """
+    Retrieve the latest 'add' change event for the project + file relative pathname, in staging,
+    from the changes database table, as a normalized ISO timestamp string, else return None
+    """
+
+    logging.debug("get_last_add_change_timestamp project = %s pathname = %s" % (config.PROJECT, pathname))
+
+    conn = psycopg2.connect(database=config.DBNAME,
+                            user=config.DBROUSER,
+                            password=config.DBROPASSWORD,
+                            host=config.DBHOST,
+                            port=config.DBPORT)
+
+    cur = conn.cursor()
+
+    staging_pathname = "/%s%s%s" % (config.PROJECT, config.STAGING_FOLDER_SUFFIX, pathname)
+
+    logging.debug("get_last_add_change_timestamp staging_pathname = %s" % staging_pathname)
+
+    query = "SELECT timestamp FROM {}ida_data_change \
+             WHERE project = %s \
+             AND change = 'add' \
+             AND pathname = %s \
+             ORDER BY timestamp DESC LIMIT 1".format(config.DBTABLEPREFIX)
+
+    logging.debug("get_last_add_change_timestamp query = %s" % query)
+
+    cur.execute(query, (config.PROJECT, staging_pathname))
+
+    rows = cur.fetchall()
+
+    logging.debug("get_last_add_change_timestamp rows = %d" % len(rows))
+
+    if len(rows) == 1:
+        timestamp = rows[0][0]
+        logging.debug("get_last_add_change_timestamp timestamp = %s" % timestamp)
+        return timestamp
+
+    return None

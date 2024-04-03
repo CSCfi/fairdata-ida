@@ -212,6 +212,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "PROJECT_USER_PASS            $PROJECT_USER_PASS"
     echo "PROJECT_USER                 $PROJECT_USER"
     echo "PROJECT_STORAGE_OC_DATA_ROOT $PROJECT_STORAGE_OC_DATA_ROOT"
+    echo "PROJECT_ROOT                 $PROJECT_ROOT"
     echo "PROJECT_LOCK                 $PROJECT_LOCK"
     echo "PROJECT_SUSPENDED            $PROJECT_SUSPENDED"
     echo "PROJECT_USER_CREDENTIALS     $PROJECT_USER_CREDENTIALS"

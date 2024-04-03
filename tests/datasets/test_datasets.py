@@ -573,6 +573,7 @@ class TestDatasets(unittest.TestCase):
         self.assertEqual(inventory.get('totalFrozenFiles', -1), 5001)
 
         print("Query IDA for file inventory for project test_project_a excluding files uploaded before epoch")
+        # Will report 5001 files, which correpond to the MaxFiles which have no upload timestamps recorded.
         response = requests.get("%s/inventory/test_project_a?uploadedBefore=1970-01-01T00:00:00Z" % self.config["IDA_API"], auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         inventory = response.json()
@@ -580,9 +581,9 @@ class TestDatasets(unittest.TestCase):
         self.assertIsNotNone(inventory.get('created'))
         self.assertEqual(inventory.get('uploadedBefore'), "1970-01-01T00:00:00Z")
         self.assertFalse(inventory.get('unpublishedOnly', True))
-        self.assertEqual(inventory.get('totalFiles', -1), 0)
+        self.assertEqual(inventory.get('totalFiles', -1), 5001)
         self.assertEqual(inventory.get('totalStagedFiles', -1), 0)
-        self.assertEqual(inventory.get('totalFrozenFiles', -1), 0)
+        self.assertEqual(inventory.get('totalFrozenFiles', -1), 5001)
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

@@ -144,44 +144,77 @@ class FreezingController extends Controller
     /**
      * Get the upload timestamp for the specified node
      *
-     * @param string $node the nextcloud node info object
+     * @param string   $project  the project to which the file belongs
+     * @param FileInfo $nodeInfo the nextcloud node info object
      *
      * @return string
      *
      */
-    protected function getUploadedTimestamp($nodeInfo)
+    protected function getUploadedTimestamp($project, $nodeInfo)
     {
         Util::writeLog('ida', 'getUploadedTimestamp', \OCP\Util::DEBUG);
 
         # For files added via other means than the WebUI or command line tools (e.g. vanilla
         # WebDAV, originally migrated files, files added locally and recorded using the
-        # occ files:scan command, etc.) no upload timestamp will be recorded and a zero value
-        # will be returned by the Nextcloud NodeInfo method getUploadTime(), corresponding to
-        # the UNIX epoch, in which case we will default to either the "IDA epoch", i.e. the
-        # original migration date from when project files were migrated from the previous iRODS
-        # version of IDA, or the modified timestamp, whichever is latest.
+        # occ files:scan command, etc.) no upload timestamp will be recorded in the Nextcloud
+        # file cache tables and a zero value will be returned by the Nextcloud NodeInfo method
+        # getUploadTime().
+        #
+        # If there is no explicit upload timestamp recorded in the Nextcloud file cache, we will
+        # check if we have recorded an 'add' change event in the project data changes table for
+        # the file pathname in staging and if so we will use the latest such 'add' event timestamp.
+        #
+        # If no upload timestamp can be found from either of those sources, null is returned.
 
         $uploaded = $nodeInfo->getUploadTime();
 
-        if ($uploaded === 0) {
-            $uploaded = $this->config['MIGRATION_TIMESTAMP'];
-            $modified = Generate::newTimestamp($nodeInfo->getMTime());
-            if (strcmp($modified, $uploaded) > 0) {
-                $uploaded = $modified;
-            }
+        if ($uploaded != 0) {
+            $timestamp = Generate::newTimestamp($uploaded);
         }
         else {
-            $uploaded = Generate::newTimestamp($uploaded);
+            $timestamp = $this->getLastAddChangeTimestamp($project, $nodeInfo);
         }
 
-        Util::writeLog('ida', 'getUploadedTimestamp: uploaded=' . $uploaded, \OCP\Util::DEBUG);
+        Util::writeLog('ida', 'getUploadedTimestamp: timestamp=' . $timestamp, \OCP\Util::DEBUG);
 
-        return $uploaded;
+        return $timestamp;
+    }
+
+    /**
+     * Get the last 'add' change timestamp recorded for the specified file, if any
+     *
+     * @param string   $project  the project to which the file belongs
+     * @param FileInfo $nodeInfo the nextcloud node info object
+     *
+     * @return string
+     *
+     */
+    protected function getLastAddChangeTimestamp($project, $nodeInfo)
+    {
+        Util::writeLog('ida', 'getLastAddChangeTimestamp', \OCP\Util::DEBUG);
+
+        $timestamp = null;
+
+        $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
+
+        $addChangeDetails = $this->dataChangeMapper->getLastAddChangeDetails($project, $pathname);
+
+        if ($addChangeDetails != null) {
+            $timestamp = $addChangeDetails->getTimestamp();
+        }
+
+        Util::writeLog('ida', 'getLastAddChangeTimestamp: timestamp=' . $timestamp, \OCP\Util::DEBUG);
+
+        return $timestamp;
     }
 
     /**
      * Return an inventory of all project files stored in the IDA service, both in staging
      * and frozen areas, with all technical metadata about each file.
+     *
+     * NOTE: If a file has no recorded upload time, it will be included in the inventory regardless
+     * whether an uploadedBefore timestamp is specified. Consider whether to utilize modified and
+     * project creation tinestamps in determination.
      *
      * @param string $project         the project to which the files belong
      * @param string $uploadedBefore  ISO datetime string excluding files uploaded after the specified datetime
@@ -228,9 +261,9 @@ class FreezingController extends Controller
                 if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
                     $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
-                    $uploaded = $this->getUploadedTimestamp($nodeInfo);
+                    $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);
 
-                    if ($uploadedBefore === null || $uploaded < $uploadedBefore) {
+                    if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
 
                         $fileInfo = array(
                             'size' => $nodeInfo->getSize(),
@@ -256,9 +289,9 @@ class FreezingController extends Controller
                 if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
                     $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
-                    $uploaded = $this->getUploadedTimestamp($nodeInfo);
+                    $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);
 
-                    if ($uploadedBefore === null || $uploaded < $uploadedBefore) {
+                    if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
 
                         $datasets = null;
 

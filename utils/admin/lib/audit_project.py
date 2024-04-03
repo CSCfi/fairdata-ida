@@ -37,7 +37,8 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from sortedcontainers import SortedList, SortedDict
 from subprocess import Popen, PIPE
 from stat import *
-from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration, normalize_timestamp, generate_timestamp, generate_checksum
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, NULL_VALUES, load_configuration, normalize_timestamp, \
+                  generate_timestamp, generate_checksum, get_last_add_change_timestamp
 
 # Use UTC
 os.environ['TZ'] = 'UTC'
@@ -75,13 +76,17 @@ def main():
         if config.IDA_ENVIRONMENT == 'PRODUCTION' and socket.gethostname().startswith('uida-man'):
             raise Exception ("Do not run project auditing on uida-man.csc.fi!")
 
+        # Copy essential constants to config so they are easily passed to functions
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
         config.IDA_MIGRATION = constants.IDA_MIGRATION
         config.IDA_MIGRATION_TS = constants.IDA_MIGRATION_TS
+
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PID = os.getpid()
         config.PROJECT = sys.argv[2]
+        config.PROJECT_ROOT = "%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)
+        config.PROJECT_CREATED = max([normalize_timestamp(os.path.getmtime(config.PROJECT_ROOT)), config.IDA_MIGRATION])
 
         config.START = sys.argv[3]
         config.SINCE = sys.argv[4]
@@ -279,11 +284,11 @@ def add_frozen_files(nodes, counts, config):
             'replicated': row[6]
         }
 
-        if node_details['size'] in [ None, 'None', 'null', '', False ]:
+        if node_details['size'] in NULL_VALUES:
             node_details['size'] = 0
 
         for field in [ 'pid', 'checksum', 'modified', 'frozen', 'replicated' ]:
-            if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+            if node_details[field] in NULL_VALUES:
                 node_details[field] = None
 
         try:
@@ -399,11 +404,11 @@ def add_metax_files(nodes, counts, config):
                             'frozen': frozen
                         }
 
-                        if node_details['size'] in [ None, 'None', 'null', '', False ]:
+                        if node_details['size'] in NULL_VALUES:
                             node_details['size'] = 0
 
                         for field in [ 'pid', 'checksum', 'modified', 'frozen' ]:
-                            if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+                            if node_details[field] in NULL_VALUES:
                                 node_details[field] = None
 
                         if config.DEBUG:
@@ -439,11 +444,11 @@ def add_metax_files(nodes, counts, config):
                             'frozen': frozen
                         }
 
-                        if node_details['size'] in [ None, 'None', 'null', '', False ]:
+                        if node_details['size'] in NULL_VALUES:
                             node_details['size'] = 0
 
                         for field in [ 'pid', 'checksum', 'modified', 'frozen' ]:
-                            if node_details[field] in [ None, 'None', 'null', '', 0, False ]:
+                            if node_details[field] in NULL_VALUES:
                                 node_details[field] = None
 
                         if config.DEBUG:
@@ -509,7 +514,8 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     # If CHANGED_ONLY is true, first populate any Nextcloud node details based on already populated node pathnames
     # from IDA and Metax contexts, if they exist, as frozen file nodes will not have any timestamp updates in the
-    # Nextcloud cache by which they can be detected and added...
+    # Nextcloud cache by which they can be detected and added if the freeze/unfreeze action was after SINCE and
+    # therefore the Nextcloud nodes won't be identified as changed otherwise.
 
     if config.CHANGED_ONLY:
 
@@ -561,18 +567,29 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                         file_count = file_count + 1
 
-                        if row[4] in [ None, 'None', 'null', '', 0, False ]:
+                        if row[4] in NULL_VALUES:
                             checksum = None
                         else:
                             checksum = row[4].lower()
                             if checksum.startswith('sha256:'):
                                 checksum = checksum[7:]
 
-                        # If there is no upload timestamp, use the latest of the modification or migration timestamp
-                        if row[5] in [ None, 'None', 'null', '', 0, False ]:
-                            uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], config.IDA_MIGRATION_TS)))
+                        # Get uploaded timestamp, if any, from row details
+
+                        if row[5] in NULL_VALUES:
+                            uploaded = None
                         else:
                             uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[5]))
+
+                        # If there is no upload timestamp, retrieve the latest 'add' timestamp from the changes table
+                        # for the project and pathname in staging, if any, as the upload timestamp
+
+                        if not uploaded:
+                            if pathname.startswith('frozen/'):
+                                relative_pathname = pathname[6:]
+                            else:
+                                relative_pathname = pathname[7:]
+                            uploaded = get_last_add_change_timestamp(config, relative_pathname)
 
                         node_details = {
                             'type': node_type,
@@ -584,7 +601,10 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                     else: # node_type == 'folder'
 
-                        node_details = {'type': node_type, 'modified': modified}
+                        node_details = {
+                            'type': node_type,
+                            'modified': modified
+                        }
 
                     node['nextcloud'] = node_details
 
@@ -593,7 +613,7 @@ def add_nextcloud_nodes(nodes, counts, config):
                     if config.DEBUG:
                         sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, file_count, pathname))
 
-    # Add all relevant Nexcloud node records not already recorded
+    # Add all relevant Nexcloud node records
 
     if config.AUDIT_STAGING == False:
         path_pattern = "^files/%s/" % config.PROJECT     # select file pathnames only in frozen area
@@ -602,44 +622,20 @@ def add_nextcloud_nodes(nodes, counts, config):
     else:
         path_pattern = "^files/%s\+?/" % config.PROJECT  # select file pathnames in both staging and frozen areas
 
-    # If CHANGED_ONLY is true, limit query to nodes with either modified or upload timestamp later than
-    # SINCE_TS, else limit query to nodes with either no upload timestamp or upload earlier than START_OFFSET_TS
-
-    if config.CHANGED_ONLY:
-        query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
-                 FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
-                 ON cache.fileid = extended.fileid \
-                 WHERE cache.storage = %d \
-                 AND cache.path ~ '%s' \
-                 AND ( \
-                        ( cache.mtime > %d AND cache.mtime < %d ) \
-                     OR  \
-                        ( extended.upload_time IS NOT NULL AND extended.upload_time > %d AND extended.upload_time < %d ) \
-                     )" % (
-                     config.DBTABLEPREFIX,
-                     config.DBTABLEPREFIX,
-                     storage_id,
-                     path_pattern,
-                     config.SINCE_TS,
-                     config.START_OFFSET_TS,
-                     config.SINCE_TS,
-                     config.START_OFFSET_TS
-                )
-    else:
-        query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
-                 FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
-                 ON cache.fileid = extended.fileid \
-                 WHERE cache.storage = %d \
-                 AND cache.path ~ '%s' \
-                 AND cache.mtime < %d \
-                 AND ( extended.upload_time IS NULL OR extended.upload_time < %d )" % (
-                     config.DBTABLEPREFIX,
-                     config.DBTABLEPREFIX,
-                     storage_id,
-                     path_pattern,
-                     config.START_OFFSET_TS,
-                     config.START_OFFSET_TS
-                )
+    query = "SELECT cache.path, cache.mimetype, cache.size, cache.mtime, cache.checksum, extended.upload_time \
+             FROM %sfilecache as cache LEFT JOIN %sfilecache_extended as extended \
+             ON cache.fileid = extended.fileid \
+             WHERE cache.storage = %d \
+             AND cache.path ~ '%s' \
+             AND cache.mtime < %d \
+             AND ( extended.upload_time IS NULL OR extended.upload_time < %d )" % (
+                 config.DBTABLEPREFIX,
+                 config.DBTABLEPREFIX,
+                 storage_id,
+                 path_pattern,
+                 config.START_OFFSET_TS,
+                 config.START_OFFSET_TS
+            )
 
     if config.DEBUG:
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
@@ -676,36 +672,66 @@ def add_nextcloud_nodes(nodes, counts, config):
 
                 file_count = file_count + 1
 
-                if row[4] in [ None, 'None', 'null', '', 0, False ]:
+                if row[4] in NULL_VALUES:
                     checksum = None
                 else:
                     checksum = row[4].lower()
                     if checksum.startswith('sha256:'):
                         checksum = checksum[7:]
 
-                # If there is no upload timestamp, use the latest of the modification or migration timestamp
-                if row[5] in [ None, 'None', 'null', '', 0, False ]:
-                    uploaded = normalize_timestamp(datetime.utcfromtimestamp(max(row[3], config.IDA_MIGRATION_TS)))
+                if row[5] in NULL_VALUES:
+                    uploaded = None
                 else:
                     uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[5]))
 
-                node_details = {'type': node_type, 'size': row[2], 'modified': modified, 'checksum': checksum, 'uploaded': uploaded}
+                # If there is no upload timestamp, retrieve the latest 'add' timestamp from the changes table
+                # for the project and pathname in staging, if any, as the upload timestamp
+
+                if not uploaded:
+                    if pathname.startswith('frozen/'):
+                        relative_pathname = pathname[6:]
+                    else:
+                        relative_pathname = pathname[7:]
+                    uploaded = get_last_add_change_timestamp(config, relative_pathname)
+
+                node_details = {
+                    'type': node_type,
+                    'size': row[2],
+                    'modified': modified,
+                    'checksum': checksum,
+                    'uploaded': uploaded
+                }
 
             else: # node_type == 'folder'
 
-                node_details = {'type': node_type, 'modified': modified}
+                node_details = {
+                    'type': node_type,
+                    'modified': modified
+                }
 
-            if node:
-                node['nextcloud'] = node_details
-            else:
-                node = {}
-                node['nextcloud'] = node_details
-                nodes[pathname] = node
+            add_node = True
 
-            counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
+            # If we only care about changed nodes, ignore the node if the change timestamp is earlier (less than) SINCE
+            if config.CHANGED_ONLY:
+                changed = max(
+                    [ node_details.get('uploaded'), node_details.get('modified'), config.PROJECT_CREATED ],
+                    key=lambda x: x if x is not None else ''
+                )
+                if changed < config.SINCE:
+                    add_node = False
 
-            if config.DEBUG:
-                sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, file_count, pathname))
+            if add_node:
+                if node:
+                    node['nextcloud'] = node_details
+                else:
+                    node = {}
+                    node['nextcloud'] = node_details
+                    nodes[pathname] = node
+
+                counts['nextcloudNodeCount'] = counts['nextcloudNodeCount'] + 1
+
+                if config.DEBUG:
+                    sys.stderr.write("%s: nextcloud: %d %s\n" % (config.PROJECT, file_count, pathname))
 
     # If CHANGED_ONLY is true, the query above only selected changed nodes, but we also want all ancestor
     # folders which were not marked as changed but should still exist, so populate any/all ancestor
@@ -1132,7 +1158,7 @@ def audit_project(config):
 
                 replicated = ida.get('replicated')
 
-                if replicated in [ None, 'None', 'null', '', 0, False ]:
+                if replicated in NULL_VALUES:
                     replicated = False
 
                 if replicated != False:
@@ -1174,26 +1200,26 @@ def audit_project(config):
 
             if filesystem and filesystem['type'] == 'file':
                 filesystem_checksum = filesystem.get('checksum')
-                if filesystem_checksum in [ None, 'None', 'null', '', 0, False ]:
+                if filesystem_checksum in NULL_VALUES:
                     filesystem_checksum = None
                     # We generate new checksums for all files on disk so if missing for some reason, report an error
                     errors['Node checksum missing for filesystem'] = True
 
             if nextcloud and nextcloud['type'] == 'file':
                 nextcloud_checksum = nextcloud.get('checksum')
-                if nextcloud_checksum in [ None, 'None', 'null', '', 0, False ]:
+                if nextcloud_checksum in NULL_VALUES:
                     nextcloud_checksum = None
                     # It's possible that files have no cache checksum, so no error will be reported if missing
 
             if ida and ida['type'] == 'file':
                 ida_checksum = ida.get('checksum')
-                if ida_checksum in [ None, 'None', 'null', '', 0, False ]:
+                if ida_checksum in NULL_VALUES:
                     ida_checksum = None
                     errors['Node checksum missing for IDA'] = True
 
             if metax and metax['type'] == 'file':
                 metax_checksum = metax.get('checksum')
-                if metax_checksum in [ None, 'None', 'null', '', 0, False ]:
+                if metax_checksum in NULL_VALUES:
                     metax_checksum = None
                     errors['Node checksum missing for Metax'] = True
 

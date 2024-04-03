@@ -32,7 +32,7 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT project [ max_age_in_days ] [ --json-output ]
+Usage: $SCRIPT project [ max_age_in_days ] [ --json-output ] [ --no-user-email ]
        $SCRIPT -h
 "
 
@@ -58,7 +58,8 @@ if [ -z "$MAX_AGE" ]; then
     MAX_AGE=365
 fi
 
-JSON_OUTPUT=`echo "$2 $3" | grep -- "--json-output"`
+JSON_OUTPUT=`echo "$*"   | grep -- "--json-output"`
+NO_USER_EMAIL=`echo "$*" | grep -- "--no-user-email"`
 
 #--------------------------------------------------------------------------------
 
@@ -68,6 +69,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "START:      $START"       >&2
     echo "MAX_AGE:    $MAX_AGE"     >&2
     echo "JSON OUT:   $JSON_OUTPUT" >&2
+    echo "NO EMAIL:   $NO_USER_EMAIL" >&2
 fi
 
 #--------------------------------------------------------------------------------
@@ -169,24 +171,26 @@ printf "%-25s%s\n" "Total staging bytes:"  "${TOTAL_STAGING_BYTES_HR}" >> $SUMMA
 printf "%-25s%s\n" "Total staging files:"  "${TOTAL_STAGING_FILES}"    >> $SUMMARY
 printf "\n\n" >> $SUMMARY
 
-# If there is old data, send email to project users
+# If there is old data, send email to project users, unless explicitly excluded
 
-if [ $TOTAL_BYTES -gt 0 ]; then
+if [ -z "$NO_USER_EMAIL" ]; then
 
-    # Normally, we don't send project-specific notices to internal recipients, only in dev environment
-    if [ "$IDA_ENVIRONMENT" != "DEV" ]; then
-        EMAIL_RECIPIENTS="" # clear any internal recipients defined in service configuration
+    if [ $TOTAL_BYTES -gt 0 ]; then
+
+        # Normally, we don't send project-specific notices to internal recipients, only in dev environment
+        if [ "$IDA_ENVIRONMENT" != "DEV" ]; then
+            EMAIL_RECIPIENTS="" # clear any internal recipients defined in service configuration
+        fi
+
+        export ROOT
+        export EMAIL_SENDER
+        export EMAIL_RECIPIENTS
+    
+        SUBJECT="Notice: Project $PROJECT has files in IDA which haven't been included in any dataset"
+    
+        $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
+        echo "Notice emailed to project users" >&2
     fi
-
-    export ROOT
-    export EMAIL_SENDER
-    export EMAIL_RECIPIENTS
-
-    SUBJECT="Notice: Project $PROJECT has files in IDA which haven't been included in any dataset"
-
-    $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
-
-    echo "Notice emailed to project users" >&2
 fi
 
 # Output results

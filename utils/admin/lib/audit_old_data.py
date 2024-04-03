@@ -30,14 +30,13 @@ import logging
 import psycopg2
 import time
 import re
-import dateutil.parser
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from sortedcontainers import SortedDict
-from subprocess import Popen, PIPE
 from stat import *
-from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, load_configuration, normalize_timestamp
+from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, NULL_VALUES, load_configuration, normalize_timestamp, \
+                  get_last_add_change_timestamp
 
 # Use UTC
 os.environ['TZ'] = 'UTC'
@@ -63,19 +62,32 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        config.DEBUG = True          # TEMP HACK
-        config.DEBUG_VERBOSE = False # TEMP HACK
-
         # If in production, ensure we are not running on uida-man.csc.fi
         if config.IDA_ENVIRONMENT == 'PRODUCTION' and socket.gethostname().startswith('uida-man'):
             raise Exception ("Do not run old data auditing on uida-man.csc.fi!")
 
+        #config.DEBUG = True         # TEMP HACK
+        #config.DEBUG_VERBOSE = True # TEMP HACK
+
+        # Copy essential constants to config so they are easily passed to functions
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX
         config.PROJECT_USER_PREFIX = constants.PROJECT_USER_PREFIX
-        config.SCRIPT = os.path.basename(sys.argv[0])
+        config.IDA_MIGRATION = constants.IDA_MIGRATION
+        config.IDA_MIGRATION_TS = constants.IDA_MIGRATION_TS
+
         config.PID = os.getpid()
+        config.SCRIPT = os.path.basename(sys.argv[0])
         config.PROJECT = sys.argv[2]
         config.MAX_DATA_AGE_IN_DAYS = int(sys.argv[3])
+        config.PROJECT_ROOT = "%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)
+        config.PROJECT_CREATED = max([normalize_timestamp(os.path.getmtime(config.PROJECT_ROOT)), config.IDA_MIGRATION])
+
+        # Calculate age limit datetime and epoch timestamp
+
+        config.AGE_LIMIT_SECONDS = int((datetime.now(timezone.utc) - timedelta(days=int(config.MAX_DATA_AGE_IN_DAYS))).timestamp())
+        config.AGE_LIMIT_TIMESTAMP = normalize_timestamp(config.AGE_LIMIT_SECONDS)
+
+        # Initialize logging using UTC timestamps
 
         log_root = os.path.dirname(config.LOG)
         log_file = os.path.basename(config.LOG)
@@ -85,18 +97,6 @@ def main():
             config.LOG_LEVEL = logging.DEBUG
         else:
             config.LOG_LEVEL = logging.INFO
-
-        if '/rest/' in config.METAX_API:
-            config.METAX_API_VERSION = 1
-        else:
-            config.METAX_API_VERSION = 3
-
-        # Calculate age limit datetime and epoch timestamp
-
-        config.AGE_LIMIT_SECONDS = int((datetime.now(timezone.utc) - timedelta(days=int(config.MAX_DATA_AGE_IN_DAYS))).timestamp())
-        config.AGE_LIMIT_TIMESTAMP = normalize_timestamp(config.AGE_LIMIT_SECONDS)
-
-        # Initialize logging using UTC timestamps
 
         logging.basicConfig(
             filename=config.LOG,
@@ -108,7 +108,7 @@ def main():
 
         logging.info("%s START" % config.PROJECT)
 
-        if config.DEBUG_VERBOSE:
+        if config.DEBUG:
             logging.debug("%s ROOT: %s" % (config.PROJECT, config.ROOT))
             logging.debug("%s LOG: %s" % (config.PROJECT, config.LOG))
             logging.debug("%s LOG_LEVEL: %s" % (config.PROJECT, config.LOG_LEVEL))
@@ -151,7 +151,22 @@ def main():
 def audit_old_data(config):
     """
     Audit a project's data according to the configured values provided and return a report of any old files
+    (if the project is newer than the specified maximum age in days, skip all data analysis and report no old files)
     """
+
+    report = {}
+    report['project'] = config.PROJECT
+    report['createdInIDA'] = config.PROJECT_CREATED
+    report['maxDataAgeInDays'] = config.MAX_DATA_AGE_IN_DAYS
+    report['totalFrozenFiles'] = 0
+    report['totalFrozenBytes'] = 0
+    report['totalStagingFiles'] = 0
+    report['totalStagingBytes'] = 0
+    report['frozenFiles'] = {}
+    report['stagingFiles'] = {}
+
+    if config.PROJECT_CREATED > config.AGE_LIMIT_TIMESTAMP:
+        return report
 
     old_files = get_old_files(config)
 
@@ -159,7 +174,7 @@ def audit_old_data(config):
 
         metax_published_files = get_metax_published_file_pathnames(config)
 
-        # Iterate over all frozen files in IDA, filteringn out those included in a published dataset
+        # Iterate over all frozen files in IDA, filtering out those included in a published dataset
 
         logging.debug("%s Excluding old frozen files published in one or more datasets..." % config.PROJECT)
 
@@ -176,11 +191,8 @@ def audit_old_data(config):
 
         old_files['frozenFiles'] = old_frozen_files
 
-    # Produce report from results
+    # Update report from results
 
-    report = {}
-    report['project'] = config.PROJECT
-    report['maxDataAgeInDays'] = config.MAX_DATA_AGE_IN_DAYS
     report['totalFrozenFiles'] = len(old_files['frozenFiles'])
     report['totalFrozenBytes'] = sum(file['size'] for file in old_files['frozenFiles'].values())
     report['totalStagingFiles'] = len(old_files['stagingFiles'])
@@ -230,9 +242,9 @@ def get_old_files(config):
     if config.DEBUG_VERBOSE:
         logging.debug("%s STORAGE_ID: %d" % (config.PROJECT, storage_id))
 
-    # Limit query to files where the modification and upload time (if any) is less than AGE_LIMIT_SECONDS
+    # Limit query to files where the modification and upload time (if any) is less (earlier) than AGE_LIMIT_SECONDS
 
-    base_query = "SELECT cache.path, cache.size, GREATEST(cache.mtime, COALESCE(extended.upload_time, 0)) \
+    base_query = "SELECT cache.path, cache.size, cache.mtime, extended.upload_time \
                   FROM %sfilecache as cache \
                   LEFT JOIN %sfilecache_extended as extended \
                   ON cache.fileid = extended.fileid \
@@ -305,8 +317,6 @@ def build_file_details(config, rows):
     project_name_frozen_offset = project_name_len + 1
     project_name_staging_offset = project_name_len + 2
 
-    null_values = { None, 'None', 'null', '', 0, False }
-
     for row in rows:
 
         if config.DEBUG_VERBOSE:
@@ -325,17 +335,26 @@ def build_file_details(config, rows):
         else:
             pathname = pathname[(project_name_frozen_offset):]
         
-        # If there is no upload timestamp, use the latest of the modification or IDA migration timestamp
+        modified = normalize_timestamp(datetime.utcfromtimestamp(row[2]))
 
-        if row[2] in null_values:
-            uploaded = config.IDA_MIGRATION
+        if row[3] in NULL_VALUES:
+            uploaded = None
         else:
-            uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[2]))
+            uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[3]))
 
-        if uploaded < config.IDA_MIGRATION:
-            uploaded = config.IDA_MIGRATION
+        # If the uploaded timestamp is None, retrieve the latest 'add' change event for project and file pathname in staging
+        # from the changes table, and if exists and is older than the age limit, use the add timestamp as the uploaded timestamp,
+        # else skip the file since it actually was uploaded later than the specified time limit
 
-        file_details = {'size': row[1], 'uploaded': uploaded}
+        if (uploaded == None):
+            added = get_last_add_change_timestamp(config, pathname)
+            if added:
+                if added < config.AGE_LIMIT_TIMESTAMP:
+                    uploaded = added
+                else:
+                    continue
+
+        file_details = { "size": row[1], "modified": modified, "uploaded": uploaded }
     
         if config.DEBUG_VERBOSE:
             logging.debug("%s FILE DETAILS: %s" % (config.PROJECT, json.dumps(file_details)))
@@ -481,22 +500,22 @@ def get_metax_published_file_pathnames(config):
 
 def output_report(config, report):
 
-    # Output report if there are either frozen or staging files older than allowed limit
+    # Output report 
 
-    if (config.DEBUG or ((report['totalFrozenFiles'] + report['totalStagingFiles']) > 0)):
-        sys.stdout.write('{\n')
-        sys.stdout.write('"reportPathname": null,\n')
-        sys.stdout.write('"project": %s,\n' % json.dumps(report.get('project')))
-        sys.stdout.write('"maxDataAgeInDays": %s,\n' % json.dumps(report.get('maxDataAgeInDays')))
-        sys.stdout.write('"totalBytes": %s,\n' % json.dumps(report.get('totalFrozenBytes', 0) + report.get('totalStagingBytes', 0)))
-        sys.stdout.write('"totalFiles": %s,\n' % json.dumps(report.get('totalFrozenFiles', 0) + report.get('totalStagingFiles', 0)))
-        sys.stdout.write('"totalFrozenBytes": %s,\n' % json.dumps(report.get('totalFrozenBytes', 0)))
-        sys.stdout.write('"totalFrozenFiles": %s,\n' % json.dumps(report.get('totalFrozenFiles', 0)))
-        sys.stdout.write('"totalStagingBytes": %s,\n' % json.dumps(report.get('totalStagingBytes', 0)))
-        sys.stdout.write('"totalStagingFiles": %s,\n' % json.dumps(report.get('totalStagingFiles', 0)))
-        sys.stdout.write('"frozenFiles": %s,\n' % json.dumps(report.get('frozenFiles', {})))
-        sys.stdout.write('"stagingFiles": %s\n' % json.dumps(report.get('stagingFiles', {})))
-        sys.stdout.write('}\n')
+    sys.stdout.write('{\n')
+    sys.stdout.write('"reportPathname": null,\n')
+    sys.stdout.write('"project": %s,\n' % json.dumps(report.get('project')))
+    sys.stdout.write('"createdInIDA": %s,\n' % json.dumps(report.get('createdInIDA')))
+    sys.stdout.write('"maxDataAgeInDays": %s,\n' % json.dumps(report.get('maxDataAgeInDays')))
+    sys.stdout.write('"totalBytes": %s,\n' % json.dumps(report.get('totalFrozenBytes', 0) + report.get('totalStagingBytes', 0)))
+    sys.stdout.write('"totalFiles": %s,\n' % json.dumps(report.get('totalFrozenFiles', 0) + report.get('totalStagingFiles', 0)))
+    sys.stdout.write('"totalFrozenBytes": %s,\n' % json.dumps(report.get('totalFrozenBytes', 0)))
+    sys.stdout.write('"totalFrozenFiles": %s,\n' % json.dumps(report.get('totalFrozenFiles', 0)))
+    sys.stdout.write('"totalStagingBytes": %s,\n' % json.dumps(report.get('totalStagingBytes', 0)))
+    sys.stdout.write('"totalStagingFiles": %s,\n' % json.dumps(report.get('totalStagingFiles', 0)))
+    sys.stdout.write('"frozenFiles": %s,\n' % json.dumps(report.get('frozenFiles', {})))
+    sys.stdout.write('"stagingFiles": %s\n' % json.dumps(report.get('stagingFiles', {})))
+    sys.stdout.write('}\n')
 
 
 if __name__ == "__main__":

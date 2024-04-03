@@ -44,7 +44,7 @@ import re
 import logging
 import psycopg2
 from pathlib import Path
-from utils import load_configuration
+from utils import load_configuration, normalize_timestamp
 
 # Use UTC
 os.environ["TZ"] = "UTC"
@@ -104,17 +104,28 @@ def main():
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PROJECT = sys.argv[2]
 
+        # Determine IDA project creation timestamp, which is the most recent of either the IDA epoch
+        # or the modification timestamp of PSO root directory
+        
+        config.PROJECT_CREATED = constants.IDA_MIGRATION
+        config.PROJECT_ROOT = "%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, constants.PROJECT_USER_PREFIX, config.PROJECT)
+        project_root_modified = normalize_timestamp(os.path.getmtime(config.PROJECT_ROOT))
+        if (project_root_modified > config.PROJECT_CREATED):
+            config.PROJECT_CREATED = project_root_modified
+
         if config.DEBUG:
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
-            sys.stderr.write("ROOT:          %s\n" % config.ROOT)
-            sys.stderr.write("DATA_ROOT:     %s\n" % config.STORAGE_OC_DATA_ROOT)
-            sys.stderr.write("DBTYPE:        %s\n" % config.DBTYPE)
-            sys.stderr.write("DBHOST:        %s\n" % config.DBHOST)
-            sys.stderr.write("DBROUSER:      %s\n" % config.DBROUSER)
-            sys.stderr.write("DBNAME:        %s\n" % config.DBNAME)
-            sys.stderr.write("ARGS#:         %d\n" % len(sys.argv))
-            sys.stderr.write("ARGS:          %s\n" % str(sys.argv))
-            sys.stderr.write("PROJECT:       %s\n" % config.PROJECT)
+            sys.stderr.write("ROOT:            %s\n" % config.ROOT)
+            sys.stderr.write("DATA_ROOT:       %s\n" % config.STORAGE_OC_DATA_ROOT)
+            sys.stderr.write("DBTYPE:          %s\n" % config.DBTYPE)
+            sys.stderr.write("DBHOST:          %s\n" % config.DBHOST)
+            sys.stderr.write("DBROUSER:        %s\n" % config.DBROUSER)
+            sys.stderr.write("DBNAME:          %s\n" % config.DBNAME)
+            sys.stderr.write("ARGS#:           %d\n" % len(sys.argv))
+            sys.stderr.write("ARGS:            %s\n" % str(sys.argv))
+            sys.stderr.write("PROJECT:         %s\n" % config.PROJECT)
+            sys.stderr.write("PROJECT_ROOT:    %s\n" % config.PROJECT_ROOT)
+            sys.stderr.write("PROJECT_CREATED: %s\n" % config.PROJECT_CREATED)
     
         # Open database connection 
 
@@ -263,7 +274,7 @@ def main():
         if (len(rows) > 0):
             last_data_change = rows[0][0]
         else:
-            last_data_change = constants.IDA_MIGRATION
+            last_data_change = config.PROJECT_CREATED
 
         # Retrieve glusterfs volume where project data resides
 
@@ -288,7 +299,8 @@ def main():
             sys.stdout.write("STAGED_BYTES\t")
             sys.stdout.write("FROZEN_FILES\t")
             sys.stdout.write("FROZEN_BYTES\t")
-            sys.stdout.write("LAST_MODIFIED\t")
+            sys.stdout.write("CREATED_IN_IDA\t")
+            sys.stdout.write("LAST_DATA_CHANGE\t")
             sys.stdout.write("STORAGE_VOLUME\n")
             sys.stdout.write("%s\t" % config.PROJECT)
             sys.stdout.write("%d\t" % quota_bytes)
@@ -298,6 +310,7 @@ def main():
             sys.stdout.write("%d\t" % staged_bytes)
             sys.stdout.write("%d\t" % frozen_files)
             sys.stdout.write("%d\t" % frozen_bytes)
+            sys.stdout.write("%s\t" % config.PROJECT_CREATED)
             sys.stdout.write("%s\t" % last_data_change)
             sys.stdout.write("%s\n" % storage_volume)
         else:
@@ -310,6 +323,7 @@ def main():
             sys.stdout.write("  \"stagedBytes\": %d,\n" % staged_bytes)
             sys.stdout.write("  \"frozenFiles\": %d,\n" % frozen_files)
             sys.stdout.write("  \"frozenBytes\": %d,\n" % frozen_bytes)
+            sys.stdout.write("  \"createdInIDA\": \"%s\",\n" % config.PROJECT_CREATED)
             sys.stdout.write("  \"lastDataChange\": \"%s\",\n" % last_data_change)
             sys.stdout.write("  \"storageVolume\": \"%s\"\n" % storage_volume)
             sys.stdout.write("}\n")

@@ -118,7 +118,13 @@ if [ "$EMAIL_RECIPIENTS" != "" ]; then
     fi
 fi
 
-echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER -S "replyto=$EMAIL_SENDER" $RECIPIENTS 2>$ERR
+SNAIL=`mail --version 2>/dev/null | grep -- 's-nail'`
+
+if [ -z "$SNAIL" ]; then
+    echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER -S "replyto=$EMAIL_SENDER" $RECIPIENTS 2>$ERR
+else
+    echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER -S "reply-to=$EMAIL_SENDER" $RECIPIENTS 2>$ERR
+fi
 
 if [ -s $ERR ]; then
     cat $ERR >&2

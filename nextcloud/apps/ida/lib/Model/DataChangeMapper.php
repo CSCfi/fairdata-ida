@@ -91,6 +91,45 @@ class DataChangeMapper extends Mapper
     }
 
     /**
+     * Retrieve the details of the last recorded 'add' change event for a particular relative pathname for a project, in staging, if any.
+     */
+    public function getLastAddChangeDetails($project, $pathname)
+    {
+        Util::writeLog('ida', 'getLastAddChangeDetails:' . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
+
+        $stagingPathname = '/' . $project . Constants::STAGING_FOLDER_SUFFIX . $pathname;
+
+        Util::writeLog('ida', 'getLastAddChangeDetails: stagingPathname=' . $stagingPathname, \OCP\Util::DEBUG);
+
+        $sql = 'SELECT * FROM *PREFIX*ida_data_change '
+               . ' WHERE project = \'' . Access::escapeQueryStringComponent($project) . '\''
+               . ' AND change = \'add\''
+               . ' AND pathname = \'' . Access::escapeQueryStringComponent($stagingPathname) . '\''
+               . ' ORDER BY timestamp DESC'
+               . ' LIMIT 1;';
+
+        Util::writeLog('ida', 'getLastAddChangeDetails: sql=' . $sql, \OCP\Util::DEBUG);
+
+        try {
+            $changes = $this->findEntities($sql);
+        }
+        catch (DoesNotExistException $e) {
+            $changes = null;
+        }
+
+        if ($changes === null || count($changes) < 1) {
+            $change = null;
+        }
+        else {
+            $change = $changes[0];
+        }
+
+        Util::writeLog('ida', 'getLastAddChangeDetails: change=' . json_encode($change), \OCP\Util::DEBUG);
+
+        return $change;
+    }
+
+    /**
      * Retrieve the details of the last recorded data change event for a project, if any, else return details
      * from original legacy data migration event.
      */
@@ -147,11 +186,11 @@ class DataChangeMapper extends Mapper
         }
 
         if ($change != null) {
-            $sql = $sql . ' AND "change" = \'' . Access::escapeQueryStringComponent($change) . '\'';
+            $sql = $sql . ' AND change = \'' . Access::escapeQueryStringComponent($change) . '\'';
         }
 
         if ($mode != null) {
-            $sql = $sql . ' AND "mode" = \'' . Access::escapeQueryStringComponent($mode) . '\'';
+            $sql = $sql . ' AND mode" = \'' . Access::escapeQueryStringComponent($mode) . '\'';
         }
 
         $sql = $sql . ' ORDER BY timestamp DESC';
@@ -177,9 +216,9 @@ class DataChangeMapper extends Mapper
              &&
              ($user === null   || $user === 'service')
              &&
-             ($change === null || $change === 'init') 
+             ($change === null || $change === 'init')
              &&
-             ($mode === null || $mode === 'system') 
+             ($mode === null || $mode === 'system')
            ) {
             $dataChange = new DataChange();
             $dataChange->setTimestamp(Constants::IDA_MIGRATION);
@@ -262,15 +301,15 @@ class DataChangeMapper extends Mapper
      * Delete all data change records in the database for the specified project, or for all projects if 'all' specfied
      */
     public function deleteAllDataChanges($project = null) {
-        
+
         $sql = 'DELETE FROM *PREFIX*ida_data_change';
-        
+
         if ($project != 'all') {
             $sql = $sql . ' WHERE project =\'' . Access::escapeQueryStringComponent($project) . '\'';
         }
-        
+
         Util::writeLog('ida', 'deleteAllDataChanges: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         $stmt = $this->execute($sql);
         $stmt->closeCursor();
     }

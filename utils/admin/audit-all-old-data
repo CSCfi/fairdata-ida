@@ -40,7 +40,7 @@ SENTINEL_FILE="/tmp/AUDIT_ALL_OLD_DATA"
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ max_age_in_days ] [ --json-output ] [ --force-audit ]
+Usage: $SCRIPT [ max_age_in_days ] [ --json-output ] [ --force-audit ] [ --no-email | --no-user-email ]
        $SCRIPT -h
 "
 
@@ -59,7 +59,7 @@ else
     exit 1
 fi
 
-#DEBUG="true" # TEMP HACK
+DEBUG="true" # TEMP HACK
 
 # --------------------------------------------------------------------------------
 
@@ -101,15 +101,23 @@ if [ -z "$MAX_AGE" ]; then
     MAX_AGE=365
 fi
 
-JSON_OUTPUT=`echo "$*" | grep -- "--json-output"`
-FORCE_AUDIT=`echo "$*" | grep -- "--force-audit"`
+JSON_OUTPUT=`echo "$*"   | grep -- "--json-output"`
+FORCE_AUDIT=`echo "$*"   | grep -- "--force-audit"`
+NO_EMAIL=`echo "$*"      | grep -- "--no-email"`
+NO_USER_EMAIL=`echo "$*" | grep -- "--no-user-email"`
+
+if [ "${NO_EMAIL}${NO_USER_EMAIL}" ]; then
+    NO_USER_EMAIL="--no-user-email"
+fi
 
 #--------------------------------------------------------------------------------
 
 if [ "$DEBUG" = "true" ]; then
-    echo "MAX AGE:  $MAX_AGE"     >&2
-    echo "JSON OUT: $JSON_OUTPUT" >&2
-    echo "PROJECTS: $PROJECTS"    >&2
+    echo "MAX AGE:       $MAX_AGE"       >&2
+    echo "JSON OUT:      $JSON_OUTPUT"   >&2
+    echo "NO EMAIL:      $NO_EMAIL"      >&2
+    echo "NO USER EMAIL: $NO_USER_EMAIL" >&2
+    echo "PROJECTS:      $PROJECTS"      >&2
 fi
 
 #--------------------------------------------------------------------------------
@@ -163,7 +171,7 @@ for PROJECT in $PROJECTS; do
 
         echo "$PROJECT" >&2
 
-        PROJECT_SUMMARY=`DEBUG=false $ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output 2>/dev/null`
+        PROJECT_SUMMARY=`DEBUG=false $ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output $NO_USER_EMAIL 2>/dev/null`
 
         if [ -n "$PROJECT_SUMMARY" ]; then
 
@@ -274,14 +282,15 @@ printf "\n"                             > $OUTPUT_TXT
 column -t -s, -o '   ' $OUTPUT_CSV_HR  >> $OUTPUT_TXT
 printf "\n\n"                          >> $OUTPUT_TXT
 
-# Send email with report summary to internal users (if any configured)
+# Send email with report summary to internal users (if any configured), unless explcitly excluded
 
-RECIPIENTS="$EMAIL_RECIPIENTS"
-
-if [ "${EMAIL_SENDER}${RECIPIENTS}" ]; then
-    SUBJECT="[IDA Service] OLD DATA REPORT"
-    cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
-    echo "Report summary emailed to internal users" >&2
+if [ -z "$NO_EMAIL" ]; then
+    RECIPIENTS="$EMAIL_RECIPIENTS"
+    if [ "${EMAIL_SENDER}${RECIPIENTS}" ]; then
+        SUBJECT="[IDA Service] OLD DATA REPORT"
+        cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
+        echo "Report summary emailed to internal users" >&2
+    fi
 fi
 
 if [ "$JSON_OUTPUT" ]; then

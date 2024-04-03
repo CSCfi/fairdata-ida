@@ -60,6 +60,8 @@ TOTAL_FILES=`echo "$DATA" | jq -r '.totalFiles'`
 STAGED_FILES=`echo "$DATA" | jq -r '.stagedFiles'`
 FROZEN_FILES=`echo "$DATA" | jq -r '.frozenFiles'`
 
+CREATED_IN_IDA=`echo "$DATA" | jq -r '.createdInIDA' | sed -e 's/T.*$//'`
+
 LAST_DATA_CHANGE=`echo "$DATA" | jq -r '.lastDataChange' | sed -e 's/T.*$//'`
 
 STORAGE_VOLUME=`echo "$DATA" | jq -r '.storageVolume'`
@@ -84,6 +86,9 @@ echo "    ${STAGED_FILES}"
 
 echo "Frozen files:"
 echo "    ${FROZEN_FILES}"
+
+echo "Created in IDA:"
+echo "    ${CREATED_IN_IDA}"
 
 echo "Last data change:"
 echo "    ${LAST_DATA_CHANGE}"

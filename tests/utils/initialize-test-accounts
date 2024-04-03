@@ -369,7 +369,7 @@ for PROJECT in $PROJECTS; do
     PROJECT_STAGING_FOLDER="$PROJECT$STAGING_FOLDER_SUFFIX"
     PROJECT_FROZEN_FOLDER="$PROJECT"
 
-    OUT=`cp -r $ROOT/tests/testdata $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER`
+    OUT=`cp -rp $ROOT/tests/testdata $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
@@ -405,12 +405,12 @@ for PROJECT in $PROJECTS; do
         success
     fi
 
-    # Update Nextcloud uploaded timestamp to current datetime
+    # Update uploaded timestamps to current datetime
 
-    STEP="   Initializing upload timestamps for ${PROJECT}"
+    STEP="   Initializing upload ('add' change) timestamps for ${PROJECT}"
     printf "%${PADDING}s" "$STEP"
 
-    OUT=`$ROOT/tests/utils/initialize-upload-timestamps $PROJECT 2>&1`
+    OUT=`$ROOT/tests/utils/initialize-change-timestamps $PROJECT 2>&1`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
