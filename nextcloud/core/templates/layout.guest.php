@@ -387,7 +387,12 @@ function localLoginOrSharePasswordActive()
         <div class="row no-gutters">
             <?php if ($CURRENT_LANGUAGE == "fi") : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
-                    <span>Fairdata</span>
+                    <span>
+                        Fairdata
+                        <a class="fd-link fd-link-footer" rel="noreferrer noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
+                            <img width="175px" src="<?php print_unescaped(image_path('', 'supporting-eosc.jpg')); ?>" alt="Supporting class="logo">
+                        </a>
+                    </span>
                     <p>Fairdata-palvelut järjestää <strong>opetus- ja kulttuuriministeriö </strong> ja toimittaa <strong>CSC – Tieteen tietotekniikan keskus Oy</strong></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
@@ -407,12 +412,17 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Seuraa</span>
-                    <p><a href="https://twitter.com/Fairdata_fi" rel="noreferrer noopener" target="_blank">Twitter</a></p>
+                    <p><a href="https://x.com/Fairdata_fi" rel="noreferrer noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
                     <p><a href="https://www.fairdata.fi/ajankohtaista/" rel="noreferrer noopener" target="_blank">Uutiset</a></p>
                 </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
-                    <span>Fairdata</span>
+                    <span>
+                        Fairdata
+                        <a class="fd-link fd-link-footer" rel="noreferrer noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
+                            <img width="175px" src="<?php print_unescaped(image_path('', 'supporting-eosc.jpg')); ?>" alt="Supporting class="logo">
+                        </a>
+                    </span>
                     <p>Fairdata-tjänsterna erbjuds av <strong>ministeriet för utbildning och kultur</strong> och produceras av <strong>CSC - IT Center for Science Ltd.</strong></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
@@ -430,12 +440,17 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Följ</span>
-                    <p><a href="https://twitter.com/Fairdata_fi" rel="noreferrer noopener" target="_blank">Twitter</a></p>
+                    <p><a href="https://x.com/Fairdata_fi" rel="noreferrer noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
                     <p><a href="https://www.fairdata.fi/en/news/" rel="noreferrer noopener" target="_blank">Nyheter</a></p>
                 </div>
             <?php else : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
-                    <span>Fairdata</span>
+                    <span>
+                        Fairdata
+                        <a class="fd-link fd-link-footer" rel="noreferrer noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
+                            <img width="175px" src="<?php print_unescaped(image_path('', 'supporting-eosc.jpg')); ?>" alt="Supporting class="logo">
+                        </a>
+                    </span>
                     <p>The Fairdata services are offered by the<strong> Ministry of Education and Culture </strong>and produced by<strong> CSC – IT Center for Science Ltd.</strong></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
@@ -453,7 +468,7 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Follow</span>
-                    <p><a href="https://twitter.com/Fairdata_fi" rel="noreferrer noopener" target="_blank">Twitter</a></p>
+                    <p><a href="https://x.com/Fairdata_fi" rel="noreferrer noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
                     <p><a href="https://www.fairdata.fi/en/news/" rel="noreferrer noopener" target="_blank">What's new</a></p>
                 </div>
             <?php endif; ?>

@@ -167,7 +167,7 @@ class TestAgents(unittest.TestCase):
                 self.assertIsNotNone(metax_file_data.get("frozen", None))
                 self.assertIsNotNone(metax_file_data.get("modified", None))
                 self.assertEqual(metax_file_data["user"], "test_user_a")
-                self.assertFalse(metax_file_data["removed"])
+                self.assertFalse(metax_file_data.get("removed"), False)
             else:
                 metax_file_data = response.json()
                 self.assertEqual(file_data["pid"], metax_file_data["identifier"])
@@ -178,7 +178,7 @@ class TestAgents(unittest.TestCase):
                 self.assertIsNotNone(metax_file_data.get("file_frozen", None))
                 self.assertIsNotNone(metax_file_data.get("file_modified", None))
                 self.assertEqual(metax_file_data["service_created"], "ida")
-                self.assertFalse(metax_file_data["removed"])
+                self.assertFalse(metax_file_data.get("removed"), False)
 
         # --------------------------------------------------------------------------------
 

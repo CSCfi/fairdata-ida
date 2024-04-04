@@ -45,6 +45,30 @@ a {
 	margin-top: 5px;
 }
 
+.fd-footer a {
+	font-size: 1rem;
+	font-weight: 400;
+	line-height: 1.75;
+	color: #575757;
+	text-decoration: none;
+    outline: 0px;
+}
+  
+.fd-footer a:hover {
+	text-decoration: underline;  
+} 
+
+.fd-footer img {
+    width: 175px;
+    position: absolute;
+    top: 5;
+    right: 0;
+}
+
+.fd-footer img:hover {
+    outline: 1px solid #575757;
+}
+
 .fd-col {
 	padding-right: 20px;
 }
