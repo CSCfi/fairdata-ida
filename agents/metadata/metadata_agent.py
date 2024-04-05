@@ -531,7 +531,10 @@ class MetadataAgent(GenericAgent):
                     if 'failed' in response_json:
                         errors = []
                         for i, entry in enumerate(response_json['failed']):
-                            errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                            if self._metax_api_version >= 3:
+                                errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                            else:
+                                errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
                             if i > 10:
                                 break
     
@@ -652,7 +655,10 @@ class MetadataAgent(GenericAgent):
                     if 'failed' in response_json:
                         errors = []
                         for i, entry in enumerate(response_json['failed']):
-                            errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                            if self._metax_api_version >= 3:
+                                errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                            else:
+                                errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
                             if i > 10:
                                 break
     

@@ -170,6 +170,7 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
         STEP="   Flushing $PROJECT"
         printf "%${PADDING}s" "$STEP"
         if [ $METAX_API_VERSION -ge 3 ]; then
+            #echo "$CURL_DELETE -H \"$METAX_AUTH_HEADER\" \"$METAX_API/files?csc_project=$PROJECT&storage_service=ida&flush=true\""
             OUT=`$CURL_DELETE -H "$METAX_AUTH_HEADER" "$METAX_API/files?csc_project=$PROJECT&storage_service=ida&flush=true" 2>&1`
         else
             OUT=`$CURL_POST $METAX_CREDENTIALS "$METAX_RPC/files/flush_project?project_identifier=$PROJECT" 2>&1`
@@ -193,6 +194,7 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
         STEP="   Flushing $USER"
         printf "%${PADDING}s" "$STEP"
         if [ $METAX_API_VERSION -ge 3 ]; then
+            #echo "$CURL_DELETE -H \"$METAX_AUTH_HEADER\" \"$METAX_API/users/$USER/data?flush=true\""
             OUT=`$CURL_DELETE -H "$METAX_AUTH_HEADER" "$METAX_API/users/$USER/data?flush=true" 2>&1`
         else
             OUT=`$CURL_POST $METAX_CREDENTIALS "$METAX_RPC/datasets/flush_user_data?metadata_provider_user=$USER" 2>&1`

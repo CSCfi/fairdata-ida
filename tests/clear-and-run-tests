@@ -60,6 +60,7 @@ LOGDIR=`dirname "$LOG"`
 
 rm -f $LOGDIR/*.log 2>/dev/null
 rm -f $LOGDIR/old_data/*.log 2>/dev/null
+rm -f $LOGDIR/audits/* 2>/dev/null
+rm -f $LOGDIR/rabbitmq_monitoring/* 2>/dev/null
 $ROOT/utils/restart
 $ROOT/tests/run-tests $*
-
