@@ -176,7 +176,7 @@ HOSTNAME=`hostname`
 
 #--------------------------------------------------------------------------------
 
-ERR="/tmp/ida_${SCRIPT}_$$.err"
+ERR="/var/tmp/ida_${SCRIPT}_$$.err"
 
 cleanup() {
     rm -f $ERR 2>/dev/null

@@ -36,7 +36,7 @@
 #---------------------------------------------------------------------------------
 
 MAX_SENTINEL_FILE_AGE_IN_HOURS=72
-SENTINEL_FILE="/tmp/GENERATE_MISSING_CHECKSUMS"
+SENTINEL_FILE="/var/tmp/GENERATE_MISSING_CHECKSUMS"
 
 #---------------------------------------------------------------------------------
 

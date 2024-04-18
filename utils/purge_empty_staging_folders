@@ -46,7 +46,7 @@ for PROJECT in "$PROJECTS"; do
     echo "Purging empty staging folders in $PROJECT..."
 
     PROJECT_STAGING_FOLDER="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}${STAGING_FOLDER_SUFFIX}"
-    EMPTY_FOLDERS="/tmp/${SCRIPT}.$$.${PROJECT}"
+    EMPTY_FOLDERS="/var/tmp/${SCRIPT}.$$.${PROJECT}"
 
     if [ ! -d $PROJECT_STAGING_FOLDER ]; then
         echo "Error: Unable to scan project staging folder: $PROJECT_STAGING_FOLDER" >&2

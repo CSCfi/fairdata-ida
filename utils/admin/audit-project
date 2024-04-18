@@ -206,7 +206,7 @@ mkdir -p $REPORT_ROOT/$YEAR/$MONTH 2>/dev/null
 
 #--------------------------------------------------------------------------------
 
-OUTPUT="/tmp/$$.out"
+OUTPUT="/var/tmp/$$.out"
 SUMMARY="$OUTPUT.summary"
 
 source $ROOT/venv/bin/activate

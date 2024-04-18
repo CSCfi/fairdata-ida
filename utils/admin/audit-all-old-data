@@ -33,7 +33,7 @@
 # --------------------------------------------------------------------------------
 
 MAX_SENTINEL_FILE_AGE_IN_DAYS=25
-SENTINEL_FILE="/tmp/AUDIT_ALL_OLD_DATA"
+SENTINEL_FILE="/var/tmp/AUDIT_ALL_OLD_DATA"
 
 #---------------------------------------------------------------------------------
 
@@ -122,12 +122,12 @@ fi
 
 #--------------------------------------------------------------------------------
 
-OUTPUT_CSV="/tmp/$$.csv"
-OUTPUT_CSV_HR="/tmp/$$.hr.csv"
-OUTPUT_TXT="/tmp/$$.txt"
-OUTPUT_JSON="/tmp/$$.json"
-OUTPUT_JSON_FINAL="/tmp/$$.final.json"
-SUMMARY="/tmp/$$.summary"
+OUTPUT_CSV="/var/tmp/$$.csv"
+OUTPUT_CSV_HR="/var/tmp/$$.hr.csv"
+OUTPUT_TXT="/var/tmp/$$.txt"
+OUTPUT_JSON="/var/tmp/$$.json"
+OUTPUT_JSON_FINAL="/var/tmp/$$.final.json"
+SUMMARY="/var/tmp/$$.summary"
 
 # If the parameter --force-audit is specified, all projects will be audited,
 # disregarding whether they are explicitly excluded in the configuration, internal,

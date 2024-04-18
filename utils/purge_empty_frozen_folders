@@ -46,7 +46,7 @@ for PROJECT in "$PROJECTS"; do
     echo "Purging empty frozen folders in $PROJECT..."
 
     PROJECT_FROZEN_FOLDER="${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files/${PROJECT}"
-    EMPTY_FOLDERS="/tmp/${SCRIPT}.$$.${PROJECT}"
+    EMPTY_FOLDERS="/var/tmp/${SCRIPT}.$$.${PROJECT}"
 
     if [ ! -d $PROJECT_FROZEN_FOLDER ]; then
         echo "Error: Unable to scan project frozen folder: $PROJECT_FROZEN_FOLDER" >&2

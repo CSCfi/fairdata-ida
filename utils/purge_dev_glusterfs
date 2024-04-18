@@ -41,10 +41,10 @@
 #
 #     cd /
 #     systemctl stop httpd
-#     tar czvf /tmp/ida_storage_volumes.tgz /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
+#     tar czvf /var/tmp/ida_storage_volumes.tgz /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
 #     /var/ida/utils/purge_dev_glusterfs
 #     /var/ida/utils/initialize_dev_glusterfs
-#     tar xzvf /tmp/ida_storage_volumes.tgz
+#     tar xzvf /var/tmp/ida_storage_volumes.tgz
 #     chown -R apache:apache /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
 #     chmod -R g+rwX,o-rwx /mnt/storage_vol01 /mnt/storage_vol02 /mnt/storage_vol03 /mnt/storage_vol04
 #     /var/ida/utiis/restart

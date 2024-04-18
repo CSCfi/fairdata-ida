@@ -133,8 +133,8 @@ IDA-tiimi
 
 #--------------------------------------------------------------------------------
 
-OUTPUT="/tmp/$$.output"
-SUMMARY="/tmp/$$.summary"
+OUTPUT="/var/tmp/$$.output"
+SUMMARY="/var/tmp/$$.summary"
 
 source $ROOT/venv/bin/activate
 
