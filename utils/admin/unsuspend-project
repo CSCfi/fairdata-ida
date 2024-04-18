@@ -122,7 +122,7 @@ if [ "$2" = "--silent" ]; then
 fi
 
 SUBJECT="Project ${PROJECT} unsuspended" 
-MESSAGE="The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored. If you have any questions, please contact the CSC Service Desk (servicedesk@csc."
+MESSAGE="The project ${PROJECT} has been UNSUSPENDED in the IDA service. Full access to project data is restored. If you have any questions, please contact the CSC Service Desk (servicedesk@csc.fi)."
 
 export ROOT
 export EMAIL_SENDER
