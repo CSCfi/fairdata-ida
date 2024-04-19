@@ -57,24 +57,30 @@ RUN cd /tmp/Python-3.8.14 \
 RUN mkdir -p /mnt/storage_vol01/log \
  && mkdir -p /mnt/storage_vol01/ida \
  && mkdir -p /mnt/storage_vol01/ida/control \
- && mkdir -p /mnt/storage_vol01/ida_replication \
  && mkdir -p /mnt/storage_vol01/ida_trash \
  && mkdir -p /mnt/storage_vol02/ida \
  && mkdir -p /mnt/storage_vol03/ida \
- && mkdir -p /mnt/storage_vol04/ida
+ && mkdir -p /mnt/storage_vol04/ida \
+ && mkdir -p /mnt/ida_upload_cache \
+ && mkdir -p /mnt/tape_archive_cache 
 RUN touch /mnt/storage_vol01/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol02/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol03/DO_NOT_DELETE_sentinel_file \
  && touch /mnt/storage_vol04/DO_NOT_DELETE_sentinel_file \
- && touch /mnt/storage_vol01/ida_replication/DO_NOT_DELETE_sentinel_file
+ && touch /mnt/ida_upload_cache/DO_NOT_DELETE_sentinel_file \
+ && touch /mnt/tape_archive_cache/DO_NOT_DELETE_sentinel_file
 RUN chown -R apache:apache /mnt/storage_vol01 \
  && chown -R apache:apache /mnt/storage_vol02 \
  && chown -R apache:apache /mnt/storage_vol03 \
  && chown -R apache:apache /mnt/storage_vol04 \
+ && chown -R apache:apache /mnt/ida_upload_cache \
+ && chown -R apache:apache /mnt/tape_archive_cache \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol01 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol02 \
  && chmod -R g+rwX,o+rX-w /mnt/storage_vol03 \
- && chmod -R g+rwX,o+rX-w /mnt/storage_vol04
+ && chmod -R g+rwX,o+rX-w /mnt/storage_vol04 \
+ && chmod -R g+rwX,o+rX-w /mnt/ida_upload_cache \
+ && chmod -R g+rwX,o+rX-w /mnt/tape_archive_cache 
 
 # Initialize statdb user account 
 RUN adduser repputes

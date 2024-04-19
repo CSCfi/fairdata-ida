@@ -74,7 +74,11 @@ echo "Installing IDA config.sh..."
 docker cp ../fairdata-docker/ida/config/config.dev.sh $(docker ps -q -f name=ida-nextcloud):/var/ida/config/config.sh
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R $HTTPD_USER:$HTTPD_USER /var/ida/config
 
-echo "Installing Download Service settings.cfg..."
+echo "Installing IDA healthcheck sevice config.json..."
+docker cp ../fairdata-docker/ida/healthcheck/config.json $(docker ps -q -f name=ida-nextcloud):/usr/local/fd/fairdata-ida-healthcheck/config.json
+docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R root:root /usr/local/fd/fairdata-ida-healthcheck/config.json
+
+echo "Installing Download service settings.cfg..."
 docker cp ../fairdata-docker/download/config/download-settings.idadev.cfg $(docker ps -q -f name=ida-nextcloud):/usr/local/fd/fairdata-download/dev_config/settings.cfg
 docker exec -it $(docker ps -q -f name=ida-nextcloud) chown -R root:root /usr/local/fd/fairdata-download/dev_config/settings.cfg
 
@@ -131,7 +135,7 @@ docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-report/u
 echo "- IDA admin portal"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-admin-portal/utils/initialize-venv > /dev/null
 echo "- IDA healthcheck service"
-docker exec -it $(docker ps -q -f name=ida-nextcloud) /opt/fairdata/ida-healthcheck/utils/initialize-venv > /dev/null
+docker exec -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/fairdata-ida-healthcheck/utils/initialize-venv > /dev/null
 echo "- Fairdata download service"
 docker exec -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/fairdata-download/utils/initialize-venv > /dev/null
 
@@ -153,14 +157,14 @@ echo "Starting IDA postprocessing agents..."
 docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.metadata.metadata_agent
 docker exec -u $HTTPD_USER --detach -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m agents.replication.replication_agent
 
-echo "Starting IDA healthcheck service..."
-APP_ROOT=/opt/fairdata/ida-healthcheck
-APP_VENV=$APP_ROOT/venv
-docker exec --detach -e APP_ROOT=$APP_ROOT -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m wsgi
-
 echo "Starting IDA admin portal..."
 APP_ROOT=/opt/fairdata/ida-admin-portal
 docker exec --detach -e APP_ROOT=$APP_ROOT -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_ROOT/ida-admin-portal.sh
+
+echo "Starting IDA healthcheck service..."
+APP_ROOT=/usr/local/fd/fairdata-ida-healthcheck
+APP_VENV=$APP_ROOT/venv
+docker exec --detach -e APP_ROOT=$APP_ROOT -e VIRTUAL_ENV=$APP_VENV -w $APP_ROOT $(docker ps -q -f name=ida-nextcloud) $APP_VENV/bin/python -m wsgi
 
 echo "Starting download service..."
 APP_ROOT=/usr/local/fd/fairdata-download

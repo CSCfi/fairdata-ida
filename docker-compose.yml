@@ -10,8 +10,8 @@ services:
       - ../ida2-command-line-tools:/var/ida-tools
       - ../ida-service-internals/report:/opt/fairdata/ida-report
       - ../fairdata-ida-admin-portal:/opt/fairdata/ida-admin-portal
-      - ../fairdata-ida-healthcheck:/opt/fairdata/ida-healthcheck
       - ../fairdata-test-accounts:/opt/fairdata/fairdata-test-accounts
+      - ../fairdata-ida-healthcheck:/usr/local/fd/fairdata-ida-healthcheck
       - ../fairdata-download:/usr/local/fd/fairdata-download
     configs:
       - source: ida-httpd-config
