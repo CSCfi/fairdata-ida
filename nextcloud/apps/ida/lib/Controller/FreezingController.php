@@ -48,6 +48,7 @@ use OCP\IRequest;
 use OCP\Util;
 use OC\Files\FileInfo;
 use OC\Files\Filesystem;
+use OC;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
@@ -840,6 +841,25 @@ class FreezingController extends Controller
                 Access::unlockProject($project);
 
                 return API::conflictErrorResponse('The requested action conflicts with an existing file in the frozen area.');
+            }
+
+            // Ensure that the size on disk of all files in scope match what is recorded in Nextcloud cache as reported
+            // by the client when each file was uploaded (detects incomplete uploads)
+            //
+            // NOTE: auditing will also detect size mismatches, but a user may freeze a file before the project is
+            // audited, so this is an additional check to prevent freezing of files that did not upload completely
+
+            try {
+
+                $this->checkFileSizes('freeze', $project, $nextcloudNodes);
+
+            } catch (Exception $e) {
+
+                $this->actionMapper->deleteAction($actionEntity->getPid());
+                Access::unlockProject($project);
+
+                return API::serverErrorResponse('freezeFiles: ' . $e->getMessage());
+
             }
 
             // Record details of files within scope of action
@@ -1643,7 +1663,6 @@ class FreezingController extends Controller
      */
     protected function registerAction($nextcloudNodeId, $action, $project, $user, $pathname, $batch = false)
     {
-
         // Convert boolean to string for logging
         $batch_string = var_export($batch, true);
 
@@ -1811,7 +1830,6 @@ class FreezingController extends Controller
      */
     protected function checkDatasets($nextcloudNodes)
     {
-
         Util::writeLog('ida', 'checkDatasets: nodeCount=' . count($nextcloudNodes), \OCP\Util::DEBUG);
 
         $datasets = array();
@@ -2128,7 +2146,6 @@ class FreezingController extends Controller
      */
     protected function registerFile($fileInfo, $action, $project, $pathname, $actionPid, $timestamp)
     {
-
         if (empty($pathname)) {
             throw new Exception('Empty pathname.');
         }
@@ -2169,6 +2186,67 @@ class FreezingController extends Controller
     }
 
     /**
+     * Check that file size on disk matches what is recorded in Nextcloud cache, for all files. Throws exception
+     * if any size differs, or if the file does not exist on disk.
+     *
+     * @param string     $action         the action being performed, one of 'freeze', 'unfreeze', or 'delete'
+     * @param string     $project        the project to which the files belong
+     * @param FileInfo[] $nextcloudNodes one or more FileInfo instances
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function checkFileSizes($action, $project, $nextcloudNodes)
+    {
+        Util::writeLog(
+            'ida',
+            'checkFileSizes:'
+                . ' project=' . $project
+                . ' nextcloudNodes=' . count($nextcloudNodes),
+            \OCP\Util::DEBUG
+        );
+
+        foreach ($nextcloudNodes as $fileInfo) {
+
+            // Node should only ever be file, but we check anyway, just to be sure...
+
+            if ($fileInfo->getType() === FileInfo::TYPE_FILE) {
+
+                $relativePathname = $this->stripRootProjectFolder($project, $fileInfo->getPath());
+                $fullPathname = $this->buildFullPathname($action, $project, $relativePathname);
+                $filesystemPathname = $this->buildFilesystemPathname($action, $project, $relativePathname);
+
+                // If file does not exist on disk, throw exception
+
+                if (!file_exists($filesystemPathname)) {
+                    throw new Exception('File not found on disk: '
+                                            . $fullPathname
+                                            //. '; filesystem pathname '
+                                            //. $filesystemPathname
+                                        );
+                }
+
+                $fileSizeInCache = $fileInfo->getSize();
+                $fileSizeOnDisk = filesize($filesystemPathname);
+
+                // if sizes don't match, throw exception
+
+                if ($fileSizeOnDisk != $fileSizeInCache) {
+                    throw new Exception('File size on disk ('
+                                            . $fileSizeOnDisk
+                                            . ') does not match the originally reported upload file size ('
+                                            . $fileSizeInCache
+                                            . ') for file '
+                                            . $fullPathname
+                                            //. '; filesystem pathname '
+                                            //. $filesystemPathname
+                                        );
+                }
+            }
+        }
+    }
+
+    /**
      * Register one or more files, within the scope of a specified node, associating them with the specified action PID.
      *
      * If the action is 'freeze', then entirely new file records will be created; otherwise, the existing file
@@ -2188,7 +2266,6 @@ class FreezingController extends Controller
      */
     protected function registerFiles($action, $project, $nextcloudNodes, $pid, $timestamp)
     {
-
         Util::writeLog(
             'ida',
             'registerFiles:'
@@ -2280,7 +2357,6 @@ class FreezingController extends Controller
      */
     protected function resolveNextcloudNodeId($nextcloudNodeId, $action, $project, $pathname)
     {
-
         Util::writeLog(
             'ida',
             'resolveNextcloudNodeId:'
@@ -2327,7 +2403,6 @@ class FreezingController extends Controller
      */
     protected function repairFrozenFiles($project, $nextcloudNodes, $pid, $timestamp)
     {
-
         Util::writeLog(
             'ida',
             'repairFrozenFiles:'
@@ -2418,7 +2493,6 @@ class FreezingController extends Controller
      */
     protected function checkIntersectionWithExistingFiles($action, $project, $nextcloudNodes)
     {
-
         Util::writeLog(
             'ida',
             'checkIntersectionWithExistingFiles:'
@@ -2475,7 +2549,6 @@ class FreezingController extends Controller
      */
     protected function checkIntersectionWithIncompleteActions($project, $scope, $nextcloudNodes, $action = null)
     {
-
         Util::writeLog(
             'ida',
             'checkIntersectionWithIncompleteActions:'
@@ -2568,7 +2641,6 @@ class FreezingController extends Controller
      */
     protected function isEmptyFolder($action, $project, $pathname)
     {
-
         Util::writeLog('ida', 'isEmptyFolder: action=' . $action . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
 
         $fullPathname = $this->buildFullPathname($action, $project, $pathname);
@@ -2629,7 +2701,6 @@ class FreezingController extends Controller
      */
     protected function getNextcloudNodes($action, $project, $pathname, $limit = Constants::MAX_FILE_COUNT)
     {
-
         Util::writeLog(
             'ida',
             'getNextcloudNodes:'
@@ -2681,7 +2752,6 @@ class FreezingController extends Controller
      */
     protected function getNextcloudNodesR($action, $project, $pathname, $limit, $result, $level = 1)
     {
-
         Util::writeLog(
             'ida',
             'getNextcloudNodesR:'
@@ -2771,6 +2841,43 @@ class FreezingController extends Controller
     }
 
     /**
+     * Construct and return the full filesystem pathname of a node based on the action, project, and its relative pathname
+     *
+     * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
+     * @param string $project  the project to which the node belongs
+     * @param string $pathname the relative pathname of the node within the shared project staging or frozen folder
+     *
+     * @return string
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function buildFilesystemPathname($action, $project, $pathname)
+    {
+        Util::writeLog(
+            'ida',
+            'buildFilesystemPathname:'
+                . ' action=' . $action
+                . ' project=' . $project
+                . ' pathname=' . $pathname,
+            \OCP\Util::DEBUG
+        );
+
+        $fullPathname = $this->buildFullPathname($action, $project, $pathname);
+
+        $filesystemPathname = OC::$server->getConfig()->getSystemValue('datadirectory')
+            . '/'
+            . Constants::PROJECT_USER_PREFIX
+            . $project
+            . '/files'
+            . $fullPathname;
+
+        Util::writeLog('ida', 'buildFilesystemPathname: filesystemPathname=' . $filesystemPathname, \OCP\Util::DEBUG);
+
+        return $filesystemPathname;
+    }
+
+    /**
      * Construct and return the full Nextcloud pathname of a node based on the action, project, and its relative pathname
      *
      * @param string $action   the action being performed, one of 'freeze', 'unfreeze', or 'delete'
@@ -2784,7 +2891,6 @@ class FreezingController extends Controller
      */
     protected function buildFullPathname($action, $project, $pathname)
     {
-
         Util::writeLog(
             'ida',
             'buildFullPathname:'
@@ -2821,7 +2927,6 @@ class FreezingController extends Controller
      */
     protected function getParentPathname($pathname)
     {
-
         Util::writeLog('ida', 'getParentPathname: pathname=' . $pathname, \OCP\Util::DEBUG);
 
         $pattern = '/\/[^\/][^\/]*$/';
@@ -2850,7 +2955,6 @@ class FreezingController extends Controller
      */
     protected function stripRootProjectFolder($project, $pathname)
     {
-
         Util::writeLog(
             'ida',
             'stripRootProjectFolder:'
@@ -2886,7 +2990,6 @@ class FreezingController extends Controller
      */
     protected function cloneFiles($failedAction, $retryAction)
     {
-
         $failedActionPid = $failedAction->getPid();
         $retryActionPid = $retryAction->getPid();
 
@@ -2925,7 +3028,6 @@ class FreezingController extends Controller
      */
     protected function cloneFile($fileEntity, $pid = null)
     {
-
         $fileEntityPid = $fileEntity->getPid();
 
         Util::writeLog('ida', 'cloneFile: fileEntityPid=' . $fileEntityPid . ' pid=' . $pid, \OCP\Util::DEBUG);
@@ -3015,7 +3117,6 @@ class FreezingController extends Controller
      */
     protected function moveNextcloudNode($action, $project, $pathname)
     {
-
         Util::writeLog(
             'ida',
             'moveNextcloudNode:'
@@ -4157,7 +4258,6 @@ class FreezingController extends Controller
      */
     protected function verifyRabbitMQConnectionOK()
     {
-
         try {
             $rabbitMQconnection = $this->openRabbitMQConnection();
             $rabbitMQconnection->close();
@@ -4179,7 +4279,6 @@ class FreezingController extends Controller
      */
     protected function openRabbitMQConnection()
     {
-
         $host = $this->config['RABBIT_HOST'];
         $port = $this->config['RABBIT_PORT'];
         $vhost = $this->config['RABBIT_VHOST'];
@@ -4204,7 +4303,6 @@ class FreezingController extends Controller
      */
     protected function publishActionMessage($actionEntity, $batch = false)
     {
-
         $rabbitMQconnection = null;
 
         try {
@@ -4404,7 +4502,6 @@ class FreezingController extends Controller
      */
     protected function scopeIntersectsAction($inputScope, $actionEntities, $action = null)
     {
-
         if ($inputScope === null) {
             throw new Exception('Null input scope.');
         }

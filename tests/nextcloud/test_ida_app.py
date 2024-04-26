@@ -29,12 +29,10 @@
 # --------------------------------------------------------------------------------
 
 import requests
-import urllib
 import subprocess
 import unittest
 import time
 import os
-import json
 from datetime import date, timedelta
 from tests.common.utils import *
 
@@ -375,6 +373,34 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data["message"], "The specified folder contains no files which can be unfrozen.")
+
+        # --------------------------------------------------------------------------------
+
+        print("--- Freeze Action File Validity Checks")
+
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
+        system_pathname = "%s/testdata/2017-08/Experiment_1/baseline/test01.dat" % staging_area_root
+
+        print("(modify the size of the test file on disk)")
+        with open(system_pathname, "a") as file:
+            file.write("more data")
+
+        print("Attempt to freeze a file where the filesystem size is different from the size recorded in the Nextcloud cache")
+        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
+        response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 500)
+        self.assertIn('freezeFiles: File size on disk (455) does not match the originally reported upload file size (446) for file /test_project_a+/testdata/2017-08/Experiment_1/baseline/test01.dat', response.text)
+
+        print("(remove the test file from disk)")
+        os.remove(system_pathname)
+
+        print("Attempt to freeze a file which does not exist on disk but is recorded in the Nextcloud cache")
+        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
+        response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
+        self.assertEqual(response.status_code, 500)
+        self.assertIn('freezeFiles: File not found on disk: /test_project_a+/testdata/2017-08/Experiment_1/baseline/test01.dat', response.text)
 
         # --------------------------------------------------------------------------------
 
@@ -1007,7 +1033,7 @@ class TestIdaApp(unittest.TestCase):
         # steps being redone (even though unnecesary)
 
         print("Freeze a single file")
-        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
+        data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline/test02.dat"}
         response = requests.post("%s/freeze" % self.config["IDA_API"], json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
