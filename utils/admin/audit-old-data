@@ -32,7 +32,7 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT project [ max_age_in_days ] [ --json-output ] [ --no-user-email ]
+Usage: $SCRIPT project [ max_age_in_days ] [ --json-output ] [ --no-user-email ] [ --quiet ]
        $SCRIPT -h
 "
 
@@ -60,16 +60,24 @@ fi
 
 JSON_OUTPUT=`echo "$*"   | grep -- "--json-output"`
 NO_USER_EMAIL=`echo "$*" | grep -- "--no-user-email"`
+QUIET=`echo "$*"         | grep -- "--quiet"`
 
 #--------------------------------------------------------------------------------
 
 if [ "$DEBUG" = "true" ]; then
-    echo "ROOT:       $ROOT"        >&2
-    echo "PROJECT:    $PROJECT"     >&2
-    echo "START:      $START"       >&2
-    echo "MAX_AGE:    $MAX_AGE"     >&2
-    echo "JSON OUT:   $JSON_OUTPUT" >&2
+    echo "ROOT:       $ROOT"          >&2
+    echo "PROJECT:    $PROJECT"       >&2
+    echo "START:      $START"         >&2
+    echo "MAX_AGE:    $MAX_AGE"       >&2
+    echo "JSON OUT:   $JSON_OUTPUT"   >&2
     echo "NO EMAIL:   $NO_USER_EMAIL" >&2
+    echo "QUIET:      $QUIET"         >&2
+fi
+
+if [ "$QUIET" ]; then
+    QUIET="true"
+else
+    QUIET="false"
 fi
 
 #--------------------------------------------------------------------------------
@@ -138,7 +146,7 @@ SUMMARY="/var/tmp/$$.summary"
 
 source $ROOT/venv/bin/activate
 
-python -u $ROOT/utils/admin/lib/audit_old_data.py $ROOT $PROJECT $MAX_AGE > $OUTPUT
+python -u $ROOT/utils/admin/lib/audit_old_data.py $ROOT $PROJECT $MAX_AGE $QUIET > $OUTPUT
 
 if [ $? -ne 0 ]; then
     errorExit "Auditing of old data for project $PROJECT failed"
@@ -189,7 +197,17 @@ if [ -z "$NO_USER_EMAIL" ]; then
         SUBJECT="Notice: Project $PROJECT has files in IDA which haven't been included in any dataset"
     
         $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
-        echo "Notice emailed to project users" >&2
+        if [ "$QUIET" != "true" ]; then
+            echo "Notice emailed to project users" >&2
+        fi
+    else
+        if [ "$QUIET" != "true" ]; then
+            echo "No emails sent to project users (no old data)" >&2
+        fi
+    fi
+else
+    if [ "$QUIET" != "true" ]; then
+        echo "No emails sent to project users (excluded)" >&2
     fi
 fi
 
@@ -201,7 +219,9 @@ else
     if [ $TOTAL_BYTES -gt 0 ]; then
         cat $SUMMARY
     else
-        echo "No old data found in project $PROJECT" >&2
+        if [ "$QUIET" != "true" ]; then
+            echo "No old data found in project $PROJECT" >&2
+        fi
     fi
 fi
 

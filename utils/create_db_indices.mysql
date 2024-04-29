@@ -9,8 +9,8 @@ CREATE INDEX oc_ida_action_storage_idx ON oc_ida_action (storage) USING BTREE; -
 CREATE INDEX oc_ida_action_completed_idx ON oc_ida_action (completed) USING BTREE; -- WHERE completed IS NULL;
 CREATE INDEX oc_ida_action_failed_idx ON oc_ida_action (failed) USING BTREE; -- WHERE failed IS NULL;
 CREATE INDEX oc_ida_action_cleared_idx ON oc_ida_action (cleared) USING BTREE; -- WHERE cleared IS NULL;
-CREATE INDEX oc_filecache_storage_idx ON oc_filecache (storage, mimetype, checksum) USING BTREE;
 CREATE INDEX oc_ida_data_change_last_idx ON oc_ida_data_change (project, timestamp DESC) USING BTREE;
 CREATE INDEX oc_ida_data_change_init_idx ON oc_ida_data_change (project, change, timestamp ASC) USING BTREE;
+CREATE INDEX oc_filecache_storage_idx ON oc_filecache (storage, mimetype, checksum) USING BTREE;
 CREATE INDEX oc_filecache_old_data_idx ON oc_filecache(storage, mimetype, path, mtime, fileid) USING BTREE;
 CREATE INDEX oc_filecache_extended_old_data_idx ON oc_filecache_extended(fileid, upload_time) USING BTREE;

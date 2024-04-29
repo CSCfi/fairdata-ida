@@ -40,7 +40,7 @@ SENTINEL_FILE="/var/tmp/AUDIT_ALL_OLD_DATA"
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ max_age_in_days ] [ --json-output ] [ --force-audit ] [ --no-email | --no-user-email ]
+Usage: $SCRIPT [ max_age_in_days ] [ --json-output ] [ --force-audit ] [ --no-email | --no-user-email ] [ --quiet ]
        $SCRIPT -h
 "
 
@@ -59,7 +59,7 @@ else
     exit 1
 fi
 
-DEBUG="true" # TEMP HACK
+#DEBUG="true" # TEMP HACK
 
 # --------------------------------------------------------------------------------
 
@@ -105,6 +105,7 @@ JSON_OUTPUT=`echo "$*"   | grep -- "--json-output"`
 FORCE_AUDIT=`echo "$*"   | grep -- "--force-audit"`
 NO_EMAIL=`echo "$*"      | grep -- "--no-email"`
 NO_USER_EMAIL=`echo "$*" | grep -- "--no-user-email"`
+QUIET=`echo "$*"         | grep -- "--quiet"`
 
 if [ "${NO_EMAIL}${NO_USER_EMAIL}" ]; then
     NO_USER_EMAIL="--no-user-email"
@@ -114,6 +115,7 @@ fi
 
 if [ "$DEBUG" = "true" ]; then
     echo "MAX AGE:       $MAX_AGE"       >&2
+    echo "QUIET:         $QUIET"         >&2
     echo "JSON OUT:      $JSON_OUTPUT"   >&2
     echo "NO EMAIL:      $NO_EMAIL"      >&2
     echo "NO USER EMAIL: $NO_USER_EMAIL" >&2
@@ -169,9 +171,11 @@ for PROJECT in $PROJECTS; do
 
     if [ -z "$EXCLUDED" ]; then
 
-        echo "$PROJECT" >&2
+        if [ -z "$QUIET" ]; then
+            echo "$PROJECT" >&2
+        fi
 
-        PROJECT_SUMMARY=`DEBUG=false $ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output $NO_USER_EMAIL 2>/dev/null`
+        PROJECT_SUMMARY=`DEBUG=false $ROOT/utils/admin/audit-old-data $PROJECT $MAX_AGE --json-output $NO_USER_EMAIL $QUIET`
 
         if [ -n "$PROJECT_SUMMARY" ]; then
 
@@ -208,14 +212,19 @@ for PROJECT in $PROJECTS; do
 done
 
 if [ $PROJECT_COUNT -eq 0 ]; then
-    echo "No old data found in any project" >&2
-    exit 0
+    if [ -z "$QUIET" ]; then
+        echo "No old data found in any project" >&2
+        exit 0
+    fi
 fi
 
 echo "PROJECT,BYTES,FILES,FROZEN BYTES,FROZEN FILES,STAGING BYTES,STAGING FILES" > $REPORT_CSV
 echo "ALL,${ALL_BYTES},${ALL_FILES},${ALL_FROZEN_BYTES},${ALL_FROZEN_FILES},${ALL_STAGING_BYTES},${ALL_STAGING_FILES}" >> $REPORT_CSV
 cat $OUTPUT_CSV | sort -t',' -k2,2nr >> $REPORT_CSV
-echo "CSV report saved to file $REPORT_CSV" >&2
+
+if [ -z "$QUIET" ]; then
+    echo "CSV report saved to file $REPORT_CSV" >&2
+fi
 
 echo "{" > $OUTPUT_JSON_FINAL
 echo "\"reportPathname\": \"${REPORT_JSON}\"," >> $OUTPUT_JSON_FINAL
@@ -231,7 +240,10 @@ echo "\"projects\": [" >> $OUTPUT_JSON_FINAL
 cat $OUTPUT_JSON >> $OUTPUT_JSON_FINAL
 echo "]}" >> $OUTPUT_JSON_FINAL
 cat $OUTPUT_JSON_FINAL | jq --indent 4 > $REPORT_JSON
-echo "JSON report saved to file $REPORT_JSON" >&2
+
+if [ -z "$QUIET" ]; then
+    echo "JSON report saved to file $REPORT_JSON" >&2
+fi
 
 ALL_BYTES_HR=$(bytesToHR "$ALL_BYTES")
 ALL_FROZEN_BYTES_HR=$(bytesToHR "$ALL_FROZEN_BYTES")
@@ -289,7 +301,17 @@ if [ -z "$NO_EMAIL" ]; then
     if [ "${EMAIL_SENDER}${RECIPIENTS}" ]; then
         SUBJECT="[IDA Service] OLD DATA REPORT"
         cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
-        echo "Report summary emailed to internal users" >&2
+        if [ -z "$QUIET" ]; then
+            echo "Report summary emailed to internal users" >&2
+        fi
+    else
+        if [ -z "$QUIET" ]; then
+            echo "No emails sent to internal users (no recipients configured)" >&2
+        fi
+    fi
+else
+    if [ -z "$QUIET" ]; then
+        echo "No emails sent to project users (excluded)" >&2
     fi
 fi
 

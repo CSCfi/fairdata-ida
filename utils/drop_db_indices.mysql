@@ -10,3 +10,8 @@ DROP INDEX oc_ida_frozen_file_node_idx on oc_ida_frozen_file;
 DROP INDEX oc_ida_frozen_file_pid_idx on oc_ida_frozen_file;
 DROP INDEX oc_ida_frozen_file_project_idx on oc_ida_frozen_file;
 DROP INDEX oc_ida_frozen_file_removed_idx on oc_ida_frozen_file;
+DROP INDEX oc_ida_data_change_last_idx;
+DROP INDEX oc_ida_data_change_init_idx;
+DROP INDEX oc_filecache_missing_checksums_idx;
+DROP INDEX oc_filecache_old_data_idx;
+DROP INDEX oc_filecache_extended_old_data_idx;

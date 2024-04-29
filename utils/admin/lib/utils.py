@@ -139,10 +139,60 @@ def get_project_pathname(project, pathname):
         return "/%s/%s" % (project, pathname[7:])
 
 
+
+def get_last_add_change_timestamps(config):
+    """
+    Retrieve all latest 'add' change events for the project + file relative pathname, in staging,
+    from the changes database table, as a dictionary with pathname as key and timestamp as value
+    (used to determine upload timestamp when not recorded explicitly in the Nextcloud cache)
+    """
+
+    logging.debug("get_last_add_change_timestamps project = %s" % config.PROJECT)
+
+    conn = psycopg2.connect(database=config.DBNAME,
+                            user=config.DBROUSER,
+                            password=config.DBROPASSWORD,
+                            host=config.DBHOST,
+                            port=config.DBPORT)
+
+    cur = conn.cursor()
+
+    staging_pathname_prefix = "/%s%s/%%" % (config.PROJECT, config.STAGING_FOLDER_SUFFIX)
+
+    query = "WITH latest_timestamps AS ( \
+                SELECT DISTINCT ON (project, change, pathname) \
+                    project, change, pathname, timestamp \
+                FROM {}ida_data_change \
+                WHERE project = %s \
+                AND change = 'add' \
+                AND pathname LIKE %s \
+                ORDER BY project, change, pathname, timestamp DESC \
+             ) \
+             SELECT pathname, timestamp  \
+             FROM latest_timestamps".format(config.DBTABLEPREFIX)
+    
+    logging.debug("get_last_add_change_timestamps query = %s" % query)
+
+    cur.execute(query, (config.PROJECT, staging_pathname_prefix))
+
+    rows = cur.fetchall()
+
+    logging.debug("get_last_add_change_timestamps rows = %d" % len(rows))
+
+    add_events = {}
+
+    for row in rows:
+        logging.debug("get_last_add_change_timestamps timestamp = %s pathname = %s" % (row[1], row[0]))
+        add_events[row[0]] = row[1]
+
+    return add_events
+
+
 def get_last_add_change_timestamp(config, pathname):
     """
     Retrieve the latest 'add' change event for the project + file relative pathname, in staging,
     from the changes database table, as a normalized ISO timestamp string, else return None
+    (used to determine upload timestamp when not recorded explicitly in the Nextcloud cache)
     """
 
     logging.debug("get_last_add_change_timestamp project = %s pathname = %s" % (config.PROJECT, pathname))
@@ -179,3 +229,12 @@ def get_last_add_change_timestamp(config, pathname):
         return timestamp
 
     return None
+
+
+def log_and_output(config, level, message):
+    try:
+        logging.log(level, message)
+        if not config.QUIET:
+            sys.stderr.write("%s %s\n" % (generate_timestamp(), message))
+    except Exception as logerror:
+            sys.stderr.write("ERROR: %s\n" % str(logerror))

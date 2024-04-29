@@ -36,7 +36,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from sortedcontainers import SortedDict
 from stat import *
 from utils import LOG_ENTRY_FORMAT, TIMESTAMP_FORMAT, NULL_VALUES, load_configuration, normalize_timestamp, \
-                  get_last_add_change_timestamp
+                  get_last_add_change_timestamps, log_and_output
 
 # Use UTC
 os.environ['TZ'] = 'UTC'
@@ -53,7 +53,7 @@ def main():
 
         argc = len(sys.argv)
 
-        if argc != 4:
+        if argc != 5:
             raise Exception('Invalid number of arguments: %s' % json.dumps(sys.argv))
 
         # Load service configuration and constants, and add command arguments
@@ -79,8 +79,12 @@ def main():
         config.SCRIPT = os.path.basename(sys.argv[0])
         config.PROJECT = sys.argv[2]
         config.MAX_DATA_AGE_IN_DAYS = int(sys.argv[3])
+        config.QUIET = bool(sys.argv[4] == 'true')
+
         config.PROJECT_ROOT = "%s/%s%s" % (config.STORAGE_OC_DATA_ROOT, config.PROJECT_USER_PREFIX, config.PROJECT)
         config.PROJECT_CREATED = max([normalize_timestamp(os.path.getmtime(config.PROJECT_ROOT)), config.IDA_MIGRATION])
+
+        config.LOOP_MIN = 1000
 
         # Calculate age limit datetime and epoch timestamp
 
@@ -129,22 +133,18 @@ def main():
 
         report = audit_old_data(config)
 
-        logging.info("%s TOTAL_BYTES: %d" % (config.PROJECT, report.get('totalFrozenBytes', 0) + report.get('totalStagingBytes', 0)))
-        logging.info("%s TOTAL_FILES: %d" % (config.PROJECT, report.get('totalFrozenFiles', 0) + report.get('totalStagingFiles', 0)))
-        logging.info("%s TOTAL_FROZEN_BYTES: %d" % (config.PROJECT, report.get('totalFrozenBytes', 0)))
-        logging.info("%s TOTAL_FROZEN_FILES: %d" % (config.PROJECT, report.get('totalFrozenFiles', 0)))
-        logging.info("%s TOTAL_STAGING_BYTES: %d" % (config.PROJECT, report.get('totalStagingBytes', 0)))
-        logging.info("%s TOTAL_STAGING_FILES: %d" % (config.PROJECT, report.get('totalStagingFiles', 0)))
+        log_and_output(config, logging.INFO, "%s TOTAL_BYTES:         %d" % (config.PROJECT, report.get('totalFrozenBytes', 0) + report.get('totalStagingBytes', 0)))
+        log_and_output(config, logging.INFO, "%s TOTAL_FILES:         %d" % (config.PROJECT, report.get('totalFrozenFiles', 0) + report.get('totalStagingFiles', 0)))
+        log_and_output(config, logging.INFO, "%s TOTAL_FROZEN_BYTES:  %d" % (config.PROJECT, report.get('totalFrozenBytes', 0)))
+        log_and_output(config, logging.INFO, "%s TOTAL_FROZEN_FILES:  %d" % (config.PROJECT, report.get('totalFrozenFiles', 0)))
+        log_and_output(config, logging.INFO, "%s TOTAL_STAGING_BYTES: %d" % (config.PROJECT, report.get('totalStagingBytes', 0)))
+        log_and_output(config, logging.INFO, "%s TOTAL_STAGING_FILES: %d" % (config.PROJECT, report.get('totalStagingFiles', 0)))
         output_report(config, report)
 
         logging.info("%s DONE" % config.PROJECT)
 
     except Exception as error:
-        try:
-            logging.error(str(error))
-        except Exception as logerror:
-            sys.stderr.write("ERROR: %s\n" % str(logerror))
-        sys.stderr.write("ERROR: %s\n" % str(error))
+        log_and_output(config, logging.ERROR, str(error))
         sys.exit(1)
 
 
@@ -169,18 +169,30 @@ def audit_old_data(config):
         return report
 
     old_files = get_old_files(config)
+    old_file_count = len(old_files.get('frozenFiles', 0))
 
-    if len(old_files.get('frozenFiles', 0)) > 0:
+    if old_file_count > 0:
 
         metax_published_files = get_metax_published_file_pathnames(config)
 
         # Iterate over all frozen files in IDA, filtering out those included in a published dataset
 
-        logging.debug("%s Excluding old frozen files published in one or more datasets..." % config.PROJECT)
+        log_and_output(config, logging.DEBUG, "%s Excluding old frozen files published in one or more datasets..." % config.PROJECT)
 
         old_frozen_files = {}
 
+        if old_file_count >= config.LOOP_MIN:
+            loop_count = 0
+            if not config.QUIET:
+                sys.stderr.write(".")
+
         for pathname, file in old_files['frozenFiles'].items():
+
+            if old_file_count >= config.LOOP_MIN:
+                loop_count = loop_count + 1
+                if not config.QUIET and loop_count % config.LOOP_MIN == 0:
+                    sys.stderr.write(".")
+
             if (metax_published_files.get(pathname, None) != None):
                 if config.DEBUG_VERBOSE:
                     logging.debug("%s PUBLISHED FILE: %s" % (config.PROJECT, json.dumps(pathname)))
@@ -188,6 +200,9 @@ def audit_old_data(config):
                 old_frozen_files[pathname] = file
                 if config.DEBUG_VERBOSE:
                     logging.debug("%s OLD FROZEN FILE: %s" % (config.PROJECT, json.dumps(pathname)))
+
+        if not config.QUIET and old_file_count >= config.LOOP_MIN:
+            sys.stderr.write("\n")
 
         old_files['frozenFiles'] = old_frozen_files
 
@@ -210,7 +225,7 @@ def get_old_files(config):
     sorted dicts with pathnames as keys and file objects as values.
     """
 
-    logging.debug("%s Retrieving old files from Nextcloud..." % config.PROJECT)
+    log_and_output(config, logging.DEBUG, "%s Retrieving old files from Nextcloud..." % config.PROJECT)
 
     # Open database connection
 
@@ -259,7 +274,7 @@ def get_old_files(config):
 
     # Get frozen files
 
-    logging.debug("%s Retrieving old frozen files..." % config.PROJECT)
+    log_and_output(config, logging.DEBUG, "%s Retrieving old frozen files..." % config.PROJECT)
 
     query = "%s AND cache.path LIKE 'files/%s/%%'" % (base_query, config.PROJECT)
 
@@ -269,7 +284,7 @@ def get_old_files(config):
     cur.execute(query)
     rows = cur.fetchall()
 
-    logging.debug("%s Query result: %d" % (config.PROJECT, len(rows))) # TEMP HACK
+    log_and_output(config, logging.DEBUG, "%s Retrieved frozen file count: %d" % (config.PROJECT, len(rows)))
 
     frozen_files = build_file_details(config, rows)
 
@@ -280,7 +295,7 @@ def get_old_files(config):
 
     # Get staging files
 
-    logging.debug("%s Retrieving old staging files..." % config.PROJECT)
+    log_and_output(config, logging.DEBUG, "%s Retrieving old staging files..." % config.PROJECT)
 
     query = "%s AND cache.path LIKE 'files/%s%s/%%'" % (base_query, config.PROJECT, config.STAGING_FOLDER_SUFFIX)
 
@@ -290,7 +305,7 @@ def get_old_files(config):
     cur.execute(query)
     rows = cur.fetchall()
 
-    logging.debug("%s Query result: %d" % (config.PROJECT, len(rows))) # TEMP HACK
+    log_and_output(config, logging.DEBUG, "%s Retrieved staging file count: %d" % (config.PROJECT, len(rows)))
 
     staging_files = build_file_details(config, rows)
 
@@ -308,16 +323,32 @@ def get_old_files(config):
 
 def build_file_details(config, rows):
 
+    log_and_output(config, logging.DEBUG, "%s Building file details..." % config.PROJECT)
+
+    row_count = len(rows)
+
     if config.DEBUG_VERBOSE:
         logging.debug("%s ROW COUNT: %d" % (config.PROJECT, len(rows)))
 
     files = SortedDict({})
 
+    last_add_change_timestamps = get_last_add_change_timestamps(config)
+
     project_name_len = len(config.PROJECT)
     project_name_frozen_offset = project_name_len + 1
     project_name_staging_offset = project_name_len + 2
 
+    if row_count >= config.LOOP_MIN:
+        loop_count = 0
+        if not config.QUIET:
+            sys.stderr.write(".")
+
     for row in rows:
+
+        if row_count >= config.LOOP_MIN:
+            loop_count = loop_count + 1
+            if not config.QUIET and loop_count % config.LOOP_MIN == 0:
+                sys.stderr.write(".")
 
         if config.DEBUG_VERBOSE:
             logging.debug("%s ROW: %s" % (config.PROJECT, json.dumps(row)))
@@ -334,7 +365,7 @@ def build_file_details(config, rows):
             pathname = pathname[(project_name_staging_offset):]
         else:
             pathname = pathname[(project_name_frozen_offset):]
-        
+
         modified = normalize_timestamp(datetime.utcfromtimestamp(row[2]))
 
         if row[3] in NULL_VALUES:
@@ -342,12 +373,15 @@ def build_file_details(config, rows):
         else:
             uploaded = normalize_timestamp(datetime.utcfromtimestamp(row[3]))
 
-        # If the uploaded timestamp is None, retrieve the latest 'add' change event for project and file pathname in staging
-        # from the changes table, and if exists and is older than the age limit, use the add timestamp as the uploaded timestamp,
-        # else skip the file since it actually was uploaded later than the specified time limit
+        # If the uploaded timestamp is None, and if we are doing a full audit, retrieve the latest 'add' change event for
+        # project and file pathname in staging from the changes table, and if exists and is older than the age limit, use
+        # the add timestamp as the uploaded timestamp, else skip the file since it actually was uploaded later than the
+        # specified time limit
 
-        if (uploaded == None):
-            added = get_last_add_change_timestamp(config, pathname)
+        if uploaded == None:
+            logging.debug("%s Getting last add change timestamp for pathname %s" % (config.PROJECT, pathname))
+            added = last_add_change_timestamps.get(pathname)
+            logging.debug("%s Last add change timestamp for pathname %s" % (config.PROJECT, str(added)))
             if added:
                 if added < config.AGE_LIMIT_TIMESTAMP:
                     uploaded = added
@@ -361,6 +395,9 @@ def build_file_details(config, rows):
     
         files[pathname] = file_details
 
+    if not config.QUIET and row_count >= config.LOOP_MIN:
+        sys.stderr.write("\n")
+
     return files
 
 
@@ -372,7 +409,7 @@ def get_metax_published_file_pathnames(config):
 
     # Get all files from Metax associated with project, and store Metax identifier under pathname
 
-    logging.debug("%s Retrieving project files from Metax..." % config.PROJECT)
+    log_and_output(config, logging.DEBUG, "%s Retrieving project files from Metax..." % config.PROJECT)
 
     metax_project_files = {}
 
@@ -432,15 +469,15 @@ def get_metax_published_file_pathnames(config):
         else:
             offset = offset + config.MAX_FILE_COUNT
 
-    logging.debug("%s PROJECT FILE COUNT: %d" % (config.PROJECT, len(metax_project_files)))
+    log_and_output(config, logging.DEBUG, "%s Retrieved project file count: %d" % (config.PROJECT, len(metax_project_files)))
 
     # Construct file identifier list for all project files
 
     metax_project_file_identifiers = list(metax_project_files.keys())
 
-    logging.debug("%s Retrieving dataset files from Metax..." % config.PROJECT)
-
     # Get all files from Metax which are part of a published dataset, based on retrieved file identifier list
+
+    log_and_output(config, logging.DEBUG, "%s Retrieving dataset files from Metax..." % config.PROJECT)
 
     if len(metax_project_file_identifiers) > 0:
 
@@ -479,21 +516,37 @@ def get_metax_published_file_pathnames(config):
     if config.DEBUG_VERBOSE:
         logging.debug("%s DATASET FILES: %s" % (config.PROJECT, json.dumps(metax_dataset_files)))
 
-    logging.debug("%s DATASET FILE COUNT: %d" % (config.PROJECT, len(metax_dataset_files)))
+    dataset_file_count = len(metax_dataset_files)
+
+    log_and_output(config, logging.DEBUG, "%s Retrieved dataset file count: %d" % (config.PROJECT, dataset_file_count))
 
     # Contruct file pathname dict for all Metax project files part of published dataset
 
-    logging.debug("%s Identifying files published in one or more datasets..." % config.PROJECT)
+    log_and_output(config, logging.DEBUG, "%s Identifying project files published in one or more datasets..." % config.PROJECT)
 
     metax_published_files = {}
 
+    if dataset_file_count >= config.LOOP_MIN:
+        loop_count = 0
+        if not config.QUIET:
+            sys.stderr.write(".")
+
     for identifier in metax_dataset_files:
+
+        if dataset_file_count >= config.LOOP_MIN:
+            loop_count = loop_count + 1
+            if not config.QUIET and loop_count % config.LOOP_MIN == 0:
+                sys.stderr.write(".")
+
         metax_published_files[metax_project_files[identifier]] = True
+
+    if not config.QUIET and dataset_file_count >= config.LOOP_MIN:
+        sys.stderr.write("\n")
 
     if config.DEBUG_VERBOSE:
         logging.debug("%s PUBLISHED FILES: %s" % (config.PROJECT, json.dumps(list(metax_published_files.keys()))))
 
-    logging.debug("%s PUBLISHED FILE COUNT: %d" % (config.PROJECT, len(metax_published_files)))
+    log_and_output(config, logging.DEBUG, "%s Published file count: %d" % (config.PROJECT, len(metax_published_files)))
 
     return metax_published_files
 
