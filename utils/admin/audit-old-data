@@ -196,9 +196,10 @@ if [ -z "$NO_USER_EMAIL" ]; then
     
         SUBJECT="Notice: Project $PROJECT has files in IDA which haven't been included in any dataset"
     
-        $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"
+        OUTPUT=`$ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE"`
+
         if [ "$QUIET" != "true" ]; then
-            echo "Notice emailed to project users" >&2
+            echo "$OUTPUT" >&2
         fi
     else
         if [ "$QUIET" != "true" ]; then

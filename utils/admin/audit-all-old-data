@@ -214,8 +214,15 @@ done
 if [ $PROJECT_COUNT -eq 0 ]; then
     if [ -z "$QUIET" ]; then
         echo "No old data found in any project" >&2
-        exit 0
     fi
+    rm $OUTPUT_CSV 2>/dev/null
+    rm $OUTPUT_CSV_HR 2>/dev/null
+    rm $OUTPUT_TXT 2>/dev/null
+    rm $OUTPUT_JSON 2>/dev/null
+    rm $OUTPUT_JSON_FINAL 2>/dev/null
+    rm $SUMMARY 2>/dev/null
+    rm $SENTINEL_FILE
+    exit 0
 fi
 
 echo "PROJECT,BYTES,FILES,FROZEN BYTES,FROZEN FILES,STAGING BYTES,STAGING FILES" > $REPORT_CSV
