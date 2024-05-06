@@ -380,14 +380,14 @@ for PROJECT in $PROJECTS; do
 
     rm -fr `find $STORAGE_OC_DATA_ROOT/$USER/files -name .DS_Store`
 
-    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER/testdata/empty_folder`
+    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_STAGING_FOLDER/testdata/empty_folder_s/a/b/c`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"
         exit 1
     fi
 
-    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_FROZEN_FOLDER/testdata/empty_folder`
+    OUT=`mkdir -p $STORAGE_OC_DATA_ROOT/$USER/files/$PROJECT_FROZEN_FOLDER/testdata/empty_folder_f/x/y/z`
 
     if [ "$?" -ne 0 ]; then
         failure "$OUT"

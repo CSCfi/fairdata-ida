@@ -532,16 +532,16 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.is_dir())
 
         # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk
-        print("(replacing folder /testdata/empty_folder from staging area of filesystem with same-named file)")
-        # Delete folder /testdata/empty_folder from staging area
-        pathname = "%s/testdata/empty_folder" % staging_area_root_c
+        print("(replacing folder /testdata/empty_folder_s from staging area of filesystem with same-named file)")
+        # Delete folder /testdata/empty_folder_s from staging area
+        pathname = "%s/testdata/empty_folder_s" % staging_area_root_c
         path = Path(pathname)
         try:
             shutil.rmtree(pathname)
         except Exception as error:
             self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
         self.assertFalse(path.exists())
-        # Copy file /testdata/License.txt in staging area as file /testdata/empty_folder in staging area
+        # Copy file /testdata/License.txt in staging area as file /testdata/empty_folder_s in staging area
         pathname2 = "%s/testdata/License.txt" % staging_area_root_c
         try:
             shutil.copyfile(pathname2, pathname)
@@ -773,10 +773,10 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(report_data.get('auditTimestamps'), False)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 97)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 103)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -845,10 +845,10 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(report_data.get('auditTimestamps'), False)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 93)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 96)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 98)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 101)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -883,10 +883,10 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(report_data.get('auditTimestamps'), False)
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 4)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 7)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 11)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 14)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -922,10 +922,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 95)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 101)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1034,10 +1034,10 @@ class TestAuditing(unittest.TestCase):
         report_pathname_b = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 115)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1100,10 +1100,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 98)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 101)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 98)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 101)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -1136,10 +1136,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 11)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 14)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 11)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 14)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1175,10 +1175,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 115)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1287,10 +1287,10 @@ class TestAuditing(unittest.TestCase):
         report_pathname_c = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 112)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1299,13 +1299,13 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("metaxFileCount"), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount"), 3)
+        self.assertEqual(report_data.get("invalidNodeCount"), 6)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 5)
+        self.assertEqual(report_data.get("errorNodeCount"), 8)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 3)
+        self.assertEqual(report_data.get("errorCount"), 4)
 
         print("Verify correct oldest and newest dates")
         self.assertIsNotNone(report_data.get("oldest"))
@@ -1347,7 +1347,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(filesystem.get("type"), "folder")
 
         print("Verify correct error report of Nextcloud folder type conflict with filesystem file")
-        node = nodes.get("staging/testdata/empty_folder")
+        node = nodes.get("staging/testdata/empty_folder_s")
         self.assertIsNotNone(node)
         errors = node.get("errors")
         self.assertIsNotNone(errors)
@@ -1372,7 +1372,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("filesystemNodeCount"), 98)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 98)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 101)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -1381,13 +1381,13 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("metaxFileCount"), 0)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount"), 2)
+        self.assertEqual(report_data.get("invalidNodeCount"), 5)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 2)
+        self.assertEqual(report_data.get("errorNodeCount"), 5)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 1)
+        self.assertEqual(report_data.get("errorCount"), 2)
 
         print("Verify correct oldest and newest dates")
         self.assertIsNotNone(report_data.get("oldest"))
@@ -1408,10 +1408,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 11)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 14)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 11)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 14)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1447,10 +1447,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 112)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -1459,13 +1459,13 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("metaxFileCount"), 6)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount"), 3)
+        self.assertEqual(report_data.get("invalidNodeCount"), 6)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 5)
+        self.assertEqual(report_data.get("errorNodeCount"), 8)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 3)
+        self.assertEqual(report_data.get("errorCount"), 4)
 
         print("Verify correct oldest and newest dates")
         self.assertIsNotNone(report_data.get("oldest"))
@@ -1562,10 +1562,10 @@ class TestAuditing(unittest.TestCase):
         report_pathname_d = report_data["reportPathname"]
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 116)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 116)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 5)
@@ -1662,10 +1662,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 100)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 103)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 100)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 103)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -1701,10 +1701,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 10)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 13)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 10)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 13)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 5)
@@ -1740,10 +1740,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 116)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 116)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 4)
@@ -1850,10 +1850,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 107)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 113)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 107)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 113)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -1886,10 +1886,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 105)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 108)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 105)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 108)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -1922,10 +1922,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 2)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 5)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 2)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 5)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -1958,10 +1958,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('changedSince'), self.config['START'])
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 107)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 113)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 107)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 113)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -2146,10 +2146,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 97)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 103)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 97)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 103)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 0)
@@ -2182,10 +2182,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 115)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 6)
@@ -2210,7 +2210,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project C and checking results")
 
-        report_data = self.audit_project("test_project_c", "OK")
+        report_data = self.audit_project("test_project_c", "ERR")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
@@ -2218,10 +2218,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 109)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 112)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 109)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 5)
@@ -2230,17 +2230,17 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("metaxFileCount"), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 3)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 0)
+        self.assertEqual(report_data.get("errorNodeCount"), 3)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 0)
+        self.assertEqual(report_data.get("errorCount"), 1)
 
         print("Verify correct oldest and newest dates")
-        self.assertIsNone(report_data.get("oldest"))
-        self.assertIsNone(report_data.get("newest"))
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
 
         self.remove_report(report_data['reportPathname'])
 
@@ -2261,10 +2261,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 116)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 116)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 5)
@@ -2295,10 +2295,10 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get('changedSince'))
 
         print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 110)
+        self.assertEqual(report_data.get("filesystemNodeCount"), 116)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 110)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 116)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 5)

@@ -133,8 +133,6 @@ class TestIdaApp(unittest.TestCase):
         self.assertTrue(os.path.exists(titleFilePath))
         self.assertEqual("Test title A\n", open(titleFilePath).read())
 
-        time.sleep(1)  # In very fast environments, this brief pause is needed for Nextcloud to sync with filesystem
-
         print("Retrieve defined project title")
         response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API"], "test_project_a"), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -223,6 +221,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         # TODO: check that all mandatory fields are defined with valid values for action
 
         print("Verify file was physically moved from staging to frozen area")
@@ -268,6 +269,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         print("Retrieve details of all frozen files associated with previous action")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -286,7 +290,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(file_x_data.get('size'), 446)
 
         print("Attempt to freeze an empty folder")
-        data["pathname"] = "/testdata/empty_folder"
+        data["pathname"] = "/testdata/empty_folder_s"
         response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
@@ -301,6 +305,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         print("Retrieve frozen file details by pathname where filename contains special characters")
         response = requests.get("%s/files/byProjectPathname/%s" % (self.config["IDA_API"], data["project"]), json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -312,9 +319,6 @@ class TestIdaApp(unittest.TestCase):
 
         print("--- Unfreeze Actions")
 
-        wait_for_pending_actions(self, "test_project_a", test_user_a)
-        check_for_failed_actions(self, "test_project_a", test_user_a)
-
         print("Unfreeze single frozen file")
         data["pathname"] = "/testdata/2017-08/Experiment_1/baseline/test01.dat"
         response = requests.post("%s/unfreeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
@@ -322,6 +326,9 @@ class TestIdaApp(unittest.TestCase):
         action_data = response.json()
         self.assertEqual(action_data["action"], "unfreeze")
         self.assertEqual(action_data["pathname"], data["pathname"])
+
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         # TODO: check that all mandatory fields are defined with valid values for action
 
@@ -349,6 +356,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         print("Retrieve details of all unfrozen files associated with previous action")
         response = requests.get("%s/files/action/%s" % (self.config["IDA_API"], action_data["pid"]), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
@@ -368,7 +378,7 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(len(file_set_data), 0)
 
         print("Attempt to unfreeze an empty folder")
-        data["pathname"] = "/testdata/empty_folder"
+        data["pathname"] = "/testdata/empty_folder_f"
         response = requests.post("%s/unfreeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
@@ -377,9 +387,6 @@ class TestIdaApp(unittest.TestCase):
         # --------------------------------------------------------------------------------
 
         print("--- Freeze Action File Validity Checks")
-
-        wait_for_pending_actions(self, "test_project_a", test_user_a)
-        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         system_pathname = "%s/testdata/2017-08/Experiment_1/baseline/test01.dat" % staging_area_root
 
@@ -414,6 +421,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["action"], "delete")
         self.assertEqual(action_data["pathname"], data["pathname"])
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         # TODO: check that all mandatory fields are defined with valid values for action
 
         print("Verify file was physically removed from frozen area")
@@ -440,6 +450,9 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         print("Verify folder was physically removed from frozen area")
         self.assertFalse(os.path.exists("%s/testdata/2017-08/Experiment_1" % (frozen_area_root)))
 
@@ -455,15 +468,20 @@ class TestIdaApp(unittest.TestCase):
         file_set_data = response.json()
         self.assertEqual(len(file_set_data), original_freeze_folder_action_file_count)
 
-        print("Delete an empty folder and verify action is completed")
-        data["pathname"] = "/testdata/empty_folder"
+        print("Delete a frozen folder with no files within folder scope")
+        data["pathname"] = "/testdata/empty_folder_f"
         response = requests.post("%s/delete" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
         self.assertEqual(action_data["action"], "delete")
         self.assertEqual(action_data["project"], data["project"])
         self.assertEqual(action_data["pathname"], data["pathname"])
-        self.assertIsNotNone(action_data.get("completed"))
+
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
+        print("Verify folder was physically removed from frozen area")
+        self.assertFalse(os.path.exists("%s/testdata/empty_folder_f" % (frozen_area_root)))
 
         # --------------------------------------------------------------------------------
 
@@ -483,12 +501,18 @@ class TestIdaApp(unittest.TestCase):
         response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
 
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
+
         print("Freeze one additional file to folder with max allowed files")
         data["pathname"] = "/testdata/MaxFiles/test_file.dat"
         response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
         action_data = response.json()
         action_pid = action_data["pid"]
         self.assertEqual(response.status_code, 200)
+
+        wait_for_pending_actions(self, "test_project_a", test_user_a)
+        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Attempt to unfreeze a frozen folder with more than max allowed files")
         data["pathname"] = "/testdata/MaxFiles"
@@ -503,9 +527,6 @@ class TestIdaApp(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         response_data = response.json()
         self.assertEqual(response_data['message'], "Maximum allowed file count for a single action was exceeded.")
-
-        wait_for_pending_actions(self, "test_project_a", test_user_a)
-        check_for_failed_actions(self, "test_project_a", test_user_a)
 
         print("Unfreeze a folder with max allowed files")
         data["pathname"] = "/testdata/MaxFiles/%s_files" % (self.config["MAX_FILE_COUNT"])
