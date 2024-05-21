@@ -28,14 +28,17 @@
 #
 # This script must be run as root.
 #
+#--------------------------------------------------------------------------------
+
+echo "THIS SCRIPT IS DEPRECATED -- DO NOT USE" >&2
 # NOTE: these optimizations break the emulated glusterfs storage, even though they
 # are utilized in production. Need to determine which are causing the issues, why,
 # and include as many as possible to have the emulated glusterfs storage as close
 # to production as possible. For now, this script exits without doing anything.
-#
-#--------------------------------------------------------------------------------
+exit 1 
 
-exit 1 # TEMP - for some reason this breaks the emulated glusterfs, needs investigation...
+
+
 
 PARENT_FOLDER=`dirname "$(realpath $0)"`
 PARENT_BASENAME=`basename "$PARENT_FOLDER"`

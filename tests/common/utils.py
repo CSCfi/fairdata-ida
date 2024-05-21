@@ -23,13 +23,13 @@
 
 import importlib.util
 import os
-import sys
 import time
 import json
 import requests
 import subprocess
 import dateutil.parser
-from datetime import datetime, timezone
+from base64 import b64encode
+from datetime import datetime
 
 # Use UTC
 os.environ["TZ"] = "UTC"
@@ -177,8 +177,8 @@ def load_configuration():
         'RABBIT_WORKER_PASS':     server_configuration.RABBIT_WORKER_PASS,
         'RABBIT_WORKER_LOG_FILE': server_configuration.RABBIT_WORKER_LOG_FILE,
         'METAX_AVAILABLE':        server_configuration.METAX_AVAILABLE,
-        'METAX_API':     server_configuration.METAX_API,
-        'METAX_PASS':         server_configuration.METAX_PASS,
+        'METAX_API':              server_configuration.METAX_API,
+        'METAX_PASS':             server_configuration.METAX_PASS,
         'IDA_MIGRATION':          service_constants.IDA_MIGRATION,
         'IDA_MIGRATION_TS':       service_constants.IDA_MIGRATION_TS,
         'START':                  generate_timestamp()
@@ -373,3 +373,76 @@ def get_dataset_pids(self):
             pids.append(dataset['pid'])
     return pids
 
+
+def get_frozen_file_pids(self, project, user):
+    """
+    Retrieve exhaustive list of PIDs of all frozen files currently stored in IDA which are associated with project
+    """
+
+    frozen_file_pids = []
+
+    response = requests.get("%s/frozen_file_pids/%s" % (self.config["IDA_API"], project), auth=user, verify=False)
+
+    if response.status_code == 200:
+
+        frozen_file_pids = response.json()
+
+        if not isinstance(frozen_file_pids, list):
+            frozen_file_pids = [frozen_file_pids]
+
+    return sorted(frozen_file_pids)
+
+
+def get_metax_file_pids(self, project):
+    """
+    Retrieve exhaustive list of PIDs of all frozen files known to Metax which are associated with project
+    """
+
+    metax_file_pids = []
+
+    if self.config['METAX_API_VERSION'] >= 3:
+        headers = { "Authorization": "Token %s" % self.config['METAX_PASS'] }
+        url = "%s/files?csc_project=%s&storage_service=ida&limit=9999" % (self.config["METAX_API"], project)
+    else:
+        headers = { "Authorization": make_ba_http_header(self.config['METAX_USER'], self.config['METAX_PASS']) }
+        url = "%s/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=9999" % (self.config["METAX_API"], project)
+
+    #print("HEADER: %s URL %s" % (json.dumps(headers), url)) # TEMP DEBUG
+
+    response = requests.get(url, headers=headers, verify=False)
+
+    if response.status_code == 200:
+        file_data = response.json()
+        for record in file_data['results']:
+            if self.config['METAX_API_VERSION'] >= 3:
+                metax_file_pids.append(record['storage_identifier'])
+            else:
+                metax_file_pids.append(record['identifier'])
+
+    return sorted(metax_file_pids)
+
+
+def make_ba_http_header(username, password):
+    return 'Basic %s' % b64encode(bytes('%s:%s' % (username, password), 'utf-8')).decode('utf-8')
+
+
+def array_difference(arr1, arr2):
+    """
+    Returns a tuple of two arrays:
+    - The first array contains strings in arr1 that are not in arr2.
+    - The second array contains strings in arr2 that are not in arr1.
+    
+    Parameters:
+    arr1 (list of str): The first array of strings.
+    arr2 (list of str): The second array of strings.
+    
+    Returns:
+    tuple: A tuple containing two lists.
+    """
+    set1 = set(arr1)
+    set2 = set(arr2)
+    
+    in_first_not_second = sorted(list(set1 - set2))
+    in_second_not_first = sorted(list(set2 - set1))
+    
+    return (in_first_not_second, in_second_not_first)

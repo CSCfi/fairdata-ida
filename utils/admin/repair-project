@@ -109,8 +109,37 @@ fi
 #--------------------------------------------------------------------------------
 echo "Repairing project data in IDA..."
 
-ACTION_PID=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "Content-Type: application/json" "$IDA_API/repair" 2>$ERR | \
-            grep '"pid":' | sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
+if [ "$ERROR_FILE" ]; then
+
+    echo "Repair limited to frozen files referenced in audit error report..."
+
+    cat "$ERROR_FILE" | \
+        jq -r '[.invalidNodes | keys[] | select(startswith("frozen/"))]' --indent 4 2>$ERR | \
+        sed -e 's/^    "frozen/    "/' \
+        > /var/tmp/repair-project.$PROJECT.$$.frozen_files
+
+    if [ -s $ERR ]; then
+        MSG=`cat $ERR`
+        echoAndLog "$MSG"
+        errorExit "Failed to extract frozen file pathnames from audit error report"
+    fi
+
+    ACTION_PID=`$CURL_POST $PROJECT_USER_CREDENTIALS \
+                -d @/var/tmp/repair-project.$PROJECT.$$.frozen_files \
+                -H "$IDA_MODE_HEADER" \
+                -H "Content-Type: application/json" "$IDA_API/repair" 2>$ERR | \
+                grep '"pid":' | sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
+
+    if [ "$DEBUG" != "true" ]; then
+        rm /var/tmp/repair-project.$PROJECT.$$.frozen_files
+    fi
+
+else
+
+    ACTION_PID=`$CURL_POST $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "Content-Type: application/json" "$IDA_API/repair" 2>$ERR | \
+                grep '"pid":' | sed -e 's/^.*"pid": *"//' | sed -e 's/".*$//'`
+
+fi
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
@@ -124,16 +153,11 @@ fi
 
 echo "Action PID: ${ACTION_PID}"
 
-# Test: Reinitialize test project. Freeze top level folder. Retrieve file details for freeze action, normalized
-# with "jq --indent 4" and store in /var/tmp/baseline.json. Extract all "pid" lines to /var/tmp/baseline.pids.
-# Extract all "pathname" lines to /var/tmp/baseline.pathnames. Run repair-project on test project. The resultant
-# /var/tmp/$ACTION_PID.$$.pids and /var/tmp/$ACTION_PID.$$.pathnames files should be identical to the baseline versions.
-
 if [ "$DEBUG" = "true" ]; then
     $CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" -H "Content-Type: application/json" "$IDA_API/files/action/$ACTION_PID" | \
-        jq --indent 4 >/var/tmp/$ACTION_PID.$$.json
-    grep '"pid"' < /var/tmp/$ACTION_PID.$$.json > /var/tmp/$ACTION_PID.$$.pids
-    grep '"pathname"' < /var/tmp/$ACTION_PID.$$.json > /var/tmp/$ACTION_PID.$$.pathnames
+        jq --indent 4 > /var/tmp/repair-project.$PROJECT.$ACTION_PID.$$.json
+    grep '"pid"' < /var/tmp/$ACTION_PID.$$.json > /var/tmp/repair-project.$PROJECT.$ACTION_PID.$$.pids
+    grep '"pathname"' < /var/tmp/$ACTION_PID.$$.json > /var/tmp/repair-project.$PROJECT.$ACTION_PID.$$.pathnames
 fi
 
 #--------------------------------------------------------------------------------

@@ -52,7 +52,7 @@ class FileMapper extends Mapper
             '\OCA\IDA\Model\File'
         );
     }
-    
+
     /**
      * Retrieve all file records associated with the specified action, based on the provided action PID,
      * optionally restricted to one or more projects.
@@ -64,24 +64,24 @@ class FileMapper extends Mapper
      * @return File[]
      */
     public function findFiles($pid = null, $projects = null, $limit = null) {
-        
+
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file';
-        
+
         // Add action pid restriction if defined
-        
+
         if ($pid != null) {
             $sql = $sql . ' WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         }
-        
+
         // Add project restrictions if defined
-        
+
         if ($projects != null) {
-            
+
             $projects = Access::cleanProjectList($projects);
-            
+
             $projectList = null;
             $first = true;
-            
+
             foreach (explode(',', $projects) as $project) {
                 $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
@@ -92,7 +92,7 @@ class FileMapper extends Mapper
                     $projectList = $projectList . ' ,\'' . $project . '\'';
                 }
             }
-            
+
             if ($projectList != null) {
                 if ($pid === null) {
                     $sql = $sql . ' WHERE';
@@ -103,22 +103,51 @@ class FileMapper extends Mapper
                 $sql = $sql . ' project IN (' . $projectList . ')';
             }
         }
-        
+
         // Sort results according to pathname
-        
+
         $sql = $sql . ' ORDER BY pathname ASC';
-        
+
         // If limit specified, restrict query to limit
-        
+
         if ($limit != null && is_integer($limit)) {
             $sql = $sql . ' LIMIT ' . $limit;
         }
-        
+
         Util::writeLog('ida', 'findFiles: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         return $this->findEntities($sql);
     }
-    
+
+    /**
+     * Retrieve the PIDs of all frozen file records associated with the specified project.
+     *
+     * @param string  $project          a project name
+     * @param boolean $includeInactive  include removed and cleared file records
+     *
+     * @return string[]
+     */
+    public function getFrozenFilePids($project, $includeInactive = false)
+    {
+        $frozenFilePids = array();
+
+        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . Access::escapeQueryStringComponent($project) . '\'';
+
+        if ($includeInactive === false) {
+            $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
+        }
+
+        Util::writeLog('ida', 'getFrozenFilePids: sql=' . $sql, \OCP\Util::DEBUG);
+
+        $entities = $this->findEntities($sql);
+
+        foreach ($entities as $entity) {
+            $frozenFilePids[] = $entity->getPid();
+        }
+
+        return $frozenFilePids;
+    }
+
     /**
      * Count the total file records associated with the specified action, based on the provided action PID,
      * optionally restricted to one or more projects.
@@ -130,36 +159,36 @@ class FileMapper extends Mapper
      * @return File[]
      */
     public function countFiles($pid = null, $projects = null, $includeInactive = true) {
-        
+
         $sql = 'SELECT COUNT(*) FROM *PREFIX*ida_frozen_file';
-        
+
         // Add action pid restriction if defined
-        
+
         if ($pid != null) {
             $sql = $sql . ' WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
         }
-        
+
         if ($includeInactive === false) {
-            
+
             if ($pid === null) {
                 $sql = $sql . ' WHERE';
             }
             else {
                 $sql = $sql . ' AND';
             }
-            
+
             $sql = $sql . ' removed IS NULL AND cleared IS NULL';
         }
-        
+
         // Add project restrictions if defined
-        
+
         if ($projects != null) {
-            
+
             $projects = Access::cleanProjectList($projects);
-            
+
             $projectList = null;
             $first = true;
-            
+
             foreach (explode(',', $projects) as $project) {
                 $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
@@ -170,7 +199,7 @@ class FileMapper extends Mapper
                     $projectList = $projectList . ' ,\'' . $project . '\'';
                 }
             }
-            
+
             if ($projectList != null) {
                 if (($pid === null) && ($includeInactive === true)) {
                     $sql = $sql . ' WHERE';
@@ -181,14 +210,14 @@ class FileMapper extends Mapper
                 $sql = $sql . ' project IN (' . $projectList . ')';
             }
         }
-        
+
         Util::writeLog('ida', 'countFiles: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         $stmt = $this->execute($sql);
-        
+
         return $stmt->fetch()['count'];
     }
-    
+
     /**
      * Return the most recently created frozen file record with the specified PID, or null if not
      * found, optionally limited to one or more projects.
@@ -200,22 +229,22 @@ class FileMapper extends Mapper
      * @return Entity
      */
     public function findFile($pid, $projects = null, $includeInactive = false) {
-        
+
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
-        
+
         if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
-        
+
         // Add project restrictions if defined
-        
+
         if ($projects != null) {
-            
+
             $projects = Access::cleanProjectList($projects);
-            
+
             $projectList = null;
             $first = true;
-            
+
             foreach (explode(',', $projects) as $project) {
                 $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
@@ -226,16 +255,16 @@ class FileMapper extends Mapper
                     $projectList = $projectList . ' ,\'' . $project . '\'';
                 }
             }
-            
+
             if ($projectList != null) {
                 $sql = $sql . ' AND project IN (' . $projectList . ')';
             }
         }
-        
+
         $sql = $sql . ' ORDER BY id DESC LIMIT 1';
-        
+
         Util::writeLog('ida', 'findFile: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         try {
             return $this->findEntity($sql);
         }
@@ -243,7 +272,7 @@ class FileMapper extends Mapper
             return null;
         }
     }
-    
+
     /**
      * Return the most recently created active frozen file record with the specified Nextcloud node ID, or null if no
      * file record has the specified node ID, optionally limited to one or more projects.
@@ -255,22 +284,22 @@ class FileMapper extends Mapper
      * @return Entity
      */
     public function findByNextcloudNodeId($node, $projects = null, $includeInactive = false) {
-        
+
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE node = ' . (int)$node;
-        
+
         if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
-        
+
         // Add project restrictions if defined
-        
+
         if ($projects != null) {
-            
+
             $projects = Access::cleanProjectList($projects);
-            
+
             $projectList = null;
             $first = true;
-            
+
             foreach (explode(',', $projects) as $project) {
                 $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
@@ -281,16 +310,16 @@ class FileMapper extends Mapper
                     $projectList = $projectList . ' ,\'' . $project . '\'';
                 }
             }
-            
+
             if ($projectList != null) {
                 $sql = $sql . ' AND project IN (' . $projectList . ')';
             }
         }
-        
+
         $sql = $sql . ' ORDER BY id DESC LIMIT 1';
-        
+
         Util::writeLog('ida', 'findByNextcloudNodeId: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         try {
             return $this->findEntity($sql);
         }
@@ -298,7 +327,7 @@ class FileMapper extends Mapper
             return null;
         }
     }
-    
+
     /**
      * Retrieve the most recently created active frozen file record with the specified project and pathname, or null if
      * not found, optionally restricted to one or more projects.
@@ -311,25 +340,25 @@ class FileMapper extends Mapper
      * @return Entity
      */
     public function findByProjectPathname($project, $pathname, $projects = null, $includeInactive = false) {
-        
+
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \''
             . Access::escapeQueryStringComponent($project)
             . '\' AND pathname = \''
             . Access::escapeQueryStringComponent($pathname) . '\'';
-        
+
         if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
-        
+
         // Add project restrictions if defined
-        
+
         if ($projects != null) {
-            
+
             $projects = Access::cleanProjectList($projects);
-            
+
             $projectList = null;
             $first = true;
-            
+
             foreach (explode(',', $projects) as $project) {
                 $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
@@ -340,16 +369,16 @@ class FileMapper extends Mapper
                     $projectList = $projectList . ' ,\'' . $project . '\'';
                 }
             }
-            
+
             if ($projectList != null) {
                 $sql = $sql . ' AND project IN (' . $projectList . ')';
             }
         }
-        
+
         $sql = $sql . ' ORDER BY id DESC LIMIT 1';
-        
+
         Util::writeLog('ida', 'findByProjectPathname: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         try {
             return $this->findEntity($sql);
         }
@@ -357,7 +386,35 @@ class FileMapper extends Mapper
             return null;
         }
     }
-    
+
+    /**
+     * Retrieve all frozen file records associated with the specified project where the
+     * frozen file pathname is included in the specified list of pathnames.
+     *
+     * @param string  $project         the project name
+     * @param array   $pathnames       the pathnames to include
+     * @param boolean $includeInactive include removed and cleared file records
+     *
+     * @return File[]
+     */
+    public function findFrozenFilesByPathnames($project, $pathnames, $includeInactive = false) {
+
+        $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . Access::escapeQueryStringComponent($project) . '\'';
+
+        $pathnamesSql = implode(',', array_map(function ($pathname) {
+            return "'" . Access::escapeQueryStringComponent($pathname) . "'";
+        }, $pathnames));
+        $sql .= " AND pathname IN ($pathnamesSql)";
+
+        if ($includeInactive === false) {
+            $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
+        }
+
+        Util::writeLog('ida', 'findFrozenFiles: sql=' . $sql, \OCP\Util::DEBUG);
+
+        return $this->findEntities($sql);
+    }
+
     /**
      * Retrieve all frozen file records associated with the specified project.
      *
@@ -367,18 +424,18 @@ class FileMapper extends Mapper
      * @return File[]
      */
     public function findFrozenFiles($project, $includeInactive = false) {
-        
+
         $sql = 'SELECT * FROM *PREFIX*ida_frozen_file WHERE project = \'' . Access::escapeQueryStringComponent($project) . '\'';
-        
+
         if ($includeInactive === false) {
             $sql = $sql . ' AND removed IS NULL AND cleared IS NULL';
         }
-        
+
         Util::writeLog('ida', 'findFrozenFiles: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         return $this->findEntities($sql);
     }
-    
+
     /**
      * Delete all file records associated with the specified action, based on the provided action PID,
      * optionally restricted to one or more projects..
@@ -390,18 +447,18 @@ class FileMapper extends Mapper
      * @param string $projects one or more comma separated project names, with no whitespace
      */
     public function deleteFiles($pid, $projects = null) {
-        
+
         $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE action = \'' . Access::escapeQueryStringComponent($pid) . '\'';
-        
+
         // Add project restrictions if defined
-        
+
         if ($projects != null) {
-            
+
             $projects = Access::cleanProjectList($projects);
-            
+
             $projectList = null;
             $first = true;
-            
+
             foreach (explode(',', $projects) as $project) {
                 $project = Access::escapeQueryStringComponent($project);
                 if ($first) {
@@ -412,44 +469,44 @@ class FileMapper extends Mapper
                     $projectList = $projectList . ' ,\'' . $project . '\'';
                 }
             }
-            
+
             if ($projectList != null) {
                 $sql = $sql . ' AND project IN (' . $projectList . ')';
             }
         }
-        
+
         Util::writeLog('ida', 'deleteFiles: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         $stmt = $this->execute($sql);
         $stmt->closeCursor();
     }
-    
+
     /**
      * Delete all frozen file records with the specified PID from the database
      */
     public function deleteFile($pid) {
-        
+
         $sql = 'DELETE FROM *PREFIX*ida_frozen_file WHERE pid = \'' . Access::escapeQueryStringComponent($pid) . '\'';
-        
+
         Util::writeLog('ida', 'deleteFile: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         $stmt = $this->execute($sql);
         $stmt->closeCursor();
     }
-    
+
     /**
      * Delete all file records in the database for the specified project, or for all projects if 'all' specified
      */
     public function deleteAllFiles($project = null) {
-        
+
         $sql = 'DELETE FROM *PREFIX*ida_frozen_file';
-        
+
         if ($project != 'all') {
             $sql = $sql . ' WHERE project =\'' . Access::escapeQueryStringComponent($project) . '\'';
         }
-        
+
         Util::writeLog('ida', 'deleteAllFiles: sql=' . $sql, \OCP\Util::DEBUG);
-        
+
         $stmt = $this->execute($sql);
         $stmt->closeCursor();
     }

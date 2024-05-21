@@ -64,9 +64,6 @@ class TestAgents(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
-        # print("Verify agents are running")
-        # TODO Check for running agents
-
 
     def tearDown(self):
         # flush all test projects, user accounts, and data, but only if all tests passed,
@@ -280,7 +277,8 @@ class TestAgents(unittest.TestCase):
 
         print("--- Repair Action Postprocessing")
 
-        # TODO Include more files in repair actions, more than 10 files total and 2-3 min new and deleted files...
+        # Note: These tests verify essential functionality. More comprehensive repair tests are included
+        # in the automated tests for auditing functionality.
 
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)

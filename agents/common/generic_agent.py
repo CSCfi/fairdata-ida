@@ -194,8 +194,8 @@ class GenericAgent():
             if self.messages_in_queue(self.main_queue_name) or self.messages_in_queue(self.failed_queue_name) or self.messages_in_queue(self.main_batch_queue_name) or self.messages_in_queue(self.failed_batch_queue_name):
 
                 is_offline_logged = False
-    
-                # Do not consume messages if the sentinel offline file exists 
+
+                # Do not consume messages if the sentinel offline file exists
                 while self._is_offline():
                     # Log only the first time
                     if not is_offline_logged:
@@ -208,7 +208,7 @@ class GenericAgent():
 
                 dependencies_not_ok_logged = False
 
-                # Do not consume messages if any dependencies required by the agent are not met 
+                # Do not consume messages if any dependencies required by the agent are not met
                 while self.dependencies_not_ok():
                     # Log only the first time
                     if not dependencies_not_ok_logged:
@@ -225,7 +225,7 @@ class GenericAgent():
                 #     failed_batch_queue_name
                 #     main_batch_queue_name
                 # This ensures that user-initiated actions take precidence over batch actions. The prioritization
-                # is applied on each loop iteration, so that new user-initiated actions will be immediately 
+                # is applied on each loop iteration, so that new user-initiated actions will be immediately
                 # processed even if there are many batch actions queued.
 
                 if self.messages_in_queue(self.failed_queue_name):
@@ -553,7 +553,7 @@ class GenericAgent():
                 % (action[sub_action_retry_info]['retry'], sub_action_name, retry_interval))
 
         try:
-            # Publish action to i.e. checksums-failed-waiting or batch-checksums-failed-waiting, 
+            # Publish action to i.e. checksums-failed-waiting or batch-checksums-failed-waiting,
             # from where it will be dead-lettered to a queue called metadata-failed or batch-metadata-failed
             # once its specified retry_interval has expired.
             if queue == 'replication' or queue == 'replication-failed' or queue == 'metadata' or queue == 'metadata-failed':

@@ -374,7 +374,7 @@ class FileController extends Controller
             }
 
             if ($node === null) {
-                // TODO Get Nextcloud node ID based on project and pathname...?
+                // Consider whether we should get the Nextcloud node ID based on project and pathname...?
                 $nextcloudNodeId = '0';
             }
             else {

@@ -161,9 +161,13 @@ class Access
     
     /**
      * Locks the specified project by creating the project lock file.
+     * 
+     * If the specified project is 'all', locks the entire service. If the service is already
+     * locked, still returns true and the service remains locked.
      *
-     * Returns true on success, else returns false. Always fails if the project is already locked or if the service is locked.
-     *
+     * Returns true on success, else returns false if the project cannot be locked because either
+     * the service is locked, or the project is already locked e.g. by another action. 
+     * 
      * @param string $project the project name
      *
      * @return bool
@@ -173,7 +177,6 @@ class Access
             throw new Exception('Null project');
         }
         Util::writeLog('ida', 'lockProject: project=' . $project, \OCP\Util::DEBUG);
-        // If service is locked, no project may be locked, and service remains locked
         if (self::projectIsLocked('all')) {
             if ($project !== 'all') {
                 return false;
@@ -182,13 +185,11 @@ class Access
         }
         $lockFilePathname = self::buildLockFilePathname($project);
         if (self::projectIsLocked($project, $lockFilePathname)) {
-            // TODO: Should return true if project is already locked
             return false;
         }
         if (!touch($lockFilePathname)) {
             throw new Exception('Failed to create lock file for project ' . $project);
         }
-        
         return true;
     }
     
@@ -212,12 +213,13 @@ class Access
                 throw new Exception('Failed to delete lock file for project ' . $project);
             }
         }
-        
         return true;
     }
     
     /**
      * Builds and returns the full pathname of the lock file for the specified project.
+     * 
+     * If the specified project is 'all', builds and resturns system lock file pathname.
      *
      * @param string $project the project name
      *

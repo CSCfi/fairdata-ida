@@ -233,35 +233,6 @@ class TestAuditing(unittest.TestCase):
                 print('')
 
 
-    def wait_for_pending_actions(self, project, user):
-        print("(waiting for pending actions to fully complete)")
-        print(".", end='', flush=True)
-        response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200)
-        actions = response.json()
-        max_time = time.time() + self.timeout
-        while len(actions) > 0 and time.time() < max_time:
-            print(".", end='', flush=True)
-            time.sleep(1)
-            response = requests.get("%s/actions?project=%s&status=pending" % (self.config["IDA_API"], project), auth=user, verify=False)
-            self.assertEqual(response.status_code, 200)
-            actions = response.json()
-        print("")
-        self.assertEqual(len(actions), 0, "Timed out waiting for pending actions to fully complete")
-
-
-    def check_for_failed_actions(self, project, user, should_be_failed = False):
-        print("(verifying no failed actions)")
-        response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API"], project), auth=user, verify=False)
-        self.assertEqual(response.status_code, 200)
-        actions = response.json()
-        if should_be_failed:
-            assert(len(actions) > 0)
-        else:
-            assert(len(actions) == 0)
-        return actions
-
-
     def remove_report(self, pathname):
         try:
             os.remove(pathname)
@@ -349,6 +320,7 @@ class TestAuditing(unittest.TestCase):
         test_user_b = ("test_user_b", self.config["TEST_USER_PASS"])
         test_user_c = ("test_user_c", self.config["TEST_USER_PASS"])
         test_user_d = ("test_user_d", self.config["TEST_USER_PASS"])
+        test_user_e = ("test_user_e", self.config["TEST_USER_PASS"])
 
         frozen_area_root_a = "%s/PSO_test_project_a/files/test_project_a" % (self.config["STORAGE_OC_DATA_ROOT"])
         staging_area_root_a = "%s/PSO_test_project_a/files/test_project_a%s" % (self.config["STORAGE_OC_DATA_ROOT"], self.config["STAGING_FOLDER_SUFFIX"])
@@ -363,7 +335,6 @@ class TestAuditing(unittest.TestCase):
             headers = { 'X-SIMULATE-AGENTS': 'true' }
 
         # --------------------------------------------------------------------------------
-
         # open database connection
 
         dblib = psycopg2
@@ -385,6 +356,16 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Modifying state of test project A")
 
+        print("(retrieving frozen file PID lists for project A from IDA and Metax before modifications)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_a', test_user_a)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_a')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 0)
+        self.assertEqual(len(metax_file_pids_1), 0)
+
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_a", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
         response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_a, verify=False)
@@ -397,6 +378,32 @@ class TestAuditing(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
+        print("(retrieving frozen file PID lists for project A from IDA and Metax after freezing)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_a', test_user_a)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_a')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 6)
+        self.assertEqual(len(metax_file_pids_2), 6)
+
+        print("(comparing PID lists for project A in IDA and Metax after freezing)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 6)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 6)
+
+        # After repair there will be one additional node (folder) due to the existence of the 'baseline' directory
+        # in both frozen area and staging compared to before freezing the 'baseline' folder and unfreezing test01.dat
+        print("(unfreezing file /testdata/2017-08/Experiment_1/baseline/test01.dat only in IDA, simulating postprocessing agents)")
+        data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline/test01.dat"}
         print("(deleting folder /testdata/2017-08/Experiment_1/baseline from frozen area of filesystem)")
         pathname = "%s/testdata/2017-08/Experiment_1/baseline" % frozen_area_root_a
         path = Path(pathname)
@@ -438,9 +445,41 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.is_file())
         self.assertEqual(0, path.stat().st_size)
 
+        print("(retrieving frozen file PID lists for project A from IDA and Metax after modifications)")
+        frozen_file_pids_3 = get_frozen_file_pids(self, 'test_project_a', test_user_a)
+        metax_file_pids_3 = get_metax_file_pids(self, 'test_project_a')
+        #print("IDA frozen file PIDs 3: %s" % json.dumps(frozen_file_pids_3))
+        #print("IDA frozen file PID count 3: %d" % len(frozen_file_pids_3))
+        #print("Metax frozen file PIDs 3: %s" % json.dumps(metax_file_pids_3))
+        #print("Metax frozen file PID count 3: %d" % len(metax_file_pids_3))
+        self.assertEqual(len(frozen_file_pids_3), 6)
+        self.assertEqual(len(metax_file_pids_3), 6)
+
+        print("(comparing PID lists for project A in IDA and Metax after modifications)")
+        frozen_file_pid_diff_2v3, frozen_file_pid_diff_3v2 = array_difference(frozen_file_pids_2, frozen_file_pids_3)
+        metax_file_pid_diff_2v3, metax_file_pid_diff_3v2 = array_difference(metax_file_pids_2, metax_file_pids_3)
+        #print("IDA frozen file diff 2v3: %s" % json.dumps(frozen_file_pid_diff_2v3))
+        #print("IDA frozen file diff 3v2: %s" % json.dumps(frozen_file_pid_diff_3v2))
+        #print("Metax frozen file diff 2v3: %s" % json.dumps(metax_file_pid_diff_2v3))
+        #print("Metax frozen file diff 3v2: %s" % json.dumps(metax_file_pid_diff_3v2))
+        self.assertEqual(len(frozen_file_pid_diff_2v3), 0)
+        self.assertEqual(len(frozen_file_pid_diff_3v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v3), 0)
+        self.assertEqual(len(metax_file_pid_diff_3v2), 0)
+
         # --------------------------------------------------------------------------------
 
         print("--- Modifying state of test project B")
+
+        print("(retrieving frozen file PID lists for project B from IDA and Metax before modifications)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_b', test_user_b)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_b')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 0)
+        self.assertEqual(len(metax_file_pids_1), 0)
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_b", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
@@ -453,6 +492,28 @@ class TestAuditing(unittest.TestCase):
 
         wait_for_pending_actions(self, "test_project_b", test_user_b)
         check_for_failed_actions(self, "test_project_b", test_user_b)
+
+        print("(retrieving frozen file PID lists for project B from IDA and Metax after freezing)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_b', test_user_b)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_b')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 6)
+        self.assertEqual(len(metax_file_pids_2), 6)
+
+        print("(comparing PID lists for project B in IDA and Metax after freezing)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 6)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 6)
 
         # retrieve PSO storage id for test_project_b
         cur.execute("SELECT numeric_id from %sstorages WHERE id = 'home::%stest_project_b' LIMIT 1"
@@ -476,9 +537,41 @@ class TestAuditing(unittest.TestCase):
         conn.commit()
         self.assertEqual(cur.rowcount, 1, "Failed to update Nextcloud file node modification timestamp")
 
+        print("(retrieving frozen file PID lists for project B from IDA and Metax after modifications)")
+        frozen_file_pids_3 = get_frozen_file_pids(self, 'test_project_b', test_user_b)
+        metax_file_pids_3 = get_metax_file_pids(self, 'test_project_b')
+        #print("IDA frozen file PIDs 3: %s" % json.dumps(frozen_file_pids_3))
+        #print("IDA frozen file PID count 3: %d" % len(frozen_file_pids_3))
+        #print("Metax frozen file PIDs 3: %s" % json.dumps(metax_file_pids_3))
+        #print("Metax frozen file PID count 3: %d" % len(metax_file_pids_3))
+        self.assertEqual(len(frozen_file_pids_3), 6)
+        self.assertEqual(len(metax_file_pids_3), 6)
+
+        print("(comparing PID lists for project B in IDA and Metax after modifications)")
+        frozen_file_pid_diff_2v3, frozen_file_pid_diff_3v2 = array_difference(frozen_file_pids_2, frozen_file_pids_3)
+        metax_file_pid_diff_2v3, metax_file_pid_diff_3v2 = array_difference(metax_file_pids_2, metax_file_pids_3)
+        #print("IDA frozen file diff 2v3: %s" % json.dumps(frozen_file_pid_diff_2v3))
+        #print("IDA frozen file diff 3v2: %s" % json.dumps(frozen_file_pid_diff_3v2))
+        #print("Metax frozen file diff 2v3: %s" % json.dumps(metax_file_pid_diff_2v3))
+        #print("Metax frozen file diff 3v2: %s" % json.dumps(metax_file_pid_diff_3v2))
+        self.assertEqual(len(frozen_file_pid_diff_2v3), 0)
+        self.assertEqual(len(frozen_file_pid_diff_3v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v3), 0)
+        self.assertEqual(len(metax_file_pid_diff_3v2), 0)
+
         # --------------------------------------------------------------------------------
 
         print("--- Modifying state of test project C")
+
+        print("(retrieving frozen file PID lists for project C from IDA and Metax before modifications)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_c', test_user_c)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_c')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 0)
+        self.assertEqual(len(metax_file_pids_1), 0)
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_c", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
@@ -491,6 +584,28 @@ class TestAuditing(unittest.TestCase):
 
         wait_for_pending_actions(self, "test_project_c", test_user_c)
         check_for_failed_actions(self, "test_project_c", test_user_c)
+
+        print("(retrieving frozen file PID lists for project C from IDA and Metax after freezing)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_c', test_user_c)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_c')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 6)
+        self.assertEqual(len(metax_file_pids_2), 6)
+
+        print("(comparing PID lists for project C in IDA and Metax after freezing)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 6)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 6)
 
         # After repair the frozen file record in IDA and Metax will be purged as it no longer
         # corresponds to a frozen file on disk, and the node type in Nextcloud will be changed
@@ -513,8 +628,8 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
-        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk
         print("(replacing file /testdata/2017-10/Experiment_3/baseline/test03.dat from staging area of filesystem with same-named folder)")
+        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk
         # Delete file /testdata/2017-10/Experiment_3/baseline/test03.dat from staging area
         pathname = "%s/testdata/2017-10/Experiment_3/baseline/test03.dat" % staging_area_root_c
         path = Path(pathname)
@@ -531,9 +646,9 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_dir())
 
-        # After repair the node type in Nextcloud will be changed to folder, since that is what is on disk
         print("(replacing folder /testdata/empty_folder_s from staging area of filesystem with same-named file)")
-        # Delete folder /testdata/empty_folder_s from staging area
+        # After repair the node type in Nextcloud will be changed to file, since that is what is on disk
+        # Delete folder /testdata/empty_folder_s and its subfolders from staging area
         pathname = "%s/testdata/empty_folder_s" % staging_area_root_c
         path = Path(pathname)
         try:
@@ -551,9 +666,41 @@ class TestAuditing(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertTrue(path.is_file())
 
+        print("(retrieving frozen file PID lists for project C from IDA and Metax after modifications)")
+        frozen_file_pids_3 = get_frozen_file_pids(self, 'test_project_c', test_user_c)
+        metax_file_pids_3 = get_metax_file_pids(self, 'test_project_c')
+        #print("IDA frozen file PIDs 3: %s" % json.dumps(frozen_file_pids_3))
+        #print("IDA frozen file PID count 3: %d" % len(frozen_file_pids_3))
+        #print("Metax frozen file PIDs 3: %s" % json.dumps(metax_file_pids_3))
+        #print("Metax frozen file PID count 3: %d" % len(metax_file_pids_3))
+        self.assertEqual(len(frozen_file_pids_3), 6)
+        self.assertEqual(len(metax_file_pids_3), 6)
+
+        print("(comparing PID lists for project C in IDA and Metax after modifications)")
+        frozen_file_pid_diff_2v3, frozen_file_pid_diff_3v2 = array_difference(frozen_file_pids_2, frozen_file_pids_3)
+        metax_file_pid_diff_2v3, metax_file_pid_diff_3v2 = array_difference(metax_file_pids_2, metax_file_pids_3)
+        #print("IDA frozen file diff 2v3: %s" % json.dumps(frozen_file_pid_diff_2v3))
+        #print("IDA frozen file diff 3v2: %s" % json.dumps(frozen_file_pid_diff_3v2))
+        #print("Metax frozen file diff 2v3: %s" % json.dumps(metax_file_pid_diff_2v3))
+        #print("Metax frozen file diff 3v2: %s" % json.dumps(metax_file_pid_diff_3v2))
+        self.assertEqual(len(frozen_file_pid_diff_2v3), 0)
+        self.assertEqual(len(frozen_file_pid_diff_3v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v3), 0)
+        self.assertEqual(len(metax_file_pid_diff_3v2), 0)
+
         # --------------------------------------------------------------------------------
 
         print("--- Modifying state of test project D")
+
+        print("(retrieving frozen file PID lists for project D from IDA and Metax before modifications)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_d')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 0)
+        self.assertEqual(len(metax_file_pids_1), 0)
 
         print("(freezing folder /testdata/2017-08/Experiment_1/baseline)")
         data = {"project": "test_project_d", "pathname": "/testdata/2017-08/Experiment_1/baseline"}
@@ -566,6 +713,28 @@ class TestAuditing(unittest.TestCase):
 
         wait_for_pending_actions(self, "test_project_d", test_user_d)
         check_for_failed_actions(self, "test_project_d", test_user_d)
+
+        print("(retrieving frozen file PID lists for project D from IDA and Metax after freezing)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_d')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 6)
+        self.assertEqual(len(metax_file_pids_2), 6)
+
+        print("(comparing PID lists for project D in IDA and Metax after freezing)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 6)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 6)
 
         # After repair there will be one additional node (folder) due to the existence of the 'baseline' directory
         # in both frozen area and staging compared to before freezing the 'baseline' folder and unfreezing test01.dat
@@ -604,7 +773,7 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to retrieve pid for frozen file")
         # The following are used below to restore the original frozen file pid after temporarily changing it before auditing tests
         original_frozen_file_pid = rows[0][0]
-        original_frozen_file_pathname = pathname
+        original_frozen_file_pathname = pathname # used below to restore original pid
 
         print("(changing size of file %s in IDA db)" % pathname)
         cur.execute("UPDATE %sida_frozen_file SET size = %d WHERE project = 'test_project_d' AND pathname = '%s'"
@@ -631,7 +800,6 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(cur.rowcount, 1, "Failed to update IDA file modification timestamp")
 
         print("(changing pid of file %s in IDA db)" % pathname)
-        original_frozen_file_pathname = pathname # used below to restore original pid
         cur.execute("UPDATE %sida_frozen_file SET pid = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
                     % (self.config["DBTABLEPREFIX"], "abc123", pathname))
         conn.commit()
@@ -678,6 +846,28 @@ class TestAuditing(unittest.TestCase):
 
         self.config['MODIFIED'] = generate_timestamp()
         print("MODIFIED: %s" % self.config['MODIFIED'])
+
+        print("(retrieving frozen file PID lists for project D from IDA and Metax after modifications)")
+        frozen_file_pids_3 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_3 = get_metax_file_pids(self, 'test_project_d')
+        #print("IDA frozen file PIDs 3: %s" % json.dumps(frozen_file_pids_3))
+        #print("IDA frozen file PID count 3: %d" % len(frozen_file_pids_3))
+        #print("Metax frozen file PIDs 3: %s" % json.dumps(metax_file_pids_3))
+        #print("Metax frozen file PID count 3: %d" % len(metax_file_pids_3))
+        self.assertEqual(len(frozen_file_pids_3), 5)
+        self.assertEqual(len(metax_file_pids_3), 5)
+
+        print("(comparing PID lists for project D in IDA and Metax after modifications)")
+        frozen_file_pid_diff_2v3, frozen_file_pid_diff_3v2 = array_difference(frozen_file_pids_2, frozen_file_pids_3)
+        metax_file_pid_diff_2v3, metax_file_pid_diff_3v2 = array_difference(metax_file_pids_2, metax_file_pids_3)
+        #print("IDA frozen file diff 2v3: %s" % json.dumps(frozen_file_pid_diff_2v3))
+        #print("IDA frozen file diff 3v2: %s" % json.dumps(frozen_file_pid_diff_3v2))
+        #print("Metax frozen file diff 2v3: %s" % json.dumps(metax_file_pid_diff_2v3))
+        #print("Metax frozen file diff 3v2: %s" % json.dumps(metax_file_pid_diff_3v2))
+        self.assertEqual(len(frozen_file_pid_diff_2v3), 2)
+        self.assertEqual(len(frozen_file_pid_diff_3v2), 1)
+        self.assertEqual(len(metax_file_pid_diff_2v3), 1)
+        self.assertEqual(len(metax_file_pid_diff_3v2), 0)
 
         # --------------------------------------------------------------------------------
 
@@ -2060,6 +2250,16 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Repairing projects A, B, C, and D for re-auditing")
 
+        print("(retrieving frozen file PID lists for project A from IDA and Metax before repair)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_a', test_user_a)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_a')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 6)
+        self.assertEqual(len(metax_file_pids_1), 6)
+
         print("(repairing project A)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_a)
         try:
@@ -2069,6 +2269,38 @@ class TestAuditing(unittest.TestCase):
 
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
+
+        print("(retrieving frozen file PID lists for project A from IDA and Metax after repair)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_a', test_user_a)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_a')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 0)
+        self.assertEqual(len(metax_file_pids_2), 0)
+
+        print("(comparing PID lists for project A in IDA and Metax after repair)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 6)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 0)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 6)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 0)
+
+        print("(retrieving frozen file PID lists for project B from IDA and Metax before repair)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_b', test_user_b)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_b')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 6)
+        self.assertEqual(len(metax_file_pids_1), 6)
 
         print("(repairing project B)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_b)
@@ -2080,6 +2312,38 @@ class TestAuditing(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_b", test_user_b)
         check_for_failed_actions(self, "test_project_b", test_user_b)
 
+        print("(retrieving frozen file PID lists for project B from IDA and Metax after repair)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_b', test_user_b)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_b')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 6)
+        self.assertEqual(len(metax_file_pids_2), 6)
+
+        print("(comparing PID lists for project B in IDA and Metax after repair)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 0)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 0)
+
+        print("(retrieving frozen file PID lists for project C from IDA and Metax before repair)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_c', test_user_c)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_c')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 6)
+        self.assertEqual(len(metax_file_pids_1), 6)
+
         print("(repairing project C)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_c)
         try:
@@ -2090,9 +2354,41 @@ class TestAuditing(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_c", test_user_c)
         check_for_failed_actions(self, "test_project_c", test_user_c)
 
+        print("(retrieving frozen file PID lists for project C from IDA and Metax after repair)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_c', test_user_c)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_c')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 5)
+        self.assertEqual(len(metax_file_pids_2), 5)
+
+        print("(comparing PID lists for project C in IDA and Metax after repair)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 1)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 0)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 1)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 0)
+
+        print("(retrieving frozen file PID lists for project D from IDA and Metax before repair)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_d')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 5)
+        self.assertEqual(len(metax_file_pids_1), 5)
+
         print("(repairing project D)")
 
-        # The repair process doesn't resolve a mismatch of node types (file vs folder) in replication,
+        # NOTE: The repair process doesn't resolve a mismatch of node types (file vs folder) in replication,
         # even though the audit process will report the issue if it ever occurs in reality (which it
         # likely never will), so to ensure the repair process and post-repair auditing succeed for these
         # tests, we will first restore the file which was replaced with a same named folder, via which
@@ -2112,16 +2408,6 @@ class TestAuditing(unittest.TestCase):
             self.fail("Failed to delete folder %s: %s" % (pathname, str(error)))
         self.assertTrue(path.exists())
 
-        # The repair process doesn't properly resolve a frozen file pid mismatch between IDA and Metax, even
-        # though the audit process will report the issue if it ever occurs in reality (which it likely never
-        # will), so to ensure the repair process and post repair auditing succeed for these tests, we will
-        # repair the pid mismatch that was created for the auditing tests prior to proceeding...
-
-        cur.execute("UPDATE %sida_frozen_file SET pid = '%s' WHERE project = 'test_project_d' AND pathname = '%s'"
-                    % (self.config["DBTABLEPREFIX"], original_frozen_file_pid, original_frozen_file_pathname))
-        conn.commit()
-        self.assertEqual(cur.rowcount, 1, "Failed to update IDA file pid")
-
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
@@ -2131,10 +2417,36 @@ class TestAuditing(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_d", test_user_d)
         check_for_failed_actions(self, "test_project_d", test_user_d)
 
+        print("(retrieving frozen file PID lists for project D from IDA and Metax after repair)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_d')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 5)
+        self.assertEqual(len(metax_file_pids_2), 5)
+
+        print("(comparing PID lists for project D in IDA and Metax after repair)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2 = array_difference(frozen_file_pids_1, frozen_file_pids_1)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 0)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 2)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 0)
+
         self.remove_report(report_pathname_a)
         self.remove_report(report_pathname_b)
         self.remove_report(report_pathname_c)
         self.remove_report(report_pathname_d)
+
+        # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
 
         print("--- Re-auditing project A and checking results")
 
@@ -2210,6 +2522,17 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project C and checking results")
 
+        # NOTE: The repair process will fail to fully repair three empty folders which
+        # no longer exist in the filesystem in staging but are defined in the Nextcloud
+        # cache. This is because we deleted them from the filesystem and changed their
+        # ancestor folder to a file with the same pathname. However, the occ files:scan
+        # tool is unable to detect this odd form of corruption and update the cache
+        # fully. It will update the cache record for the folder that was changed to a file,
+        # but the records for the descendant folders removed from the filesystem and now
+        # with no ancestor folder, i.e. orphaned, remain as residue in the cache records.
+        # We will simply ignore these remaining errors. If any such corruption occurs in
+        # reality, it will need to be fixed manually.
+
         report_data = self.audit_project("test_project_c", "ERR")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
@@ -2242,50 +2565,19 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
+        print("Verify exact error and node pathnames to be ignored")
+        self.assertTrue('Node does not exist in filesystem' in report_data['errors'])
+        self.assertEqual(report_data["errors"]["Node does not exist in filesystem"]["folders"]["staging"]["node_count"], 3)
+        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a"]["errors"][0], "Node does not exist in filesystem")
+        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a"]["nextcloud"]["type"], "folder")
+        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b"]["errors"][0], "Node does not exist in filesystem")
+        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b"]["nextcloud"]["type"], "folder")
+        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b/c"]["errors"][0], "Node does not exist in filesystem")
+        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b/c"]["nextcloud"]["type"], "folder")
+
         self.remove_report(report_data['reportPathname'])
 
         print("--- Re-auditing project D and checking results")
-
-        # Because we change the pid and timestamps of one file prior to the previous
-        # repair, we still will get that file reported with timestamp discrepancies
-        # because the timestamp repair would be unable to fix the timstamps in IDA
-        # and Metax due to the wrong pid. So we need to actually expect one invalid
-        # node in the next audit, then repair timestamps based on the new audit error
-        # report and thereafter should get no errors reported for project D.
-
-        report_data = self.audit_project("test_project_d", "ERR")
-        self.assertTrue(report_data.get('auditStaging'), False)
-        self.assertTrue(report_data.get('auditFrozen'), False)
-        self.assertTrue(report_data.get('auditChecksums'), False)
-        self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
-
-        print("Verify correct number of reported filesystem nodes")
-        self.assertEqual(report_data.get("filesystemNodeCount"), 116)
-
-        print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 116)
-
-        print("Verify correct number of reported IDA frozen files")
-        self.assertEqual(report_data.get("frozenFileCount"), 5)
-
-        print("Verify correct number of reported Metax files")
-        self.assertEqual(report_data.get("metaxFileCount"), 5)
-
-        print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount"), 1)
-
-        report_pathname_d = report_data["reportPathname"]
-
-        print("repair timestamps for test_project_d)")
-
-        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-timestamps %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_d)
-        try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-
-        self.remove_report(report_pathname_d)
 
         report_data = self.audit_project("test_project_d", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
@@ -2305,6 +2597,86 @@ class TestAuditing(unittest.TestCase):
 
         print("Verify correct number of reported Metax files")
         self.assertEqual(report_data.get("metaxFileCount"), 5)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 0)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+
+        report_pathname_d = report_data["reportPathname"]
+
+        print("--- Running repair on project D again when there are no issues, to ensure no unintended changes when repair not needed")
+
+        print("(retrieving frozen file PID lists for project D from IDA and Metax before repair)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_d')
+
+        print("(repairing project D)")
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project test_project_d" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        wait_for_pending_actions(self, "test_project_d", test_user_d)
+        check_for_failed_actions(self, "test_project_d", test_user_d)
+
+        print("(retrieving frozen file PID lists for project D from IDA and Metax after repair)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_d', test_user_d)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_d')
+
+        print("(comparing before and after PID lists for project D in IDA and Metax)")
+        frozen_file_pid_diff_1, frozen_file_pid_diff_2 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1, metax_file_pid_diff_2 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("IDA frozen file diff 1: %s" % json.dumps(frozen_file_pid_diff_1))
+        #print("IDA frozen file diff 2: %s" % json.dumps(frozen_file_pid_diff_2))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        #print("Metax frozen file diff 1: %s" % json.dumps(metax_file_pid_diff_1))
+        #print("Metax frozen file diff 2: %s" % json.dumps(metax_file_pid_diff_2))
+        self.assertEqual(len(frozen_file_pids_1), len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_2), len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_1), len(frozen_file_pids_2))
+        self.assertEqual(len(metax_file_pids_1), len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pid_diff_1), 0)
+        self.assertEqual(len(metax_file_pid_diff_1), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2), 0)
+
+        print("--- Re-auditing project D and checking results")
+
+        report_data = self.audit_project("test_project_d", "OK")
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedSince'))
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 116)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 116)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 5)
+        self.assertEqual(report_data.get("frozenFileCount"), len(frozen_file_pids_1))
+        self.assertEqual(report_data.get("frozenFileCount"), len(frozen_file_pids_2))
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 5)
+        self.assertEqual(report_data.get("metaxFileCount"), len(metax_file_pids_1))
+        self.assertEqual(report_data.get("metaxFileCount"), len(metax_file_pids_2))
 
         print("Verify correct number of reported invalid nodes")
         self.assertEqual(report_data.get("invalidNodeCount"), 0)
@@ -2362,7 +2734,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Verifying freeze action failed due to checksum mismatch")
 
-        actions = self.check_for_failed_actions("test_project_a", test_user_a, should_be_failed = True)
+        actions = check_for_failed_actions(self, "test_project_a", test_user_a, should_be_failed = True)
         assert(len(actions) == 1)
         action = actions[0]
         self.assertEqual(action.get('action'), 'freeze')
@@ -2795,6 +3167,279 @@ class TestAuditing(unittest.TestCase):
         else:
             self.assertNotEqual(data['checksum']['value'], invalid_checksum)
             self.assertNotEqual(normalize_timestamp(data['file_modified']), invalid_timestamp)
+
+        # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+
+        print("--- Modifying state of test project E (pass 1 repair with no audit report)")
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax before modifications)")
+        frozen_file_pids_1 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_1 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 1: %s" % json.dumps(frozen_file_pids_1))
+        #print("IDA frozen file PID count 1: %d" % len(frozen_file_pids_1))
+        #print("Metax frozen file PIDs 1: %s" % json.dumps(metax_file_pids_1))
+        #print("Metax frozen file PID count 1: %d" % len(metax_file_pids_1))
+        self.assertEqual(len(frozen_file_pids_1), 0)
+        self.assertEqual(len(metax_file_pids_1), 0)
+
+        print("(freezing folder /testdata)")
+        data = {"project": "test_project_e", "pathname": "/testdata"}
+        response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers, json=data, auth=test_user_e, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        wait_for_pending_actions(self, "test_project_e", test_user_e)
+        check_for_failed_actions(self, "test_project_e", test_user_e)
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax after freezing)")
+        frozen_file_pids_2 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_2 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 2: %s" % json.dumps(frozen_file_pids_2))
+        #print("IDA frozen file PID count 2: %d" % len(frozen_file_pids_2))
+        #print("Metax frozen file PIDs 2: %s" % json.dumps(metax_file_pids_2))
+        #print("Metax frozen file PID count 2: %d" % len(metax_file_pids_2))
+        self.assertEqual(len(frozen_file_pids_2), 83)
+        self.assertEqual(len(metax_file_pids_2), 83)
+
+        print("(comparing PID lists for project E in IDA and Metax after freezing)")
+        frozen_file_pid_diff_1v2, frozen_file_pid_diff_2v1 = array_difference(frozen_file_pids_1, frozen_file_pids_2)
+        metax_file_pid_diff_1v2, metax_file_pid_diff_2v1 = array_difference(metax_file_pids_1, metax_file_pids_2)
+        #print("IDA frozen file diff 1v2: %s" % json.dumps(frozen_file_pid_diff_1v2))
+        #print("IDA frozen file diff 2v1: %s" % json.dumps(frozen_file_pid_diff_2v1))
+        #print("Metax frozen file diff 1v2: %s" % json.dumps(metax_file_pid_diff_1v2))
+        #print("Metax frozen file diff 2v1: %s" % json.dumps(metax_file_pid_diff_2v1))
+        self.assertEqual(len(frozen_file_pid_diff_1v2), 0)
+        self.assertEqual(len(frozen_file_pid_diff_2v1), 83)
+        self.assertEqual(len(metax_file_pid_diff_1v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v1), 83)
+
+        print("(unfreezing frozen folder /testdata/2017-08 only in IDA, simulating postprocessing agents)")
+        data = {"project": "test_project_e", "pathname": "/testdata/2017-08"}
+        headers_e = { 'X-SIMULATE-AGENTS': 'true' }
+        response = requests.post("%s/unfreeze" % self.config["IDA_API"], headers=headers_e, json=data, auth=test_user_e, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "unfreeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        wait_for_pending_actions(self, "test_project_e", test_user_e)
+        check_for_failed_actions(self, "test_project_e", test_user_e)
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax after unfreezing)")
+        frozen_file_pids_3 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_3 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 3: %s" % json.dumps(frozen_file_pids_3))
+        #print("IDA frozen file PID count 3: %d" % len(frozen_file_pids_3))
+        #print("Metax frozen file PIDs 3: %s" % json.dumps(metax_file_pids_3))
+        #print("Metax frozen file PID count 3: %d" % len(metax_file_pids_3))
+        self.assertEqual(len(frozen_file_pids_3), 56)
+        self.assertEqual(len(metax_file_pids_3), 83)
+
+        print("(comparing PID lists for project E in IDA and Metax after unfreezing)")
+        frozen_file_pid_diff_2v3, frozen_file_pid_diff_3v2 = array_difference(frozen_file_pids_2, frozen_file_pids_3)
+        metax_file_pid_diff_2v3, metax_file_pid_diff_3v2 = array_difference(metax_file_pids_2, metax_file_pids_3)
+        #print("IDA frozen file diff 2v3: %s" % json.dumps(frozen_file_pid_diff_2v3))
+        #print("IDA frozen file diff 3v2: %s" % json.dumps(frozen_file_pid_diff_3v2))
+        #print("Metax frozen file diff 2v3: %s" % json.dumps(metax_file_pid_diff_2v3))
+        #print("Metax frozen file diff 3v2: %s" % json.dumps(metax_file_pid_diff_3v2))
+        self.assertEqual(len(frozen_file_pid_diff_2v3), 27)
+        self.assertEqual(len(frozen_file_pid_diff_3v2), 0)
+        self.assertEqual(len(metax_file_pid_diff_2v3), 0)
+        self.assertEqual(len(metax_file_pid_diff_3v2), 0)
+
+        print("--- Repairing project E (with no audit error report provided)")
+
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project test_project_e" % (self.config["HTTPD_USER"], self.config["ROOT"])
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        wait_for_pending_actions(self, "test_project_e", test_user_e)
+        check_for_failed_actions(self, "test_project_e", test_user_e)
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax after repair)")
+        frozen_file_pids_4 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_4 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 4: %s" % json.dumps(frozen_file_pids_4))
+        #print("IDA frozen file PID count 4: %d" % len(frozen_file_pids_4))
+        #print("Metax frozen file PIDs 4: %s" % json.dumps(metax_file_pids_4))
+        #print("Metax frozen file PID count 4: %d" % len(metax_file_pids_4))
+        self.assertEqual(len(frozen_file_pids_4), 56)
+        self.assertEqual(len(metax_file_pids_4), 56)
+
+        print("(comparing PID lists for project E in IDA and Metax after repair)")
+        frozen_file_pid_diff_3v4, frozen_file_pid_diff_4v3 = array_difference(frozen_file_pids_3, frozen_file_pids_4)
+        metax_file_pid_diff_3v4, metax_file_pid_diff_4v3 = array_difference(metax_file_pids_3, metax_file_pids_4)
+        #print("IDA frozen file diff 3v4: %s" % json.dumps(frozen_file_pid_diff_3v4))
+        #print("IDA frozen file diff 4v3: %s" % json.dumps(frozen_file_pid_diff_4v3))
+        #print("Metax frozen file diff 3v4: %s" % json.dumps(metax_file_pid_diff_3v4))
+        #print("Metax frozen file diff 4v3: %s" % json.dumps(metax_file_pid_diff_4v3))
+        self.assertEqual(len(frozen_file_pid_diff_3v4), 0)
+        self.assertEqual(len(frozen_file_pid_diff_4v3), 0)
+        self.assertEqual(len(metax_file_pid_diff_3v4), 27)
+        self.assertEqual(len(metax_file_pid_diff_4v3), 0)
+
+        print("--- Auditing project E and checking results")
+        self.audit_project("test_project_e", "OK")
+
+        print("(refreezing folder /testdata/2017-08)")
+        data = {"project": "test_project_e", "pathname": "/testdata/2017-08"}
+        headers_e = { 'X-SIMULATE-AGENTS': 'false' }
+        response = requests.post("%s/freeze" % self.config["IDA_API"], headers=headers_e, json=data, auth=test_user_e, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "freeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        wait_for_pending_actions(self, "test_project_e", test_user_e)
+        check_for_failed_actions(self, "test_project_e", test_user_e)
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax after refreezing)")
+        frozen_file_pids_5 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_5 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 5: %s" % json.dumps(frozen_file_pids_5))
+        #print("IDA frozen file PID count 5: %d" % len(frozen_file_pids_5))
+        #print("Metax frozen file PIDs 5: %s" % json.dumps(metax_file_pids_5))
+        #print("Metax frozen file PID count 5: %d" % len(metax_file_pids_5))
+        self.assertEqual(len(frozen_file_pids_5), 83)
+        self.assertEqual(len(metax_file_pids_5), 83)
+
+        print("--- Auditing project E and checking results")
+        self.audit_project("test_project_e", "OK")
+
+        print("--- Modifying state of test project E (pass 2 repair with audit error report)")
+
+        print("(unfreezing frozen folder /testdata/2017-08 only in IDA, simulating postprocessing agents)")
+        data = {"project": "test_project_e", "pathname": "/testdata/2017-08"}
+        headers_e = { 'X-SIMULATE-AGENTS': 'true' }
+        response = requests.post("%s/unfreeze" % self.config["IDA_API"], headers=headers_e, json=data, auth=test_user_e, verify=False)
+        self.assertEqual(response.status_code, 200)
+        action_data = response.json()
+        self.assertEqual(action_data["action"], "unfreeze")
+        self.assertEqual(action_data["project"], data["project"])
+        self.assertEqual(action_data["pathname"], data["pathname"])
+
+        wait_for_pending_actions(self, "test_project_e", test_user_e)
+        check_for_failed_actions(self, "test_project_e", test_user_e)
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax after unfreezing)")
+        frozen_file_pids_6 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_6 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 6: %s" % json.dumps(frozen_file_pids_6))
+        #print("IDA frozen file PID count 6: %d" % len(frozen_file_pids_6))
+        #print("Metax frozen file PIDs 6: %s" % json.dumps(metax_file_pids_6))
+        #print("Metax frozen file PID count 6: %d" % len(metax_file_pids_6))
+        self.assertEqual(len(frozen_file_pids_6), 56)
+        self.assertEqual(len(metax_file_pids_6), 83)
+
+        print("(comparing PID lists for project E in IDA and Metax after unfreezing)")
+        frozen_file_pid_diff_5v6, frozen_file_pid_diff_6v5 = array_difference(frozen_file_pids_5, frozen_file_pids_6)
+        metax_file_pid_diff_5v6, metax_file_pid_diff_6v5 = array_difference(metax_file_pids_5, metax_file_pids_6)
+        #print("IDA frozen file diff 5v6: %s" % json.dumps(frozen_file_pid_diff_5v6))
+        #print("IDA frozen file diff 6v5: %s" % json.dumps(frozen_file_pid_diff_6v5))
+        #print("Metax frozen file diff 5v6: %s" % json.dumps(metax_file_pid_diff_5v6))
+        #print("Metax frozen file diff 6v5: %s" % json.dumps(metax_file_pid_diff_6v5))
+        self.assertEqual(len(frozen_file_pid_diff_5v6), 27)
+        self.assertEqual(len(frozen_file_pid_diff_6v5), 0)
+        self.assertEqual(len(metax_file_pid_diff_5v6), 0)
+        self.assertEqual(len(metax_file_pid_diff_6v5), 0)
+
+        print("--- Auditing project E and checking results")
+        report_data = self.audit_project("test_project_e", "ERR")
+        report_pathname_e = report_data["reportPathname"]
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+
+        print("Verify correct number of reported filesystem nodes")
+        self.assertEqual(report_data.get("filesystemNodeCount"), 113)
+
+        print("Verify correct number of reported Nextcloud nodes")
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 113)
+
+        print("Verify correct number of reported IDA frozen files")
+        self.assertEqual(report_data.get("frozenFileCount"), 56)
+
+        print("Verify correct number of reported Metax files")
+        self.assertEqual(report_data.get("metaxFileCount"), 83)
+
+        print("Verify correct number of reported invalid nodes")
+        self.assertEqual(report_data.get("invalidNodeCount"), 27)
+
+        print("Verify correct number of reported node errors")
+        self.assertEqual(report_data.get("errorNodeCount"), 81)
+
+        print("Verify correct number of reported errors")
+        self.assertEqual(report_data.get("errorCount"), 3)
+
+        print("Verify correct reported errors")
+        self.assertEqual(report_data['errors']['Node does not exist in filesystem']['files']['frozen']['node_count'], 27)
+        self.assertEqual(report_data['errors']['Node does not exist in Nextcloud']['files']['frozen']['node_count'], 27)
+        self.assertEqual(report_data['errors']['Node does not exist in IDA']['files']['frozen']['node_count'], 27)
+
+        print("Verify correct oldest and newest dates")
+        self.assertIsNotNone(report_data.get("oldest"))
+        self.assertIsNotNone(report_data.get("newest"))
+
+        try:
+            nodes = report_data["invalidNodes"]
+        except Exception as error:
+            self.fail(str(error))
+        self.assertEqual(len(nodes), report_data['invalidNodeCount'])
+
+        print("Verify correct error reports of select file in Metax missing from filesystem, Nextcloud, and IDA")
+        node = nodes.get("frozen/testdata/2017-08/Experiment_1/test01.dat")
+        self.assertIsNotNone(node)
+        errors = node.get("errors")
+        self.assertIsNotNone(errors)
+        self.assertTrue("Node does not exist in filesystem" in errors)
+        self.assertTrue("Node does not exist in Nextcloud" in errors)
+        self.assertTrue("Node does not exist in IDA" in errors)
+
+        print("--- Repairing project E (with audit error report provided)")
+
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/repair-project %s" % (self.config["HTTPD_USER"], self.config["ROOT"], report_pathname_e)
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        wait_for_pending_actions(self, "test_project_e", test_user_e)
+        check_for_failed_actions(self, "test_project_e", test_user_e)
+
+        print("(retrieving frozen file PID lists for project E from IDA and Metax after repair)")
+        frozen_file_pids_4 = get_frozen_file_pids(self, 'test_project_e', test_user_e)
+        metax_file_pids_4 = get_metax_file_pids(self, 'test_project_e')
+        #print("IDA frozen file PIDs 4: %s" % json.dumps(frozen_file_pids_4))
+        #print("IDA frozen file PID count 4: %d" % len(frozen_file_pids_4))
+        #print("Metax frozen file PIDs 4: %s" % json.dumps(metax_file_pids_4))
+        #print("Metax frozen file PID count 4: %d" % len(metax_file_pids_4))
+        self.assertEqual(len(frozen_file_pids_4), 56)
+        self.assertEqual(len(metax_file_pids_4), 56)
+
+        print("(comparing PID lists for project E in IDA and Metax after repair)")
+        frozen_file_pid_diff_3v4, frozen_file_pid_diff_4v3 = array_difference(frozen_file_pids_3, frozen_file_pids_4)
+        metax_file_pid_diff_3v4, metax_file_pid_diff_4v3 = array_difference(metax_file_pids_3, metax_file_pids_4)
+        #print("IDA frozen file diff 3v4: %s" % json.dumps(frozen_file_pid_diff_3v4))
+        #print("IDA frozen file diff 4v3: %s" % json.dumps(frozen_file_pid_diff_4v3))
+        #print("Metax frozen file diff 3v4: %s" % json.dumps(metax_file_pid_diff_3v4))
+        #print("Metax frozen file diff 4v3: %s" % json.dumps(metax_file_pid_diff_4v3))
+        self.assertEqual(len(frozen_file_pid_diff_3v4), 0)
+        self.assertEqual(len(frozen_file_pid_diff_4v3), 0)
+        self.assertEqual(len(metax_file_pid_diff_3v4), 27)
+        self.assertEqual(len(metax_file_pid_diff_4v3), 0)
+
+        print("--- Auditing project E and checking results")
+        self.audit_project("test_project_e", "OK")
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

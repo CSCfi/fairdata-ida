@@ -30,9 +30,9 @@ namespace OCA\IDA\AppInfo;
 
 return [
     'routes' => [
-        
+
         // Action Listing Views
-        
+
         [
             // List all pending actions for the projects of the current user
             'name' => 'View#getActionTable',
@@ -69,9 +69,9 @@ return [
             // Required parameters:
             //     pid = the PID of the action
         ],
-        
+
         // Locking / Offline Operations
-        
+
         [
             // Check if project is locked. Returns 200 OK if lock exists for project, else returns 404 Not found
             'name' => 'Freezing#projectIsLocked',
@@ -81,7 +81,7 @@ return [
             // Required parameters:
             //     project = the name of the project ('all' = service lock)
         ],
-        
+
         [
             // Lock a project. Returns 200 OK on success, or if already locked, else returns 409 Conflict
             'name' => 'Freezing#lockProject',
@@ -91,7 +91,7 @@ return [
             // Required parameters:
             //     project = the name of the project ('all' = service lock)
         ],
-        
+
         [
             // Unlock a project. Returns 200 OK on success, or if already unlocked, else returns 409 Conflict
             'name' => 'Freezing#unlockProject',
@@ -101,7 +101,7 @@ return [
             // Required parameters:
             //     project = the name of the project ('all' = service lock)
         ],
-        
+
         [
             // Put the service in offline mode. Returns 200 OK on success, or if already offline, else returns 409 Conflict
             'name' => 'Freezing#serviceOffline',
@@ -109,7 +109,7 @@ return [
             'verb' => 'POST'
             // Restricted to admin
         ],
-        
+
         [
             // Put the service in online mode. Returns 200 OK on success, or if already online, else returns 409 Conflict
             'name' => 'Freezing#serviceOnline',
@@ -117,9 +117,9 @@ return [
             'verb' => 'DELETE'
             // Restricted to admin
         ],
-        
+
         // Freezing Operations
-        
+
         [
             // Freeze all staged files within a specific scope
             'name' => 'Freezing#freezeFiles',
@@ -159,9 +159,9 @@ return [
             // Optional parameters:
             //     token = batch action token (only relevant if PSO user)
         ],
-        
+
         // Retry Operations
-        
+
         [
             // Retry a specific failed action
             'name' => 'Freezing#retryAction',
@@ -191,8 +191,8 @@ return [
             // Allowed parameters:
             //     projects = one or more projects, comma separated, with no whitespace
         ],
-    
-        // Datasets 
+
+        // Datasets
 
         [
             // Retrieve datasets containing frozen files in the specified scope
@@ -209,7 +209,7 @@ return [
         ],
 
         // Housekeeping Operations
-    
+
         [
             // Clear all failed and/or pending actions, optionally restricted to one or more projects
             'name' => 'Freezing#clearActions',
@@ -229,9 +229,9 @@ return [
             // Allowed parameters:
             //     project = the project to flush (required, may be 'all' for admin user)
         ],
-    
+
         // Database Performance Testing Operations
-        
+
         [
             // Flush and/or generate database records for adding load to query execution and indices
             'name' => 'Freezing#dbLoad',
@@ -250,9 +250,9 @@ return [
             'verb' => 'GET'
             // Restricted to admin
         ],
-        
+
         // Migration / Import Operations
-        
+
         [
             // Create action and frozen node entities in database for all files of a newly imported project
             'name' => 'Freezing#bootstrapProject',
@@ -261,9 +261,9 @@ return [
             // Restricted to PSO user. Project name is derived from PSO username
             // This API call uses the 'batch-actions' RabbitMQ exchange
         ],
-        
+
         // Project Repair Operations
-        
+
         [
             // Repair frozen file details for all files actually physically stored in frozen area of project
             'name' => 'Freezing#repairProject',
@@ -272,7 +272,7 @@ return [
             // Restricted to PSO user. Project name is derived from PSO username
             // This API call uses the 'batch-actions' RabbitMQ exchange
         ],
-        
+
         [
             // Repair the Nextcloud node modification timestamp for a specific folder or file pathname
             'name' => 'Freezing#repairNodeTimestamp',
@@ -283,7 +283,7 @@ return [
             //     pathname = pathname of the node, beginning with either 'frozen/' or 'staging/'
             //     timestamp = the ISO UTC formatted timestamp string to be recorded
         ],
-        
+
         [
             // Repair the Nextcloud file cache checksum for a specific file pathname
             'name' => 'Freezing#repairCacheChecksum',
@@ -294,7 +294,7 @@ return [
             //     pathname = pathname of the file, beginning with either 'frozen/' or 'staging/'
             //     checksum = an SHA-256 checksum, either in URI form or without URI prefix
         ],
-        
+
         [
             // Retrieve the Nextcloud file cache checksum for a specific file pathname
             'name' => 'Freezing#retrieveCacheChecksum',
@@ -304,9 +304,9 @@ return [
             // Required parameters:
             //     pathname = pathname of the file, beginning with either 'frozen/' or 'staging/'
         ],
-        
+
         // Scope Intersection Tests
-        
+
         [
             // Check for instersection of scope with ongoing action
             'name' => 'Freezing#scopeOK',
@@ -317,9 +317,9 @@ return [
             //    project = the name of the project to check
             //    pathname = the pathname of the scope to check
         ],
-        
+
         // File Inventory
-        
+
         [
             // Return an inventory of all project files stored in the IDA service, both in staging
             // and frozen areas, with all technical metadata about each file.
@@ -330,9 +330,19 @@ return [
             // Required parameters:
             //     project = the name of the project
         ],
-        
+
+        [
+            // Return a list of pids for all frozen project files stored in the IDA service.
+            'name' => 'Freezing#getFrozenFilePids',
+            'url'  => '/api/frozen_file_pids/{project}',
+            'verb' => 'GET'
+            // Restricted to project access scope of user
+            // Required parameters:
+            //     project = the name of the project
+        ],
+
         // Actions
-        
+
         [
             // Retrieve set of actions
             'name' => 'Action#getActions',
@@ -402,9 +412,9 @@ return [
             // Allowed parameters:
             //     project = project name (defaults to project of authenticated user, required for admin user)
         ],
-        
+
         // Frozen Files
-    
+
         [
             // Retrieve frozen file details by local Nextcloud node ID
             // (this path pattern is ugly, but it's only used by the UI and it works, so...)
@@ -496,7 +506,7 @@ return [
         ],
 
         // Project Titles
-        
+
         [
             // Retrieve project title, if defined
             'name' => 'File#getProjectTitle',
@@ -506,7 +516,7 @@ return [
             // Required parameters:
             //    project = the name of the project to check
         ],
-        
+
         // Data Change Events
 
         [

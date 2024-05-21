@@ -411,6 +411,39 @@ class FreezingController extends Controller
     }
 
     /**
+     * Return a list of PIDs for all frozen project files stored in the IDA service.
+     *
+     * @param string $project the project to which the files belong
+     *
+     * @return DataResponse
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function getFrozenFilePids($project)
+    {
+        try {
+
+            // If user is not admin, nor PSO user, verify user belongs to project
+
+            if ($this->userId !== 'admin' && $this->userId !== Constants::PROJECT_USER_PREFIX . $project) {
+                Access::verifyIsAllowedProject($project);
+            }
+
+            Util::writeLog('ida', 'getFrozenFilePids:' . ' project=' . $project, \OCP\Util::DEBUG);
+
+            $frozenFilePids = $this->fileMapper->getFrozenFilePids($project);
+
+            Util::writeLog('ida', 'getFrozenFilePids:' . ' project=' . $project . ' count=' . count($frozenFilePids), \OCP\Util::DEBUG);
+
+            return new DataResponse($frozenFilePids);
+
+        } catch (Exception $e) {
+            return API::serverErrorResponse('getFrozenFilePids: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Check if a project is locked
      *
      * @param string $project project to check
@@ -2679,6 +2712,48 @@ class FreezingController extends Controller
     }
 
     /**
+     * Retrieve an ordered array of Nextcloud FileInfo instances for all frozen files which have a pathname
+     * in the array of specified frozen file pathnames.
+     *
+     * @param string $project   the project to which the nodes belongs
+     * @param array  $pathnames the pathnames of the frozen file nodes to include
+     *
+     * @return FileInfo[]
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function getNextcloudFrozenNodesByPathnames($project, $pathnames)
+    {
+        Util::writeLog(
+            'ida',
+            'getNextcloudFrozenNodesByPathnames:'
+                . ' project=' . $project
+                . ' pathnames=' . count($pathnames),
+            \OCP\Util::DEBUG
+        );
+
+        $nodes = array();
+
+        foreach ($pathnames as $pathname) {
+
+            $fullPathname = $this->buildFullPathname('unfreeze', $project, $pathname);
+
+            Util::writeLog('ida', 'getNextcloudFrozenNodesByPathnames: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+
+            $fileInfo = $this->fsView->getFileInfo($fullPathname);
+
+            if ($fileInfo && $fileInfo->getType() === FileInfo::TYPE_FILE) {
+                array_push($nodes, $fileInfo);
+            }
+        }
+
+        Util::writeLog('ida', 'getNextcloudFrozenNodesByPathnames:' . ' nodecount=' . count($nodes), \OCP\Util::DEBUG);
+
+        return ($nodes);
+    }
+
+    /**
      * Retrieve an ordered array of Nextcloud FileInfo instances for all files within the scope of the
      * specified node in the staging or frozen space, depending on the specified action.
      *
@@ -3510,8 +3585,6 @@ class FreezingController extends Controller
      */
     public function clearActions($status = 'failed', $projects)
     {
-        // TODO Determine whether and how to lock all specified projects during operation
-
         if ($status !== 'failed' && $status !== 'pending') {
             return API::badRequestErrorResponse('Invalid status.');
         }
@@ -3943,11 +4016,31 @@ class FreezingController extends Controller
 
             $repairActionEntity = $this->registerAction(0, 'repair', $project, 'service', '/', true);
 
-            // Retrieve all active frozen file records
+            // Process request body, if present
 
-            $frozenFileEntities = $this->fileMapper->findFrozenFiles($project);
+            $frozenFilePathnames = null;
+            $jsonBody = file_get_contents('php://input');
 
-            // Mark any existing frozen files as cleared. Files which are physically present in the frozen area will
+            if ($jsonBody && !empty($jsonBody)) {
+                // Decode JSON string into PHP array
+                $frozenFilePathnames = json_decode($jsonBody, true);
+            }
+
+            $frozenFilePathnamesProvided = ($frozenFilePathnames && is_array($frozenFilePathnames) && count($frozenFilePathnames) > 0);
+
+            Util::writeLog('ida', 'repairProject:' . ' frozenFilePathnamesProvided=' . $frozenFilePathnamesProvided, \OCP\Util::DEBUG);
+
+            // If frozen file pathnames are provided in request body, extract and limit to frozen files
+            // with pathname in set of specified pathnames, else retrieve all active frozen file records
+
+            if ($frozenFilePathnamesProvided) {
+                $frozenFileEntities = $this->fileMapper->findFrozenFilesByPathnames($project, $frozenFilePathnames);
+            }
+            else {
+                $frozenFileEntities = $this->fileMapper->findFrozenFiles($project);
+            }
+
+            // Mark all selected frozen files as cleared. Files which are physically present in the frozen area will
             // have those same records cloned below.
 
             if (count($frozenFileEntities) > 0) {
@@ -3958,9 +4051,14 @@ class FreezingController extends Controller
             }
 
             // Retrieve and reinstate all files in the frozen area.
-            // Disable file count limit by specifying limit as zero.
 
-            $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, '/', 0);
+            if ($frozenFilePathnamesProvided) {
+                $nextcloudNodes = $this->getNextcloudFrozenNodesByPathnames($project, $frozenFilePathnames);
+            }
+            else {
+                // Disable file count limit by specifying limit as zero.
+                $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, '/', 0);
+            }
 
             // Register all files in frozen area, associating them with the new 'repair' action...
             // (this is the only time the special action 'repair' is used)
@@ -4247,9 +4345,6 @@ class FreezingController extends Controller
 
     /**
      * Test whether RabbitMQ connection can be opened for publication.
-     *
-     * TODO: Once the health check endpoint service monitors RabbitMQ, we should be able to do away with
-     * all of these connection verifications prior to proceeding with each action...
      *
      * @return boolean
      *

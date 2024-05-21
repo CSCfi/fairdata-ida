@@ -26,7 +26,6 @@ import json
 
 from agents.common import GenericAgent
 from agents.utils.utils import construct_file_path, make_ba_http_header, generate_timestamp
-from sortedcontainers import SortedDict
 
 class MetadataAgent(GenericAgent):
 
@@ -40,6 +39,8 @@ class MetadataAgent(GenericAgent):
         self.failed_queue_name = 'metadata-failed'
         self.main_batch_queue_name = 'batch-metadata'
         self.failed_batch_queue_name = 'batch-metadata-failed'
+
+        self._chunk_size = self._uida_conf_vars.get('MAX_FILE_COUNT', 5000)
 
         self._metax_api_url = self._uida_conf_vars['METAX_API']
         self._metax_api_version = int(self._uida_conf_vars['METAX_API_VERSION'])
@@ -418,217 +419,143 @@ class MetadataAgent(GenericAgent):
         return file_metadata
 
 
-    def _repair_metadata(self, technical_metadata, action):
+    def _get_frozen_file_pids(self, project):
         """
-        Repair file metadata in Metax.
+        Retrieve exhaustive list of PIDs of all frozen files currently stored in IDA which are associated with project
         """
-        self._logger.info('Repairing file metadata in Metax for repair action %s' % action['pid'])
 
-        existing_file_pids = []
-        active_file_pids = []
-        existing_files = []
-        new_files = []
-        removed_file_pids = []
+        self._logger.debug('Retrieving pids from IDA for all frozen files for project %s' % project)
 
-        chunk_size = self._uida_conf_vars.get('MAX_FILE_COUNT', 1000)
+        frozen_file_pids = []
 
-        # retrieve PIDs of all active files known by metax which are associated with project
+        response = self._ida_api_request('get', '/frozen_file_pids/%s' % project)
+
+        if response.status_code != 200:
+            raise Exception(
+                'IDA api returned an error. Code: %d. Error: %s' % (response.status_code, response.content)
+            )
+
+        frozen_file_pids = response.json()
+
+        if not isinstance(frozen_file_pids, list):
+            frozen_file_pids = [frozen_file_pids]
+
+        self._logger.debug('Retrieved %d pids from IDA for frozen files associated with project %s' % (len(frozen_file_pids), project))
+
+        return frozen_file_pids
+
+
+    def _get_metax_file_pids(self, project):
+        """
+        Retrieve exhaustive list of PIDs of all frozen files known to Metax which are associated with project
+        """
+
+        self._logger.debug('Retrieving pids from Metax for all frozen files for project %s' % project)
+
+        metax_file_pids = []
 
         if self._metax_api_version >= 3:
-            url_base = "/files?csc_project=%s&storage_service=ida&limit=%d" % (action['project'], chunk_size)
+            url_base = "/files?csc_project=%s&storage_service=ida&limit=%d" % (project, self._chunk_size)
         else:
-            url_base = "/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (action['project'], chunk_size)
+            url_base = "/files?fields=identifier&file_storage=urn:nbn:fi:att:file-storage-ida&ordering=id&project_identifier=%s&limit=%d" % (project, self._chunk_size)
 
         offset = 0
         done = False # we are done when Metax returns less than the specified limit of files
 
-        while not done: 
+        while not done:
+
+            received_count = 0
 
             url = "%s&offset=%d" % (url_base, offset)
 
             response = self._metax_api_request('get', url)
 
-            if response.status_code != 200:
-                raise Exception(
-                    'Failed to retrieve details of frozen files associated with project. HTTP status code: %d. Error messages: %s'
-                    % (response.status_code, response.content)
-                )
+            if response.status_code == 200:
+                file_data = response.json()
+                received_count = len(file_data['results'])
 
-            file_data = response.json()
-            received_count= len(file_data['results'])
+                for record in file_data['results']:
+                    if self._metax_api_version >= 3:
+                        metax_file_pids.append(record['storage_identifier'])
+                    else:
+                        metax_file_pids.append(record['identifier'])
 
-            for record in file_data['results']:
-                if self._metax_api_version >= 3:
-                    existing_file_pids.append(record['storage_identifier'])
-                else:
-                    existing_file_pids.append(record['identifier'])
-
-            if received_count < chunk_size:
+            if received_count < self._chunk_size:
                 done = True
             else:
-                offset = offset + chunk_size
-    
-        # segregate descriptions of all files in technical metadata based on whether they are known to metax or not
+                offset = offset + self._chunk_size
+
+        self._logger.debug('Retrieved %d pids from Metax for frozen files associated with project %s' % (len(metax_file_pids), project))
+
+        return metax_file_pids
+
+
+    def _repair_metadata(self, technical_metadata, action):
+        """
+        Repair file metadata in Metax.
+        """
+
+        self._logger.info('Repairing file metadata in Metax for repair action %s for project %s' % (action['pid'], action['project']))
+
+        frozen_file_pids = self._get_frozen_file_pids(action['project'])
+        metax_file_pids  = self._get_metax_file_pids(action['project'])
+
+        self._logger.debug('FROZEN FILE PIDS: %s' % json.dumps(frozen_file_pids))
+        self._logger.debug('METAX FILE PIDS: %s' % json.dumps(metax_file_pids))
+
+        action_file_pids = []  # pids of frozen files associated with action
+        metax_files = []       # frozen files known to Metax
+        new_files = []         # newly frozen files, to be published to Metax
+        removed_file_pids = [] # pids of frozen files removed from IDA, to be removed from Metax
+
+        # segregate descriptions of all files in technical metadata based on whether they are known to Metax or not
+
         for record in technical_metadata:
             if self._metax_api_version >= 3:
                 pid = record['storage_identifier']
             else:
                 pid = record['identifier']
-            if pid in existing_file_pids:
-                existing_files.append(record)
+            if pid in metax_file_pids:
+                metax_files.append(record)
             else:
                 new_files.append(record)
-            active_file_pids.append(pid)
+            action_file_pids.append(pid)
 
-        # extract PIDs of all files known to metax which are no longer actively frozen
-        for pid in existing_file_pids:
-            if pid not in active_file_pids:
+        # identify PIDs of all files known to Metax which are no longer actively frozen in IDA
+
+        for pid in metax_file_pids:
+            if pid not in frozen_file_pids:
                 removed_file_pids.append(pid)
 
-        active_file_count   = len(active_file_pids)
-        existing_file_count = len(existing_files)
-        new_file_count      = len(new_files)
-        removed_file_count  = len(removed_file_pids)
+        frozen_file_pid_count   = len(frozen_file_pids)
+        action_file_pid_count   = len(action_file_pids)
+        metax_file_pid_count    = len(metax_file_pids)
+        metax_file_count        = len(metax_files)
+        new_file_count          = len(new_files)
+        removed_file_pid_count  = len(removed_file_pids)
 
-        self._logger.debug('ACTIVE FILE COUNT:   %d' % active_file_count)
-        self._logger.debug('EXISTING FILE COUNT: %d' % existing_file_count)
-        self._logger.debug('NEW FILE COUNT:      %d' % new_file_count)
-        self._logger.debug('REMOVED FILE COUNT:  %d' % removed_file_count)
+        self._logger.debug('FROZEN FILE PID COUNT:   %d' % frozen_file_pid_count)
+        self._logger.debug('ACTION FILE PID COUNT:   %d' % action_file_pid_count)
+        self._logger.debug('METAX FILE PID COUNT:    %d' % metax_file_pid_count)
+        self._logger.debug('METAX FILE COUNT:        %d' % metax_file_count)
+        self._logger.debug('NEW FILE COUNT:          %d' % new_file_count)
+        self._logger.debug('REMOVED FILE PID COUNT:  %d' % removed_file_pid_count)
 
-        # PATCH metadata descriptions of all existing files
+        # DELETE metadata descriptions of all removed files (we do this first, in case there are new files
+        # in IDA not known to Metax but having the same pathname, so there are no collisions with deprecated
+        # files known only to Metax with the same pathname)
 
-        if existing_file_count > 0:
+        if removed_file_pid_count > 0:
 
-            file_count = existing_file_count
+            file_count = removed_file_pid_count
 
-            self._logger.info('Patching file metadata to Metax for repair action %s for %d existing files in maximum chunk size of %d files...' % (action['pid'], file_count, chunk_size))
-
-            chunk_first = 0
-            chunk_last = chunk_size
-            if chunk_last > file_count:
-                chunk_last = file_count
-        
-            while chunk_first < file_count:
-
-                self._logger.info('Patching file metadata to Metax for repair action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
-
-                chunk = existing_files[chunk_first:chunk_last]
-
-                if self._metax_api_version >= 3:
-                    response = self._metax_api_request('post', '/files/patch-many', data=chunk)
-                else:
-                    response = self._metax_api_request('patch', '/files', data=chunk)
-
-                if response.status_code not in (200, 201, 204):
-                    try:
-                        response_json = response.json()
-                    except:
-                        raise Exception(
-                            'Metadata update failed for action %s, Metax returned an error, HTTP status code: %d, Error messages: %s'
-                            % (action['pid'], response.status_code, response.content)
-                        )
-    
-                    if 'failed' in response_json:
-                        errors = []
-                        for i, entry in enumerate(response_json['failed']):
-                            if self._metax_api_version >= 3:
-                                errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
-                            else:
-                                errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
-                            if i > 10:
-                                break
-    
-                        raise Exception(
-                            'Metadata update failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
-                            % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
-                        )
-
-                    # some unexpected type of error...
-                    raise Exception(
-                        'Metadata update failed for action %s, Metax returned an error, HTTP status code: %d, Error messages: %s'
-                        % (action['pid'], response.status_code, response.content)
-                    )
-
-                chunk_first = chunk_last
-                chunk_last = chunk_last + chunk_size
-                if chunk_last > file_count:
-                    chunk_last = file_count
-
-        # POST metadata descriptions of all new files
-
-        if new_file_count > 0:
-
-            file_count = new_file_count
-
-            self._logger.info('Publishing file metadata to Metax for repair action %s for %d new files in maximum chunk size of %d files...' % (action['pid'], file_count, chunk_size))
+            self._logger.info('Deleting file metadata from Metax for repair action %s for %d removed files in maximum chunk size of %d files...' % (action['pid'], file_count, self._chunk_size))
 
             chunk_first = 0
-            chunk_last = chunk_size
+            chunk_last = self._chunk_size
             if chunk_last > file_count:
                 chunk_last = file_count
-        
-            while chunk_first < file_count:
 
-                self._logger.info('Publishing file metadata to Metax for repair action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
-
-                chunk = new_files[chunk_first:chunk_last]
-
-                if self._metax_api_version >= 3:
-                    # Use put-many to PUT file metadata into Metax, as IDA is the authority so it's OK to replace any existing
-                    # records for the frozen files in question. Even though we already detect existing and non-existing files
-                    # in Metax, using put-many instead of post-many achieves the desired result most reliably.
-                    response = self._metax_api_request('post', '/files/put-many', data=chunk)
-                else:
-                    response = self._metax_api_request('post', '/files', data=chunk)
-
-                if response.status_code not in (200, 201, 204):
-                    try:
-                        response_json = response.json()
-                    except:
-                        raise Exception(
-                            'Metadata publication failed for action %s, Metax returned an error, HTTP status code: %d, Error messages: %s'
-                            % (action['pid'], response.status_code, response.content)
-                        )
-    
-                    if 'failed' in response_json:
-                        errors = []
-                        for i, entry in enumerate(response_json['failed']):
-                            if self._metax_api_version >= 3:
-                                errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
-                            else:
-                                errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
-                            if i > 10:
-                                break
-    
-                        raise Exception(
-                            'Metadata publication failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
-                            % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
-                        )
-    
-                    # some unexpected type of error...
-                    raise Exception(
-                        'Metadata publication failed for action %s, Metax returned an error, HTTP status code: %d, Error messages: %s'
-                        % (action['pid'], response.status_code, response.content)
-                    )
-
-                chunk_first = chunk_last
-                chunk_last = chunk_last + chunk_size
-                if chunk_last > file_count:
-                    chunk_last = file_count
-
-        # DELETE metadata descriptions of all removed files
-
-        if removed_file_count > 0:
-
-            file_count = removed_file_count
-
-            self._logger.info('Deleting file metadata from Metax for repair action %s for %d removed files in maximum chunk size of %d files...' % (action['pid'], file_count, chunk_size))
-
-            chunk_first = 0
-            chunk_last = chunk_size
-            if chunk_last > file_count:
-                chunk_last = file_count
-        
             while chunk_first < file_count:
 
                 self._logger.info('Deleting file metadata from Metax for repair action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
@@ -644,37 +571,155 @@ class MetadataAgent(GenericAgent):
                     response = self._metax_api_request('delete', '/files', data=chunk)
 
                 if response.status_code not in (200, 201, 204):
-                    try:
-                        response_json = response.json()
-                    except:
-                        raise Exception(
-                            'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, Error messages: %s'
-                            % (action['pid'], response.status_code, response.content)
-                        )
-    
-                    if 'failed' in response_json:
-                        errors = []
-                        for i, entry in enumerate(response_json['failed']):
-                            if self._metax_api_version >= 3:
-                                errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
-                            else:
-                                errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
-                            if i > 10:
-                                break
-    
-                        raise Exception(
-                            'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
-                            % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
-                        )
-    
-                    # some unexpected type of error...
+                    content = str(response.content)
+                    if len(content) > 2000:
+                        content = "%s ..." % content[:2000]
                     raise Exception(
-                        'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, Error messages: %s'
-                        % (action['pid'], response.status_code, response.content)
+                        'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, Response: %s'
+                        % (action['pid'], response.status_code, content)
                     )
-    
+
+                try:
+                    response_json = response.json()
+                except:
+                    response_json = {}
+
+                if len(response_json.get('failed', [])) > 0:
+                    errors = []
+                    for i, entry in enumerate(response_json['failed']):
+                        if self._metax_api_version >= 3:
+                            errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                        else:
+                            errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                        if i > 10:
+                            break
+
+                    raise Exception(
+                        'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
+                        % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
+                    )
+
                 chunk_first = chunk_last
-                chunk_last = chunk_last + chunk_size
+                chunk_last = chunk_last + self._chunk_size
+                if chunk_last > file_count:
+                    chunk_last = file_count
+
+        # POST metadata descriptions of all new files
+
+        if new_file_count > 0:
+
+            file_count = new_file_count
+
+            self._logger.info('Publishing file metadata to Metax for repair action %s for %d new files in maximum chunk size of %d files...' % (action['pid'], file_count, self._chunk_size))
+
+            chunk_first = 0
+            chunk_last = self._chunk_size
+            if chunk_last > file_count:
+                chunk_last = file_count
+
+            while chunk_first < file_count:
+
+                self._logger.info('Publishing file metadata to Metax for repair action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
+
+                chunk = new_files[chunk_first:chunk_last]
+
+                if self._metax_api_version >= 3:
+                    # Use put-many to PUT file metadata into Metax, as IDA is the authority so it's OK to replace any existing
+                    # records for the frozen files in question. Even though we already detect existing and non-existing files
+                    # in Metax, using put-many instead of post-many achieves the desired result most reliably.
+                    response = self._metax_api_request('post', '/files/put-many', data=chunk)
+                else:
+                    response = self._metax_api_request('post', '/files', data=chunk)
+
+                if response.status_code not in (200, 201, 204):
+                    content = str(response.content)
+                    if len(content) > 2000:
+                        content = "%s ..." % content[:2000]
+                    raise Exception(
+                        'Metadata publication failed for action %s, Metax returned an error, HTTP status code: %d, Response: %s'
+                        % (action['pid'], response.status_code, content)
+                    )
+
+                try:
+                    response_json = response.json()
+                except:
+                    response_json = {}
+
+                if len(response_json.get('failed', [])) > 0:
+                    errors = []
+                    for i, entry in enumerate(response_json['failed']):
+                        if self._metax_api_version >= 3:
+                            errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                        else:
+                            errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                        if i > 10:
+                            break
+
+                    raise Exception(
+                        'Metadata publication failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
+                        % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
+                    )
+
+                chunk_first = chunk_last
+                chunk_last = chunk_last + self._chunk_size
+                if chunk_last > file_count:
+                    chunk_last = file_count
+
+        # PATCH metadata descriptions of all existing Metax files in action based on IDA metadata
+
+        if metax_file_count > 0:
+
+            file_count = metax_file_count
+
+            self._logger.info('Patching file metadata to Metax for repair action %s for %d existing files in maximum chunk size of %d files...' % (action['pid'], file_count, self._chunk_size))
+
+            chunk_first = 0
+            chunk_last = self._chunk_size
+            if chunk_last > file_count:
+                chunk_last = file_count
+
+            while chunk_first < file_count:
+
+                self._logger.info('Patching file metadata to Metax for repair action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
+
+                chunk = metax_files[chunk_first:chunk_last]
+
+                if self._metax_api_version >= 3:
+                    response = self._metax_api_request('post', '/files/patch-many', data=chunk)
+                else:
+                    response = self._metax_api_request('patch', '/files', data=chunk)
+
+                if response.status_code not in (200, 201, 204):
+                    content = str(response.content)
+                    if len(content) > 2000:
+                        content = "%s ..." % content[:2000]
+                    raise Exception(
+                        'Metadata update failed for action %s, Metax returned an error, HTTP status code: %d, Response: %s'
+                        % (action['pid'], response.status_code, content)
+                    )
+
+                try:
+                    response_json = response.json()
+                except:
+                    response_json = {}
+
+                if len(response_json.get('failed', [])) > 0:
+                    errors = []
+                    for i, entry in enumerate(response_json['failed']):
+                        if self._metax_api_version >= 3:
+                            errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                        else:
+                            errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                        if i > 10:
+                            break
+
+                    raise Exception(
+                        'Metadata update failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
+                        % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
+                    )
+
+                chunk_first = chunk_last
+                chunk_last = chunk_last + self._chunk_size
                 if chunk_last > file_count:
                     chunk_last = file_count
 
@@ -686,22 +731,21 @@ class MetadataAgent(GenericAgent):
 
         self._logger.info('Publishing metadata to Metax for action %s' % action['pid'])
 
-        chunk_size = self._uida_conf_vars.get('MAX_FILE_COUNT', 1000)
         file_count = len(technical_metadata)
 
-        self._logger.info('Publishing file metadata to Metax for action %s for %d files in maximum chunk size of %d files...' % (action['pid'], file_count, chunk_size))
+        self._logger.info('Publishing file metadata to Metax for action %s for %d files in maximum chunk size of %d files...' % (action['pid'], file_count, self._chunk_size))
 
         chunk_first = 0
-        chunk_last = chunk_size
+        chunk_last = self._chunk_size
         if chunk_last > file_count:
             chunk_last = file_count
-        
+
         while chunk_first < file_count:
 
             self._logger.info('Publishing file metadata to Metax for action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
 
             chunk = technical_metadata[chunk_first:chunk_last]
-        
+
             if self._metax_api_version >= 3:
                 # Use put-many to PUT file metadata into Metax, as IDA is the authority so it's OK to replace any existing
                 # records for the frozen files in question. It also enables robust re-trying of failed actions if there was
@@ -719,8 +763,28 @@ class MetadataAgent(GenericAgent):
                     % (action['pid'], response.status_code, content)
                 )
 
+            try:
+                response_json = response.json()
+            except:
+                response_json = {}
+
+            if len(response_json.get('failed', [])) > 0:
+                errors = []
+                for i, entry in enumerate(response_json['failed']):
+                    if self._metax_api_version >= 3:
+                        errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                    else:
+                        errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                    if i > 10:
+                        break
+
+                raise Exception(
+                    'Metadata publication failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
+                    % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
+                )
+
             chunk_first = chunk_last
-            chunk_last = chunk_last + chunk_size
+            chunk_last = chunk_last + self._chunk_size
             if chunk_last > file_count:
                 chunk_last = file_count
 
@@ -731,17 +795,15 @@ class MetadataAgent(GenericAgent):
 
         nodes = self._get_nodes_associated_with_action(action)
         file_identifiers = [ n['pid'] for n in nodes ]
-
-        chunk_size = self._uida_conf_vars.get('MAX_FILE_COUNT', 1000)
         file_count = len(file_identifiers)
 
-        self._logger.info('Deleting files from Metax for action %s for %d files in maximum chunk size of %d files...' % (action['pid'], file_count, chunk_size))
+        self._logger.info('Deleting files from Metax for action %s for %d files in maximum chunk size of %d files...' % (action['pid'], file_count, self._chunk_size))
 
         chunk_first = 0
-        chunk_last = chunk_size
+        chunk_last = self._chunk_size
         if chunk_last > file_count:
             chunk_last = file_count
-        
+
         while chunk_first < file_count:
 
             self._logger.info('Deleting files from Metax for action %s for chunk %d:%d...' % (action['pid'], chunk_first, chunk_last))
@@ -757,13 +819,36 @@ class MetadataAgent(GenericAgent):
                 response = self._metax_api_request('delete', '/files', data=chunk)
 
             if response.status_code not in (200, 201, 204):
+                content = str(response.content)
+                if len(content) > 2000:
+                    content = "%s ..." % content[:2000]
                 raise Exception(
                     'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, Error message: %s'
-                    % (action['pid'], response.status_code, response.content)
+                    % (action['pid'], response.status_code, content)
+                )
+
+            try:
+                response_json = response.json()
+            except:
+                response_json = {}
+
+            if len(response_json.get('failed', [])) > 0:
+                errors = []
+                for i, entry in enumerate(response_json['failed']):
+                    if self._metax_api_version >= 3:
+                        errors.append(str({ 'identifier': entry['object']['storage_identifier'], 'errors': entry['errors'] }))
+                    else:
+                        errors.append(str({ 'identifier': entry['object']['identifier'], 'errors': entry['errors'] }))
+                    if i > 10:
+                        break
+
+                raise Exception(
+                    'Metadata deletion failed for action %s, Metax returned an error, HTTP status code: %d, First %d errors: %s'
+                    % (action['pid'], response.status_code, len(errors), '\n'.join(errors))
                 )
 
             chunk_first = chunk_last
-            chunk_last = chunk_last + chunk_size
+            chunk_last = chunk_last + self._chunk_size
             if chunk_last > file_count:
                 chunk_last = file_count
 
@@ -795,7 +880,7 @@ class MetadataAgent(GenericAgent):
         It is possible to set a flag in config/config.sh that actions should be marked as completed
         without even trying to connect to metax.
 
-        If value is 0, metax is not connected during action processing:
+        If value is 0, Metax is not connected during action processing:
         - freeze actions are marked as completed once checksums have been
           saved to nodes in IDA
         - unfreeze/delete actions are marked completed immediately

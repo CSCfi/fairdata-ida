@@ -57,7 +57,7 @@ def main():
         config.PID = os.getpid()
         config.MONTHS = int(sys.argv[2])
 
-        config.DEBUG = True # TEMP HACK
+        #config.DEBUG = True # TEMP HACK
 
         # Initialize logging using UTC timestamps
 

@@ -62,4 +62,17 @@ if [ -s $ERR ]; then
     errorExit "Failed to rescan project files in frozen area of Nextcloud"
 fi
 
+#--------------------------------------------------------------------------------
+echo "Running Nextcloud housekeeping..."
+
+php $ROOT/nextcloud/cron.php
+
+if [ -s $ERR ]; then
+    MSG=`cat $ERR`
+    echoAndLog "$MSG"
+    errorExit "Failed to run Nextcloud housekeeping"
+fi
+
+sleep 5
+
 addToLog "DONE"

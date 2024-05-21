@@ -72,9 +72,10 @@ def main():
 
         #config.DEBUG = True # TEMP HACK
 
-        # If in production, ensure we are not running on uida-man.csc.fi
-        if config.IDA_ENVIRONMENT == 'PRODUCTION' and socket.gethostname().startswith('uida-man'):
-            raise Exception ("Do not run project auditing on uida-man.csc.fi!")
+        # If in production, ensure we are not running on the management server
+        hostname = socket.getfqdn()
+        if config.IDA_ENVIRONMENT == 'PRODUCTION' and hostname in [ 'idaman.fairdata.fi', 'uida-man.csc.fi' ]:
+            raise Exception ("Do not run project auditing on %s" % hostname)
 
         # Copy essential constants to config so they are easily passed to functions
         config.STAGING_FOLDER_SUFFIX = constants.STAGING_FOLDER_SUFFIX

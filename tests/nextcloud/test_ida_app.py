@@ -2031,16 +2031,13 @@ class TestIdaApp(unittest.TestCase):
 
         # --------------------------------------------------------------------------------
 
-        # TODO: add tests for housekeeping operations as normal user, when must be admin or PSO user
-
-        # TODO: add tests for housekeeping operations as PSO user, when must be admin
-
-        # TODO: add tests attempting to copy files or folders to or within the frozen area (not fully covered by CLI tests)
-
-        # TODO: add tests for copying files or folders from the frozen area to the staging area (not fully covered by CLI tests)
-
-        # TODO: add tests for checking required parameters
-
-        # TODO: add tests for pathnames containing special characters
-
         # TODO: consider which tests may be missing...
+
+        # Possible additional tests:
+        #    add tests for housekeeping operations as normal user, when must be admin or PSO user
+        #    add tests for housekeeping operations as PSO user, when must be admin
+        #    add tests attempting to copy files or folders to or within the frozen area (not fully covered by CLI tests)
+        #    add tests for copying files or folders from the frozen area to the staging area (not fully covered by CLI tests)
+        #    add tests for checking required parameters
+        #    add tests for pathnames containing special characters
+

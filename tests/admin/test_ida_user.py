@@ -152,4 +152,5 @@ class TestIdaUser(unittest.TestCase):
 
         self.success = True
 
-        # TODO: add addition tests involving non-existent users and projects, verifying failure of request
+        # TODO: consider which tests may be missing...
+        # Possible additions: tests involving non-existent users and projects, verifying failure of request

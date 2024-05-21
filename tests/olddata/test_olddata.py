@@ -31,12 +31,8 @@
 import requests
 import subprocess
 import unittest
-import psycopg2
-import pymysql
-import time
 import os
 import sys
-import shutil
 import json
 from pathlib import Path
 from tests.common.utils import *
