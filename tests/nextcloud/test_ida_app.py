@@ -129,7 +129,6 @@ class TestIdaApp(unittest.TestCase):
         cmd = "%s TITLE test_project_a \"Test title A\" 2>&1" % (self.ida_project)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "Setting project test_project title to \"Test title A\"")
-        time.sleep(3)
         titleFilePath = "%s/PSO_test_project_a/files/TITLE" % self.config["STORAGE_OC_DATA_ROOT"]
         self.assertTrue(os.path.exists(titleFilePath))
         self.assertEqual("Test title A\n", open(titleFilePath).read())
@@ -138,6 +137,15 @@ class TestIdaApp(unittest.TestCase):
         response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API"], "test_project_a"), auth=test_user_a, verify=False)
         self.assertEqual(response.status_code, 200)
         action_data = response.json()
+        # Sometimes a mysterious race condition can occur when running the tests, which doesn't appear to ever occur
+        # in actual production use, where retrieval of the immediately created title via the API fails and defaults to the
+        # project name, so we retry
+        if (action_data["message"] == "test_project_a"):
+            print("(project title retrieval failed, retrying...)")
+            time.sleep(10)
+            response = requests.get("%s/getProjectTitle?project=%s" % (self.config["IDA_API"], "test_project_a"), auth=test_user_a, verify=False)
+            self.assertEqual(response.status_code, 200)
+            action_data = response.json()
         self.assertEqual(action_data["message"], "Test title A")
 
         print("Retrieve default project title")

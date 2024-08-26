@@ -646,7 +646,12 @@ class FileController extends Controller
             $titleFilePathname = $filesFolderPathname . '/TITLE';
 
             if (file_exists($titleFilePathname)) {
-                $title = trim(file_get_contents($titleFilePathname));
+                $fileTitle = file_get_contents($titleFilePathname);
+                if ($fileTitle) {
+                    $title = trim($fileTitle);
+                    // If for some reason we fail to retrieve the title from the file, we
+                    // will return the project name as the default title
+                }
             }
 
             // We only log success responses for title requests if debug logging is enabled, otherwise, no logging is done. This is to
