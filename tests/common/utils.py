@@ -47,7 +47,12 @@ DATASET_TEMPLATE_V3 = {
     "access_rights": {
         "access_type": {
             "url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/open"
-        }
+        },
+       "license": [
+			{
+				"url": "http://uri.suomi.fi/codelist/fairdata/license/code/CC0-1.0"
+			}
+		]
     },
     "actors": [
         {

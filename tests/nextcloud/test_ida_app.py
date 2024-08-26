@@ -129,6 +129,7 @@ class TestIdaApp(unittest.TestCase):
         cmd = "%s TITLE test_project_a \"Test title A\" 2>&1" % (self.ida_project)
         OUT = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
         self.assertEqual(OUT, 0, "Setting project test_project title to \"Test title A\"")
+        time.sleep(3)
         titleFilePath = "%s/PSO_test_project_a/files/TITLE" % self.config["STORAGE_OC_DATA_ROOT"]
         self.assertTrue(os.path.exists(titleFilePath))
         self.assertEqual("Test title A\n", open(titleFilePath).read())
