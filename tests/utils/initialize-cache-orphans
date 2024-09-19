@@ -1,0 +1,158 @@
+#!/bin/bash
+#--------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2023 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+#--------------------------------------------------------------------------------
+#
+# This script adds a number of orphan Nextcloud file cache records to the database
+# for a specified project, for use in testing auditing and repair processes.
+#
+# This script should NOT be run in production!
+#
+#--------------------------------------------------------------------------------
+
+. `dirname $0`/../../lib/init_script.sh
+
+if [ "$ROOT" = "" ]; then
+    echo "Error: Failed to properly initialize script. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+# Verify that we are not in production
+
+if [ "$IDA_ENVIRONMENT" == "PRODUCTION" ]; then
+    errorExit "Error: This script can not be run in a production environment. Aborting."
+fi
+
+PROG_LOCATION=`/usr/bin/which psql 2>/dev/null`
+
+if [ ! -e "$PROG_LOCATION" ]; then
+    errorExit "Can't find psql in your \$PATH"
+fi
+
+#--------------------------------------------------------------------------------
+
+PROJECT="$1"
+
+if [ "$PROJECT" = "" ]; then
+    errorExit "Error: The project name must be specified as the first argument to the script"
+fi
+
+if [ "$DBHOST" = "" ]; then
+    errorExit "Error: The DBHOST configuration variable must be defined"
+fi
+
+if [ "$DBPORT" = "" ]; then
+    errorExit "Error: The DBPORT configuration variable must be defined"
+fi
+
+if [ "$DBNAME" = "" ]; then
+    errorExit "Error: The DBNAME configuration variable must be defined"
+fi
+
+if [ "$DBUSER" = "" ]; then
+    errorExit "Error: The DBUSER configuration variable must be defined"
+fi
+
+if [ "$DBPASSWORD" = "" ]; then
+    errorExit "Error: The DBPASSWORD configuration variable must be defined"
+fi
+
+#--------------------------------------------------------------------------------
+
+PGPASSWORD="$DBPASSWORD"
+export PGPASSWORD
+
+PSO_USER="${PROJECT_USER_PREFIX}${PROJECT}"
+
+QUERY="SELECT numeric_id FROM ${DBTABLEPREFIX}storages WHERE id = 'home::${PSO_USER}' ORDER BY numeric_id DESC LIMIT 1"
+
+OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" -t 2>&1)
+
+if [ "$?" -ne 0 ]; then
+    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER: $OUT" >&2
+    exit 1
+fi
+
+STORAGE=$(echo "$OUT" | sed -e 's/[^0-9]//g')
+
+if [ -z "$STORAGE" ]; then
+    echo "Error: Failed to retrieve Nextcloud storage id for $PSO_USER" >&2
+    exit 1
+fi
+
+ORPHAN_FOLDERS="
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo \
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo/bar \
+    files/${PROJECT}/orphans/bas"
+
+ORPHAN_FILES="
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo/test1.dat \
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo/test2.dat \
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo/bar/test3.dat \
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo/bar/test4.dat \
+    files/${PROJECT}${STAGING_FOLDER_SUFFIX}/orphans/foo/bar/test5.dat \
+    files/${PROJECT}/orphans/bas/test6.dat \
+    files/${PROJECT}/orphans/bas/test7.dat"
+
+for PATHNAME in $ORPHAN_FOLDERS; do
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "FOLDER: $PATHNAME"
+    fi
+
+    PATH_HASH=`echo -n "$PATHNAME" | md5sum | awk '{print $1}'`
+
+    QUERY="INSERT INTO ${DBTABLEPREFIX}filecache \
+           (storage, path, path_hash, mimetype) \
+           VALUES (${STORAGE}, '${PATHNAME}', '${PATH_HASH}', 2)"
+
+    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" 2>&1)
+
+    if [ "$?" -ne 0 ]; then
+        echo "Error: Failed to insert orphan folder record into file cache: $PATHNAME: $OUT" >&2
+        exit 1
+    fi
+
+done
+
+for PATHNAME in $ORPHAN_FILES; do
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "FILE: $PATHNAME"
+    fi
+
+    PATH_HASH=`echo -n "$PATHNAME" | md5sum | awk '{print $1}'`
+    FILENAME=`basename "$PATHNAME"`
+
+    QUERY="INSERT INTO ${DBTABLEPREFIX}filecache \
+           (storage, path, path_hash, name, mimetype) \
+           VALUES (${STORAGE}, '${PATHNAME}', '${PATH_HASH}', '${FILENAME}', 15)"
+
+    OUT=$(psql -h "$DBHOST" -p "$DBPORT" -d "$DBNAME" -U "$DBUSER" -c "$QUERY" 2>&1)
+
+    if [ "$?" -ne 0 ]; then
+        echo "Error: Failed to insert orphan folder record into file cache: $PATHNAME: $OUT" >&2
+        exit 1
+    fi
+
+done

@@ -1,0 +1,67 @@
+#!/bin/bash
+# --------------------------------------------------------------------------------
+# This file is part of the IDA research data storage service
+#
+# Copyright (C) 2024 Ministry of Education and Culture, Finland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
+# @license  GNU Affero General Public License, version 3
+# @link     https://research.csc.fi/
+# --------------------------------------------------------------------------------
+# This script purges any orphan records from the Nextcloud file cache which do
+# not correspond to existing files or folders, by loading an audit report file
+# and purging all cache records for any orphan nodes identified in the report.
+# --------------------------------------------------------------------------------
+
+SCRIPT=`basename "$(realpath $0)"`
+PROJECT="null"
+
+USAGE="
+Usage: $SCRIPT error_file 
+       $SCRIPT -h
+
+       error_file  the pathname of the audit error file to be loaded
+"
+
+#--------------------------------------------------------------------------------
+
+INIT_FILE=`dirname "$(realpath $0)"`/lib/init_audit_script.sh
+
+if [ -e $INIT_FILE ]
+then
+    . $INIT_FILE
+else
+    echo "The initialization file $INIT_FILE cannot be found. Aborting." >&2
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+ERROR_FILE="$1"
+
+if [ -z "$ERROR_FILE" ]; then
+    echo "Error: no input file pathname specified"
+    echo "$USAGE"
+    exit 1
+fi
+
+#--------------------------------------------------------------------------------
+
+source $ROOT/venv/bin/activate
+
+python -u $ROOT/utils/admin/lib/purge_cache_orphans.py $ROOT "$ERROR_FILE"
+
+addToLog "DONE"

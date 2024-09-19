@@ -77,7 +77,7 @@ if [ "$2" != "--force" ]; then
     if [ -s $ERR ]; then
         MSG=`cat $ERR | tr "\n" " " `
         addToLog "$MSG"
-        errorExit "Failed to retrieve pending actions for project!"
+        errorExit "Failed to retrieve pending actions for project ${PROJECT}!"
     fi
 
     if [ "$SUSPENDED" = "" ]; then
@@ -124,7 +124,7 @@ mv -t ${PROJECT_TRASH_DATA_ROOT} ${PROJECT_ROOT}/* 2>$ERR
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Failed to move project files to trash!"
+    errorExit "Failed to move project files to trash for project ${PROJECT}!"
 fi
 
 #--------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ $CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/actions?projects=${
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Failed to export action records!"
+    errorExit "Failed to export action records for project ${PROJECT}!"
 fi
 
 $CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/dataChanges/${PROJECT}" 2>$ERR | \
@@ -146,7 +146,7 @@ $CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/dataChanges/${PROJE
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Failed to export data change records!"
+    errorExit "Failed to export data change records for project ${PROJECT}!"
 fi
 
 $CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/files/action/all?projects=${PROJECT}" 2>$ERR | \
@@ -155,7 +155,7 @@ $CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/files/action/all?pr
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Failed to export file records!"
+    errorExit "Failed to export file records for project ${PROJECT}!"
 fi
 
 echo "Flushing project action, data change, and frozen file records from the database..."
@@ -175,7 +175,7 @@ $OCC user:delete $PROJECT_USER 2>$ERR
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Failed to delete project share owner account!"
+    errorExit "Failed to delete project share owner account for project ${PROJECT}!"
 fi
 
 echo "Deleting residual project share owner directory and link (if any)..."
@@ -219,7 +219,7 @@ if [ "$METAX_AVAILABLE" != "0" ]; then
     if [ -s $ERR ]; then
         MSG=`cat $ERR | tr "\n" " " `
         addToLog "$MSG"
-        echoAndLog "Failed to update file metadata in METAX!"
+        echoAndLog "Failed to update file metadata in METAX for project ${PROJECT}!"
     fi
 fi
 
@@ -234,7 +234,7 @@ if [ -d "$PROJECT_REPLICATION_ROOT" ]; then
     if [ -s $ERR ]; then
         MSG=`cat $ERR | tr "\n" " " `
         echoAndLog "$MSG"
-        errorExit "Failed to delete project files from tape replication cache!"
+        errorExit "Failed to delete project files from tape replication cache for project ${PROJECT}!"
     fi
 fi
 
@@ -247,7 +247,7 @@ $ROOT/utils/admin/report-datadeleted $PROJECT 2>$ERR
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    echoAndLog "Error: Failed to report data deleted! (ignored)"
+    echoAndLog "Error: Failed to report data deleted for project ${PROJECT}! (ignored)"
 fi
 
 #--------------------------------------------------------------------------------
@@ -266,7 +266,7 @@ $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE" 2>$ERR
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Error: Failed to email project users!"
+    errorExit "Error: Failed to email project ${PROJECT} users!"
 fi
 
 #--------------------------------------------------------------------------------

@@ -90,11 +90,6 @@ if [ -s $ERR ]; then
 fi
 
 #--------------------------------------------------------------------------------
-echo "Rescanning project files in Nextcloud..."
-
-$ROOT/utils/admin/rescan-project "$PROJECT"
-
-#--------------------------------------------------------------------------------
 
 if [ "$ERROR_FILE" ]; then
 
@@ -104,9 +99,19 @@ if [ "$ERROR_FILE" ]; then
     echo "Repairing any checksum errors..."
     $ROOT/utils/admin/repair-checksums "$ERROR_FILE"
 
+    echo "Purging any orphan nodes in Nextcloud file cache..."
+    $ROOT/utils/admin/purge-cache-orphans "$ERROR_FILE"
+
 fi
 
 #--------------------------------------------------------------------------------
+
+echo "Rescanning project files in filesystem..."
+
+$ROOT/utils/admin/rescan-project "$PROJECT"
+
+#--------------------------------------------------------------------------------
+
 echo "Repairing project data in IDA..."
 
 if [ "$ERROR_FILE" ]; then
@@ -161,6 +166,7 @@ if [ "$DEBUG" = "true" ]; then
 fi
 
 #--------------------------------------------------------------------------------
+
 echo "Unsuspending project... (silently)"
 
 $ROOT/utils/admin/unsuspend-project "$PROJECT" --silent 2>$ERR

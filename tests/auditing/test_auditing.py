@@ -2522,18 +2522,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project C and checking results")
 
-        # NOTE: The repair process will fail to fully repair three empty folders which
-        # no longer exist in the filesystem in staging but are defined in the Nextcloud
-        # cache. This is because we deleted them from the filesystem and changed their
-        # ancestor folder to a file with the same pathname. However, the occ files:scan
-        # tool is unable to detect this odd form of corruption and update the cache
-        # fully. It will update the cache record for the folder that was changed to a file,
-        # but the records for the descendant folders removed from the filesystem and now
-        # with no ancestor folder, i.e. orphaned, remain as residue in the cache records.
-        # We will simply ignore these remaining errors. If any such corruption occurs in
-        # reality, it will need to be fixed manually.
-
-        report_data = self.audit_project("test_project_c", "ERR")
+        report_data = self.audit_project("test_project_c", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
@@ -2544,7 +2533,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("filesystemNodeCount"), 112)
 
         print("Verify correct number of reported Nextcloud nodes")
-        self.assertEqual(report_data.get("nextcloudNodeCount"), 115)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 112)
 
         print("Verify correct number of reported IDA frozen files")
         self.assertEqual(report_data.get("frozenFileCount"), 5)
@@ -2553,27 +2542,17 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get("metaxFileCount"), 5)
 
         print("Verify correct number of reported invalid nodes")
-        self.assertEqual(report_data.get("invalidNodeCount"), 3)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
 
         print("Verify correct number of reported node errors")
-        self.assertEqual(report_data.get("errorNodeCount"), 3)
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
 
         print("Verify correct number of reported errors")
-        self.assertEqual(report_data.get("errorCount"), 1)
+        self.assertEqual(report_data.get("errorCount"), 0)
 
         print("Verify correct oldest and newest dates")
-        self.assertIsNotNone(report_data.get("oldest"))
-        self.assertIsNotNone(report_data.get("newest"))
-
-        print("Verify exact error and node pathnames to be ignored")
-        self.assertTrue('Node does not exist in filesystem' in report_data['errors'])
-        self.assertEqual(report_data["errors"]["Node does not exist in filesystem"]["folders"]["staging"]["node_count"], 3)
-        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a"]["errors"][0], "Node does not exist in filesystem")
-        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a"]["nextcloud"]["type"], "folder")
-        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b"]["errors"][0], "Node does not exist in filesystem")
-        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b"]["nextcloud"]["type"], "folder")
-        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b/c"]["errors"][0], "Node does not exist in filesystem")
-        self.assertEqual(report_data["invalidNodes"]["staging/testdata/empty_folder_s/a/b/c"]["nextcloud"]["type"], "folder")
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
 
         self.remove_report(report_data['reportPathname'])
 

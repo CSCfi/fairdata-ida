@@ -39,16 +39,44 @@
 # run-tests tests.nextcloud           (run Nextcloud behavioral tests)
 # run-tests tests.agents.metadata     (run metadata agent behavioral tests)
 # run-tests agents                    (run agent unit tests)
-
+#
 #--------------------------------------------------------------------------------
+
+START_TIME=$(date +%s)
+
+report_success() {
+    echo ""
+    echo "======================================"
+    echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="
+    echo "======================================"
+    echo ""
+    if [ -z "$START_TIME" ]; then
+        echo "The START_TIME variable is undefined. Aborting" >&2
+        exit 1
+    fi
+    local END_TIME=$(date +%s)
+    local TOTAL_TIME_SECONDS=$((END_TIME - START_TIME))
+    if [ "$TOTAL_TIME_SECONDS" -lt 60 ]; then
+        echo "Total execution time: $TOTAL_TIME_SECONDS seconds"
+    else
+        local TOTAL_TIME_MINUTES=$((TOTAL_TIME_SECONDS / 60))
+        if [ "$TOTAL_TIME_MINUTES" -eq 1 ]; then
+            echo "Total execution time: 1 minute"
+        else
+            echo "Total execution time: $TOTAL_TIME_MINUTES minutes"
+        fi
+    fi
+    echo ""
+}
+
 # Load service constants and configuration settings
 
-PARENT_FOLDER=`dirname "$(realpath $0)"`
-PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+PARENT_FOLDER=$(dirname "$(realpath $0)")
+PARENT_BASENAME=$(basename "$PARENT_FOLDER")
 
 while [ "$PARENT_BASENAME" != "ida" -a "$PARENT_BASENAME" != "" ]; do
-    PARENT_FOLDER=`dirname "$PARENT_FOLDER"`
-    PARENT_BASENAME=`basename "$PARENT_FOLDER"`
+    PARENT_FOLDER=$(dirname "$PARENT_FOLDER")
+    PARENT_BASENAME=$(basename "$PARENT_FOLDER")
 done
 
 CONSTANTS_FILE="$PARENT_FOLDER/lib/constants.sh"
@@ -119,11 +147,7 @@ if [ $# -ge 1 ]; then
         exit 1
     fi
 
-    echo ""
-    echo "======================================"
-    echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="
-    echo "======================================"
-    echo ""
+    report_success
 
 else
 
@@ -185,10 +209,6 @@ else
         exit 1
     fi
 
-    echo ""
-    echo "======================================"
-    echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="
-    echo "======================================"
-    echo ""
+    report_success
 
 fi

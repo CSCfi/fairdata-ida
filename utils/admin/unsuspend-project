@@ -61,7 +61,7 @@ PIDS=`$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/actions?statu
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
-    errorExit "Failed to retrieve pending actions for project"
+    errorExit "Failed to retrieve pending actions for project ${PROJECT}"
 fi
 
 if [ "$PIDS" = "" ]; then
@@ -133,7 +133,7 @@ $ROOT/utils/admin/email-project-users "$PROJECT" "$SUBJECT" "$MESSAGE" 2>$ERR
 if [ -s $ERR ]; then
     MSG=`cat $ERR | tr "\n" " " `
     addToLog "$MSG"
-    errorExit "Error: Failed to email project users!"
+    errorExit "Error: Failed to email project ${PROJECT} users!"
 fi
 
 addToLog "DONE"

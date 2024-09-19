@@ -214,6 +214,20 @@ if [ "$METAX_AVAILABLE" = "1" ]; then
 
 fi
 
+echo "Purging all records from Nextcloud file cache..."
+
+for PROJECT in $PROJECTS; do
+    STEP="   Purging $PROJECT"
+    printf "%${PADDING}s" "$STEP"
+    OUT=`$ROOT/tests/utils/purge-cache $PROJECT 2>&1`
+    if [ "$?" -ne 0 ]; then
+        OUT=`echo "$OUT" | head -1`
+        failure "$OUT (ignored)"
+    else
+        success
+    fi
+done
+
 echo "Flushing all replicated files..."
 
 for PROJECT in $PROJECTS; do
