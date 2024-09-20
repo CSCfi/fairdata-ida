@@ -86,6 +86,12 @@ def main():
 
         logging.info("START %s %s" % (config.PROJECT, generate_timestamp()))
 
+        config.DBCONNECTION = psycopg2.connect(database=config.DBNAME,
+                                               user=config.DBUSER,
+                                               password=config.DBPASSWORD,
+                                               host=config.DBHOST,
+                                               port=config.DBPORT)
+
         # for each invalid node in audit report:
         #     if the node has an orphan cache record:
         #         purge the orphan cache record from the database
@@ -157,11 +163,7 @@ def get_project_storage_id(config):
 
 def purge_orphan_node_from_database(config, pathname):
 
-    conn = psycopg2.connect(database=config.DBNAME,
-                            user=config.DBUSER,
-                            password=config.DBPASSWORD,
-                            host=config.DBHOST,
-                            port=config.DBPORT)
+    conn = config.DBCONNECTION
 
     cur = conn.cursor()
 
