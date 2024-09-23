@@ -34,17 +34,17 @@
 #
 # Examples:
 #
-# run-tests                           (run all behavioral tests)
-# run-tests tests.admin               (run admin behavioral tests)
-# run-tests tests.nextcloud           (run Nextcloud behavioral tests)
-# run-tests tests.agents.metadata     (run metadata agent behavioral tests)
-# run-tests agents                    (run agent unit tests)
+# run-tests              run all tests
+# run-tests admin        run admin behavioral tests
+# run-tests nextcloud    run Nextcloud behavioral tests
+# run-tests agents       run metadata agent behavioral tests
+# run-tests auditing     run auditing behavioral tests
 #
 #--------------------------------------------------------------------------------
 
 START_TIME=$(date +%s)
 
-report_success() {
+function report_success {
     echo ""
     echo "======================================"
     echo "=== ALL EXECUTED TESTS SUCCESSFUL  ==="
@@ -141,7 +141,7 @@ cd $ROOT
 
 if [ $# -ge 1 ]; then
 
-    python -W ignore -m unittest discover -f -q $*
+    python -W ignore -m unittest discover -f -q tests.$1
 
     if [ $? -ne 0 ]; then
         exit 1

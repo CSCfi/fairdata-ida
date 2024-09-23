@@ -268,7 +268,7 @@ class TestMimetypes(unittest.TestCase):
             print("    %s: %s" % (suffix, mimetype))
             filename = "test.%s" % suffix
             url = "%s/test_project_a+/%s" % (self.config['FILE_API'], filename)
-            headers = { "Content-Type": "%s; charset=\"utf-8\"" % mimetype }
+            headers = { "Content-Type": mimetype }
             # The following data string should be invalid in most/every commonly used textual encoding,
             # ensuring that apache/mod_secure is not parsing/inspecting any uploaded data files
             data = "%s\n\x01\x02\x03\x04\x05!!@$#%%^&*()_+{}[]|;:'\",.<>?/" % mimetype

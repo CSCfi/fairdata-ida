@@ -177,14 +177,10 @@ def purge_orphan_node_from_database(config, pathname):
     if config.DEBUG:
         sys.stderr.write("CACHE PATHNAME: %s\n" % cache_pathname)
 
-    query = "DELETE FROM %sfilecache \
-             WHERE storage = %d \
-             AND path = '%s'" % (config.DBTABLEPREFIX, config.STORAGE_ID, cache_pathname)
+    query = "DELETE FROM {}filecache WHERE storage = %s AND path = %s".format(config.DBTABLEPREFIX)
+    params = (config.STORAGE_ID, cache_pathname)
 
-    if config.DEBUG:
-        sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
-
-    cur.execute(query)
+    cur.execute(query, params)
 
     if config.DEBUG:
         sys.stderr.write("ROWS PURGED: %d\n" % cur.rowcount)

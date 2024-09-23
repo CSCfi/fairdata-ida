@@ -149,5 +149,5 @@ docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /usr/local/fd/
 Run a specific IDA test module (see /var/ida/utils/run-tests for module list), e.g.:
 
 ```
-docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests tests.auditing
+docker exec -w /var/ida -it $(docker ps -q -f name=ida-nextcloud) /var/ida/tests/run-tests auditing
 ```
