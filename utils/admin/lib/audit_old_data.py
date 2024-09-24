@@ -62,9 +62,9 @@ def main():
         config = load_configuration("%s/config/config.sh" % sys.argv[1])
         constants = load_configuration("%s/lib/constants.sh" % sys.argv[1])
 
-        # If in production, ensure we are not running on uida-man.csc.fi
+        # If in production, ensure we are not running on the management server
         hostname = socket.getfqdn()
-        if config.IDA_ENVIRONMENT == 'PRODUCTION' and hostname in [ 'idaman.fairdata.fi', 'uida-man.csc.fi' ]:
+        if config.IDA_ENVIRONMENT == 'PRODUCTION' and hostname == 'idaman.fairdata.fi':
             raise Exception ("Do not run old data auditing on %s" % hostname)
 
         #config.DEBUG = True         # TEMP HACK

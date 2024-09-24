@@ -74,7 +74,7 @@ def main():
 
         # If in production, ensure we are not running on the management server
         hostname = socket.getfqdn()
-        if config.IDA_ENVIRONMENT == 'PRODUCTION' and hostname in [ 'idaman.fairdata.fi', 'uida-man.csc.fi' ]:
+        if config.IDA_ENVIRONMENT == 'PRODUCTION' and hostname == 'idaman.fairdata.fi':
             raise Exception ("Do not run project auditing on %s" % hostname)
 
         # Copy essential constants to config so they are easily passed to functions

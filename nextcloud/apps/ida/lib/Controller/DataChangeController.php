@@ -487,11 +487,19 @@ class DataChangeController extends Controller
             }
             Util::writeLog('ida', 'processNextcloudOperation: datadir=' . $datadir, \OCP\Util::DEBUG);
 
-            $idahome = $config->getSystemValue('IDA_HOME');
             if ($datadir === null) {
                 throw new Exception('processNextcloudOperation: Failed to get data storage root pathname');
             }
-            Util::writeLog('ida', 'processNextcloudOperation: idahome=' . $idahome, \OCP\Util::DEBUG);
+
+            $fqdn = gethostname();
+
+            if ($fqdn === False || $fqdn === 'localhost') {
+                throw new Exception('processNextcloudOperation: Failed to get fqdn');
+            }
+
+            $idaRootUrl = 'https://' . $fqdn;
+
+            Util::writeLog('ida', 'processNextcloudOperation: idaRootUrl=' . $idaRootUrl, \OCP\Util::DEBUG);
 
             if (array_key_exists('PROJECT_USER_PASS', $idaconfig)) {
                 $psopass = $idaconfig['PROJECT_USER_PASS'];
@@ -533,7 +541,7 @@ class DataChangeController extends Controller
 
             $username = Constants::PROJECT_USER_PREFIX . $project;
             $password =  $psopass;
-            $requestURL = $idahome . '/apps/ida/api/dataChanges';
+            $requestURL = $idaRootUrl . '/apps/ida/api/dataChanges';
             $postbody = json_encode(
                 array(
                     'project'  => $project,

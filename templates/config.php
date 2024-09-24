@@ -67,7 +67,7 @@ $CONFIG = array (
     'SIMULATE_AGENTS' => false,
   ),
   'IDA_HOME' => 'https://ida.fairdata.fi',
-  'LOCAL_LOGIN' => false,        // set to true to always display local Nextcloud login (e.g. uida-man, dev/test)
+  'LOCAL_LOGIN' => false,        // set to true to always display local Nextcloud login (e.g. idaman, dev/test)
   'SSO_AUTHENTICATION' => true,  // set to true to always display SSO login (other SSO_ variables must be defined)
   'SSO_DOMAIN' => 'fairdata.fi',
   'SSO_API' => 'https://sso.fairdata.fi',
