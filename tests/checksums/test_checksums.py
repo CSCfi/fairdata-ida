@@ -67,7 +67,7 @@ class TestChecksums(unittest.TestCase):
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-missing-checksums test_project_a" % (self.config["HTTPD_USER"], self.config["ROOT"])
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
-            self.assertEqual(len(output), 0)
+            self.assertEqual(len(output), 0, output[:2000])
         except subprocess.CalledProcessError as error:
             self.fail(error.output.decode(sys.stdout.encoding))
 
