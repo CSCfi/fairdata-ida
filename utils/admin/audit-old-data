@@ -191,6 +191,7 @@ if [ -z "$NO_USER_EMAIL" ]; then
         fi
 
         export ROOT
+        export IDA_ENVIRONMENT
         export EMAIL_SENDER
         export EMAIL_RECIPIENTS
     

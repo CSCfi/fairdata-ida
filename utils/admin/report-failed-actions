@@ -37,27 +37,52 @@ else
     exit 1
 fi
 
+SNAIL=`mail --version 2>/dev/null | grep -- 's-nail' 2>/dev/null`
+
 #--------------------------------------------------------------------------------
 
 SUBJECT="[IDA Service] Failed Actions Report"
+        
+if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
+    SUBJECT="${IDA_ENVIRONMENT} (${HOSTNAME}) ${SUBJECT}"
+fi
 
-MESSAGE=`$ROOT/utils/admin/fetch-actions failed`
+MESSAGE=`DEBUG=false $ROOT/utils/admin/fetch-actions failed 2>/dev/null`
 
-COUNT=`echo "$MESSAGE" | wc -l`
+COUNT=`echo "$MESSAGE" | grep '"pid":' | wc -l`
 
 if [ "$COUNT" -gt 1 ]; then
 
     if [ "$EMAIL_RECIPIENTS" ]; then
 
-        echo "$MESSAGE" | mail -s "$SUBJECT" -r $EMAIL_SENDER -S "replyto=$EMAIL_SENDER" $EMAIL_RECIPIENTS 2>$ERR
+        if [ "$SNAIL" ]; then
+            # Convert comma delimited recipient lists to space delimited
+            EMAIL_RECIPIENTS=`echo "$EMAIL_RECIPIENTS" | sed -e 's/,/ /g'`
+            COMMAND="mail -s \"$SUBJECT\" -r $EMAIL_SENDER $EMAIL_RECIPIENTS"
+        else
+            COMMAND="mail -s \"${SUBJECT}\" -r ${EMAIL_SENDER} -S \"replyto=${EMAIL_SENDER}\" ${EMAIL_RECIPIENTS}"
+        fi
+
+        if [ "$DEBUG" = "true" ]; then
+            echo "EMAIL_SENDER:     ${EMAIL_SENDER}"
+            echo "EMAIL_RECIPIENTS: ${EMAIL_RECIPIENTS}"
+            echo "SUBJECT:          ${SUBJECT}"
+            echo "MESSAGE:          ${MESSAGE}"
+            echo "COMMAND:          ${COMMAND}"
+        fi
+
+        echo "$MESSAGE" | eval "$COMMAND" 2>$ERR
 
         if [ -s $ERR ]; then
             MSG=`cat $ERR`
             addToLog "$MSG"
             errorExit "Failed to send failed action report email"
         fi
-    fi
 
+        echoAndLog "${COUNT} failed projects reported"
+    fi
+else
+    echoAndLog "No failed projects"
 fi
 
 addToLog "DONE"

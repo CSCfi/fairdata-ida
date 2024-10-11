@@ -67,6 +67,11 @@ class TestAuditing(unittest.TestCase):
 
         print("(initializing)")
 
+        if self.config['SEND_TEST_EMAILS'] == 'true':
+            print("(sending test emails)")
+        else:
+            print("(not sending test emails)")
+
         # ensure we start with a fresh setup of projects, user accounts, and data
         cmd = "sudo -u %s DEBUG=false %s/tests/utils/initialize-test-accounts %s/tests/utils/single-project.config" % (self.config["HTTPD_USER"], self.config["ROOT"], self.config["ROOT"])
         result = os.system(cmd)
@@ -128,7 +133,8 @@ class TestAuditing(unittest.TestCase):
             if checksums:
                 parameters = "%s --checksums" % parameters
 
-        #parameters = "%s --report" % parameters
+        if self.config.get('SEND_TEST_EMAILS') == 'true':
+            parameters = "%s --report" % parameters
 
         print ("(auditing project %s%s)" % (project, parameters))
 

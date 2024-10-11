@@ -187,6 +187,11 @@ class TestAuditing(unittest.TestCase):
 
         print("(initializing)")
 
+        if self.config['SEND_TEST_EMAILS'] == 'true':
+            print("(sending test emails)")
+        else:
+            print("(not sending test emails)")
+
         # If Metax v3 or later, define authentication header
         if self.config["METAX_API_VERSION"] >= 3:
             self.metax_headers = { 'Authorization': 'Token %s' % self.config["METAX_PASS"] }
@@ -269,7 +274,8 @@ class TestAuditing(unittest.TestCase):
             if checksums:
                 parameters = "%s --checksums" % parameters
 
-        #parameters = "%s --report" % parameters
+        if self.config.get('SEND_TEST_EMAILS') == 'true':
+            parameters = "%s --report" % parameters
 
         print ("(auditing project %s%s)" % (project, parameters))
 

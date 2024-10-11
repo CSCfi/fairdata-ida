@@ -216,6 +216,11 @@ def load_configuration():
     except:
         config['NO_FLUSH_AFTER_TESTS'] = 'false'
 
+    try:
+        config['SEND_TEST_EMAILS'] = server_configuration.SEND_TEST_EMAILS
+    except:
+        config['SEND_TEST_EMAILS'] = 'false'
+
     if os.path.exists("/etc/httpd/"):
         config['HTTPD_USER'] = "apache"
     else:

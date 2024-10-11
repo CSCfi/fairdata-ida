@@ -78,6 +78,8 @@ else
     exit 1
 fi
 
+SNAIL=`mail --version 2>/dev/null | grep -- 's-nail' 2>/dev/null`
+
 #--------------------------------------------------------------------------------
 
 REPORT_REQ=""
@@ -298,7 +300,28 @@ if [ "$SEND_REPORT" = "true" ] && [ "$RECIPIENTS" != "" ]; then
         SUBJECT="${SUBJECT} - Errors Reported"
     fi
 
-    cat "$SUMMARY" | mail -s "$SUBJECT" -r $EMAIL_SENDER $RECIPIENTS 
+    if [ "$SNAIL" ]; then
+        # Convert comma delimited recipient lists to space delimited
+        RECIPIENTS=`echo "$RECIPIENTS" | sed -e 's/,/ /g'`
+        COMMAND="mail -s \"$SUBJECT\" -r $EMAIL_SENDER $RECIPIENTS"
+    else
+        COMMAND="mail -s \"${SUBJECT}\" -r ${EMAIL_SENDER} -S \"replyto=${EMAIL_SENDER}\" ${RECIPIENTS}"
+    fi
+
+    if [ "$DEBUG" = "true" ]; then
+        echo "EMAIL_SENDER:     ${EMAIL_SENDER}"
+        echo "EMAIL_RECIPIENTS: ${EMAIL_RECIPIENTS}"
+        echo "SUBJECT:          ${SUBJECT}"
+        echo "COMMAND:          ${COMMAND}"
+    fi
+
+    cat "$SUMMARY" | eval "$COMMAND" 2>$ERR
+
+    if [ -s $ERR ]; then
+        MSG=`cat $ERR`
+        addToLog "$MSG"
+        errorExit "Failed to send audit summary email"
+    fi
 fi
 
 cat $SUMMARY

@@ -59,6 +59,8 @@ else
     exit 1
 fi
 
+SNAIL=`mail --version 2>/dev/null | grep -- 's-nail' 2>/dev/null`
+
 #DEBUG="true" # TEMP HACK
 
 # --------------------------------------------------------------------------------
@@ -304,10 +306,36 @@ printf "\n\n"                          >> $OUTPUT_TXT
 # Send email with report summary to internal users (if any configured), unless explcitly excluded
 
 if [ -z "$NO_EMAIL" ]; then
-    RECIPIENTS="$EMAIL_RECIPIENTS"
-    if [ "${EMAIL_SENDER}${RECIPIENTS}" ]; then
+
+    if [ "${EMAIL_RECIPIENTS}" ]; then
+
         SUBJECT="[IDA Service] OLD DATA REPORT"
-        cat "$OUTPUT_TXT" | mail -s "$SUBJECT" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $RECIPIENTS
+
+        if [ "$IDA_ENVIRONMENT" != "PRODUCTION" ]; then
+            SUBJECT="${IDA_ENVIRONMENT} (${HOSTNAME}) ${SUBJECT}"
+        fi
+
+        if [ "$SNAIL" ]; then
+            EMAIL_RECIPIENTS=`echo "$EMAIL_RECIPIENTS" | sed -e 's/,/ /g'`
+        fi
+
+        COMMAND="mail -s \"$SUBJECT\" -a $REPORT_CSV -a $REPORT_JSON -r $EMAIL_SENDER $EMAIL_RECIPIENTS"
+
+        if [ "$DEBUG" = "true" ]; then
+            echo "EMAIL_SENDER:     ${EMAIL_SENDER}"
+            echo "EMAIL_RECIPIENTS: ${EMAIL_RECIPIENTS}"
+            echo "SUBJECT:          ${SUBJECT}"
+            echo "COMMAND:          ${COMMAND}"
+        fi
+
+        cat "$OUTPUT_TXT" | eval "$COMMAND" 2>$ERR
+
+        if [ -s $ERR ]; then
+            MSG=`cat $ERR`
+            addToLog "$MSG"
+            errorExit "Failed to send report summary email to internal users"
+        fi
+
         if [ -z "$QUIET" ]; then
             echo "Report summary emailed to internal users" >&2
         fi
