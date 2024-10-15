@@ -186,12 +186,19 @@ class GenericAgent():
         are no longer OK, the agent will sleep until the IDA service is again online and all
         agent dependencies are again OK.
         """
+
         self._logger.info('Started consuming from queues...')
 
         while True:
 
             # Only try to consume messages if there exist messages in any of the agent's queues...
-            if self.messages_in_queue(self.main_queue_name) or self.messages_in_queue(self.failed_queue_name) or self.messages_in_queue(self.main_batch_queue_name) or self.messages_in_queue(self.failed_batch_queue_name):
+
+            main_queue_not_empty         = self.messages_in_queue(self.main_queue_name)         > 0
+            failed_queue_not_empty       = self.messages_in_queue(self.failed_queue_name)       > 0
+            main_batch_queue_not_empty   = self.messages_in_queue(self.main_batch_queue_name)   > 0
+            failed_batch_queue_not_empty = self.messages_in_queue(self.failed_batch_queue_name) > 0
+
+            if main_queue_not_empty or failed_queue_not_empty or main_batch_queue_not_empty or failed_batch_queue_not_empty:
 
                 is_offline_logged = False
 
@@ -228,13 +235,13 @@ class GenericAgent():
                 # is applied on each loop iteration, so that new user-initiated actions will be immediately
                 # processed even if there are many batch actions queued.
 
-                if self.messages_in_queue(self.failed_queue_name):
+                if failed_queue_not_empty:
                     self.consume_one(self.failed_queue_name)
-                elif self.messages_in_queue(self.main_queue_name):
+                elif main_queue_not_empty:
                     self.consume_one(self.main_queue_name)
-                elif self.messages_in_queue(self.failed_batch_queue_name):
+                elif failed_batch_queue_not_empty:
                     self.consume_one(self.failed_batch_queue_name)
-                elif self.messages_in_queue(self.main_batch_queue_name):
+                elif main_batch_queue_not_empty:
                     self.consume_one(self.main_batch_queue_name)
 
             if self.gevent:
@@ -259,7 +266,7 @@ class GenericAgent():
         """
         queue = queue or self.main_queue_name
 
-        self._logger.info('Consuming one message from queue %s' % queue)
+        self._logger.info('Consuming one message from %s queue' % queue)
 
         try:
             method, properties, body = self._channel.basic_get(queue)
@@ -328,19 +335,21 @@ class GenericAgent():
         try:
             queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
         except Exception:
-            self._logger.warning('Checking messages in queue %s encountered an error: %s  Re-connecting...' % (queue, str(e)))
+            self._logger.warning('Checking messages in %s queue encountered an error: %s  Re-connecting...' % (queue, str(e)))
             self.connect()
             try:
                 queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
             except Exception as e:
-                self._logger.warning('Checking messages in queue %s encountered an error: %s  Sleeping for a bit and retrying later...' % (queue, str(e)))
+                self._logger.warning('Checking messages in %s queue encountered an error: %s  Sleeping for a bit and retrying later...' % (queue, str(e)))
                 time.sleep(5)
                 return 0
 
-        if queue_state.method.message_count > 0:
-            self._logger.info('%d messages in queue %s.' % (queue_state.method.message_count, queue))
-        else:
-            self._logger.debug('Queue %s is empty.' % queue)
+        if queue_state.method.message_count == 1:
+            self._logger.info('1 message in %s queue' % queue)
+        elif queue_state.method.message_count > 1:
+            self._logger.info('%d messages in %s queue' % (queue_state.method.message_count, queue))
+        #else:
+        #    self._logger.debug('The %s queue is empty' % queue)
 
         return queue_state.method.message_count
 
@@ -476,7 +485,7 @@ class GenericAgent():
         self._logger.info('Updating failed timestamp in IDA db for action %s' % action['pid'])
         error_data = { 'failed': generate_timestamp(), 'error': str(exception) }
         self._update_action_to_db(action, error_data)
-        self._logger.warning('Marked action %s as failed.' % action['pid'])
+        self._logger.warning('Marked action %s as failed' % action['pid'])
         self.last_failed_action = { 'action_pid': action['pid'], 'data': error_data }
         return True
 
@@ -541,14 +550,14 @@ class GenericAgent():
         if isinstance(exception, HttpApiNotResponding):
             # api-not-responding errors do not count towards retries, so that they may be
             # retried an infinite number of times.
-            self._logger.info('Republishing action %s to %s-failed-waiting due to failed HTTP request.' % (pid, sub_action_name))
+            self._logger.info('Republishing action %s to %s-failed-waiting due to failed HTTP request' % (pid, sub_action_name))
         else:
             try:
                 action[sub_action_retry_info]['retry'] += 1
             except KeyError:
                 action[sub_action_retry_info]['retry'] = 1
 
-            self._logger.debug('Next retry #: %d, retry interval of %s-failed-waiting: %d seconds.'
+            self._logger.debug('Next retry #: %d, retry interval of %s-failed-waiting: %d seconds'
                 % (action[sub_action_retry_info]['retry'], sub_action_name, retry_interval))
 
         try:
@@ -563,10 +572,10 @@ class GenericAgent():
         except:
             # could not publish? doesnt matter, the message will return to its queue and be retried
             # at some point.
-            self._logger.warning('Action %s republish failed. Message will return to original queue and be retried in the future.' % pid)
+            self._logger.warning('Action %s republish failed. Message will return to original queue and be retried in the future' % pid)
             return False
 
-        self._logger.info('Successfully republished action %s with a delay of %d seconds.' % (pid, retry_interval))
+        self._logger.info('Successfully republished action %s with a delay of %d seconds' % (pid, retry_interval))
 
         return True
 
@@ -677,7 +686,7 @@ class GenericAgent():
                 )
                 time.sleep(retry_policy['retry_intervals'][retry_index])
 
-        raise HttpApiNotResponding('HTTP %s request %s did not respond after %d attempts.'
+        raise HttpApiNotResponding('HTTP %s request %s did not respond after %d attempts'
             % (method, url, self._current_http_request_retry))
 
 
