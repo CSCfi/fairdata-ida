@@ -141,6 +141,19 @@ cd $ROOT
 
 if [ $# -ge 1 ]; then
 
+    if [ "$1" = "agents" ]; then
+
+        echo "UNIT TESTS:"
+
+        python -W ignore -m unittest discover -f -q agents
+
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
+    fi
+
+    echo "BEHAVIORAL TESTS:"
+
     python -W ignore -m unittest discover -f -q tests.$1
 
     if [ $? -ne 0 ]; then

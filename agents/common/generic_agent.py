@@ -112,7 +112,7 @@ class GenericAgent():
         vhost = self._uida_conf_vars['RABBIT_VHOST']
         username = self._uida_conf_vars['RABBIT_WORKER_USER']
 
-        self._logger.debug('Connecting to rabbitmq at %(host)s:%(port)d, vhost=%(vhost)s, username=%(username)s...' % locals())
+        self._logger.info('Connecting to rabbitmq at %(host)s:%(port)d, vhost=%(vhost)s, username=%(username)s...' % locals())
 
         credentials = pika.PlainCredentials(
             username,
@@ -128,7 +128,7 @@ class GenericAgent():
                 heartbeat=self._uida_conf_vars['RABBIT_HEARTBEAT']))
 
         self._channel = connection.channel()
-        self._logger.debug('Connected')
+        self._logger.info('Connected')
 
 
     def process_queue(self, *args, **kwargs):
@@ -186,7 +186,7 @@ class GenericAgent():
         are no longer OK, the agent will sleep until the IDA service is again online and all
         agent dependencies are again OK.
         """
-        self._logger.debug('Started consuming from queues...')
+        self._logger.info('Started consuming from queues...')
 
         while True:
 
@@ -305,8 +305,7 @@ class GenericAgent():
                 # to its queue and be retried in the future.
                 self._logger.exception('Exception while trying to reject action')
             else:
-                self._logger.info('Rejected action %s back to original queue'
-                    % json_loads(body.decode('utf-8'))['pid'])
+                self._logger.info('Rejected action %s back to original queue' % json_loads(body.decode('utf-8'))['pid'])
         else:
             self._logger.debug('Message processing ended')
         finally:
@@ -317,6 +316,9 @@ class GenericAgent():
     def messages_in_queue(self, queue=None):
         """
         By default checks queue from self.main_queue_name, but queue name can be passed as well.
+
+        If the query to the queue fails, due to a closed or otherwise disfunctional connection,
+        the agent will attempt to reopen the connection.
         """
         if self._graceful_shutdown_started:
             raise SystemExit
@@ -325,25 +327,20 @@ class GenericAgent():
 
         try:
             queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
-        except pika.exceptions.ChannelClosed:
-            self._logger.debug('Checking messages in queue %s: Channel closed. Re-connecting...' % queue)
+        except Exception:
+            self._logger.warning('Checking messages in queue %s encountered an error: %s  Re-connecting...' % (queue, str(e)))
             self.connect()
             try:
                 queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
             except Exception as e:
-                self._logger.warning('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
+                self._logger.warning('Checking messages in queue %s encountered an error: %s  Sleeping for a bit and retrying later...' % (queue, str(e)))
                 time.sleep(5)
                 return 0
 
-        except Exception as e:
-            self._logger.warning('Checking messages in queue encountered an error: %s. Sleeping for a bit and retrying later...' % str(e))
-            time.sleep(5)
-            return 0
-
         if queue_state.method.message_count > 0:
-            self._logger.debug('%d messages in queue %s.' % (queue_state.method.message_count, queue))
-        #else:
-            #self._logger.debug('Queue %s is empty.' % queue)
+            self._logger.info('%d messages in queue %s.' % (queue_state.method.message_count, queue))
+        else:
+            self._logger.debug('Queue %s is empty.' % queue)
 
         return queue_state.method.message_count
 
@@ -479,7 +476,7 @@ class GenericAgent():
         self._logger.info('Updating failed timestamp in IDA db for action %s' % action['pid'])
         error_data = { 'failed': generate_timestamp(), 'error': str(exception) }
         self._update_action_to_db(action, error_data)
-        self._logger.warning('Marked action with pid %s as failed.' % action['pid'])
+        self._logger.warning('Marked action %s as failed.' % action['pid'])
         self.last_failed_action = { 'action_pid': action['pid'], 'data': error_data }
         return True
 
@@ -527,10 +524,12 @@ class GenericAgent():
         - False when republish fails. Results in the message not being ack'ed, and message
           will return to its original queue.
         """
-        self._logger.debug('Republishing failed action...')
-        sub_action_retry_info = '%s_retry_info' % sub_action_name
-
         action = self.rabbitmq_message
+        pid = action['pid']
+
+        self._logger.info('Republishing failed action %s...' % pid)
+
+        sub_action_retry_info = '%s_retry_info' % sub_action_name
 
         if sub_action_retry_info not in action:
             action[sub_action_retry_info] = {}
@@ -542,7 +541,7 @@ class GenericAgent():
         if isinstance(exception, HttpApiNotResponding):
             # api-not-responding errors do not count towards retries, so that they may be
             # retried an infinite number of times.
-            self._logger.debug('Republishing to %s-failed-waiting due to failed HTTP request.' % sub_action_name)
+            self._logger.info('Republishing action %s to %s-failed-waiting due to failed HTTP request.' % (pid, sub_action_name))
         else:
             try:
                 action[sub_action_retry_info]['retry'] += 1
@@ -564,10 +563,11 @@ class GenericAgent():
         except:
             # could not publish? doesnt matter, the message will return to its queue and be retried
             # at some point.
-            self._logger.debug('Action republish failed. Message will return to original queue and be retried in the future.')
+            self._logger.warning('Action %s republish failed. Message will return to original queue and be retried in the future.' % pid)
             return False
 
-        self._logger.info('Successfully republished action with pid %s with a delay of %d seconds.' % (action['pid'], retry_interval))
+        self._logger.info('Successfully republished action %s with a delay of %d seconds.' % (pid, retry_interval))
+
         return True
 
 
@@ -810,9 +810,7 @@ class GenericAgent():
         if not os.path.isdir(self._uida_conf_vars['RABBIT_MONITORING_DIR']):
             return
 
-        self._logger.debug(
-            'Cleaning up old sentinel monitoring files from %s...' % self._uida_conf_vars['RABBIT_MONITORING_DIR']
-        )
+        self._logger.info('Cleaning up old sentinel monitoring files from %s...' % self._uida_conf_vars['RABBIT_MONITORING_DIR'])
 
         # recognizes current active processes when the process is started with a
         # command e.g. python -m agents.metadata.metadata_agent
