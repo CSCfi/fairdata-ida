@@ -269,6 +269,7 @@ if [ "$OK" = "true" ]; then
     jq 'del(.invalidNodes, .errors, .oldest, .newest)' --indent 4 < $REPORT > $SUMMARY
 else
     jq 'del(.invalidNodes) | walk(if type == "object" then with_entries(select(.key != "nodes")) else . end)' --indent 4 < $REPORT > $SUMMARY
+    cp $SUMMARY $REPORT.summary
 fi
 
 if [ $? -ne 0 ]; then
