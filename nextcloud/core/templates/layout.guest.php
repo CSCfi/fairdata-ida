@@ -224,7 +224,7 @@ function localLoginOrSharePasswordActive()
                     <h2>Tervetuloa Fairdata IDA -palveluun</h2>
                     <p>Fairdata IDA on turvallinen ja maksuton tutkimusdatan säilytyspalvelu, jota tarjotaan Suomen korkeakouluille ja valtion tutkimuslaitoksille. IDA kuuluu opetus- ja kulttuuriministeriön järjestämään Fairdata-palvelukokonaisuuteen.</p>
                     <p>Säilytystila on projektikohtaista. IDAssa säilytettävä data voidaan muiden Fairdata-palvelujen avulla kuvailla tutkimusaineistoksi ja julkaista.</p>
-                    <p><a href="https://www.fairdata.fi/ida/" rel="noreferrer noopener" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
+                    <p><a href="https://www.fairdata.fi/ida/" rel="noopener" target="_blank">Käytön aloitus ja käyttöoppaat</a></p>
                 </div>
                 <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -278,7 +278,7 @@ function localLoginOrSharePasswordActive()
                     <h2>Välkommen till Fairdata IDA</h2>
                     <p>Fairdata IDA är en trygg tjänst för lagring av forskningsdata. Tjänsten erbjuds utan kostnad för universitet, yrkeshögskolor och forskningsinstitut i Finland. IDA är en del av Fairdata-tjänsterna som erbjuds av Undervisnings- och kulturministeriet.</p>
                     <p>Bevaringsutrymmet i IDA tilldelas projekt. Data som finns i IDA kan dokumenteras och publiceras som dataset med hjälp av andra Fairdata-tjänster.</p>
-                    <p><a href="https://www.fairdata.fi/en/ida/" rel="noreferrer noopener" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
+                    <p><a href="https://www.fairdata.fi/en/ida/" rel="noopener" target="_blank">Hur man tar i bruk och använder IDA (på engelska)</a></p>
                 </div>
                 <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -332,7 +332,7 @@ function localLoginOrSharePasswordActive()
                     <h2>Welcome to Fairdata IDA</h2>
                     <p>Fairdata IDA is a continuous research data storage service organized by the Ministry of Education and Culture. The service is offered free of charge to Finnish universities, universities of applied sciences and state research institutes.</p>
                     <p>IDA enables uploading, organizing, and sharing research data within a project group and storing the data in an immutable state. The data stored in IDA can be included in research datasets which are described and made publicly available for download via other Fairdata services.</p>
-                    <p><a href="https://www.fairdata.fi/en/ida/" rel="noreferrer noopener" target="_blank">How to start using IDA and user guides</a></p>
+                    <p><a href="https://www.fairdata.fi/en/ida/" rel="noopener" target="_blank">How to start using IDA and user guides</a></p>
                 </div>
                 <div class="<?php if (localLoginOrSharePasswordActive()) p('col-lg-4');
                             else p('col-lg-6'); ?> col-md-12 padding-top fd-col">
@@ -389,7 +389,7 @@ function localLoginOrSharePasswordActive()
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                     <span>
                         Fairdata
-                        <a class="fd-link fd-link-footer" rel="noreferrer noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
+                        <a class="fd-link fd-link-footer" rel="noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
                             <img width="175px" src="<?php print_unescaped(image_path('', 'supporting-eosc.jpg')); ?>" alt="Supporting class="logo">
                         </a>
                     </span>
@@ -397,14 +397,14 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                     <span>Tietoa</span>
-                    <p><a href="https://www.fairdata.fi/kayttopolitiikat-ja-ehdot/" rel="noreferrer noopener" target="_blank">Käyttöpolitiikat ja ehdot
+                    <p><a href="https://www.fairdata.fi/kayttopolitiikat-ja-ehdot/" rel="noopener" target="_blank">Käyttöpolitiikat ja ehdot
 
                         </a></p>
-                    <p><a href="https://www.fairdata.fi/sopimukset/" rel="noreferrer noopener" target="_blank">Sopimukset ja tietosuoja</a></p>
+                    <p><a href="https://www.fairdata.fi/sopimukset/" rel="noopener" target="_blank">Sopimukset ja tietosuoja</a></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Saavutettavuus</span>
-                    <p><a href="https://www.fairdata.fi/saavutettavuus/" rel="noreferrer noopener" target="_blank">Saavutettavuus</a></p>
+                    <p><a href="https://www.fairdata.fi/saavutettavuus/" rel="noopener" target="_blank">Saavutettavuus</a></p>
                 </div>
                 <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Ota yhteyttä</span>
@@ -412,14 +412,14 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Seuraa</span>
-                    <p><a href="https://x.com/Fairdata_fi" rel="noreferrer noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
-                    <p><a href="https://www.fairdata.fi/ajankohtaista/" rel="noreferrer noopener" target="_blank">Uutiset</a></p>
+                    <p><a href="https://x.com/Fairdata_fi" rel="noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
+                    <p><a href="https://www.fairdata.fi/ajankohtaista/" rel="noopener" target="_blank">Uutiset</a></p>
                 </div>
             <?php elseif ($CURRENT_LANGUAGE == "sv") : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                     <span>
                         Fairdata
-                        <a class="fd-link fd-link-footer" rel="noreferrer noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
+                        <a class="fd-link fd-link-footer" rel="noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
                             <img width="175px" src="<?php print_unescaped(image_path('', 'supporting-eosc.jpg')); ?>" alt="Supporting class="logo">
                         </a>
                     </span>
@@ -427,12 +427,12 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                     <span>Information</span>
-                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" rel="noreferrer noopener" target="_blank">Villkor och policyer</a></p>
-                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" rel="noreferrer noopener" target="_blank">Kontrakt och integritet</a></p>
+                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" rel="noopener" target="_blank">Villkor och policyer</a></p>
+                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" rel="noopener" target="_blank">Kontrakt och integritet</a></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Tillgänglighet</span>
-                    <p><a href="https://www.fairdata.fi/en/accessibility/" rel="noreferrer noopener" target="_blank">Tillgänglighet uttalande</a></p>
+                    <p><a href="https://www.fairdata.fi/en/accessibility/" rel="noopener" target="_blank">Tillgänglighet uttalande</a></p>
                 </div>
                 <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Kontakt</span>
@@ -440,14 +440,14 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Följ</span>
-                    <p><a href="https://x.com/Fairdata_fi" rel="noreferrer noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
-                    <p><a href="https://www.fairdata.fi/en/news/" rel="noreferrer noopener" target="_blank">Nyheter</a></p>
+                    <p><a href="https://x.com/Fairdata_fi" rel="noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
+                    <p><a href="https://www.fairdata.fi/en/news/" rel="noopener" target="_blank">Nyheter</a></p>
                 </div>
             <?php else : ?>
                 <div class="col col-lg-4 col-md-12 col-sm-12 col-12">
                     <span>
                         Fairdata
-                        <a class="fd-link fd-link-footer" rel="noreferrer noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
+                        <a class="fd-link fd-link-footer" rel="noopener" target="_blank" href="https://www.fairdata.fi/en/fairdata-services/">
                             <img width="175px" src="<?php print_unescaped(image_path('', 'supporting-eosc.jpg')); ?>" alt="Supporting class="logo">
                         </a>
                     </span>
@@ -455,12 +455,12 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 offset-lg-1">
                     <span>Information</span>
-                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" rel="noreferrer noopener" target="_blank">Terms and Policies</a></p>
-                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" rel="noreferrer noopener" target="_blank">Contracts and Privacy</a></p>
+                    <p><a href="https://www.fairdata.fi/en/terms-and-policies/" rel="noopener" target="_blank">Terms and Policies</a></p>
+                    <p><a href="https://www.fairdata.fi/en/contracts-and-privacy/" rel="noopener" target="_blank">Contracts and Privacy</a></p>
                 </div>
                 <div class="col padding-right col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Accessibility</span>
-                    <p><a href="https://www.fairdata.fi/en/accessibility/" rel="noreferrer noopener" target="_blank">Accessibility statement</a></p>
+                    <p><a href="https://www.fairdata.fi/en/accessibility/" rel="noopener" target="_blank">Accessibility statement</a></p>
                 </div>
                 <div class="col col-lg-2 col-md-3 col-sm-6 col-6">
                     <span>Contact</span>
@@ -468,8 +468,8 @@ function localLoginOrSharePasswordActive()
                 </div>
                 <div class="col col-lg-1 col-md-3 col-sm-6 col-6">
                     <span>Follow</span>
-                    <p><a href="https://x.com/Fairdata_fi" rel="noreferrer noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
-                    <p><a href="https://www.fairdata.fi/en/news/" rel="noreferrer noopener" target="_blank">What's new</a></p>
+                    <p><a href="https://x.com/Fairdata_fi" rel="noopener" target="_blank" title="The service formally known as Twitter">X&nbsp;@Fairdata_fi</a></p>
+                    <p><a href="https://www.fairdata.fi/en/news/" rel="noopener" target="_blank">What's new</a></p>
                 </div>
             <?php endif; ?>
         </div>

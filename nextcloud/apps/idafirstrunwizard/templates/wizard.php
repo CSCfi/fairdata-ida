@@ -82,7 +82,7 @@ if ($CURRENT_LANGUAGE != 'en' && $CURRENT_LANGUAGE != 'fi' && $CURRENT_LANGUAGE 
                 can review the full user guide later, if you like.
             </p>
             <p>
-                Read the <a href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA Quick Start Guide</a>
+                Read the <a href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noopener" target="_blank">IDA Quick Start Guide</a>
             </p>
         <?php endif; ?>
 
@@ -97,7 +97,7 @@ if ($CURRENT_LANGUAGE != 'en' && $CURRENT_LANGUAGE != 'fi' && $CURRENT_LANGUAGE 
                 Näihin tutustuminen on nopeaa. Voit halutessasi myöhemmin tutustua laajempaan käyttöoppaaseen.
             </p>
             <p>
-                Lue <a href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn pikaopas</a>
+                Lue <a href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noopener" target="_blank">IDAn pikaopas</a>
             </p>
         <?php endif; ?>
 

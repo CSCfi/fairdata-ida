@@ -35,8 +35,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
     <?php if($l->getLanguageCode() === 'fi') { ?>
         <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
             <p>
-                <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;pikaopas</a><br>
-                <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas" rel="noreferrer noopener" target="_blank">IDAn&nbsp;käyttöopas</a>
+                <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/idan-pikaopas" rel="noopener" target="_blank">IDAn&nbsp;pikaopas</a><br>
+                <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas" rel="noopener" target="_blank">IDAn&nbsp;käyttöopas</a>
             </p>
         </div>
         <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 74px;">
@@ -45,14 +45,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                 varsinaisessa&nbsp;säilytyksessä<br>
                 IDAssa&nbsp;vasta&nbsp;kun&nbsp;ne&nbsp;ovat<br>
                 Jäädytetyllä&nbsp;alueella.<br>
-                <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas#projektin-datan-sailytysalueet" rel="noreferrer noopener" target="_blank">Lisätietoja</a>
+                <a style="color: #007FAD;" href="https://www.fairdata.fi/ida/kayttoopas#projektin-datan-sailytysalueet" rel="noopener" target="_blank">Lisätietoja</a>
             </p>
         </div>
     <?php } else { ?>
     <div style="padding-left: 25px; padding-top: 0px; padding-bottom: 20px;">
         <p>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" rel="noreferrer noopener" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
+            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/quick-start-guide" rel="noopener" target="_blank">IDA&nbsp;Quick&nbsp;Start&nbsp;Guide</a><br>
+            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide" rel="noopener" target="_blank">IDA&nbsp;User&apos;s&nbsp;Guide</a>
         </p>
         </div>
         <div style="padding: 15px; padding-right: 25px; padding-top: 0px; padding-bottom: 74px;">
@@ -60,7 +60,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
             <b>Note:</b>&nbsp;Files&nbsp;are&nbsp;safely&nbsp;stored<br>
             in&nbsp;the&nbsp;IDA&nbsp;service&nbsp;when&nbsp;they<br>
             are&nbsp;in&nbsp;the&nbsp;Frozen&nbsp;area.<br>
-            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" rel="noreferrer noopener" target="_blank">More information</a>
+            <a style="color: #007FAD;" href="https://www.fairdata.fi/en/ida/user-guide#project-data-storage" rel="noopener" target="_blank">More information</a>
         </p>
     </div>
     
