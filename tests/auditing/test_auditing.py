@@ -85,16 +85,16 @@
 # c. Projects will be audited with --frozen --timestamps --checksums parameters,
 #    limiting checks to files in the frozen area.
 #
-# d. Projects will be audited with --changed-since START --timestamps --checksums
-#    parameters, limiting checks to files uploaded or frozen since the START
+# d. Projects will be audited with --changed-after START --timestamps --checksums
+#    parameters, limiting checks to files uploaded or frozen after the START
 #    timestamp, and their ancestor folders.
 #
-# e. Projects will be audited with --changed-since INITIALIZED --timestamps
-#    --checksums parameters, limiting checks to files uploaded or frozen since
+# e. Projects will be audited with --changed-after INITIALIZED --timestamps
+#    --checksums parameters, limiting checks to files uploaded or frozen after
 #    the INITIALIZED timestamp, and their ancestor folders.
 #
-# f. Projects will be audited with --changed-since MODIFIED --timestamps
-#    --checksums parameters, limiting checks to files uploaded or frozen since
+# f. Projects will be audited with --changed-after MODIFIED --timestamps
+#    --checksums parameters, limiting checks to files uploaded or frozen after
 #    the MODIFIED timestamp, and their ancestor folders, verifying no errors
 #    reported for any projects.
 #
@@ -154,7 +154,6 @@ import subprocess
 import unittest
 import psycopg2
 import pymysql
-import time
 import os
 import sys
 import shutil
@@ -238,80 +237,6 @@ class TestAuditing(unittest.TestCase):
                 print('')
 
 
-    def remove_report(self, pathname):
-        try:
-            os.remove(pathname)
-        except:
-            pass
-
-
-    def audit_project(self, project, status, since = None, area = None, timestamps = True, checksums = True):
-        """
-        Audit the specified project, verify that the audit report file was created with the specified
-        status, and load and return the audit report as a JSON object, with the audit report pathname
-        defined in the returned object for later timestamp repair if/as needed.
-
-        A full audit with no restrictions and including timestamps and checksums is done by default.
-        """
-
-        parameters = ""
-
-        if since is None and area is None and timestamps and checksums:
-            parameters = " --full"
-
-        else:
-
-            if since:
-                parameters = "%s --changed-since %s" % (parameters, since)
-
-            if area:
-                parameters = "%s --%s" % (parameters, area)
-                area = " %s" % area
-
-            if timestamps:
-                parameters = "%s --timestamps" % parameters
-
-            if checksums:
-                parameters = "%s --checksums" % parameters
-
-        if self.config.get('SEND_TEST_EMAILS') == 'true':
-            parameters = "%s --report" % parameters
-
-        print ("(auditing project %s%s)" % (project, parameters))
-
-        cmd = "sudo -u %s DEBUG=false AUDIT_START_OFFSET=0 %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
-
-        try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-
-        self.assertNotEqual(output, None, output)
-        self.assertNotEqual(output, "", output)
-        self.assertTrue(("Audit results saved to file " in output), output)
-
-        start = output.index("Audit results saved to file ")
-        report_pathname = output[start + 28:]
-        report_pathname = report_pathname.split('\n', 1)[0]
-
-        print("Verify audit report exists and has the correct status")
-        self.assertTrue(report_pathname.endswith(".%s.json" % status), report_pathname)
-        path = Path(report_pathname)
-        self.assertTrue(path.exists(), path)
-        self.assertTrue(path.is_file(), path)
-
-        print("(loading audit report %s)" % report_pathname)
-        try:
-            report_data = json.load(open(report_pathname))
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-        self.assertEqual(report_data.get("project"), project)
-
-        report_data["reportPathname"] = report_pathname
-
-        return report_data
-
-
     def test_auditing(self):
 
         invalid_timestamp = "2023-01-01T00:00:00Z"
@@ -358,6 +283,46 @@ class TestAuditing(unittest.TestCase):
 
         # --------------------------------------------------------------------------------
         # --------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+
+        print("--- Auditing project A with AFTER and BEFORE and checking results")
+
+        report_data = audit_project(self, "test_project_a", "OK", before=self.config['START'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertEqual(report_data.get('changedBefore'), self.config['START'])
+        self.assertEqual(report_data.get("filesystemNodeCount"), 0)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 0)
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+        self.assertEqual(report_data.get("errorCount"), 0)
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+        remove_report(self, report_data['reportPathname'])
+
+        report_data = audit_project(self, "test_project_a", "OK", after=self.config['START'], before=self.config['INITIALIZED'])
+        self.assertTrue(report_data.get('auditStaging'), False)
+        self.assertTrue(report_data.get('auditFrozen'), False)
+        self.assertTrue(report_data.get('auditChecksums'), False)
+        self.assertTrue(report_data.get('auditTimestamps'), False)
+        self.assertEqual(report_data.get('changedAfter'), self.config['START'])
+        self.assertEqual(report_data.get('changedBefore'), self.config['INITIALIZED'])
+        self.assertEqual(report_data.get("filesystemNodeCount"), 113)
+        self.assertEqual(report_data.get("nextcloudNodeCount"), 113)
+        self.assertEqual(report_data.get("frozenFileCount"), 0)
+        self.assertEqual(report_data.get("metaxFileCount"), 0)
+        self.assertEqual(report_data.get("invalidNodeCount"), 0)
+        self.assertEqual(report_data.get("errorNodeCount"), 0)
+        self.assertEqual(report_data.get("errorCount"), 0)
+        self.assertIsNone(report_data.get("oldest"))
+        self.assertIsNone(report_data.get("newest"))
+        remove_report(self, report_data['reportPathname'])
+
         # --------------------------------------------------------------------------------
 
         print("--- Modifying state of test project A")
@@ -879,7 +844,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Checking detection of active projects")
 
-        print("(retrieving list of active projects since initialization)")
+        print("(retrieving list of active projects since start of tests)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-active-projects %s" % (
             self.config["HTTPD_USER"],
             self.config["ROOT"],
@@ -904,6 +869,50 @@ class TestAuditing(unittest.TestCase):
 
         print("Verify active projects list includes project E")
         self.assertIn("test_project_e", output)
+
+        print("Verify active projects list includes project P")
+        self.assertIn("test_project_p", output)
+
+        print("Verify active projects list includes project S")
+        self.assertIn("test_project_s", output)
+
+        print("Verify active projects list includes project F")
+        self.assertIn("test_project_f", output)
+
+        print("(auditing active projects since start of tests)")
+        cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-active-projects %s" % (
+            self.config["HTTPD_USER"],
+            self.config["ROOT"],
+            self.config["START"]
+        )
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding)
+        except subprocess.CalledProcessError as error:
+            self.fail(error.output.decode(sys.stdout.encoding))
+
+        print("Verify audit results includes project A")
+        self.assertIn('"project": "test_project_a"', output)
+
+        print("Verify audit results includes project B")
+        self.assertIn('"project": "test_project_b"', output)
+
+        print("Verify audit results includes project C")
+        self.assertIn('"project": "test_project_c"', output)
+
+        print("Verify audit results includes project D")
+        self.assertIn('"project": "test_project_d"', output)
+
+        print("Verify audit results includes project E")
+        self.assertIn('"project": "test_project_e"', output)
+
+        print("Verify audit results includes project P")
+        self.assertIn('"project": "test_project_p"', output)
+
+        print("Verify audit results includes project S")
+        self.assertIn('"project": "test_project_s"', output)
+
+        print("Verify audit results includes project F")
+        self.assertIn('"project": "test_project_f"', output)
 
         print("(retrieving list of active projects since initialization)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-active-projects %s" % (
@@ -930,6 +939,15 @@ class TestAuditing(unittest.TestCase):
 
         print("Verify active projects list does not include project E")
         self.assertNotIn("test_project_e", output)
+
+        print("Verify active projects list does not include project P")
+        self.assertNotIn("test_project_p", output)
+
+        print("Verify active projects list does not include project S")
+        self.assertNotIn("test_project_s", output)
+
+        print("Verify active projects list does not include project F")
+        self.assertNotIn("test_project_f", output)
 
         print("(retrieving list of active projects since modifications)")
         cmd = "sudo -u %s DEBUG=false %s/utils/admin/list-active-projects %s" % (
@@ -961,7 +979,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "ERR")
+        report_data = audit_project(self, "test_project_a", "ERR")
         report_pathname_a = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
@@ -1034,7 +1052,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing staging area of project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "ERR", area="staging")
+        report_data = audit_project(self, "test_project_a", "ERR", area="staging")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertFalse(report_data.get('auditFrozen'), True)
         self.assertTrue(report_data.get('auditChecksums'), False)
@@ -1068,11 +1086,11 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in staging area")
         self.assertFalse(any(map(lambda key: key.startswith('frozen/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing frozen area of project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "ERR", area="frozen")
+        report_data = audit_project(self, "test_project_a", "ERR", area="frozen")
         self.assertFalse(report_data.get('auditStaging'), True)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
@@ -1106,16 +1124,17 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in frozen area")
         self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project A after start of tests and checking results")
 
-        report_data = self.audit_project("test_project_a", "ERR", since=self.config['START'])
+        report_data = audit_project(self, "test_project_a", "ERR", after=self.config['START'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['START'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['START'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 101)
@@ -1142,16 +1161,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project A after initialization and checking results")
 
-        report_data = self.audit_project("test_project_a", "ERR", since=self.config['INITIALIZED'])
+        report_data = audit_project(self, "test_project_a", "ERR", after=self.config['INITIALIZED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['INITIALIZED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 6)
@@ -1178,16 +1198,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project A after modifications and checking results")
 
-        report_data = self.audit_project("test_project_a", "OK", since=self.config['MODIFIED'])
+        report_data = audit_project(self, "test_project_a", "OK", after=self.config['MODIFIED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['MODIFIED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1214,18 +1235,19 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project B and checking results")
 
-        report_data = self.audit_project("test_project_b", "ERR")
+        report_data = audit_project(self, "test_project_b", "ERR")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         report_pathname_b = report_data["reportPathname"]
 
@@ -1288,12 +1310,13 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing staging area of project B and checking results")
 
-        report_data = self.audit_project("test_project_b", "OK", area="staging")
+        report_data = audit_project(self, "test_project_b", "OK", area="staging")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertFalse(report_data.get('auditFrozen'), True)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 101)
@@ -1320,16 +1343,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing frozen area of project B and checking results")
 
-        report_data = self.audit_project("test_project_b", "ERR", area="frozen")
+        report_data = audit_project(self, "test_project_b", "ERR", area="frozen")
         self.assertFalse(report_data.get('auditStaging'), True)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 14)
@@ -1359,16 +1383,17 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in frozen area")
         self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project B after start of tests and checking results")
 
-        report_data = self.audit_project("test_project_b", "ERR", since=self.config['START'])
+        report_data = audit_project(self, "test_project_b", "ERR", after=self.config['START'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['START'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['START'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 115)
@@ -1395,16 +1420,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project B after initialization and checking results")
 
-        report_data = self.audit_project("test_project_b", "ERR", since=self.config['INITIALIZED'])
+        report_data = audit_project(self, "test_project_b", "ERR", after=self.config['INITIALIZED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['INITIALIZED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1431,16 +1457,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project B after modifications and checking results")
 
-        report_data = self.audit_project("test_project_b", "OK", since=self.config['MODIFIED'])
+        report_data = audit_project(self, "test_project_b", "OK", after=self.config['MODIFIED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['MODIFIED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1467,18 +1494,19 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project C and checking results")
 
-        report_data = self.audit_project("test_project_c", "ERR")
+        report_data = audit_project(self, "test_project_c", "ERR")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         report_pathname_c = report_data["reportPathname"]
 
@@ -1557,12 +1585,13 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing staging area of project C and checking results")
 
-        report_data = self.audit_project("test_project_c", "ERR", area="staging")
+        report_data = audit_project(self, "test_project_c", "ERR", area="staging")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertFalse(report_data.get('auditFrozen'), True)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 98)
@@ -1592,16 +1621,17 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in staging area")
         self.assertFalse(any(map(lambda key: key.startswith('frozen/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing frozen area of project C and checking results")
 
-        report_data = self.audit_project("test_project_c", "ERR", area="frozen")
+        report_data = audit_project(self, "test_project_c", "ERR", area="frozen")
         self.assertFalse(report_data.get('auditStaging'), True)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 14)
@@ -1631,16 +1661,17 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in frozen area")
         self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project C after start of tests and checking results")
 
-        report_data = self.audit_project("test_project_c", "ERR", since=self.config['START'])
+        report_data = audit_project(self, "test_project_c", "ERR", after=self.config['START'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['START'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['START'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 112)
@@ -1667,16 +1698,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project C after initialization and checking results")
 
-        report_data = self.audit_project("test_project_c", "ERR", since=self.config['INITIALIZED'])
+        report_data = audit_project(self, "test_project_c", "ERR", after=self.config['INITIALIZED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['INITIALIZED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1703,16 +1735,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project C after modifications and checking results")
 
-        report_data = self.audit_project("test_project_c", "OK", since=self.config['MODIFIED'])
+        report_data = audit_project(self, "test_project_c", "OK", after=self.config['MODIFIED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['MODIFIED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -1742,18 +1775,19 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project D and checking results")
 
-        report_data = self.audit_project("test_project_d", "ERR")
+        report_data = audit_project(self, "test_project_d", "ERR")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         report_pathname_d = report_data["reportPathname"]
 
@@ -1850,12 +1884,13 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing staging area of project D and checking results")
 
-        report_data = self.audit_project("test_project_d", "OK", area="staging")
+        report_data = audit_project(self, "test_project_d", "OK", area="staging")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertFalse(report_data.get('auditFrozen'), True)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 103)
@@ -1885,16 +1920,17 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in staging area")
         self.assertFalse(any(map(lambda key: key.startswith('frozen/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing frozen area of project D and checking results")
 
-        report_data = self.audit_project("test_project_d", "ERR", area="frozen")
+        report_data = audit_project(self, "test_project_d", "ERR", area="frozen")
         self.assertFalse(report_data.get('auditStaging'), True)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1924,16 +1960,17 @@ class TestAuditing(unittest.TestCase):
         print("Verify all reported invalid nodes are in frozen area")
         self.assertFalse(any(map(lambda key: key.startswith('staging/'), report_data['invalidNodes'].keys())))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project D after start of tests and checking results")
 
-        report_data = self.audit_project("test_project_d", "ERR", since=self.config['START'])
+        report_data = audit_project(self, "test_project_d", "ERR", after=self.config['START'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['START'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['START'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 116)
@@ -1960,16 +1997,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project D after initialization and checking results")
 
-        report_data = self.audit_project("test_project_d", "ERR", since=self.config['INITIALIZED'])
+        report_data = audit_project(self, "test_project_d", "ERR", after=self.config['INITIALIZED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['INITIALIZED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 13)
@@ -1996,16 +2034,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNotNone(report_data.get("oldest"))
         self.assertIsNotNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project D after modifications and checking results")
 
-        report_data = self.audit_project("test_project_d", "OK", since=self.config['MODIFIED'])
+        report_data = audit_project(self, "test_project_d", "OK", after=self.config['MODIFIED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['MODIFIED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -2032,18 +2071,19 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
         print("--- Auditing project E and checking results")
 
-        report_data = self.audit_project("test_project_e", "OK")
+        report_data = audit_project(self, "test_project_e", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 113)
@@ -2070,16 +2110,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing staging area of project E and checking results")
 
-        report_data = self.audit_project("test_project_e", "OK", area="staging")
+        report_data = audit_project(self, "test_project_e", "OK", area="staging")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertFalse(report_data.get('auditFrozen'), True)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 108)
@@ -2106,16 +2147,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing frozen area of project E and checking results")
 
-        report_data = self.audit_project("test_project_e", "OK", area="frozen")
+        report_data = audit_project(self, "test_project_e", "OK", area="frozen")
         self.assertFalse(report_data.get('auditStaging'), True)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 5)
@@ -2142,16 +2184,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project E after start of tests and checking results")
 
-        report_data = self.audit_project("test_project_e", "OK", since=self.config['START'])
+        report_data = audit_project(self, "test_project_e", "OK", after=self.config['START'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['START'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['START'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 113)
@@ -2178,16 +2221,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project E after initialization and checking results")
 
-        report_data = self.audit_project("test_project_e", "OK", since=self.config['INITIALIZED'])
+        report_data = audit_project(self, "test_project_e", "OK", after=self.config['INITIALIZED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['INITIALIZED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['INITIALIZED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -2214,16 +2258,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Auditing changes in project E after modifications and checking results")
 
-        report_data = self.audit_project("test_project_e", "OK", since=self.config['MODIFIED'])
+        report_data = audit_project(self, "test_project_e", "OK", after=self.config['MODIFIED'])
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertEqual(report_data.get('changedSince'), self.config['MODIFIED'])
+        self.assertEqual(report_data.get('changedAfter'), self.config['MODIFIED'])
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 0)
@@ -2250,7 +2295,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
 
@@ -2445,10 +2490,10 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(metax_file_pid_diff_1v2), 2)
         self.assertEqual(len(metax_file_pid_diff_2v1), 0)
 
-        self.remove_report(report_pathname_a)
-        self.remove_report(report_pathname_b)
-        self.remove_report(report_pathname_c)
-        self.remove_report(report_pathname_d)
+        remove_report(self, report_pathname_a)
+        remove_report(self, report_pathname_b)
+        remove_report(self, report_pathname_c)
+        remove_report(self, report_pathname_d)
 
         # --------------------------------------------------------------------------------
         # --------------------------------------------------------------------------------
@@ -2456,12 +2501,13 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "OK")
+        report_data = audit_project(self, "test_project_a", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 103)
@@ -2488,16 +2534,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Re-auditing project B and checking results")
 
-        report_data = self.audit_project("test_project_b", "OK")
+        report_data = audit_project(self, "test_project_b", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 115)
@@ -2524,16 +2571,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Re-auditing project C and checking results")
 
-        report_data = self.audit_project("test_project_c", "OK")
+        report_data = audit_project(self, "test_project_c", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 112)
@@ -2560,16 +2608,17 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Re-auditing project D and checking results")
 
-        report_data = self.audit_project("test_project_d", "OK")
+        report_data = audit_project(self, "test_project_d", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 116)
@@ -2640,12 +2689,13 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Re-auditing project D and checking results")
 
-        report_data = self.audit_project("test_project_d", "OK")
+        report_data = audit_project(self, "test_project_d", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("Verify correct number of reported filesystem nodes")
         self.assertEqual(report_data.get("filesystemNodeCount"), 116)
@@ -2676,7 +2726,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         print("--- Modifying state of test project A for checksum validation during freezing")
 
@@ -2751,13 +2801,14 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project A and verifying checksum errors reported")
 
-        report_data = self.audit_project("test_project_a", "ERR")
+        report_data = audit_project(self, "test_project_a", "ERR")
         report_pathname = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
         self.assertEqual(report_data.get('invalidNodeCount'), 6)
         self.assertEqual(report_data.get('errorNodeCount'), 15)
         self.assertEqual(report_data.get('errorCount'), 3)
@@ -2780,12 +2831,13 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project A and verifying no errors are reported")
 
-        report_data = self.audit_project("test_project_a", "OK")
+        report_data = audit_project(self, "test_project_a", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("--- Verifying repaired state of Project A")
 
@@ -2997,7 +3049,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project B with neither checksum nor timestamp options and verifying no errors reported")
 
-        report_data = self.audit_project("test_project_b", "OK", checksums = False, timestamps = False)
+        report_data = audit_project(self, "test_project_b", "OK", checksums = False, timestamps = False)
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertFalse(report_data.get('auditChecksums'), True)
@@ -3005,17 +3057,19 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('invalidNodeCount'), 0)
         self.assertEqual(report_data.get('errorNodeCount'), 0)
         self.assertEqual(report_data.get('errorCount'), 0)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("--- Auditing project B with --checksums parameter and verifying only checksum errors are reported")
 
-        report_data = self.audit_project("test_project_b", "ERR", checksums = True, timestamps = False)
+        report_data = audit_project(self, "test_project_b", "ERR", checksums = True, timestamps = False)
         report_pathname = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertFalse(report_data.get('auditTimestamps'), True)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
         self.assertEqual(report_data.get('invalidNodeCount'), 4)
         self.assertEqual(report_data.get('errorNodeCount'), 10)
         self.assertEqual(report_data.get('errorCount'), 6)
@@ -3030,13 +3084,14 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project B with --timestamp parameter and verifying only timestamp errors are reported")
 
-        report_data = self.audit_project("test_project_b", "ERR", checksums = False, timestamps = True)
+        report_data = audit_project(self, "test_project_b", "ERR", checksums = False, timestamps = True)
         report_pathname = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertFalse(report_data.get('auditChecksums'), True)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
         self.assertEqual(report_data.get('invalidNodeCount'), 4)
         self.assertEqual(report_data.get('errorNodeCount'), 10)
         self.assertEqual(report_data.get('errorCount'), 6)
@@ -3051,13 +3106,14 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project B with --full parameter and verifying both checksum and timestamp errors are reported")
 
-        report_data = self.audit_project("test_project_b", "ERR")
+        report_data = audit_project(self, "test_project_b", "ERR")
         report_pathname = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
         self.assertTrue(report_data.get('auditTimestamps'), False)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
         self.assertEqual(report_data.get('invalidNodeCount'), 4)
         self.assertEqual(report_data.get('errorNodeCount'), 20)
         self.assertEqual(report_data.get('errorCount'), 12)
@@ -3089,7 +3145,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project with --full parameter and verifying no errors are reported")
 
-        report_data = self.audit_project("test_project_b", "OK")
+        report_data = audit_project(self, "test_project_b", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
@@ -3097,7 +3153,8 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(report_data.get('invalidNodeCount'), 0)
         self.assertEqual(report_data.get('errorNodeCount'), 0)
         self.assertEqual(report_data.get('errorCount'), 0)
-        self.assertIsNone(report_data.get('changedSince'))
+        self.assertIsNone(report_data.get('changedAfter'))
+        self.assertIsNone(report_data.get('changedBefore'))
 
         print("--- Verifying repaired state of Project B")
 
@@ -3272,7 +3329,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(metax_file_pid_diff_4v3), 0)
 
         print("--- Auditing project E and checking results")
-        self.audit_project("test_project_e", "OK")
+        audit_project(self, "test_project_e", "OK")
 
         print("(refreezing folder /testdata/2017-08)")
         data = {"project": "test_project_e", "pathname": "/testdata/2017-08"}
@@ -3298,7 +3355,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(metax_file_pids_5), 83)
 
         print("--- Auditing project E and checking results")
-        self.audit_project("test_project_e", "OK")
+        audit_project(self, "test_project_e", "OK")
 
         print("--- Modifying state of test project E (pass 2 repair with audit error report)")
 
@@ -3338,7 +3395,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(metax_file_pid_diff_6v5), 0)
 
         print("--- Auditing project E and checking results")
-        report_data = self.audit_project("test_project_e", "ERR")
+        report_data = audit_project(self, "test_project_e", "ERR")
         report_pathname_e = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
@@ -3424,7 +3481,7 @@ class TestAuditing(unittest.TestCase):
         self.assertEqual(len(metax_file_pid_diff_4v3), 0)
 
         print("--- Auditing project E and checking results")
-        self.audit_project("test_project_e", "OK")
+        audit_project(self, "test_project_e", "OK")
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

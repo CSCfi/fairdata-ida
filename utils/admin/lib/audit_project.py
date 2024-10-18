@@ -46,6 +46,8 @@ time.tzset()
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+# NOTES:
+#
 # Node contexts:
 #
 # filesystem    glusterfs filesystem details
@@ -57,7 +59,7 @@ def main():
 
     try:
 
-        # Arguments: ROOT PROJECT START SINCE [ ( --full | [ ( --staging | --frozen ) ] [ --timestamps ] [ --checksums ] ) ]
+        # Arguments: ROOT PROJECT START AFTER BEFORE [ ( --full | [ ( --staging | --frozen ) ] [ --timestamps ] [ --checksums ] ) ]
 
         argc = len(sys.argv)
 
@@ -90,8 +92,10 @@ def main():
         config.PROJECT_CREATED = max([normalize_timestamp(os.path.getmtime(config.PROJECT_ROOT)), config.IDA_MIGRATION])
 
         config.START = sys.argv[3]
-        config.SINCE = sys.argv[4]
-        config.CHANGED_ONLY = (config.SINCE > config.IDA_MIGRATION)
+        config.AFTER = sys.argv[4]
+        config.BEFORE = sys.argv[5]
+
+        config.CHANGED_ONLY = ((config.AFTER > config.IDA_MIGRATION) or (config.BEFORE < config.START))
 
         config.FULL_AUDIT = False
         config.AUDIT_STAGING = True
@@ -99,8 +103,8 @@ def main():
         config.AUDIT_TIMESTAMPS = False
         config.AUDIT_CHECKSUMS = False
 
-        if argc > 5:
-            for i in range(5,argc):
+        if argc > 6:
+            for i in range(6,argc):
                 arg = sys.argv[i]
                 if arg == '--full':
                     if config.AUDIT_STAGING == False:
@@ -137,57 +141,52 @@ def main():
         else:
             config.LOG_LEVEL = logging.INFO
 
-        # Allow environment variable override of audit start offset (used by tests)
-        audit_start_offset = os.environ.get('AUDIT_START_OFFSET')
-        if audit_start_offset:
-            config.AUDIT_START_OFFSET = audit_start_offset
-
-        # If offset not defined either in environment or configuration, use default
-        if not hasattr(config, 'AUDIT_START_OFFSET'):
-            config.AUDIT_START_OFFSET = 15
-
-        # Convert START ISO timestamp strings to epoch seconds and calculate audit start offset
+        # Convert START ISO timestamp strings to epoch seconds
 
         start_datetime = dateutil.parser.isoparse(config.START)
         config.START_TS = start_datetime.replace(tzinfo=timezone.utc).timestamp()
-        config.START_OFFSET_TS = config.START_TS - (int(config.AUDIT_START_OFFSET) * 60)
 
-        since_datetime = dateutil.parser.isoparse(config.SINCE)
-        config.SINCE_TS = since_datetime.replace(tzinfo=timezone.utc).timestamp()
+        after_datetime = dateutil.parser.isoparse(config.AFTER)
+        config.AFTER_TS = after_datetime.replace(tzinfo=timezone.utc).timestamp()
+
+        before_datetime = dateutil.parser.isoparse(config.BEFORE)
+        config.BEFORE_TS = before_datetime.replace(tzinfo=timezone.utc).timestamp()
 
         if config.DEBUG:
             sys.stderr.write("--- %s ---\n" % config.SCRIPT)
-            sys.stderr.write("HOSTNAME:        %s\n" % socket.gethostname())
-            sys.stderr.write("ROOT:            %s\n" % config.ROOT)
-            sys.stderr.write("PROJECT:         %s\n" % config.PROJECT)
-            sys.stderr.write("DATA_ROOT:       %s\n" % config.STORAGE_OC_DATA_ROOT)
-            sys.stderr.write("LOG:             %s\n" % config.LOG)
-            sys.stderr.write("LOG_LEVEL:       %s\n" % config.LOG_LEVEL)
-            sys.stderr.write("DBHOST:          %s\n" % config.DBHOST)
-            sys.stderr.write("DBROUSER:        %s\n" % config.DBROUSER)
-            sys.stderr.write("DBNAME:          %s\n" % config.DBNAME)
-            sys.stderr.write("METAX_API:       %s\n" % config.METAX_API)
-            sys.stderr.write("METAX_VERSION:   %s\n" % str(config.METAX_API_VERSION))
-            sys.stderr.write("ARGS#:           %d\n" % argc)
-            sys.stderr.write("ARGS:            %s\n" % str(sys.argv))
-            sys.stderr.write("PID:             %s\n" % config.PID)
-            sys.stderr.write("CHANGED_ONLY     %s\n" % config.CHANGED_ONLY)
-            sys.stderr.write("STAGING:         %s\n" % config.AUDIT_STAGING)
-            sys.stderr.write("FROZEN:          %s\n" % config.AUDIT_FROZEN)
-            sys.stderr.write("TIMESTAMPS:      %s\n" % config.AUDIT_TIMESTAMPS)
-            sys.stderr.write("CHECKSUMS:       %s\n" % config.AUDIT_CHECKSUMS)
-            sys.stderr.write("MIGRATION:       %s\n" % config.IDA_MIGRATION)
-            sys.stderr.write("MIGRATION_TS:    %s\n" % config.IDA_MIGRATION_TS)
-            sys.stderr.write("START:           %s\n" % config.START)
-            sys.stderr.write("START_DT:        %s\n" % normalize_timestamp(start_datetime))
-            sys.stderr.write("START_TS:        %d\n" % config.START_TS)
-            sys.stderr.write("START_TS_CHK:    %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.START_TS)))
-            sys.stderr.write("START_OFFSET     %s\n" % config.AUDIT_START_OFFSET)
-            sys.stderr.write("START_OFFSET_TS: %d\n" % config.START_OFFSET_TS)
-            sys.stderr.write("SINCE:           %s\n" % config.SINCE)
-            sys.stderr.write("SINCE_DT:        %s\n" % normalize_timestamp(since_datetime))
-            sys.stderr.write("SINCE_TS:        %d\n" % config.SINCE_TS)
-            sys.stderr.write("SINCE_TS_CHK:    %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.SINCE_TS)))
+            sys.stderr.write("HOSTNAME:           %s\n" % socket.gethostname())
+            sys.stderr.write("ROOT:               %s\n" % config.ROOT)
+            sys.stderr.write("PROJECT:            %s\n" % config.PROJECT)
+            sys.stderr.write("DATA_ROOT:          %s\n" % config.STORAGE_OC_DATA_ROOT)
+            sys.stderr.write("LOG:                %s\n" % config.LOG)
+            sys.stderr.write("LOG_LEVEL:          %s\n" % config.LOG_LEVEL)
+            sys.stderr.write("DBHOST:             %s\n" % config.DBHOST)
+            sys.stderr.write("DBROUSER:           %s\n" % config.DBROUSER)
+            sys.stderr.write("DBNAME:             %s\n" % config.DBNAME)
+            sys.stderr.write("METAX_API:          %s\n" % config.METAX_API)
+            sys.stderr.write("METAX_API_VERSION:  %s\n" % str(config.METAX_API_VERSION))
+            sys.stderr.write("ARGS#:              %d\n" % argc)
+            sys.stderr.write("ARGS:               %s\n" % str(sys.argv))
+            sys.stderr.write("PID:                %s\n" % config.PID)
+            sys.stderr.write("CHANGED_ONLY        %s\n" % config.CHANGED_ONLY)
+            sys.stderr.write("AUDIT_STAGING:      %s\n" % config.AUDIT_STAGING)
+            sys.stderr.write("AUDIT_FROZEN:       %s\n" % config.AUDIT_FROZEN)
+            sys.stderr.write("AUDIT_TIMESTAMPS:   %s\n" % config.AUDIT_TIMESTAMPS)
+            sys.stderr.write("AUDIT_CHECKSUMS:    %s\n" % config.AUDIT_CHECKSUMS)
+            sys.stderr.write("IDA_MIGRATION:      %s\n" % config.IDA_MIGRATION)
+            sys.stderr.write("IDA_MIGRATION_TS:   %s\n" % config.IDA_MIGRATION_TS)
+            sys.stderr.write("AFTER:              %s\n" % config.AFTER)
+            sys.stderr.write("AFTER_TS:           %d\n" % config.AFTER_TS)
+            sys.stderr.write("AFTER_TS_CHK:       %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.AFTER_TS)))
+            sys.stderr.write("BEFORE:             %s\n" % config.BEFORE)
+            sys.stderr.write("BEFORE_TS:          %d\n" % config.BEFORE_TS)
+            sys.stderr.write("BEFORE_TS_CHK:      %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.BEFORE_TS)))
+            sys.stderr.write("START:              %s\n" % config.START)
+            sys.stderr.write("START_TS:           %d\n" % config.START_TS)
+            sys.stderr.write("START_TS_CHK:       %s\n" % normalize_timestamp(datetime.utcfromtimestamp(config.START_TS)))
+
+        if (config.AFTER_TS >= config.BEFORE_TS):
+            raise Exception("AFTER timestamp must be earlier than AUDIT_BEFORE adjusted timestamp")
 
         # Initialize logging using UTC timestamps
 
@@ -244,7 +243,7 @@ def add_frozen_files(nodes, counts, config):
     cur = conn.cursor()
 
     # Select all records for actively frozen files which frozen before the START
-    # timestamp and after the SINCE timestamp (we also grab and record the metadata
+    # timestamp and after the AFTER timestamp (we also grab and record the metadata
     # and replicated timestamps, to decide whether we should include those files in
     # comparisons with Metax and the replication)
 
@@ -254,7 +253,7 @@ def add_frozen_files(nodes, counts, config):
              AND cleared IS NULL \
              AND frozen IS NOT NULL \
              AND '%s' < frozen \
-             AND frozen < '%s' " % (config.DBTABLEPREFIX, config.PROJECT, config.SINCE, config.START)
+             AND frozen < '%s' " % (config.DBTABLEPREFIX, config.PROJECT, config.AFTER, config.BEFORE)
 
     if config.DEBUG:
         sys.stderr.write("QUERY: %s\n" % re.sub(r'\s+', ' ', query.strip()))
@@ -329,7 +328,7 @@ def add_metax_files(nodes, counts, config):
         url_base = "%s/files?csc_project=%s&storage_service=ida&frozen__gt=%s&limit=%d" % (
             config.METAX_API,
             config.PROJECT,
-            config.SINCE,
+            config.AFTER,
             config.MAX_FILE_COUNT
         )
     else:
@@ -386,8 +385,8 @@ def add_metax_files(nodes, counts, config):
 
                     frozen = normalize_timestamp(file['frozen'])
 
-                    # Only continue for files frozen after SINCE
-                    if config.SINCE < frozen:
+                    # Only continue for files frozen after AFTER and before BEFORE
+                    if config.AFTER < frozen < config.BEFORE:
 
                         pathname = "frozen%s" % file['pathname']
                         modified = normalize_timestamp(file['modified'])
@@ -429,8 +428,8 @@ def add_metax_files(nodes, counts, config):
 
                     frozen = normalize_timestamp(file['file_frozen'])
 
-                    # Only continue for files frozen after SINCE
-                    if config.SINCE < frozen:
+                    # Only continue for files frozen after AFTER and before BEFORE
+                    if config.AFTER < frozen < config.BEFORE:
 
                         pathname = "frozen%s" % file['file_path']
                         modified = normalize_timestamp(file['file_modified'])
@@ -515,8 +514,9 @@ def add_nextcloud_nodes(nodes, counts, config):
 
     # If CHANGED_ONLY is true, first populate any Nextcloud node details based on already populated node pathnames
     # from IDA and Metax contexts, if they exist, as frozen file nodes will not have any timestamp updates in the
-    # Nextcloud cache by which they can be detected and added if the freeze/unfreeze action was after SINCE and
-    # therefore the Nextcloud nodes won't be identified as changed otherwise.
+    # Nextcloud cache by which they can be detected and added if the freeze/unfreeze action was after AFTER and
+    # before BEFORE, and therefore the Nextcloud nodes won't be identified as changed otherwise. The already
+    # populated IDA and Metax nodes will already have been selected using AFTER and BEFORE values, if defined.
 
     if config.CHANGED_ONLY:
 
@@ -634,8 +634,8 @@ def add_nextcloud_nodes(nodes, counts, config):
                  config.DBTABLEPREFIX,
                  storage_id,
                  path_pattern,
-                 config.START_OFFSET_TS,
-                 config.START_OFFSET_TS
+                 config.BEFORE_TS,
+                 config.BEFORE_TS
             )
 
     if config.DEBUG:
@@ -712,13 +712,15 @@ def add_nextcloud_nodes(nodes, counts, config):
 
             add_node = True
 
-            # If we only care about changed nodes, ignore the node if the change timestamp is earlier (less than) SINCE
+            # If we only care about changed nodes, ignore the node if the change timestamp is neither
+            # later than AFTER nor earlier than BEFORE
+
             if config.CHANGED_ONLY:
                 changed = max(
                     [ node_details.get('uploaded'), node_details.get('modified'), config.PROJECT_CREATED ],
                     key=lambda x: x if x is not None else ''
                 )
-                if changed < config.SINCE:
+                if not (config.AFTER < changed < config.BEFORE):
                     add_node = False
 
             if add_node:
@@ -869,7 +871,7 @@ def add_filesystem_nodes(nodes, counts, config):
                         node_stats = path.stat()
                         modified = node_stats.st_mtime
 
-                        if modified < config.START_OFFSET_TS:
+                        if modified < config.BEFORE_TS:
 
                             node_type = 'file'
                             modified = normalize_timestamp(datetime.utcfromtimestamp(modified))
@@ -935,7 +937,7 @@ def add_filesystem_nodes(nodes, counts, config):
             pathname = str(values['pathname'])
             filesystem_pathname = "%s%s" % (pso_root, pathname)
 
-            if modified < config.START_OFFSET_TS:
+            if modified < config.BEFORE_TS:
 
                 pathname = pathname[5:]
                 project_name_len = len(config.PROJECT)
@@ -1258,10 +1260,14 @@ def audit_project(config):
     report['project'] = config.PROJECT
     report['start'] = config.START
     report['end'] = generate_timestamp()
-    if config.SINCE == "1970-01-01T00:00:00Z":
-        report['changedSince'] = None
+    if config.AFTER <= config.IDA_MIGRATION:
+        report['changedAfter'] = None
     else:
-        report['changedSince'] = config.SINCE
+        report['changedAfter'] = config.AFTER
+    if config.BEFORE >= config.START:
+        report['changedBefore'] = None
+    else:
+        report['changedBefore'] = config.BEFORE
     report['auditStaging'] = config.AUDIT_STAGING
     report['auditFrozen'] = config.AUDIT_FROZEN
     report['auditTimestamps'] = config.AUDIT_TIMESTAMPS
@@ -1447,7 +1453,8 @@ def output_report(report):
     sys.stdout.write('"project": %s,\n' % json.dumps(report.get('project')))
     sys.stdout.write('"start": %s,\n' % json.dumps(report.get('start')))
     sys.stdout.write('"end": %s,\n' % json.dumps(report.get('end')))
-    sys.stdout.write('"changedSince": %s,\n' % json.dumps(report.get('changedSince')))
+    sys.stdout.write('"changedAfter": %s,\n' % json.dumps(report.get('changedAfter')))
+    sys.stdout.write('"changedBefore": %s,\n' % json.dumps(report.get('changedBefore')))
     sys.stdout.write('"auditStaging": %s,\n' % json.dumps(report.get('auditStaging')))
     sys.stdout.write('"auditFrozen": %s,\n' % json.dumps(report.get('auditFrozen')))
     sys.stdout.write('"auditTimestamps": %s,\n' % json.dumps(report.get('auditTimestamps')))

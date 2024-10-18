@@ -29,15 +29,12 @@
 # --------------------------------------------------------------------------------
 #
 
-import requests
 import subprocess
 import unittest
 import psycopg2
 import pymysql
-import time
 import os
 import sys
-import shutil
 import json
 from pathlib import Path
 from tests.common.utils import *
@@ -97,80 +94,6 @@ class TestAuditing(unittest.TestCase):
             self.assertEqual(result, 0)
 
 
-    def remove_report(self, pathname):
-        try:
-            os.remove(pathname)
-        except:
-            pass
-
-
-    def audit_project(self, project, status, since = None, area = None, timestamps = True, checksums = True):
-        """
-        Audit the specified project, verify that the audit report file was created with the specified
-        status, and load and return the audit report as a JSON object, with the audit report pathname
-        defined in the returned object for later timestamp repair if/as needed.
-
-        A full audit with no restrictions and including timestamps and checksums is done by default.
-        """
-
-        parameters = ""
-
-        if since is None and area is None and timestamps and checksums:
-            parameters = " --full"
-
-        else:
-
-            if since:
-                parameters = "%s --changed-since %s" % (parameters, since)
-
-            if area:
-                parameters = "%s --%s" % (parameters, area)
-                area = " %s" % area
-
-            if timestamps:
-                parameters = "%s --timestamps" % parameters
-
-            if checksums:
-                parameters = "%s --checksums" % parameters
-
-        if self.config.get('SEND_TEST_EMAILS') == 'true':
-            parameters = "%s --report" % parameters
-
-        print ("(auditing project %s%s)" % (project, parameters))
-
-        cmd = "sudo -u %s DEBUG=false AUDIT_START_OFFSET=0 %s/utils/admin/audit-project %s %s" % (self.config["HTTPD_USER"], self.config["ROOT"], project, parameters)
-
-        try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-
-        self.assertNotEqual(output, None, output)
-        self.assertNotEqual(output, "", output)
-        self.assertTrue(("Audit results saved to file " in output), output)
-
-        start = output.index("Audit results saved to file ")
-        report_pathname = output[start + 28:]
-        report_pathname = report_pathname.split('\n', 1)[0]
-
-        print("Verify audit report exists and has the correct status")
-        self.assertTrue(report_pathname.endswith(".%s.json" % status), report_pathname)
-        path = Path(report_pathname)
-        self.assertTrue(path.exists(), path)
-        self.assertTrue(path.is_file(), path)
-
-        print("(loading audit report %s)" % report_pathname)
-        try:
-            report_data = json.load(open(report_pathname))
-        except subprocess.CalledProcessError as error:
-            self.fail(error.output.decode(sys.stdout.encoding))
-        self.assertEqual(report_data.get("project"), project)
-
-        report_data["reportPathname"] = report_pathname
-
-        return report_data
-
-
     def test_cache_orphans(self):
 
         pso_user_a = ("PSO_test_project_a", self.config["PROJECT_USER_PASS"])
@@ -210,7 +133,7 @@ class TestAuditing(unittest.TestCase):
 
         print("--- Auditing project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "ERR")
+        report_data = audit_project(self, "test_project_a", "ERR")
         report_pathname_a = report_data["reportPathname"]
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
@@ -285,13 +208,13 @@ class TestAuditing(unittest.TestCase):
         wait_for_pending_actions(self, "test_project_a", test_user_a)
         check_for_failed_actions(self, "test_project_a", test_user_a)
 
-        self.remove_report(report_pathname_a)
+        remove_report(self, report_pathname_a)
 
         # --------------------------------------------------------------------------------
 
         print("--- Re-auditing project A and checking results")
 
-        report_data = self.audit_project("test_project_a", "OK")
+        report_data = audit_project(self, "test_project_a", "OK")
         self.assertTrue(report_data.get('auditStaging'), False)
         self.assertTrue(report_data.get('auditFrozen'), False)
         self.assertTrue(report_data.get('auditChecksums'), False)
@@ -323,7 +246,7 @@ class TestAuditing(unittest.TestCase):
         self.assertIsNone(report_data.get("oldest"))
         self.assertIsNone(report_data.get("newest"))
 
-        self.remove_report(report_data['reportPathname'])
+        remove_report(self, report_data['reportPathname'])
 
         # --------------------------------------------------------------------------------
         # If all tests passed, record success, in which case tearDown will be done

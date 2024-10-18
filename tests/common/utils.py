@@ -23,11 +23,14 @@
 
 import importlib.util
 import os
+import sys
 import time
-import json
 import requests
 import subprocess
 import dateutil.parser
+import json
+from pathlib import Path
+from datetime import datetime, timezone
 from base64 import b64encode
 from datetime import datetime
 
@@ -264,6 +267,16 @@ def stop_agents():
         return False
 
 
+def generate_timestamp():
+    """
+    Get current time as normalized ISO 8601 UTC timestamp string
+    """
+    time.sleep(1) # ensure a unique timestamp, as timestamps have single-second resolution
+    timestamp = normalize_timestamp(datetime.utcnow().replace(microsecond=0))
+    time.sleep(1) # ensure all subsequent actions happen after the newly generated timestamp 
+    return timestamp
+
+
 def normalize_timestamp(timestamp):
     """
     Returns the input timestamp as a normalized ISO 8601 UTC timestamp string YYYY-MM-DDThh:mm:ssZ
@@ -281,14 +294,11 @@ def normalize_timestamp(timestamp):
     return timestamp.strftime(TIMESTAMP_FORMAT)
 
 
-def generate_timestamp():
-    """
-    Get current time as normalized ISO 8601 UTC timestamp string
-    """
-    time.sleep(1) # ensure a unique timestamp, as timestamps have single-second resolution
-    timestamp = normalize_timestamp(datetime.utcnow().replace(microsecond=0))
-    time.sleep(1) # ensure all subsequent actions happen after the newly generated timestamp 
-    return timestamp
+def subtract_days_from_timestamp(timestamp, days):
+    start_datetime = dateutil.parser.isoparse(timestamp)
+    start_ts = start_datetime.replace(tzinfo=timezone.utc).timestamp()
+    start_offset_ts = start_ts - (days * 86400) # 86400 seconds in a day
+    return normalize_timestamp(datetime.utcfromtimestamp(start_offset_ts))
 
 
 def make_ida_offline(self):
@@ -456,3 +466,87 @@ def array_difference(arr1, arr2):
     in_second_not_first = sorted(list(set2 - set1))
     
     return (in_first_not_second, in_second_not_first)
+
+
+def audit_project(self, project, status, after = None, area = None, timestamps = True, checksums = True, before = None):
+    """
+    Audit the specified project, verify that the audit report file was created with the specified
+    status, and load and return the audit report as a JSON object, with the audit report pathname
+    defined in the returned object for later timestamp repair if/as needed.
+
+    A full audit with no restrictions and including timestamps and checksums is done by default.
+    """
+
+    parameters = ""
+
+    if after is None and before is None and area is None and timestamps and checksums:
+        parameters = " --full"
+
+    else:
+
+        if after:
+            parameters = "%s --changed-after %s" % (parameters, after)
+
+        if before:
+            parameters = "%s --changed-before %s" % (parameters, before)
+
+        if area:
+            parameters = "%s --%s" % (parameters, area)
+            area = " %s" % area
+
+        if timestamps:
+            parameters = "%s --timestamps" % parameters
+
+        if checksums:
+            parameters = "%s --checksums" % parameters
+
+    if self.config.get('SEND_TEST_EMAILS') == 'true':
+        parameters = "%s --report" % parameters
+
+    print ("(auditing project %s%s)" % (project, parameters))
+
+    cmd = "sudo -u %s DEBUG=false %s/utils/admin/audit-project %s %s" % (
+        self.config["HTTPD_USER"],
+        self.config["ROOT"],
+        project,
+        parameters
+    )
+
+    # print(cmd) # TEMP HACK
+
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode(sys.stdout.encoding).strip()
+    except subprocess.CalledProcessError as error:
+        self.fail(error.output.decode(sys.stdout.encoding))
+
+    self.assertNotEqual(output, None, output)
+    self.assertNotEqual(output, "", output)
+    self.assertTrue(("Audit results saved to file " in output), output)
+
+    start = output.index("Audit results saved to file ")
+    report_pathname = output[start + 28:]
+    report_pathname = report_pathname.split('\n', 1)[0]
+
+    print("Verify audit report exists and has the correct status")
+    self.assertTrue(report_pathname.endswith(".%s.json" % status), report_pathname)
+    path = Path(report_pathname)
+    self.assertTrue(path.exists(), path)
+    self.assertTrue(path.is_file(), path)
+
+    print("(loading audit report %s)" % report_pathname)
+    try:
+        report_data = json.load(open(report_pathname))
+    except subprocess.CalledProcessError as error:
+        self.fail(error.output.decode(sys.stdout.encoding))
+    self.assertEqual(report_data.get("project"), project)
+
+    report_data["reportPathname"] = report_pathname
+
+    return report_data
+
+
+def remove_report(self, pathname):
+    try:
+        os.remove(pathname)
+    except:
+        pass

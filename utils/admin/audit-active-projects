@@ -31,13 +31,16 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( date[time] | week | month | year ) ] [ ( --staging | --frozen ) ] [ --timestamps ] [ ( --report | --report-errors ) [ email ] ]
+Usage: $SCRIPT [ ( after | days-after |  'week' | 'month' | 'year' ) [ before | days-before ]] [ [ ( --staging | --frozen ) ] [ --timestamps ] [ ( --report | --report-errors ) [ email ] ]
        $SCRIPT -h
 
-       date[time]       auditing will be limted to projects active the specified date[time]
-       week             auditing will be limted to projects active during the past week
-       month            auditing will be limted to projects active during the past month
-       year             auditing will be limted to projects active during the past year
+       after            auditing will be limted to project data changes after the specified date[time] (defaults to 10 days)
+       before           auditing will be limted to project data changes before the specified date[time] (defaults to 3 days)
+       days-after       auditing will be limted to project data changes after the past number of days specified
+       days-before      auditing will be limted to project data changes before the past number of days specified
+       week             auditing will be limted to project data changes during the past week
+       month            auditing will be limted to project data changes during the past month
+       year             auditing will be limted to project data changes during the past year
        --staging        auditing will be limited to files in the staging area
        --frozen         auditing will be limited to files in the frozen area
        --timestamps     comparisons will be made between disk timestamps and database values
@@ -45,15 +48,13 @@ Usage: $SCRIPT [ ( date[time] | week | month | year ) ] [ ( --staging | --frozen
        --report-errors  auditing results will be emailed, but only if errors are detected
        email            the email address where audit reports should be sent (defaults to configured recipient list)
 
-If no active time period is specified, a period corresponding to the past 24 hours is used by default.
+Auditing will be limited to projects with data changes during the specified or default period of activity.
 
-Auditing will be limited to files uploaded or frozen during specified or default period of activity, and
-their ancestor folders.
+It is expected that this script will be executed via a cron job once per week, using the defaults, which will result
+in regular auditing of all project data changes in 7 day increments, offset by 3 days from the time of execution.
 "
 
 PROJECT="null"
-SINCE=""
-AUDIT_ARGS=""
 
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
@@ -71,21 +72,38 @@ fi
 # --------------------------------------------------------------------------------
 # Process command line options
 
-if [ $# -gt 0 ]; then
+if [ "$1" ]; then
     case "$1" in
         "--staging" | "--frozen" | "--timestamps" | "--report" | "--report-errors" )
             AUDIT_ARGS="$*"
             ;;
         *)
             if [[ "$1" =~ ^(week|month|year)$ ]]; then
-                SINCE=`date -d "$START - 1 $1" +"%Y-%m-%dT%H:%M:%SZ"`
+                AFTER=`date -d "$START - 1 $1" +"%Y-%m-%dT%H:%M:%SZ"`
+            elif [[ "$1" =~ ^[[:digit:]][[:digit:]]*$ ]]; then
+                AFTER=`date -d "$START - $1 days" +"%Y-%m-%dT%H:%M:%SZ"`
             elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
-                SINCE="$1"
+                AFTER="$1"
             elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
-                SINCE="$1""T00:00:00Z"
+                AFTER="$1""T00:00:00Z"
             else
-                echo "Invalid date[time]: $SINCE"
+                echo "Invalid after parameter: $1"
                 exit 1
+            fi
+            if [ "$2" ]; then
+                if [[ "$2" =~ ^[[:digit:]][[:digit:]]*$ ]]; then
+                    BEFORE=`date -d "$START - $2 days" +"%Y-%m-%dT%H:%M:%SZ"`
+                    shift
+                elif [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
+                    BEFORE="$2"
+                    shift
+                elif [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
+                    BEFORE="$2""T00:00:00Z"
+                    shift
+                else
+                    echo "Invalid before parameter: $2"
+                    exit 1
+                fi
             fi
             shift
             AUDIT_ARGS="$*"
@@ -93,32 +111,51 @@ if [ $# -gt 0 ]; then
     esac
 fi
 
-# If date(time) not specified, calculate datetime for 24 hours ago.
-if [ "$SINCE" = "" ]; then
-    SINCE=`date -d "$START - 24 hours" +"%Y-%m-%dT%H:%M:%SZ"`
+# Set defaults if not defined elsewhere, allowing the configuration or environment to override defaults
+
+if [ "$AFTER" = "" ]; then
+    if [ "AUDIT_ACTIVE_DAYS_AFTER" ]; then
+        AFTER=`date -d "$START - $AUDIT_ACTIVE_DAYS_AFTER days" +"%Y-%m-%dT%H:%M:%SZ"`
+    else
+        AFTER=`date -d "$START - 10 days" +"%Y-%m-%dT%H:%M:%SZ"`
+    fi
 fi
 
-AUDIT_ARGS="--changed-since $SINCE $AUDIT_ARGS"
+if [ "$BEFORE" = "" ]; then
+    if [ "AUDIT_ACTIVE_DAYS_BEFORE" ]; then
+        BEFORE=`date -d "$START - $AUDIT_ACTIVE_DAYS_BEFORE days" +"%Y-%m-%dT%H:%M:%SZ"`
+    else
+        BEFORE=`date -d "$START - 3 days" +"%Y-%m-%dT%H:%M:%SZ"`
+    fi
+fi
+
+AUDIT_ARGS="--changed-after $AFTER --changed-before $BEFORE $AUDIT_ARGS"
+
+if [ "$DEBUG" = "true" ]; then
+    echo "AUDIT_ARGS: $AUDIT_ARGS"
+fi
 
 # --------------------------------------------------------------------------------
 
-PROJECTS=`$ROOT/utils/admin/list-active-projects $SINCE`
+PROJECTS=`DEBUG=false $ROOT/utils/admin/list-active-projects $AFTER $BEFORE 2>/dev/null`
 
 INTERNAL_PROJECTS=""
 
 if [ "$IDA_ENVIRONMENT" = "PRODUCTION" ]; then
-    INTERNAL_PROJECTS=`$ROOT/utils/admin/list-internal-projects | tr '\n' ' '`
+    INTERNAL_PROJECTS=`DEBUG=false $ROOT/utils/admin/list-internal-projects | tr '\n' ' ' 2>/dev/null`
 fi
 
 if [ "$DEBUG" = "true" ]; then
-    echo "AUDIT_ARGS: $AUDIT_ARGS"
-    echo "INTERNAL:   $INTERNAL_PROJECTS"
+    echo "INTERNAL: $INTERNAL_PROJECTS"
 fi
 
 for PROJECT in $PROJECTS; do
     INTERNAL=`echo " $INTERNAL_PROJECTS " | grep " $PROJECT "`
     if [ "$INTERNAL" = "" ]; then
-        $ROOT/utils/admin/audit-project $PROJECT $AUDIT_ARGS
+        if [ "$DEBUG" = "true" ]; then
+            echo "PROJECT: $PROJECT"
+        fi
+        DEBUG=false $ROOT/utils/admin/audit-project $PROJECT $AUDIT_ARGS 2>/dev/null
     fi
 done
 

@@ -22,23 +22,27 @@
 # @link     https://research.csc.fi/
 # --------------------------------------------------------------------------------
 #
-# This script scans key database tables to determine which projects have had
-# any activity during the specified period or since the specified date(time),
-# if given, or during the past 24 hours if nothing specified. If only a date
-# is specified, the time T00:00:00Z is used.
+# This script reports which projects have had any project data changes during
+# the specified period, if defined, or during the past 24 hours by default. 
 #
 # --------------------------------------------------------------------------------
 
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT [ ( date[time] | week | month | year ) ] 
+Usage: $SCRIPT [ ( after | days-after | 'week' | 'month' | 'year' ) [ ( before | days-before ) ] ] 
        $SCRIPT -h
 
-       date[time]   an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/ (defaults to 24 hours ago)
-       week         calculate a timestamp one week in the past
-       month        calculate a timestamp one month in the past
-       year         calculate a timestamp one year in the past
+       after        an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/
+       before       an ISO date or datetime string /YYYY-MM-DD(Thh:mm:ssZ])?/
+       days-after   calculate a after timestamp the specified number of days in the past
+       days-before  calculate a before timestamp the specified number of days in the past
+       week         calculate a after timestamp one week in the past
+       month        calculate a after timestamp one month in the past
+       year         calculate a after timestamp one year in the past
+
+If no after time is specified, a period corresponding to the past 24 hours is used by default.
+If an before time is specified, only projects active between the after and before times will be included.
 "
 
 PROJECT="null"
@@ -59,34 +63,75 @@ fi
 #--------------------------------------------------------------------------------
 
 TZ=UTC
-
-SINCE=""
+AFTER=""
+BEFORE=""
 
 if [ "$1" ]; then
+    if [ "$DEBUG" = "true" ]; then
+        echo "ARG 1:  $1"
+    fi
     if [[ "$1" =~ ^(week|month|year)$ ]]; then
-        SINCE=`date -d "$START - 1 $1" +"%Y-%m-%dT%H:%M:%SZ"`
+        AFTER=`date -d "$START - 1 $1" +"%Y-%m-%dT%H:%M:%SZ"`
+    elif [[ "$1" =~ ^[[:digit:]][[:digit:]]*$ ]]; then
+        AFTER=`date -d "$START - $1 days" +"%Y-%m-%dT%H:%M:%SZ"`
     elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
-        SINCE="$1"
+        AFTER="$1"
     elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
-        SINCE="$1""T00:00:00Z"
+        AFTER="$1""T00:00:00Z"
     else
-        echo "Invalid date[time]: $1"
+        echo "Invalid parameter: $1"
         exit 1
+    fi
+
+    if [ "$2" ]; then
+        if [ "$DEBUG" = "true" ]; then
+            echo "ARG 2:  $2"
+        fi
+        if [[ "$2" =~ ^[[:digit:]][[:digit:]]*$ ]]; then
+            BEFORE=`date -d "$START - $2 days" +"%Y-%m-%dT%H:%M:%SZ"`
+        elif [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
+            BEFORE="$2"
+        elif [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
+            BEFORE="$2""T00:00:00Z"
+        else
+            echo "Invalid parameter: $2"
+            exit 1
+        fi
     fi
 fi
 
-# If date(time) not specified, calculate datetime for 24 hours ago.
-if [ "$SINCE" = "" ]; then
-    SINCE=`date -d "$START - 24 hours" +"%Y-%m-%dT%H:%M:%SZ"`
+# Set defaults if not defined elsewhere, allowing the configuration or environment to override defaults
+
+if [ "$AFTER" = "" ]; then
+    if [ "$AUDIT_ACTIVE_DAYS_AFTER" ]; then
+        AFTER=`date -d "$START - $AUDIT_ACTIVE_DAYS_AFTER days" +"%Y-%m-%dT%H:%M:%SZ"`
+    else
+        AFTER=`date -d "$START - 1 day" +"%Y-%m-%dT%H:%M:%SZ"`
+    fi
+fi
+
+if [ "$BEFORE" = "" ]; then
+    if [ "$AUDIT_ACTIVE_DAYS_BEFORE" ]; then
+        BEFORE=`date -d "$START - $AUDIT_ACTIVE_DAYS_BEFORE days" +"%Y-%m-%dT%H:%M:%SZ"`
+    else
+        BEFORE="$START"
+    fi
 fi
 
 if [ "$DEBUG" = "true" ]; then
-    echo "SINCE: $SINCE"
-    echo "START: $START"
+    echo "AFTER:  $AFTER"
+    echo "BEFORE: $BEFORE"
+    echo "START:  $START"
 fi
 
-if [[ "$SINCE" > "$START" ]]; then
-    errorExit "Specified timestamp $SINCE is in the future"
+if [[ "$AFTER" == "$START" || "$AFTER" > "$START" ]]; then
+    errorExit "Specified after timestamp $AFTER must be in the past"
+fi
+
+if [ "$BEFORE" != "$START" ]; then
+    if [[ "$AFTER" == "$BEFORE" || "$AFTER" > "$BEFORE" ]]; then
+        errorExit "Specified after timestamp $AFTER must be earlier than the specified before timestamp $BEFORE"
+    fi
 fi
 
 PROJECTS=`DEBUG=false $ROOT/utils/admin/list-projects`
@@ -111,7 +156,7 @@ for PROJECT in $PROJECTS; do
         echo "LAST_CHANGE: $LAST_CHANGE"
     fi
 
-    if [[ "$LAST_CHANGE" > "$SINCE" ]]; then
+    if [[ "$LAST_CHANGE" > "$AFTER" && "$LAST_CHANGE" < "$BEFORE" ]]; then
         echo "${PROJECT}"
     fi
 
