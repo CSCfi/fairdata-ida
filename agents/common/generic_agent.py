@@ -334,10 +334,10 @@ class GenericAgent():
 
         try:
             queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
-        except Exception:
-            self._logger.warning('Checking messages in %s queue encountered an error: %s  Re-connecting...' % (queue, str(e)))
-            self.connect()
+        except Exception as e:
             try:
+                self._logger.warning('Checking messages in %s queue encountered an error: %s  Re-connecting...' % (queue, str(e)))
+                self.connect()
                 queue_state = self._channel.queue_declare(queue, durable=True, passive=True)
             except Exception as e:
                 self._logger.warning('Checking messages in %s queue encountered an error: %s  Sleeping for a bit and retrying later...' % (queue, str(e)))
