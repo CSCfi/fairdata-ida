@@ -352,6 +352,8 @@ def add_metax_files(nodes, counts, config):
 
             if config.METAX_API_VERSION >= 3:
                 headers = { "Authorization": "Token %s" % config.METAX_PASS }
+                if config.DEBUG:
+                    sys.stderr.write("HEADERS: : %s\n" % json.dumps(headers))
                 response = requests.get(url, headers=headers)
             else:
                 auth = (config.METAX_USER, config.METAX_PASS)

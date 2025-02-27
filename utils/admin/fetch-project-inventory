@@ -25,13 +25,17 @@
 SCRIPT=`basename "$(realpath $0)"`
 
 USAGE="
-Usage: $SCRIPT project [ --uploaded-before date[time] ] [ --unpublished-only ]
+Usage: $SCRIPT project [ --uploaded-before date[time] ] [ --unpublished-only ] [ --frozen | --staging ] [ --scope pathname ]
        $SCRIPT -h
 
        project             the project to be audited
        --uploaded-before   limit to files which have an upload timestamp older than the specified timestamp
        date[time]          an ISO date or UTC timestamp in the format YYYY-MM-DD[Thh:mm:ssZ]
        --unpublished-only  exclude frozen files which are part of any published datasset
+       --frozen            limit to files in the frozen area
+       --staging           limit to files in the staging area
+       --scope             limit to files within a particular scope (requires either --frozen or --staging)
+       pathname            relative pathname within the frozen or staging area
 
 The optional paramters --uploaded-before and --unpublished-only, used together, can be used to identify projects
 which have unpublished files older than a specified time, and construct a list of file pathnames for removal
@@ -54,6 +58,8 @@ fi
 TIMESTAMP=""
 UPLOADED_BEFORE="false"
 UNPUBLISHED_ONLY="false"
+AREA=""
+SCOPE=""
 
 shift # got PROJECT from first argument via init_audit_script.sh
 
@@ -61,25 +67,41 @@ while [ "$1" ]; do
 
     case "$1" in
         "--uploaded-before")
+            if [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
+                TIMESTAMP="$2"
+            elif [[ "$2" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
+                TIMESTAMP="$2""T00:00:00Z"
+            else
+                echo "Invalid date[time]: $2"
+                exit 1
+            fi
+            shift
             UPLOADED_BEFORE="true"
             ;;
         "--unpublished-only")
             UNPUBLISHED_ONLY="true"
             ;;
-        *)
-            if [ "$UPLOADED_BEFORE" = "true" ] && [ "$TIMESTAMP" = "" ]; then
-                if [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$ ]]; then
-                    TIMESTAMP="$1"
-                elif [[ "$1" =~ ^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$ ]]; then
-                    TIMESTAMP="$1""T00:00:00Z"
-                else
-                    echo "Invalid date[time]: $1"
-                    exit 1
-                fi
-            else
-                echo "Invalid argument: $1"
+        "--frozen")
+            if [ "$AREA" = "staging" ]; then
+                echo "Invalid argument: --frozen cannot be specified if --staging is specified"
                 exit 1
             fi
+            AREA="frozen"
+            ;;
+        "--staging")
+            if [ "$AREA" = "frozen" ]; then
+                echo "Invalid argument: --staging cannot be specified if --frozen is specified"
+                exit 1
+            fi
+            AREA="staging"
+            ;;
+        "--scope")
+            SCOPE="$2"
+            shift
+            ;;
+        *)
+            echo "Invalid option: $1"
+            exit 1
             ;;
     esac
 
@@ -87,7 +109,7 @@ while [ "$1" ]; do
 
 done
 
-if [ "$UPLOADED_BEFORE" == "true" ] && [ "$TIMESTAMP" = "" ]; then
+if [ "$UPLOADED_BEFORE" = "true" ] && [ "$TIMESTAMP" = "" ]; then
     echo "Missing timestamp"
     exit 1
 fi
@@ -96,16 +118,27 @@ fi
 
 URL="${IDA_API}/inventory/${PROJECT}"
 
+PARAM_SEP="?"
+
 if [ "$UPLOADED_BEFORE" = "true" ]; then
-    URL="${URL}?uploadedBefore=$TIMESTAMP"
+    URL="${URL}${PARAM_SEP}uploadedBefore=$TIMESTAMP"
+    PARAM_SEP="&"
 fi
 
 if [ "$UNPUBLISHED_ONLY" == "true" ]; then
-    SEP="?"
-    if [ "$UPLOADED_BEFORE" == "true" ]; then
-        SEP="&"
-    fi
-    URL="${URL}${SEP}unpublishedOnly=true"
+    URL="${URL}${PARAM_SEP}unpublishedOnly=true"
+    PARAM_SEP="&"
+fi
+
+if [ "$AREA" ]; then
+    URL="${URL}${PARAM_SEP}area=$AREA"
+    PARAM_SEP="&"
+fi
+
+if [ "$SCOPE" ]; then
+    SCOPE_PARAM=$(urlEncode "$SCOPE")
+    URL="${URL}${PARAM_SEP}scope=$SCOPE_PARAM"
+    PARAM_SEP="&"
 fi
 
 if [ "$DEBUG" = "true" ]
@@ -114,6 +147,8 @@ then
     echo "UPLOADED_BEFORE:   $UPLOADED_BEFORE"
     echo "TIMESTAMP:         $TIMESTAMP"
     echo "UNPUBLISHED_ONLY:  $UNPUBLISHED_ONLY"
+    echo "AREA:              $AREA"
+    echo "SCOPE:             $SCOPE"
     echo "REQUEST URL:       ${URL}"
 fi
 

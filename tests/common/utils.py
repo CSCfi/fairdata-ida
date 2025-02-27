@@ -41,7 +41,7 @@ time.tzset()
 TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%SZ' # ISO 8601 UTC
 
 DATASET_TEMPLATE_V3 = {
-    "pid_type": "URN",
+    "generate_pid_on_publish": "URN",
     "data_catalog": "urn:nbn:fi:att:data-catalog-ida",
     "metadata_owner": {
         "user": "test_user_a",

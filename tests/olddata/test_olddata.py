@@ -79,6 +79,9 @@ class TestOldData(unittest.TestCase):
         result = os.system(cmd)
         self.assertEqual(result, 0)
 
+        # clear any existing sentinel file
+        cmd = "sudo -u %s rm -f /var/tmp/AUDIT_ALL_OLD_DATA 2>/dev/null" % self.config["HTTPD_USER"]
+        result = os.system(cmd)
 
     def tearDown(self):
         # flush all test projects, user accounts, and data, but only if all tests passed,
@@ -154,6 +157,8 @@ class TestOldData(unittest.TestCase):
 
         if force_audit:
             cmd = "%s --force-audit" % cmd
+
+        print (cmd)
 
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode(sys.stdout.encoding).strip()

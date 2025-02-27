@@ -38,6 +38,7 @@ use OCA\IDA\Model\DataChange;
 use OCA\IDA\Model\DataChangeMapper;
 use OCA\IDA\Util\Access;
 use OCA\IDA\Util\API;
+use OCA\IDA\Util\FileDetailsHelper;
 use OCA\IDA\Util\Constants;
 use OCA\IDA\Util\Generate;
 use OCP\AppFramework\Controller;
@@ -93,6 +94,7 @@ class FreezingController extends Controller
 {
     protected $actionMapper;
     protected $fileMapper;
+    protected $fileDetailsHelper;
     protected $dataChangeMapper;
     protected $userId;
     protected $fsView;
@@ -126,12 +128,9 @@ class FreezingController extends Controller
         $this->fileMapper = $fileMapper;
         $this->dataChangeMapper = $dataChangeMapper;
         $this->userId = $userId;
-        $this->fsView = null;
-        try {
-            Filesystem::init($userId, '/' . $userId . '/files');
-            $this->fsView = Filesystem::getView();
-        } catch (\Exception $e) {
-        }
+        Filesystem::init($userId, '/' . $userId . '/files');
+        $this->fsView = Filesystem::getView();
+        $this->fileDetailsHelper = new FileDetailsHelper($this->fsView);
         $this->config = $config->getSystemValue('ida');
         if (strpos($this->config['METAX_API'], '/rest/') !== false) {
             $this->config['METAX_API_VERSION'] = 1;
@@ -210,14 +209,20 @@ class FreezingController extends Controller
     }
 
     /**
-     * Return an inventory of all project files stored in the IDA service, both in staging
-     * and frozen areas, with all technical metadata about each file.
+     * Return an inventory of all project files stored in the IDA service, with all technical metadata about each file.
+     * 
+     * By default, the inventory will include files stored both in staging and frozen areas; however, if the optional
+     * parameter $area is specified as either 'frozen' or 'staging', only files in the specified area will be incuded.
+     * Furthermore, if the additional optional parameter $pathname is specified with a value corresponding to the relative
+     * pathname of a file or folder (the $scope parametr is ignored if $area is null) then files will only be included
+     * from the specified area and matching the scope of the specified pathname.
      *
-     * NOTE: If a file has no recorded upload time, it will be included in the inventory regardless
-     * whether an uploadedBefore timestamp is specified. Consider whether to utilize modified and
-     * project creation tinestamps in determination.
+     * NOTE: If a file has no recorded upload time, it will be included in the inventory regardless whether an uploadedBefore
+     * timestamp is specified. Consider whether to utilize modified and project creation timestamps in determination.
      *
      * @param string $project         the project to which the files belong
+     * @param string $area            either 'frozen', or 'staging' (default null) limiting inventory to the specified area
+     * @param string $scope           relative pathname limiting the scope of the inventory ($area must be either 'frozen' or 'staging')
      * @param string $uploadedBefore  ISO datetime string excluding files uploaded after the specified datetime
      * @param string $unpublishedOnly if "true" exclude files which are part of one or more published datasets
      * @param string $testing         if "true" includes additional information needed by automated tests
@@ -227,7 +232,7 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function getFileInventory($project, $uploadedBefore = null, $unpublishedOnly = 'false', $testing = 'false')
+    public function getFileInventory($project, $area = null, $scope = null, $uploadedBefore = null, $unpublishedOnly = 'false', $testing = 'false')
     {
         try {
 
@@ -237,15 +242,31 @@ class FreezingController extends Controller
                 Access::verifyIsAllowedProject($project);
             }
 
+            if (empty(trim($area))) {
+                $area = null;
+            }
+
+            if (empty(trim($scope))) {
+                $scope = null;
+            }
+
+            if (empty(trim($uploadedBefore))) {
+                $uploadedBefore = null;
+            }
+
             if ($unpublishedOnly === null) {
                 $unpublishedOnly = 'false';
             }
 
             Util::writeLog('ida', 'getFileInventory:'
                 . ' project=' . $project
+                . ' area=' . $area
+                . ' scope=' . $scope
                 . ' uploadedBefore=' . $uploadedBefore
                 . ' unpublishedOnly=' . $unpublishedOnly
                 , \OCP\Util::INFO);
+
+            $scope = ($area && $scope) ? $scope : '/';
 
             $totalStagedFiles = 0;
             $totalFrozenFiles = 0;
@@ -253,106 +274,156 @@ class FreezingController extends Controller
             $stagedFiles = array();
             $frozenFiles = array();
 
-            # Aggregate files from staging area
+            //$dataChangeLastAddTimestamps = $this->fileDetailsHelper->getDataChangeLastAddTimestamps($project, $scope);
+            //$idaFrozenFiles = $this->fileDetailsHelper->getIdaFrozenFileDetails($project, $scope);
+            $dataChangeLastAddTimestamps = array(); // TEMP HACK
+            $idaFrozenFiles = array(); // TEMP HACK
 
-            $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, "/", 0);
+            if ($area === null || $area === 'staging') {
 
-            foreach ($nextcloudNodes as $nodeInfo) {
+                # Aggregate files from staging area
 
-                if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
+                $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, $scope, 0);
 
-                    $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
-                    $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);
+                foreach ($nextcloudNodes as $nodeInfo) {
 
-                    if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
+                    // This test should be unnecessary as all nodes should already only be file nodes
+                    // but it is retained just to be absolutely certain we only output file details
+                    if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
-                        $fileInfo = array(
-                            'size' => $nodeInfo->getSize(),
-                            'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
-                            'checksum' => $nodeInfo->getChecksum(),
-                            'uploaded' => $uploaded
-                        );
+                        $fullPathname = $nodeInfo->getPath();
+                        $pathname = $this->stripRootProjectFolder($project, $fullPathname);
 
-                        $stagedFiles[$pathname] = $fileInfo;
-                        $totalStagedFiles++;
+                        $uploaded = $nodeInfo->getUploadTime();
+                        $uploaded = ($uploaded === 0) ? null : Generate::newTimestamp($uploaded);
+
+                        // If no uploaded timestamp defined for node, use data change add timestamp, if any
+                        if ($uploaded === null) {
+                            $uploaded = $dataChangeLastAddTimestamps[$fullPathname];
+                        }
+
+                        // REMOVE THIS once data change add timestamp array is implemented above
+                        if ($uploaded === null) {
+                            $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);              // REMOVE
+                        }
+
+                        if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
+
+                            $checksum = $nodeInfo->getChecksum();
+
+                            $fileInfo = array(
+                                'uploaded' => $uploaded,
+                                'modified' => Generate::newTimestamp($nodeInfo->getMTime()),
+                                'size'     => $nodeInfo->getSize(),
+                                'checksum' => (empty(trim($checksum))) ? null : $checksum
+                            );
+
+                            $stagedFiles[$pathname] = $fileInfo;
+                            $totalStagedFiles++;
+                        }
                     }
                 }
             }
 
-            # Aggregate files from frozen area
+            if ($area === null || $area === 'frozen') {
 
-            $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, "/", 0);
+                # Aggregate files from frozen area
 
-            $datasetFiles = $this->getDatasetFiles($nextcloudNodes);
+                $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $scope, 0);
 
-            foreach ($nextcloudNodes as $nodeInfo) {
+                $datasetFiles = $this->getDatasetFiles($nextcloudNodes);
 
-                if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
+                foreach ($nextcloudNodes as $nodeInfo) {
 
-                    $pathname = $this->stripRootProjectFolder($project, $nodeInfo->getPath());
-                    $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);
+                    // This test should be unnecessary as all nodes should already only be file nodes
+                    // but it is retained just to be absolutely certain we only output file details
+                    if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
-                    if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
+                        $fullPathname = $nodeInfo->getPath();
+                        $pathname = $this->stripRootProjectFolder($project, $fullPathname);
 
-                        $datasets = null;
+                        $uploaded = $nodeInfo->getUploadTime();
+                        $uploaded = ($uploaded === 0) ? null : Generate::newTimestamp($uploaded);
 
-                        $fileInfo = array(
-                            'uploaded' => $uploaded
-                        );
-
-                        $frozenFile = $this->fileMapper->findByNextcloudNodeId($nodeInfo->getId(), $project);
-
-                        if ($frozenFile != null) {
-
-                            $fileInfo['size'] = $frozenFile->getSize();
-                            $fileInfo['modified'] = $frozenFile->getModified();
-                            $fileInfo['frozen'] = $frozenFile->getFrozen();
-                            $fileInfo['metadata'] = $frozenFile->getMetadata();
-                            $fileInfo['replicated'] = $frozenFile->getReplicated();
-
-                            $filePID = $frozenFile->getPid();
-                            $fileInfo['pid'] = $filePID;
-
-                            if ($filePID != null) {
-                                if (isset($datasetFiles[$filePID])) {
-                                    $datasets = $datasetFiles[$filePID];
-                                }
-                                if ($datasets != null) {
-                                    $fileInfo['datasets'] = $datasets;
-                                    Util::writeLog('ida', 'getFileInventory:'
-                                        . ' pid=' . $filePID
-                                        . ' datasets=' . json_encode($datasets)
-                                        , \OCP\Util::DEBUG);
-                                }
-                            }
-
-                            $cacheChecksum = $nodeInfo->getChecksum();
-                            $checksum = $frozenFile->getChecksum();
-
-                            if ($checksum === null) {
-                                $checksum = $nodeInfo->getChecksum();
-                            }
-
-                            // Ensure the checksum is returned as an sha256: checksum URI
-
-                            if ($checksum != null) {
-                                if (substr($checksum, 0, 7) === 'sha256:') {
-                                    $fileInfo['checksum'] = $checksum;
-                                } else {
-                                    $fileInfo["checksum"] = 'sha256:' . $checksum;
-                                }
-                            }
-
-                            if ($testing === 'true') {
-                                $fileInfo['cacheSize'] = $nodeInfo->getSize();
-                                $fileInfo["cacheChecksum"] = $cacheChecksum;
-                                $fileInfo["cacheModified"] = Generate::newTimestamp($nodeInfo->getMTime());
-                            }
+                        // If no uploaded timestamp defined for node, use data change add timestamp, if any
+                        if ($uploaded === null) {
+                            $uploaded = $dataChangeLastAddTimestamps[$fullPathname];
                         }
 
-                        if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
-                            $frozenFiles[$pathname] = $fileInfo;
-                            $totalFrozenFiles++;
+                        // REMOVE THIS once data change add timestamp array is implemented above
+                        if ($uploaded === null) {
+                            $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);              // REMOVE
+                        }
+
+                        if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
+
+                            $datasets = null;
+
+                            $fileInfo = array(
+                                'uploaded' => $uploaded
+                            );
+
+                            $frozenFile = $idaFrozenFiles[$fullPathname];
+
+                            // REMOVE THIS once frozen file array is implemented above
+                            $idaRecord = false;
+                            if ($frozenFile === null) {
+                                $frozenFile = $this->fileMapper->findByNextcloudNodeId($nodeInfo->getId(), $project);
+                                $idaRecord = true;
+                            }
+
+                            if ($frozenFile != null) {
+
+                                // REMOVE $idaRecord tests and if-true options when above is removed
+                                $filePID = ($idaRecord) ? $frozenFile->getPid() : $frozenFile['pid'];
+                                $fileInfo['modified'] = ($idaRecord) ? $frozenFile->getModified() : $frozenFile['modified'];
+                                $fileInfo['frozen'] = ($idaRecord) ? $frozenFile->getFrozen() : $frozenFile['frozen'];
+                                $fileInfo['metadata'] = ($idaRecord) ? $frozenFile->getMetadata() : $frozenFile['metadata'];
+                                $fileInfo['replicated'] = ($idaRecord) ? $frozenFile->getReplicated() : $frozenFile['replicated'];
+                                $fileInfo['pid'] = $filePID;
+                                $fileInfo['size'] = ($idaRecord) ? $frozenFile->getSize() : $frozenFile['size'];
+
+                                if ($filePID != null) {
+                                    if (isset($datasetFiles[$filePID])) {
+                                        $datasets = $datasetFiles[$filePID];
+                                    }
+                                    if ($datasets != null) {
+                                        $fileInfo['datasets'] = $datasets;
+                                        Util::writeLog('ida', 'getFileInventory:'
+                                            . ' pid=' . $filePID
+                                            . ' datasets=' . json_encode($datasets)
+                                            , \OCP\Util::DEBUG);
+                                    }
+                                }
+
+                                $cacheChecksum = $nodeInfo->getChecksum();
+                                $checksum = $frozenFile->getChecksum();
+
+                                if ($checksum === null) {
+                                    $checksum = (empty(trim($cacheChecksum))) ? null : $cacheChecksum;
+                                }
+
+                                // Ensure the checksum is returned as an sha256: checksum URI
+
+                                if ($checksum != null) {
+                                    if (substr($checksum, 0, 7) === 'sha256:') {
+                                        $fileInfo['checksum'] = $checksum;
+                                    } else {
+                                        $fileInfo["checksum"] = 'sha256:' . $checksum;
+                                    }
+                                }
+
+                                if ($testing === 'true') {
+                                    $fileInfo['cacheSize'] = $nodeInfo->getSize();
+                                    $fileInfo["cacheChecksum"] = $cacheChecksum;
+                                    $fileInfo["cacheModified"] = Generate::newTimestamp($nodeInfo->getMTime());
+                                }
+                            }
+
+                            if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
+                                $frozenFiles[$pathname] = $fileInfo;
+                                $totalFrozenFiles++;
+                            }
                         }
                     }
                 }
@@ -396,6 +467,8 @@ class FreezingController extends Controller
             return new DataResponse(array(
                 'project' => $project,
                 'created' => Generate::newTimestamp(),
+                'area' => $area,
+                'scope' => $scope,
                 'uploadedBefore' => $uploadedBefore,
                 'unpublishedOnly' => ($unpublishedOnly === 'true'),
                 'totalFiles' => $totalFiles,
@@ -1955,7 +2028,7 @@ class FreezingController extends Controller
 
             foreach ($intersecting_dataset_ids as $intersecting_dataset_id) {
 
-                // Query Metax for dataset details, first try as id, then as preferred identifier
+                // Query Metax for dataset details
 
                 $queryURL = $this->config['METAX_API'] . '/datasets/' . $intersecting_dataset_id;
 
@@ -1997,8 +2070,13 @@ class FreezingController extends Controller
                     $metax_datasets[] = json_decode($response, true);
                 }
                 else {
-                    Util::writeLog('ida', 'checkDatasets: ' . $response, \OCP\Util::ERROR);
-                    throw new Exception('Failed to retrieve dataset by id');
+                    Util::writeLog('ida', 'checkDatasets: ' . $response, \OCP\Util::WARN);
+                    if ($this->config['METAX_API_VERSION'] >= 3) {
+                        $metax_datasets[] = [ 'id' => $intersecting_dataset_id ];
+                    }
+                    else {
+                        $metax_datasets[] = [ 'identifier' => $intersecting_dataset_id ];
+                    }
                 }
             }
         }
@@ -2081,9 +2159,15 @@ class FreezingController extends Controller
         $filePIDs = array();
 
         foreach ($nextcloudNodes as $fileInfo) {
+            Util::writeLog('ida', 'getDatasetFiles: fileId=' . $fileInfo->getId(), \OCP\Util::DEBUG);
             $file = $this->fileMapper->findByNextcloudNodeId($fileInfo->getId());
-            $filePIDs[] = $file->getPid();
+            if ($file) {
+                Util::writeLog('ida', 'getDatasetFiles: filePID=' . $file->getPid(), \OCP\Util::DEBUG);
+                $filePIDs[] = $file->getPid();
+            }
         }
+
+        Util::writeLog('ida', 'getDatasetFiles: pids=' . json_encode($filePIDs), \OCP\Util::DEBUG);
 
         if ($this->config['METAX_API_VERSION'] >= 3) {
             $queryURL = $this->config['METAX_API'] . '/files/datasets?storage_service=ida&relations=true';
@@ -2774,6 +2858,7 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
+    /* CLEANUP
     protected function getNextcloudNodes($action, $project, $pathname, $limit = Constants::MAX_FILE_COUNT)
     {
         Util::writeLog(
@@ -2800,6 +2885,35 @@ class FreezingController extends Controller
 
         return ($result['nodes']);
     }
+    */
+    protected function getNextcloudNodes($action, $project, $pathname, $limit = Constants::MAX_FILE_COUNT)
+    {
+        Util::writeLog(
+            'ida',
+            'getNextcloudNodes:'
+                . ' action=' . $action
+                . ' project=' . $project
+                . ' pathname=' . $pathname
+                . ' limit=' . $limit,
+            \OCP\Util::DEBUG
+        );
+
+        $fullPathname = $this->buildFullPathname($action, $project, $pathname);
+
+        Util::writeLog('ida', 'getNextcloudNodes: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+
+        $result = $this->fileDetailsHelper->getFileDetails($project, $fullPathname, $limit);
+
+        Util::writeLog('ida', 'getNextcloudNodes:' . ' count=' . $result['count'], \OCP\Util::DEBUG);
+
+        // If limit to be enforced and maximum file count exceeded, throw exception
+
+        if ($limit > 0 && $result['count'] > $limit) {
+            throw new MaximumAllowedFilesExceeded();
+        }
+
+        return ($result['files']);
+    }
 
     /**
      * Recursively build an ordered array of Nextcloud FileInfo instances for all files within the scope of the
@@ -2825,6 +2939,7 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
+    /* CLEANUP
     protected function getNextcloudNodesR($action, $project, $pathname, $limit, $result, $level = 1)
     {
         Util::writeLog(
@@ -2914,6 +3029,7 @@ class FreezingController extends Controller
 
         return $result;
     }
+    */
 
     /**
      * Construct and return the full filesystem pathname of a node based on the action, project, and its relative pathname
@@ -3583,7 +3699,7 @@ class FreezingController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      */
-    public function clearActions($status = 'failed', $projects)
+    public function clearActions($status = 'failed', $projects = null)
     {
         if ($status !== 'failed' && $status !== 'pending') {
             return API::badRequestErrorResponse('Invalid status.');
@@ -3699,6 +3815,7 @@ class FreezingController extends Controller
             }
 
             return $this->dbLoadSummary();
+
         } catch (Exception $e) {
             return API::serverErrorResponse('dbLoad: ' . $e->getMessage());
         }
