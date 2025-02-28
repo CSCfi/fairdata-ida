@@ -30,7 +30,9 @@ namespace OCA\IDA\Util;
 
 use Exception;
 use OCA\IDA\Util\Constants;
+use OCA\IDA\Util\Access;
 use OCP\IDBConnection;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Util;
 use OC\Files\FileInfo;
 use OC\Files\View;
@@ -72,7 +74,9 @@ class FileDetailsHelper
 
             $qb->select('numeric_id')
                ->from('storages')
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($psoUserId)));
+               ->where($qb->expr()->eq('id', $qb->createNamedParameter($psoUserId, IQueryBuilder::PARAM_STR)));
+
+            //Util::writeLog('ida', 'getFileDetails: sql=' . Access::getRawSQL($qb), \OCP\Util::DEBUG);
 
             // $storageId = $qb->executeQuery()->fetchOne(); // NC30
             $storageId = $qb->execute()->fetchOne();         // NC21
@@ -96,11 +100,13 @@ class FileDetailsHelper
 
         $qb->select('path')
             ->from('filecache')
-            ->where($qb->expr()->eq('storage', $qb->createNamedParameter($storageId)))
-            ->andWhere($qb->expr()->neq('mimetype', $qb->createNamedParameter(2))) // 2 = folder, i.e. not a folder, i.e. a file
-            ->andWhere($qb->expr()->eq('path', $qb->createNamedParameter('files' . $fullPathname)))
+            ->where($qb->expr()->eq('storage', $qb->createNamedParameter($storageId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->neq('mimetype', $qb->createNamedParameter(2, IQueryBuilder::PARAM_INT))) // 2 = folder, i.e. not a folder, i.e. a file
+            ->andWhere($qb->expr()->eq('path', $qb->createNamedParameter('files' . $fullPathname, IQueryBuilder::PARAM_STR)))
             ->orderBy('fileid', 'DESC')
             ->setMaxResults(1);
+
+        //Util::writeLog('ida', 'getFileDetails: sql=' . Access::getRawSQL($qb), \OCP\Util::DEBUG);
 
         $cache_files = $qb->execute()->fetchAll();
 
@@ -112,11 +118,13 @@ class FileDetailsHelper
 
             $qb->select('path')
                 ->from('filecache')
-                ->where($qb->expr()->eq('storage', $qb->createNamedParameter($storageId)))
-                ->andWhere($qb->expr()->eq('mimetype', $qb->createNamedParameter(2))) // 2 = folder, i.e. a folder
-                ->andWhere($qb->expr()->eq('path', $qb->createNamedParameter('files' . $fullPathname)))
+                ->where($qb->expr()->eq('storage', $qb->createNamedParameter($storageId, IQueryBuilder::PARAM_INT)))
+                ->andWhere($qb->expr()->eq('mimetype', $qb->createNamedParameter(2, IQueryBuilder::PARAM_INT))) // 2 = folder, i.e. a folder
+                ->andWhere($qb->expr()->eq('path', $qb->createNamedParameter('files' . $fullPathname, IQueryBuilder::PARAM_STR)))
                 ->orderBy('fileid', 'DESC')
                 ->setMaxResults(1);
+
+            //Util::writeLog('ida', 'getFileDetails: sql=' . Access::getRawSQL($qb), \OCP\Util::DEBUG);
 
             $cache_files = $qb->execute()->fetchAll();
 
@@ -129,9 +137,9 @@ class FileDetailsHelper
  
                 $qb->select('path')
                     ->from('filecache')
-                    ->where($qb->expr()->eq('storage', $qb->createNamedParameter($storageId)))
-                    ->andWhere($qb->expr()->neq('mimetype', $qb->createNamedParameter(2))) // 2 = folder, i.e. not a folder, i.e. a file
-                    ->andWhere($qb->expr()->like('path', $qb->createNamedParameter('files' . $fullPathname . '/%')))
+                    ->where($qb->expr()->eq('storage', $qb->createNamedParameter($storageId, IQueryBuilder::PARAM_INT)))
+                    ->andWhere($qb->expr()->neq('mimetype', $qb->createNamedParameter(2, IQueryBuilder::PARAM_INT))) // 2 = folder, i.e. not a folder, i.e. a file
+                    ->andWhere($qb->expr()->like('path', $qb->createNamedParameter('files' . $fullPathname . '/%', IQueryBuilder::PARAM_STR)))
                     ->orderBy('path', 'ASC');
   
                 // Apply limit if defined (we add 1 to the limit to be able to check if we went over)
@@ -140,23 +148,25 @@ class FileDetailsHelper
                     $qb->setMaxResults($limit + 1);
                 }
     
+                //Util::writeLog('ida', 'getFileDetails: sql=' . Access::getRawSQL($qb), \OCP\Util::DEBUG);
+
                 $cache_files = $qb->execute()->fetchAll();
             }
         }
     
         $files = [];
+        $i = 0;
 
         foreach ($cache_files as $cache_file) {
-            $path = $cache_file['path'];
-            Util::writeLog('ida', 'getFileDetails: path: ' . $path, \OCP\Util::DEBUG);
             try {
-
-                $fullPathname = substr($path, 5); // remove prefix substring 'files'
+                $path = $cache_file['path'];
+                $fullPathname = substr($path, 5); // remove prefix substring 'files', starts then with frozen or staging folder
                 $fileInfo = $this->fsView->getFileInfo($fullPathname);
 
                 if ($fileInfo) {
-                    Util::writeLog('ida', 'getFileDetails: FileInfo: nodeId=' . $fileInfo->getId(), \OCP\Util::DEBUG);
                     $files[] = $fileInfo;
+                    Util::writeLog('ida', 'getFileDetails: (' . $i . ') fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+                    $i++;
                 }
             } catch (Exception $e) { 
                 // Ignore any failures to construct FileInfo instances, which may be due to issues being repaired
@@ -165,7 +175,11 @@ class FileDetailsHelper
             }
         }
 
-        return [ 'count' => count($files), 'files' => $files ];
+        $count = count($files);
+
+        Util::writeLog('ida', 'getFileDetails: count=' . $count, \OCP\Util::DEBUG);
+
+        return [ 'count' => $count, 'files' => $files ];
     }
 
     /**
@@ -193,11 +207,13 @@ class FileDetailsHelper
                 'ida.timestamp'
             ])
             ->from('ida_data_change', 'ida')
-            ->where($qb->expr()->eq('ida.project', $qb->createNamedParameter($project)))
-            ->andWhere($qb->expr()->eq('ida.change', $qb->createNamedParameter('add')))
-            ->andWhere($qb->expr()->like('ida.pathname', $qb->createNamedParameter($stagingPathnamePrefix)))
+            ->where($qb->expr()->eq('ida.project', $qb->createNamedParameter($project, IQueryBuilder::PARAM_STR)))
+            ->andWhere($qb->expr()->eq('ida.change', $qb->createNamedParameter('add', IQueryBuilder::PARAM_STR)))
+            ->andWhere($qb->expr()->like('ida.pathname', $qb->createNamedParameter($stagingPathnamePrefix, IQueryBuilder::PARAM_STR)))
             ->orderBy('ida.pathname', 'ASC') // Order by pathname
             ->orderBy('ida.timestamp', 'DESC'); // Then order by timestamp
+
+        //Util::writeLog('ida', 'getDataChangeLastAddTimestamps: sql=' . Access::getRawSQL($qb), \OCP\Util::DEBUG);
 
         // Get results
         $results = $qb->execute()->fetchAll();
@@ -205,19 +221,20 @@ class FileDetailsHelper
         // Use array_unique to keep only the latest timestamp for each pathname
         $finalResults = [];
         foreach ($results as $row) {
-            $pathname = $row['pathname'];
+            $fullPathname = $row['pathname'];
             // Store only the latest timestamp for each pathname
-            if (!isset($finalResults[$pathname])) {
-                $finalResults[$pathname] = $row['timestamp'];
+            if (!isset($finalResults[$fullPathname])) {
+                $finalResults[$fullPathname] = $row['timestamp'];
             }
         }
 
         Util::writeLog('ida', 'getDataChangeLastAddTimestamps:' . 'results=' . count($finalResults), \OCP\Util::DEBUG);
+
         if (!empty($finalResults)) {
             reset($finalResults);
             $firstPathname = key($finalResults);
-            $firstDetails = current($finalResults);
-            Util::writeLog('ida', 'getDataChangeLastAddTimestamp:' . 'result1: pathname=' . $firstPathname . ' details=' . json_encode($firstDetails), \OCP\Util::DEBUG);
+            $firstTimestamp = current($finalResults);
+            Util::writeLog('ida', 'getDataChangeLastAddTimestamp:' . 'result1: pathname=' . $firstPathname . ' timestamp=' . $firstTimestamp, \OCP\Util::DEBUG);
         }
 
         return $finalResults;
@@ -246,11 +263,13 @@ class FileDetailsHelper
         // Build the query
         $qb->select('*')
             ->from('ida_frozen_file', 'ida')
-            ->where($qb->expr()->eq('ida.project', $qb->createNamedParameter($project)))
-            ->andwhere($qb->expr()->isNull('ida.removed'))
-            ->andwhere($qb->expr()->isNull('ida.cleared'))
-            ->andWhere($qb->expr()->like('ida.pathname', $qb->createNamedParameter($pathnamePrefix)))
+            ->where($qb->expr()->eq('ida.project', $qb->createNamedParameter($project, IQueryBuilder::PARAM_STR)))
+            ->andWhere($qb->expr()->isNull('ida.removed'))
+            ->andWhere($qb->expr()->isNull('ida.cleared'))
+            ->andWhere($qb->expr()->like('ida.pathname', $qb->createNamedParameter($pathnamePrefix, IQueryBuilder::PARAM_STR)))
             ->orderBy('ida.id', 'DESC');
+
+        //Util::writeLog('ida', 'getIdaFrozenFileDetails: sql=' . Access::getRawSQL($qb), \OCP\Util::DEBUG);
 
         // Get results
         $results = $qb->execute()->fetchAll();
@@ -258,13 +277,15 @@ class FileDetailsHelper
         // Use array_unique to keep only the latest timestamp for each pathname
         $finalResults = [];
         foreach ($results as $row) {
-            $pathname = '/' . $project . $row['pathname'];
-            if (!isset($finalResults[$pathname])) {
-                $finalResults[$pathname] = $row;
+            $frozenPathname = '/' . $project . $row['pathname'];
+            if (!isset($finalResults[$frozenPathname])) {
+                $finalResults[$frozenPathname] = $row;
+                //Util::writeLog('ida', 'getIdaFrozenFileDetails: frozenPathname=' . $frozenPathname . ' row=' . json_encode($row), \OCP\Util::DEBUG);
             }
         }
 
         Util::writeLog('ida', 'getIdaFrozenFileDetails:' . 'results=' . count($finalResults), \OCP\Util::DEBUG);
+
         if (!empty($finalResults)) {
             reset($finalResults);
             $firstPathname = key($finalResults);

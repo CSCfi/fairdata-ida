@@ -168,7 +168,7 @@ class FreezingController extends Controller
 
         $uploaded = $nodeInfo->getUploadTime();
 
-        if ($uploaded != 0) {
+        if ($uploaded && int($uploaded) > 0) {
             $timestamp = Generate::newTimestamp($uploaded);
         }
         else {
@@ -274,16 +274,18 @@ class FreezingController extends Controller
             $stagedFiles = array();
             $frozenFiles = array();
 
-            //$dataChangeLastAddTimestamps = $this->fileDetailsHelper->getDataChangeLastAddTimestamps($project, $scope);
-            //$idaFrozenFiles = $this->fileDetailsHelper->getIdaFrozenFileDetails($project, $scope);
-            $dataChangeLastAddTimestamps = array(); // TEMP HACK
-            $idaFrozenFiles = array(); // TEMP HACK
+            $dataChangeLastAddTimestamps = $this->fileDetailsHelper->getDataChangeLastAddTimestamps($project, $scope);
+            $idaFrozenFiles = $this->fileDetailsHelper->getIdaFrozenFileDetails($project, $scope);
 
             if ($area === null || $area === 'staging') {
 
                 # Aggregate files from staging area
 
+                Util::writeLog('ida', 'getFileInventory: aggregating nodes from staging area ...', \OCP\Util::DEBUG);
+
                 $nextcloudNodes = $this->getNextcloudNodes('freeze', $project, $scope, 0);
+
+                $i = 0;
 
                 foreach ($nextcloudNodes as $nodeInfo) {
 
@@ -291,20 +293,21 @@ class FreezingController extends Controller
                     // but it is retained just to be absolutely certain we only output file details
                     if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
-                        $fullPathname = $nodeInfo->getPath();
-                        $pathname = $this->stripRootProjectFolder($project, $fullPathname);
+                        $rootPathname = $nodeInfo->getPath(); // pathname from IDA storage root
+                        $relativePathname = $this->stripRootProjectFolder($project, $rootPathname); 
+                        $stagingPathname = '/' . $project . Constants::STAGING_FOLDER_SUFFIX . $relativePathname;
+
+                        //Util::writeLog('ida', 'getFileInventory: frozen: nodeInfo: stagingPathname=' . $stagingPathname, \OCP\Util::DEBUG);
 
                         $uploaded = $nodeInfo->getUploadTime();
-                        $uploaded = ($uploaded === 0) ? null : Generate::newTimestamp($uploaded);
+                        $uploaded = ($uploaded && $uploaded > 0) ? Generate::newTimestamp($uploaded) : null;
+
+                        //Util::writeLog('ida', 'getFileInventory: cache uploaded=' . $uploaded, \OCP\Util::DEBUG);
 
                         // If no uploaded timestamp defined for node, use data change add timestamp, if any
                         if ($uploaded === null) {
-                            $uploaded = $dataChangeLastAddTimestamps[$fullPathname];
-                        }
-
-                        // REMOVE THIS once data change add timestamp array is implemented above
-                        if ($uploaded === null) {
-                            $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);              // REMOVE
+                            $uploaded = $dataChangeLastAddTimestamps[$stagingPathname] ?? null;
+                            //Util::writeLog('ida', 'getFileInventory: tableLastAdd uploaded=' . $uploaded, \OCP\Util::DEBUG);
                         }
 
                         if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
@@ -318,8 +321,11 @@ class FreezingController extends Controller
                                 'checksum' => (empty(trim($checksum))) ? null : $checksum
                             );
 
-                            $stagedFiles[$pathname] = $fileInfo;
+                            $stagedFiles[$relativePathname] = $fileInfo;
                             $totalStagedFiles++;
+
+                            Util::writeLog('ida', 'getFileInventory: staging: (' . $i . ') pathname=' . $relativePathname, \OCP\Util::DEBUG);
+                            $i++;
                         }
                     }
                 }
@@ -329,9 +335,13 @@ class FreezingController extends Controller
 
                 # Aggregate files from frozen area
 
+                Util::writeLog('ida', 'getFileInventory: aggregating nodes from frozen area ...', \OCP\Util::DEBUG);
+
                 $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $scope, 0);
 
                 $datasetFiles = $this->getDatasetFiles($nextcloudNodes);
+
+                $i = 0;
 
                 foreach ($nextcloudNodes as $nodeInfo) {
 
@@ -339,20 +349,23 @@ class FreezingController extends Controller
                     // but it is retained just to be absolutely certain we only output file details
                     if ($nodeInfo->getType() === FileInfo::TYPE_FILE) {
 
-                        $fullPathname = $nodeInfo->getPath();
-                        $pathname = $this->stripRootProjectFolder($project, $fullPathname);
+                        $rootPathname = $nodeInfo->getPath(); // pathname from IDA storage root
+                        $relativePathname = $this->stripRootProjectFolder($project, $rootPathname); 
+                        $stagingPathname = '/' . $project . Constants::STAGING_FOLDER_SUFFIX . $relativePathname;
+                        $frozenPathname = '/' . $project . $relativePathname;
+
+                        //Util::writeLog('ida', 'getFileInventory: frozen: nodeInfo: stagingPathname=' . $stagingPathname, \OCP\Util::DEBUG);
+                        //Util::writeLog('ida', 'getFileInventory: frozen: nodeInfo: frozenPathname=' . $frozenPathname, \OCP\Util::DEBUG);
 
                         $uploaded = $nodeInfo->getUploadTime();
-                        $uploaded = ($uploaded === 0) ? null : Generate::newTimestamp($uploaded);
+                        $uploaded = ($uploaded && $uploaded > 0) ? Generate::newTimestamp($uploaded) : null;
+
+                        //Util::writeLog('ida', 'getFileInventory: cache uploaded=' . $uploaded, \OCP\Util::DEBUG);
 
                         // If no uploaded timestamp defined for node, use data change add timestamp, if any
                         if ($uploaded === null) {
-                            $uploaded = $dataChangeLastAddTimestamps[$fullPathname];
-                        }
-
-                        // REMOVE THIS once data change add timestamp array is implemented above
-                        if ($uploaded === null) {
-                            $uploaded = $this->getUploadedTimestamp($project, $nodeInfo);              // REMOVE
+                            $uploaded = $dataChangeLastAddTimestamps[$stagingPathname] ?? null;
+                            //Util::writeLog('ida', 'getFileInventory: tableLastAdd uploaded=' . $uploaded, \OCP\Util::DEBUG);
                         }
 
                         if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
@@ -363,25 +376,19 @@ class FreezingController extends Controller
                                 'uploaded' => $uploaded
                             );
 
-                            $frozenFile = $idaFrozenFiles[$fullPathname];
+                            $frozenFile = $idaFrozenFiles[$frozenPathname] ?? null;
 
-                            // REMOVE THIS once frozen file array is implemented above
-                            $idaRecord = false;
-                            if ($frozenFile === null) {
-                                $frozenFile = $this->fileMapper->findByNextcloudNodeId($nodeInfo->getId(), $project);
-                                $idaRecord = true;
-                            }
+                            //Util::writeLog('ida', 'getFileInventory: idaFrozenFileTable frozenFile=' . json_encode($frozenFile), \OCP\Util::DEBUG);
 
                             if ($frozenFile != null) {
 
-                                // REMOVE $idaRecord tests and if-true options when above is removed
-                                $filePID = ($idaRecord) ? $frozenFile->getPid() : $frozenFile['pid'];
-                                $fileInfo['modified'] = ($idaRecord) ? $frozenFile->getModified() : $frozenFile['modified'];
-                                $fileInfo['frozen'] = ($idaRecord) ? $frozenFile->getFrozen() : $frozenFile['frozen'];
-                                $fileInfo['metadata'] = ($idaRecord) ? $frozenFile->getMetadata() : $frozenFile['metadata'];
-                                $fileInfo['replicated'] = ($idaRecord) ? $frozenFile->getReplicated() : $frozenFile['replicated'];
+                                $filePID = $frozenFile['pid'];
+                                $fileInfo['modified'] = $frozenFile['modified'];
+                                $fileInfo['frozen'] = $frozenFile['frozen'];
+                                $fileInfo['metadata'] = $frozenFile['metadata'];
+                                $fileInfo['replicated'] = $frozenFile['replicated'];
                                 $fileInfo['pid'] = $filePID;
-                                $fileInfo['size'] = ($idaRecord) ? $frozenFile->getSize() : $frozenFile['size'];
+                                $fileInfo['size'] = $frozenFile['size'];
 
                                 if ($filePID != null) {
                                     if (isset($datasetFiles[$filePID])) {
@@ -397,7 +404,7 @@ class FreezingController extends Controller
                                 }
 
                                 $cacheChecksum = $nodeInfo->getChecksum();
-                                $checksum = $frozenFile->getChecksum();
+                                $checksum = $frozenFile['checksum'];
 
                                 if ($checksum === null) {
                                     $checksum = (empty(trim($cacheChecksum))) ? null : $cacheChecksum;
@@ -421,9 +428,12 @@ class FreezingController extends Controller
                             }
 
                             if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
-                                $frozenFiles[$pathname] = $fileInfo;
+                                $frozenFiles[$relativePathname] = $fileInfo;
                                 $totalFrozenFiles++;
                             }
+
+                            Util::writeLog('ida', 'getFileInventory: frozen: (' . $i . ') pathname=' . $relativePathname, \OCP\Util::DEBUG);
+                            $i++;
                         }
                     }
                 }

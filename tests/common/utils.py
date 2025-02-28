@@ -347,7 +347,7 @@ def wait_for_pending_actions(self, project, user):
 
 
 def check_for_failed_actions(self, project, user, should_be_failed = False):
-    print("(verifying no failed actions)")
+    print("(checking for failed actions - failed action(s) expected: %s)" % should_be_failed)
     response = requests.get("%s/actions?project=%s&status=failed" % (self.config["IDA_API"], project), auth=user, verify=False)
     self.assertEqual(response.status_code, 200)
     actions = response.json()

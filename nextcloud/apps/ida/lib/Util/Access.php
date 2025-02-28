@@ -289,4 +289,39 @@ class Access
         return ($escapedComponent);
     }
 
+    public static function getRawSQL(\OCP\DB\QueryBuilder\IQueryBuilder $queryBuilder): string {
+
+        $sql = $queryBuilder->getSQL();
+        $params = $queryBuilder->getParameters();
+    
+        // Get the actual table prefix from Nextcloud's configuration
+        $config = \OC::$server->getConfig();
+        $tablePrefix = $config->getSystemValue('dbtableprefix', '');
+    
+        // Convert *PREFIX* to actual table prefix
+        $sql = str_replace('*PREFIX*', $tablePrefix, $sql);
+    
+        // Convert MySQL-style backticks (`) to PostgreSQL-compatible double quotes (")
+        $sql = str_replace('`', '"', $sql);
+    
+        // Replace named parameters with actual values
+        foreach ($params as $key => $value) {
+            if (is_string($value)) {
+                $quotedValue = "'" . pg_escape_string($value) . "'";
+            } elseif (is_null($value)) {
+                $quotedValue = 'NULL';
+            } else {
+                $quotedValue = $value;
+            }
+    
+            // Ensure parameter keys are prefixed with ":" as used in Nextcloud's QueryBuilder
+            $paramKey = is_string($key) ? ':' . ltrim($key, ':') : '?';
+    
+            // Replace placeholders
+            $sql = str_replace($paramKey, $quotedValue, $sql);
+        }
+    
+        return $sql;
+    }
+
 }
