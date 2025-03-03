@@ -339,7 +339,7 @@ class FreezingController extends Controller
 
                 $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $scope, 0);
 
-                $datasetFiles = $this->getDatasetFiles($nextcloudNodes);
+                $filePIDs = array();
 
                 $i = 0;
 
@@ -390,19 +390,6 @@ class FreezingController extends Controller
                                 $fileInfo['pid'] = $filePID;
                                 $fileInfo['size'] = $frozenFile['size'];
 
-                                if ($filePID != null) {
-                                    if (isset($datasetFiles[$filePID])) {
-                                        $datasets = $datasetFiles[$filePID];
-                                    }
-                                    if ($datasets != null) {
-                                        $fileInfo['datasets'] = $datasets;
-                                        Util::writeLog('ida', 'getFileInventory:'
-                                            . ' pid=' . $filePID
-                                            . ' datasets=' . json_encode($datasets)
-                                            , \OCP\Util::DEBUG);
-                                    }
-                                }
-
                                 $cacheChecksum = $nodeInfo->getChecksum();
                                 $checksum = $frozenFile['checksum'];
 
@@ -427,16 +414,44 @@ class FreezingController extends Controller
                                 }
                             }
 
-                            if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
-                                $frozenFiles[$relativePathname] = $fileInfo;
-                                $totalFrozenFiles++;
-                            }
+                            $filePIDs[] = $filePID;
+                            $frozenFiles[$relativePathname] = $fileInfo;
 
                             Util::writeLog('ida', 'getFileInventory: frozen: (' . $i . ') pathname=' . $relativePathname, \OCP\Util::DEBUG);
                             $i++;
                         }
                     }
                 }
+
+                // Get datasets based on frozen file pids, then iterate over frozen files and add datasets to each file
+                // details accordingly, and then filter out files which are part of published datasets if unpublishedOnly
+                // is true
+
+                $datasetFiles = $this->getDatasetFilesByPIDList($filePIDs);
+
+                $finalFrozenFiles = array();
+
+                foreach ($frozenFiles as $relativePathname => $fileInfo) {
+
+                    $filePID = $fileInfo['pid'];
+                    $datasets = null;
+
+                    if ($filePID != null) {
+                        if (isset($datasetFiles[$filePID])) {
+                            $datasets = $datasetFiles[$filePID];
+                        }
+                        if ($datasets != null) {
+                            $fileInfo['datasets'] = $datasets;
+                            Util::writeLog('ida', 'getFileInventory: pid=' . $filePID . ' datasets=' . json_encode($datasets) , \OCP\Util::DEBUG);
+                        }
+                        if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
+                            $finalFrozenFiles[$relativePathname] = $fileInfo;
+                            $totalFrozenFiles++;
+                        }
+                    }
+                }
+
+                $frozenFiles = $finalFrozenFiles;
             }
 
             $totalFiles = $totalStagedFiles + $totalFrozenFiles;
@@ -540,13 +555,7 @@ class FreezingController extends Controller
     {
         try {
 
-            Util::writeLog(
-                'ida',
-                'projectIsLocked:'
-                    . ' project=' . $project
-                    . ' user=' . $this->userId,
-                \OCP\Util::DEBUG
-            );
+            //Util::writeLog('ida', 'projectIsLocked:' . ' project=' . $project . ' user=' . $this->userId, \OCP\Util::DEBUG);
 
             try {
                 API::verifyRequiredStringParameter('project', $project);
@@ -2177,7 +2186,25 @@ class FreezingController extends Controller
             }
         }
 
-        Util::writeLog('ida', 'getDatasetFiles: pids=' . json_encode($filePIDs), \OCP\Util::DEBUG);
+        Util::writeLog('ida', 'getDatasetFiles: filePIDs=' . json_encode($filePIDs), \OCP\Util::DEBUG);
+
+        return $this->getDatasetFilesByPIDList($filePIDs);
+    }
+
+    /**
+     * Retrieve an associative array containing entries for all frozen files which belong to one or more
+     * Datasets in Metax, for all of the specified frozen file pids.
+     *
+     * @param Array $filePIDs an array of Nextcloud frozen file PIDs
+     *
+     * @return AssociativeArray
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    protected function getDatasetFilesByPIDList($filePIDs)
+    {
+        Util::writeLog('ida', 'getDatasetFilesByPIDList: filePIDs=' . count($filePIDs), \OCP\Util::DEBUG);
 
         if ($this->config['METAX_API_VERSION'] >= 3) {
             $queryURL = $this->config['METAX_API'] . '/files/datasets?storage_service=ida&relations=true';
@@ -2189,7 +2216,7 @@ class FreezingController extends Controller
         $password = $this->config['METAX_PASS'];
         $postbody = json_encode($filePIDs);
 
-        Util::writeLog('ida', 'getDatasetFiles: queryURL=' . $queryURL
+        Util::writeLog('ida', 'getDatasetFilesByPIDList: queryURL=' . $queryURL
                        . ' username=' . $username
                        . ' password=' . $password
                        . ' postbody=' . $postbody
@@ -2224,7 +2251,7 @@ class FreezingController extends Controller
         $response = curl_exec($ch);
 
         if ($response === false) {
-            Util::writeLog('ida', 'getDatasetFiles:'
+            Util::writeLog('ida', 'getDatasetFilesByPIDList:'
                 . ' curl_errno=' . curl_errno($ch)
                 . ' response=' . $response, \OCP\Util::ERROR);
             curl_close($ch);
@@ -2235,7 +2262,7 @@ class FreezingController extends Controller
 
         curl_close($ch);
 
-        Util::writeLog('ida', 'getDatasetFiles: datasets_response=' . $response, \OCP\Util::DEBUG);
+        Util::writeLog('ida', 'getDatasetFilesByPIDList: datasets_response=' . $response, \OCP\Util::DEBUG);
 
         if ($httpcode === 200) {
 
@@ -2244,11 +2271,11 @@ class FreezingController extends Controller
             if (! is_array($datasetFiles)) {
                 list($ignore, $keep) = explode("200 OK", $response, 2);
                 list($ignore, $body) = explode("\r\n\r\n", $keep, 2);
-                Util::writeLog('ida', 'getDatasetFiles: body=' . $body, \OCP\Util::DEBUG);
+                Util::writeLog('ida', 'getDatasetFilesByPIDList: body=' . $body, \OCP\Util::DEBUG);
                 $datasetFiles = json_decode($body, true);
             }
 
-            Util::writeLog('ida', 'getDatasetFiles: fileCount=' . count($datasetFiles), \OCP\Util::DEBUG);
+            Util::writeLog('ida', 'getDatasetFilesByPIDList: fileCount=' . count($datasetFiles), \OCP\Util::DEBUG);
 
             return ($datasetFiles);
         }
@@ -3055,14 +3082,7 @@ class FreezingController extends Controller
      */
     protected function buildFilesystemPathname($action, $project, $pathname)
     {
-        Util::writeLog(
-            'ida',
-            'buildFilesystemPathname:'
-                . ' action=' . $action
-                . ' project=' . $project
-                . ' pathname=' . $pathname,
-            \OCP\Util::DEBUG
-        );
+        //Util::writeLog('ida', 'buildFilesystemPathname:' . ' action=' . $action . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
 
         $fullPathname = $this->buildFullPathname($action, $project, $pathname);
 
@@ -3073,7 +3093,7 @@ class FreezingController extends Controller
             . '/files'
             . $fullPathname;
 
-        Util::writeLog('ida', 'buildFilesystemPathname: filesystemPathname=' . $filesystemPathname, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'buildFilesystemPathname: filesystemPathname=' . $filesystemPathname, \OCP\Util::DEBUG);
 
         return $filesystemPathname;
     }
@@ -3092,14 +3112,7 @@ class FreezingController extends Controller
      */
     protected function buildFullPathname($action, $project, $pathname)
     {
-        Util::writeLog(
-            'ida',
-            'buildFullPathname:'
-                . ' action=' . $action
-                . ' project=' . $project
-                . ' pathname=' . $pathname,
-            \OCP\Util::DEBUG
-        );
+        //Util::writeLog('ida', 'buildFullPathname:' . ' action=' . $action . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
 
         if ($pathname === '/') {
             $pathname = '';
@@ -3111,7 +3124,7 @@ class FreezingController extends Controller
             $fullPathname = '/' . $project . $pathname;
         }
 
-        Util::writeLog('ida', 'buildFullPathname: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'buildFullPathname: fullPathname=' . $fullPathname, \OCP\Util::DEBUG);
 
         return $fullPathname;
     }
@@ -3128,7 +3141,7 @@ class FreezingController extends Controller
      */
     protected function getParentPathname($pathname)
     {
-        Util::writeLog('ida', 'getParentPathname: pathname=' . $pathname, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'getParentPathname: pathname=' . $pathname, \OCP\Util::DEBUG);
 
         $pattern = '/\/[^\/][^\/]*$/';
 
@@ -3138,7 +3151,7 @@ class FreezingController extends Controller
             $parentPathname = null;
         }
 
-        Util::writeLog('ida', 'getParentPathname: parentPathname=' . $parentPathname, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'getParentPathname: parentPathname=' . $parentPathname, \OCP\Util::DEBUG);
 
         return $parentPathname;
     }
@@ -3156,13 +3169,7 @@ class FreezingController extends Controller
      */
     protected function stripRootProjectFolder($project, $pathname)
     {
-        Util::writeLog(
-            'ida',
-            'stripRootProjectFolder:'
-                . ' project=' . $project
-                . ' pathname=' . $pathname,
-            \OCP\Util::DEBUG
-        );
+        //Util::writeLog('ida', 'stripRootProjectFolder:' . ' project=' . $project . ' pathname=' . $pathname, \OCP\Util::DEBUG);
 
         $pattern = '/^.*\/files\/' . $project . '[^\/]*\//';
 
@@ -3172,7 +3179,7 @@ class FreezingController extends Controller
             $relativePathname = null;
         }
 
-        Util::writeLog('ida', 'stripRootProjectFolder: relativePathname=' . $relativePathname, \OCP\Util::DEBUG);
+        // Util::writeLog('ida', 'stripRootProjectFolder: relativePathname=' . $relativePathname, \OCP\Util::DEBUG);
 
         return $relativePathname;
     }

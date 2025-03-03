@@ -225,7 +225,7 @@ class Access
         else {
             $lockFilePathname = $dataRootPathname . '/' . Constants::PROJECT_USER_PREFIX . $project . '/files/LOCK';
         }
-        Util::writeLog('ida', 'buildLockFilePathname: lockFilePathname=' . $lockFilePathname, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'buildLockFilePathname: lockFilePathname=' . $lockFilePathname, \OCP\Util::DEBUG);
         
         return ($lockFilePathname);
     }
@@ -277,14 +277,14 @@ class Access
      * @return string
      */
     public static function escapeQueryStringComponent($component) {
-        Util::writeLog('ida', 'escapeQueryStringComponent: component=' . $component, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'escapeQueryStringComponent: component=' . $component, \OCP\Util::DEBUG);
         if ($component === null || $component === '') {
             $escapedComponent = $component;
         }
         else {
             $escapedComponent = str_replace('\'', '\'\'', $component);
         }
-        Util::writeLog('ida', 'escapeQueryStringComponent: escapedComponent=' . $escapedComponent, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'escapeQueryStringComponent: escapedComponent=' . $escapedComponent, \OCP\Util::DEBUG);
         
         return ($escapedComponent);
     }
