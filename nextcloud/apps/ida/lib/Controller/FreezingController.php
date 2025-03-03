@@ -268,9 +268,6 @@ class FreezingController extends Controller
 
             $scope = ($area && $scope) ? $scope : '/';
 
-            $totalStagedFiles = 0;
-            $totalFrozenFiles = 0;
-
             $stagedFiles = array();
             $frozenFiles = array();
 
@@ -322,8 +319,6 @@ class FreezingController extends Controller
                             );
 
                             $stagedFiles[$relativePathname] = $fileInfo;
-                            $totalStagedFiles++;
-
                             Util::writeLog('ida', 'getFileInventory: staging: (' . $i . ') pathname=' . $relativePathname, \OCP\Util::DEBUG);
                             $i++;
                         }
@@ -370,8 +365,6 @@ class FreezingController extends Controller
 
                         if ($uploadedBefore === null || $uploaded === null || $uploaded < $uploadedBefore) {
 
-                            $datasets = null;
-
                             $fileInfo = array(
                                 'uploaded' => $uploaded
                             );
@@ -416,7 +409,6 @@ class FreezingController extends Controller
 
                             $filePIDs[] = $filePID;
                             $frozenFiles[$relativePathname] = $fileInfo;
-
                             Util::writeLog('ida', 'getFileInventory: frozen: (' . $i . ') pathname=' . $relativePathname, \OCP\Util::DEBUG);
                             $i++;
                         }
@@ -429,31 +421,40 @@ class FreezingController extends Controller
 
                 $datasetFiles = $this->getDatasetFilesByPIDList($filePIDs);
 
-                $finalFrozenFiles = array();
+                if (count($datasetFiles) > 0) {
 
-                foreach ($frozenFiles as $relativePathname => $fileInfo) {
+                    $i = 0;
 
-                    $filePID = $fileInfo['pid'];
-                    $datasets = null;
+                    foreach ($frozenFiles as $relativePathname => $fileInfo) {
 
-                    if ($filePID != null) {
-                        if (isset($datasetFiles[$filePID])) {
-                            $datasets = $datasetFiles[$filePID];
+                        $filePID = $fileInfo['pid'];
+                        $datasets = null;
+
+                        if ($filePID != null) {
+                            if (isset($datasetFiles[$filePID])) {
+                                $datasets = $datasetFiles[$filePID];
+                            }
+                            if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
+                                // Either we want all frozen files or we only only want unpublished files and it's inpublished so include it
+                                Util::writeLog('ida', 'getFileInventory: datasets: (' . $i . ') pathname=' . $relativePathname, \OCP\Util::DEBUG);
+                                // If there are datasets, add them to the frozen file info
+                                if ($datasets != null) {
+                                    $fileInfo['datasets'] = $datasets;
+                                    $frozenFiles[$relativePathname] = $fileInfo;
+                                    Util::writeLog('ida', 'getFileInventory: datasets: (' . $i . ') pid=' . $filePID . ' datasets=' . json_encode($datasets) , \OCP\Util::DEBUG);
+                                }
+                            } else {
+                                // We're excluding published frozen files so remove from the list
+                                unset($frozenFiles[$relativePathname]);
+                            }
                         }
-                        if ($datasets != null) {
-                            $fileInfo['datasets'] = $datasets;
-                            Util::writeLog('ida', 'getFileInventory: pid=' . $filePID . ' datasets=' . json_encode($datasets) , \OCP\Util::DEBUG);
-                        }
-                        if ($unpublishedOnly === 'false' || ($unpublishedOnly === 'true' && $datasets === null)) {
-                            $finalFrozenFiles[$relativePathname] = $fileInfo;
-                            $totalFrozenFiles++;
-                        }
+                        $i++;
                     }
                 }
-
-                $frozenFiles = $finalFrozenFiles;
             }
 
+            $totalStagedFiles = count($stagedFiles);
+            $totalFrozenFiles = count($frozenFiles);
             $totalFiles = $totalStagedFiles + $totalFrozenFiles;
 
             Util::writeLog(
@@ -2162,9 +2163,9 @@ class FreezingController extends Controller
      * Datasets in Metax, for all of the specified frozen file nodes. Keys will be frozen file PIDs and
      * values will be an array of dataset persistent identifiers.
      *
-     * @param Array $nextcloudNodes an array of Nextcloud FileInfo objects
+     * @param array $nextcloudNodes an array of Nextcloud FileInfo objects
      *
-     * @return AssociativeArray
+     * @return array
      *
      * @NoAdminRequired
      * @NoCSRFRequired
@@ -2195,9 +2196,9 @@ class FreezingController extends Controller
      * Retrieve an associative array containing entries for all frozen files which belong to one or more
      * Datasets in Metax, for all of the specified frozen file pids.
      *
-     * @param Array $filePIDs an array of Nextcloud frozen file PIDs
+     * @param array $filePIDs an array of Nextcloud frozen file PIDs
      *
-     * @return AssociativeArray
+     * @return array
      *
      * @NoAdminRequired
      * @NoCSRFRequired
@@ -2216,11 +2217,11 @@ class FreezingController extends Controller
         $password = $this->config['METAX_PASS'];
         $postbody = json_encode($filePIDs);
 
-        Util::writeLog('ida', 'getDatasetFilesByPIDList: queryURL=' . $queryURL
-                       . ' username=' . $username
-                       . ' password=' . $password
-                       . ' postbody=' . $postbody
-                       , \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'getDatasetFilesByPIDList: queryURL=' . $queryURL
+        //               . ' username=' . $username
+        //               . ' password=' . $password
+        //               . ' postbody=' . $postbody
+        //               , \OCP\Util::DEBUG);
 
         $ch = curl_init($queryURL);
 
@@ -2262,7 +2263,7 @@ class FreezingController extends Controller
 
         curl_close($ch);
 
-        Util::writeLog('ida', 'getDatasetFilesByPIDList: datasets_response=' . $response, \OCP\Util::DEBUG);
+        //Util::writeLog('ida', 'getDatasetFilesByPIDList: datasets_response=' . $response, \OCP\Util::DEBUG);
 
         if ($httpcode === 200) {
 
