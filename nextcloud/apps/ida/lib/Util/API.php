@@ -253,4 +253,64 @@ class API
             return rawurlencode(rawurldecode($v));
         }, explode('/', $pathname))));
     }
+
+    /**
+     * Output the specified array as JSON to the specified file handle.
+     * 
+     * @param resource $file   the file handle
+     * @param array    $array  the array to be output
+     * @param int      $indent the indentation level
+     */
+    public static function outputArrayAsJSON($file, array $array, int $indent = 0): void
+    {
+        // We can't know from an empty PHP array whether it is intended to be a list or associative
+        // array, and thus cannot know whether to output '[]' or '{}'; so we will output 'null', which
+        // is syntactically valid JSON for either case, as long as the receiver is prepared to handle it
+        // and not expect excplicitly an empty list or dictionary. If this causes issues, we may need
+        // to revisit this behavior.
+        if (is_null($array) || empty($array)) {
+            fwrite($file, "null");
+            return;
+        }
+
+        $indentation = str_repeat(" ", $indent);
+        $childIndentation = str_repeat(" ", $indent + 4);
+        $isList = array_keys($array) === range(0, count($array) - 1);
+
+        if ($isList) {
+            $first = true;
+            fwrite($file, "[\n" . $childIndentation);
+            foreach ($array as $value) {
+                if (!$first) {
+                    fwrite($file, ",\n" . $childIndentation);
+                }
+                if (is_object($value)) {
+                    API::outputArrayAsJSON($file, $value->jsonSerialize(), $indent + 4);
+                } else if (is_array($value)) {
+                    API::outputArrayAsJSON($file, $value, $indent + 4);
+                } else {
+                    fwrite($file, json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                }
+                $first = false;
+            }
+            fwrite($file, "\n" . $indentation . "]");
+        } else {
+            $first = true;
+            fwrite($file, "{\n" . $childIndentation);
+            foreach ($array as $key => $value) {
+                if (!$first) {
+                    fwrite($file, ",\n" . $childIndentation);
+                }
+                fwrite($file, json_encode($key, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . ": ");
+                if (is_array($value)) {
+                    API::outputArrayAsJSON($file, $value, $indent + 4);
+                } else {
+                    fwrite($file, json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                }
+                $first = false;
+            }
+            fwrite($file, "\n" . $indentation . "}");
+        }
+    }
+
 }

@@ -28,6 +28,10 @@
 namespace OCP\AppFramework\Http;
 
 use OCP\AppFramework\Http;
+// IDA MODIFICATION START
+use OCP\Util;
+use Throwable;
+// IDA MODIFICATION END
 
 /**
  * Class StreamResponse
@@ -56,13 +60,36 @@ class StreamResponse extends Response implements ICallbackResponse {
 	 * @since 8.1.0
 	 */
 	public function callback(IOutput $output) {
-		// handle caching
-		if ($output->getHttpResponseCode() !== Http::STATUS_NOT_MODIFIED) {
-			if (!(is_resource($this->filePath) || file_exists($this->filePath))) {
-				$output->setHttpResponseCode(Http::STATUS_NOT_FOUND);
-			} elseif ($output->setReadfile($this->filePath) === false) {
-				$output->setHttpResponseCode(Http::STATUS_BAD_REQUEST);
-			}
-		}
+        // IDA MODIFICATION START
+        try {
+
+		    // handle caching
+		    if ($output->getHttpResponseCode() !== Http::STATUS_NOT_MODIFIED) {
+			    if (!(is_resource($this->filePath) || file_exists($this->filePath))) {
+				    $output->setHttpResponseCode(Http::STATUS_NOT_FOUND);
+			    } elseif ($output->setReadfile($this->filePath) === false) {
+				    $output->setHttpResponseCode(Http::STATUS_BAD_REQUEST);
+			    }
+		    }
+
+        } catch (Throwable $e) {
+
+            // Capture the backtrace and error message
+            $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            
+            // Log the error message
+            Util::writeLog('ida', 'Error while outputting StreamResponse: ' . $e->getMessage(), \OCP\Util::ERROR);
+        
+            // Log the backtrace
+            $backtraceStr = '';
+            foreach ($backtrace as $trace) {
+                $backtraceStr .= 'File: ' . $trace['file'] . ' Line: ' . $trace['line'] . ' Function: ' . $trace['function'] . "\n";
+            }
+            
+            Util::writeLog('ida', 'Backtrace:\n' . $backtraceStr, \OCP\Util::ERROR);
+
+            throw $e;
+        }
+        // IDA MODIFICATION END
 	}
 }

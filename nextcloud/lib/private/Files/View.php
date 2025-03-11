@@ -134,7 +134,7 @@ class View {
 			$values = explode(',', $_SERVER['HTTP_IDA_MODE']);
 			$this->idaMode = $values[0];
 		}
-		Util::writeLog('ida', 'View init: idaUser=' . $this->idaUser . ' idaMode=' . $this->idaMode, \OCP\Util::DEBUG);
+		//Util::writeLog('ida', 'View init: idaUser=' . $this->idaUser . ' idaMode=' . $this->idaMode, \OCP\Util::DEBUG);
 	}
 
 	public function getAbsolutePath($path = '/') {

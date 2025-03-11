@@ -29,6 +29,9 @@ else
     HTTPD_APP="apache2"
 fi
 
+systemctl stop php-fpm
 systemctl stop $HTTPD_APP
+systemctl start php-fpm
 systemctl start $HTTPD_APP
+systemctl status php-fpm
 systemctl status $HTTPD_APP

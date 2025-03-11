@@ -156,14 +156,14 @@ if [ ! -d $PROJECT_STORAGE_OC_DATA_ROOT ]; then
     errorExit "The specified project ${PROJECT} does not exist"
 fi
 
-OUT=`$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${URL}" 2>$ERR `
+# Note, IDA API already pretty-prints the JSON output returned so no need to use jq as is usually done
+
+$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "${URL}" 2>$ERR
 
 if [ -s $ERR ]; then
     MSG=`cat $ERR`
     addToLog "$MSG"
     errorExit "Failed to retrieve project inventory"
 fi
-
-echo "$OUT" | jq --indent 4
 
 addToLog "DONE"

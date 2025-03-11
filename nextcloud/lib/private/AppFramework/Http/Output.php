@@ -28,6 +28,10 @@
 namespace OC\AppFramework\Http;
 
 use OCP\AppFramework\Http\IOutput;
+// IDA MODIFICATION START
+use OCP\Util;
+use Throwable; 
+// IDA MODIFICATION END
 
 /**
  * Very thin wrapper class to make output testable
@@ -56,12 +60,33 @@ class Output implements IOutput {
 	 * @return bool false if an error occurred
 	 */
 	public function setReadfile($path) {
-		if (is_resource($path)) {
-			$output = fopen('php://output', 'w');
-			return stream_copy_to_stream($path, $output) > 0;
-		} else {
-			return @readfile($path);
-		}
+        // IDA MODIFICATION START
+        try {
+		    if (is_resource($path)) {
+			    $output = fopen('php://output', 'w');
+			    return stream_copy_to_stream($path, $output) > 0;
+		    } else {
+			    return @readfile($path);
+		    }
+        } catch (Throwable $e) {
+
+            // Capture the backtrace and error message
+            $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            
+            // Log the error message
+            Util::writeLog('ida', 'Error while outputting StreamResponse: ' . $e->getMessage(), \OCP\Util::ERROR);
+        
+            // Log the backtrace
+            $backtraceStr = '';
+            foreach ($backtrace as $trace) {
+                $backtraceStr .= 'File: ' . $trace['file'] . ' Line: ' . $trace['line'] . ' Function: ' . $trace['function'] . "\n";
+            }
+            
+            Util::writeLog('ida', 'Backtrace:\n' . $backtraceStr, \OCP\Util::ERROR);
+
+            throw $e;
+        }
+        // IDA MODIFICATION END
 	}
 
 	/**

@@ -44,6 +44,7 @@ use OCA\IDA\Util\Generate;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\Entity;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http\StreamResponse;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\Util;
@@ -168,7 +169,7 @@ class FreezingController extends Controller
 
         $uploaded = $nodeInfo->getUploadTime();
 
-        if ($uploaded && int($uploaded) > 0) {
+        if ($uploaded && $uploaded > 0) {
             $timestamp = Generate::newTimestamp($uploaded);
         }
         else {
@@ -271,8 +272,24 @@ class FreezingController extends Controller
             $stagedFiles = array();
             $frozenFiles = array();
 
+            $lastChange = $this->dataChangeMapper->getLastDataChangeDetails($project);
+
+            if ($lastChange !== null) {
+                $change = array(
+                    'timestamp' => $lastChange->getTimestamp(),
+                    'user' => $lastChange->getUser(),
+                    'change' => $lastChange->getChange(),
+                    'pathname' => $lastChange->getPathname(),
+                    'target' => $lastChange->getTarget(),
+                    'mode' => $lastChange->getMode()
+                );
+                if ($change['target'] === null) {
+                    unset($change['target']);
+                }
+                $lastChange = $change;
+            }
+
             $dataChangeLastAddTimestamps = $this->fileDetailsHelper->getDataChangeLastAddTimestamps($project, $scope);
-            $idaFrozenFiles = $this->fileDetailsHelper->getIdaFrozenFileDetails($project, $scope);
 
             if ($area === null || $area === 'staging') {
 
@@ -324,6 +341,10 @@ class FreezingController extends Controller
                         }
                     }
                 }
+
+                // Free up memory
+                $nextcloudNodes = null;
+                gc_collect_cycles();
             }
 
             if ($area === null || $area === 'frozen') {
@@ -332,6 +353,7 @@ class FreezingController extends Controller
 
                 Util::writeLog('ida', 'getFileInventory: aggregating nodes from frozen area ...', \OCP\Util::DEBUG);
 
+                $idaFrozenFiles = $this->fileDetailsHelper->getIdaFrozenFileDetails($project, $scope);
                 $nextcloudNodes = $this->getNextcloudNodes('unfreeze', $project, $scope, 0);
 
                 $filePIDs = array();
@@ -415,6 +437,11 @@ class FreezingController extends Controller
                     }
                 }
 
+                // Free up memory
+                $nextcloudNodes = null;
+                $idaFrozenFiles = null;
+                gc_collect_cycles();
+
                 // Get datasets based on frozen file pids, then iterate over frozen files and add datasets to each file
                 // details accordingly, and then filter out files which are part of published datasets if unpublishedOnly
                 // is true
@@ -451,7 +478,15 @@ class FreezingController extends Controller
                         $i++;
                     }
                 }
+
+                // Free up memory
+                $filePIDs = null;
+                $datasetFiles = null;
             }
+
+            // Free up memory
+            $dataChangeLastAddTimestamps = null;
+            gc_collect_cycles();
 
             $totalStagedFiles = count($stagedFiles);
             $totalFrozenFiles = count($frozenFiles);
@@ -467,30 +502,14 @@ class FreezingController extends Controller
             );
 
             if (empty($stagedFiles)) {
-                $stagedFiles = (object) null;
+                $stagedFiles = (object) null; // Coercing to object ensures that an empty dict is output in the JSON response
             }
 
             if (empty($frozenFiles)) {
                 $frozenFiles = (object) null;
             }
 
-            $lastChange = $this->dataChangeMapper->getLastDataChangeDetails($project);
-
-            if ($lastChange !== null) {
-                $change = array(
-                    'timestamp' => $lastChange->getTimestamp(),
-                    'user' => $lastChange->getUser(),
-                    'change' => $lastChange->getChange(),
-                    'pathname' => $lastChange->getPathname(),
-                    'target' => $lastChange->getTarget(),
-                    'mode' => $lastChange->getMode()
-                );
-                if ($change['target'] === null) {
-                    unset($change['target']);
-                }
-            }
-
-            return new DataResponse(array(
+            $inventory = array(
                 'project' => $project,
                 'created' => Generate::newTimestamp(),
                 'area' => $area,
@@ -503,7 +522,28 @@ class FreezingController extends Controller
                 'totalFrozenFiles' => $totalFrozenFiles,
                 'staging' => $stagedFiles,
                 'frozen' => $frozenFiles
-            ));
+            );
+
+            Util::writeLog('ida', 'getFileInventory: writing inventory as JSON to memory buffer', \OCP\Util::DEBUG);
+
+            $file = fopen('php://memory', 'w+');
+            API::outputArrayAsJSON($file, $inventory);
+            rewind($file);
+
+            Util::writeLog('ida', 'getFileInventory: write complete', \OCP\Util::DEBUG);
+
+            // Free up memory
+            $inventory = null;
+            gc_collect_cycles();
+
+            Util::writeLog('ida', 'getFileInventory: creating streaming response', \OCP\Util::DEBUG);
+
+            $response = new StreamResponse($file);
+
+            Util::writeLog('ida', 'getFileInventory: returning streaming response', \OCP\Util::DEBUG);
+
+            return $response;
+
         } catch (Exception $e) {
             return API::serverErrorResponse('getFileInventory: ' . $e->getMessage());
         }
@@ -4867,4 +4907,5 @@ class FreezingController extends Controller
         //     /a/b/n
         //     /x/p
     }
+
 }

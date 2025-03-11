@@ -153,10 +153,35 @@ class FileController extends Controller
 
             $fileEntities = $this->fileMapper->findFiles($pid, $queryProjects);
 
+            if (is_null($fileEntities) || empty($fileEntities)) {
+                return new DataResponse(array());
+            }
+
             // NOTE: it is possible for a repair action to have no associated files, if after re-scanning
             // the project frozen area there no longer exist any files in the frozen area.
 
-            return new DataResponse($fileEntities);
+            $fileCount = count($fileEntities);
+
+            Util::writeLog('ida', 'getFiles:' . ' fileEntities=' . $fileCount, \OCP\Util::DEBUG);
+            Util::writeLog('ida', 'getFiles: writing action file details as JSON to memory buffer', \OCP\Util::DEBUG);
+
+            $temp = fopen('php://memory', 'w+');
+            API::outputArrayAsJSON($temp, $fileEntities);
+            rewind($temp);
+
+            Util::writeLog('ida', 'getFiles: write complete', \OCP\Util::DEBUG);
+
+            // Free up memory
+            $fileEntities = null;
+            gc_collect_cycles();
+
+            Util::writeLog('ida', 'getFiles: creating streaming response', \OCP\Util::DEBUG);
+
+            $response = new StreamResponse($temp);
+
+            Util::writeLog('ida', 'getFiles: returning streaming response', \OCP\Util::DEBUG);
+
+            return $response;
         }
         catch (Exception $e) {
             return API::serverErrorResponse('getFiles: ' . $e->getMessage());

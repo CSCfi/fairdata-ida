@@ -548,5 +548,6 @@ def audit_project(self, project, status, after = None, area = None, timestamps =
 def remove_report(self, pathname):
     try:
         os.remove(pathname)
+        os.remove(pathname + '.summary')
     except:
         pass
