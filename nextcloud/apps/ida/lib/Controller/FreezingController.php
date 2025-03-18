@@ -344,7 +344,6 @@ class FreezingController extends Controller
 
                 // Free up memory
                 $nextcloudNodes = null;
-                gc_collect_cycles();
             }
 
             if ($area === null || $area === 'frozen') {
@@ -440,7 +439,6 @@ class FreezingController extends Controller
                 // Free up memory
                 $nextcloudNodes = null;
                 $idaFrozenFiles = null;
-                gc_collect_cycles();
 
                 // Get datasets based on frozen file pids, then iterate over frozen files and add datasets to each file
                 // details accordingly, and then filter out files which are part of published datasets if unpublishedOnly
@@ -486,7 +484,6 @@ class FreezingController extends Controller
 
             // Free up memory
             $dataChangeLastAddTimestamps = null;
-            gc_collect_cycles();
 
             $totalStagedFiles = count($stagedFiles);
             $totalFrozenFiles = count($frozenFiles);
@@ -534,7 +531,6 @@ class FreezingController extends Controller
 
             // Free up memory
             $inventory = null;
-            gc_collect_cycles();
 
             Util::writeLog('ida', 'getFileInventory: creating streaming response', \OCP\Util::DEBUG);
 

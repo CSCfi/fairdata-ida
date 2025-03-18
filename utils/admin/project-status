@@ -1,6 +1,6 @@
 #!/bin/bash
 # --------------------------------------------------------------------------------
-# This file is part of the IDA research data storage service
+# This file is part of the Fairdata IDA research data storage service.
 #
 # Copyright (C) 2019 Ministry of Education and Culture, Finland
 #
@@ -19,14 +19,14 @@
 #
 # @author   CSC - IT Center for Science Ltd., Espoo Finland <servicedesk@csc.fi>
 # @license  GNU Affero General Public License, version 3
-# @link     https://research.csc.fi/
+# @link     https://www.fairdata.fi/en/ida
 # --------------------------------------------------------------------------------
 # Initialize script with common definitions
 
-SCRIPT=`basename $0`
-USAGE="Usage: $SCRIPT project"
+SCRIPT=$(basename $0)
+USAGE="Usage: $SCRIPT project [ --json ]"
 
-INIT_FILE=`dirname $0`/lib/init_admin_script.sh
+INIT_FILE=$(dirname $0)/lib/init_admin_script.sh
 
 if [ -e $INIT_FILE ]
 then
@@ -38,72 +38,104 @@ fi
 
 #--------------------------------------------------------------------------------
 
+JSON=$(echo "$*" | grep -- "--json" || true)
+
 if [ ! -d "${STORAGE_OC_DATA_ROOT}/${PROJECT_USER_PREFIX}${PROJECT}/files" ]; then
     errorExit "The project '${PROJECT}' does not exist"
 fi
 
-DATA=`$ROOT/utils/admin/fetch-project-stats $PROJECT`
+DATA=$($ROOT/utils/admin/fetch-project-stats $PROJECT)
 
-QUOTA=`echo "$DATA" | jq -r '.quotaBytes'`
-QUOTA=`bytesToHR "0${QUOTA}"`
+if [ "$DATA" ]; then
+    QUOTA=$(echo "$DATA" | jq -r '.quotaBytes')
+    USED=$(echo "$DATA" | jq -r '.totalBytes')
+    STAGED_VOLUME=$(echo "$DATA" | jq -r '.stagedBytes')
+    FROZEN_VOLUME=$(echo "$DATA" | jq -r '.frozenBytes')
+    TOTAL_FILES=$(echo "$DATA" | jq -r '.totalFiles')
+    STAGED_FILES=$(echo "$DATA" | jq -r '.stagedFiles')
+    FROZEN_FILES=$(echo "$DATA" | jq -r '.frozenFiles')
+    CREATED_IN_IDA=$(echo "$DATA" | jq -r '.createdInIDA' | sed -e 's/T.*$//')
+    LAST_DATA_CHANGE=$(echo "$DATA" | jq -r '.lastDataChange' | sed -e 's/T.*$//')
+    STORAGE_VOLUME=$(echo "$DATA" | jq -r '.storageVolume')
+else
+    errorExit "Error: Failed to retrieve project stats"
+fi
 
-USED=`echo "$DATA" | jq -r '.totalBytes'`
-USED=`bytesToHR "0${USED}"`
+USERS=$($CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${GROUP_API}/${PROJECT}")
 
-STAGED_VOLUME=`echo "$DATA" | jq -r '.stagedBytes'`
-STAGED_VOLUME=`bytesToHR "0${STAGED_VOLUME}"`
+if [ "$USERS" ]; then
+    USERS=$(echo "$USERS" | \
+            grep "<element>" | \
+            grep -v "<element>${PROJECT_USER_PREFIX}" | \
+            sed -e 's/^.*<element>/    /' | \
+            sed -e 's/<.*$//' |
+            grep -v '^[[:space:]]*$')
+else
+    errorExit "Error: Failed to retrieve project users"
+fi
 
-FROZEN_VOLUME=`echo "$DATA" | jq -r '.frozenBytes'`
-FROZEN_VOLUME=`bytesToHR "0${FROZEN_VOLUME}"`
+ACTION_STATUS=$($CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/status")
 
-TOTAL_FILES=`echo "$DATA" | jq -r '.totalFiles'`
-STAGED_FILES=`echo "$DATA" | jq -r '.stagedFiles'`
-FROZEN_FILES=`echo "$DATA" | jq -r '.frozenFiles'`
+if [ "$ACTION_STATUS" ]; then
+    ACTION_STATUS=$(echo "$ACTION_STATUS" | jq --indent 4 | \
+    grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r)
+else
+    errorExit "Error: Failed to retrieve project action status"
+fi
 
-CREATED_IN_IDA=`echo "$DATA" | jq -r '.createdInIDA' | sed -e 's/T.*$//'`
-
-LAST_DATA_CHANGE=`echo "$DATA" | jq -r '.lastDataChange' | sed -e 's/T.*$//'`
-
-STORAGE_VOLUME=`echo "$DATA" | jq -r '.storageVolume'`
-
-echo "Quota:"
-echo "    ${QUOTA}"
-
-echo "Used:"
-echo "    ${USED}"
-
-echo "Staged:"
-echo "    ${STAGED_VOLUME}"
-
-echo "Frozen:"
-echo "    ${FROZEN_VOLUME}"
-
-echo "Total files:"
-echo "    ${TOTAL_FILES}"
-
-echo "Staged files:"
-echo "    ${STAGED_FILES}"
-
-echo "Frozen files:"
-echo "    ${FROZEN_FILES}"
-
-echo "Created in IDA:"
-echo "    ${CREATED_IN_IDA}"
-
-echo "Last data change:"
-echo "    ${LAST_DATA_CHANGE}"
-
-echo "Storage volume:"
-echo "    ${STORAGE_VOLUME}"
-
-echo "Users: "
-
-$CURL_GET $ADMIN_CREDENTIALS -H "$IDA_MODE_HEADER" -H "OCS-APIRequest: true" "${GROUP_API}/${PROJECT}" | \
-    grep "<element>" | grep -v "<element>${PROJECT_USER_PREFIX}" | sed -e 's/^.*<element>/    /' | sed -e 's/<.*$//' 
-
-echo "Action status: "
-
-$CURL_GET $PROJECT_USER_CREDENTIALS -H "$IDA_MODE_HEADER" "$IDA_API/status" | jq --indent 4 | \
-    grep -e '"failed"' -e '"pending"' -e '"suspended"' | sed -e 's/, *$//' -e 's/"//g' | sort -r 
+if [ "$JSON" ]; then
+    USERS=$(format_token_list_as_json "$USERS" 8)
+    ACTION_STATUS=$(format_field_list_as_json "$ACTION_STATUS" 8)
+    echo "{"
+    echo "    \"project\": \"${PROJECT}\","
+    echo "    \"quota\": ${QUOTA},"
+    echo "    \"used\": ${USED},"
+    echo "    \"staged\": ${STAGED_VOLUME},"
+    echo "    \"frozen\": ${FROZEN_VOLUME},"
+    echo "    \"totalFiles\": ${TOTAL_FILES},"
+    echo "    \"stagedFiles\": ${STAGED_FILES},"
+    echo "    \"frozenFiles\": ${FROZEN_FILES},"
+    echo "    \"created\": \"${CREATED_IN_IDA}\","
+    echo "    \"lastDataChange\": \"${LAST_DATA_CHANGE}\","
+    echo "    \"storageVolume\": \"${STORAGE_VOLUME}\","
+    echo "    \"users\": ["
+    printf "%s\n" "$USERS"
+    echo "    ],"
+    echo "    \"actionStatus\": {"
+    printf "%s\n" "$ACTION_STATUS"
+    echo "    }"
+    echo "}"
+else
+    QUOTA=$(bytesToHR "0${QUOTA}")
+    USED=$(bytesToHR "0${USED}")
+    STAGED_VOLUME=$(bytesToHR "0${STAGED_VOLUME}")
+    FROZEN_VOLUME=$(bytesToHR "0${FROZEN_VOLUME}")
+    echo "Quota:"
+    echo "    ${QUOTA}"
+    echo "Used:"
+    echo "    ${USED}"
+    echo "Staged:"
+    echo "    ${STAGED_VOLUME}"
+    echo "Frozen:"
+    echo "    ${FROZEN_VOLUME}"
+    echo "Total files:"
+    echo "    ${TOTAL_FILES}"
+    echo "Staged files:"
+    echo "    ${STAGED_FILES}"
+    echo "Frozen files:"
+    echo "    ${FROZEN_FILES}"
+    echo "Created in IDA:"
+    echo "    ${CREATED_IN_IDA}"
+    echo "Last data change:"
+    echo "    ${LAST_DATA_CHANGE}"
+    echo "Storage volume:"
+    echo "    ${STORAGE_VOLUME}"
+    echo "Users: "
+    if [ "$USERS" ]; then
+        echo "$USERS"
+    fi
+    echo "Action status: "
+    echo "$ACTION_STATUS"
+fi
 
 addToLog "DONE"

@@ -173,7 +173,6 @@ class FileController extends Controller
 
             // Free up memory
             $fileEntities = null;
-            gc_collect_cycles();
 
             Util::writeLog('ida', 'getFiles: creating streaming response', \OCP\Util::DEBUG);
 
