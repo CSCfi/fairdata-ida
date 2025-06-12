@@ -21,6 +21,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 @link     https://research.csc.fi/
 -->
 
+### NOTE: This repository (`fairdata-ida`) is deprecated
+
+* As of **2025-06-09**, this repository is no longer maintained.
+* `fairdata-ida` has been upgraded to a NextCloud 31-compliant version of IDA, **fairdata-ida-v3**
+* The new repository provides NextCloud 31-compliant functionality and will receive all future updates.
+* Available here: https://github.com/CSCfi/fairdata-ida-v3/
+
 # Fairdata IDA Research Data Storage Service
  
 This repository contains the latest implementation of the [Fairdata IDA service](https://ida.fairdata.fi), and
